@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+
+# Environment & secrets
+.env
+.env.*
+
+# Local databases
+*.sqlite
+*.db
+
+# OS junk
+.DS_Store
+
+# Test artifacts / scratch
+Tests/
+txns/
+
+# CLI scratch files accidentally created
+--*
+=
+PY
+from
+import
+require
+
