@@ -1,3 +1,8 @@
+*.save
+
+# Generated artifacts
+artifacts/
+
 # Python
 __pycache__/
 *.pyc
