@@ -386,11 +386,22 @@ def canonicalize(league_id: str, season: int) -> None:
                     INSERT INTO canonical_events (
                       league_id, season, event_type, action_fingerprint,
                       best_memory_event_id, best_score,
-                      selection_version, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+                      selection_version, updated_at,
+                      occurred_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """,
-                    (row.league_id, row.season, row.event_type, fp, row.id, sc, now_iso_z()),
+                    (
+                        row.league_id,
+                        row.season,
+                        row.event_type,
+                        fp,
+                        row.id,
+                        sc,
+                        now_iso_z(),
+                        row.occurred_at,  # <-- NEW
+                    ),
                 )
+
                 canonical_id = int(cur.lastrowid)
                 created += 1
             else:
@@ -416,10 +427,15 @@ def canonicalize(league_id: str, season: int) -> None:
 
             conn.execute(
                 """
-                INSERT OR IGNORE INTO canonical_membership (canonical_event_id, memory_event_id, score)
-                VALUES (?, ?, ?)
+                UPDATE canonical_events
+                SET best_memory_event_id=?,
+                    best_score=?,
+                    selection_version=1,
+                    updated_at=?,
+                    occurred_at=?
+                WHERE id=?
                 """,
-                (canonical_id, row.id, sc),
+                (row.id, sc, now_iso_z(), row.occurred_at, canonical_id),
             )
 
             processed += 1

@@ -98,7 +98,6 @@ def run_sql_checks(conn: sqlite3.Connection, league_id: str, season: int) -> Non
 
     print("canonical_by_type =", {et: int(n) for (et, n) in totals})
 
-
 def main() -> None:
     print("\n=== SquadVault Daily Driver: ingest -> canonicalize -> checks ===")
     print("DB_PATH =", DB_PATH.resolve())
@@ -107,7 +106,10 @@ def main() -> None:
     print("MFL_SERVER =", MFL_SERVER)
 
     store = SQLiteStore(DB_PATH)
-    store.init_db(SCHEMA)
+
+    # Only initialize schema for a brand-new DB file.
+    if (not DB_PATH.exists()) or DB_PATH.stat().st_size == 0:
+        store.init_db(SCHEMA)
 
     client = MflClient(
         server=MFL_SERVER,
@@ -163,7 +165,6 @@ def main() -> None:
         run_sql_checks(conn, league_id=LEAGUE_ID, season=YEAR)
     finally:
         conn.close()
-
 
 if __name__ == "__main__":
     main()

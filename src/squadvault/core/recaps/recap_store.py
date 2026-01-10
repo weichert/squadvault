@@ -323,3 +323,63 @@ def set_recap_artifact(
         con.commit()
     finally:
         con.close()
+
+ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
+
+
+def ensure_weekly_recap_artifact_row_if_missing(
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    version: int,
+    *,
+    state: str,
+    selection_fingerprint: str,
+    window_start: Optional[str],
+    window_end: Optional[str],
+    created_by: str = "system:write",
+) -> bool:
+    """
+    Insert-only bridge into recap_artifacts for recap_week_render.py.
+
+    Returns True if inserted, False if already existed.
+
+    IMPORTANT:
+    - Does NOT overwrite existing recap_artifacts rows.
+    - Does NOT mutate lifecycle fields (approval/supersedence/etc.) on conflict.
+    """
+    con = sqlite3.connect(db_path)
+    try:
+        cur = con.execute(
+            """
+            INSERT INTO recap_artifacts (
+              league_id, season, week_index,
+              artifact_type, version,
+              state,
+              selection_fingerprint, window_start, window_end,
+              rendered_text,
+              created_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+            ON CONFLICT(league_id, season, week_index, artifact_type, version)
+            DO NOTHING;
+            """,
+            (
+                league_id,
+                season,
+                week_index,
+                ARTIFACT_TYPE_WEEKLY_RECAP,
+                version,
+                state,
+                selection_fingerprint,
+                window_start,
+                window_end,
+                created_by,
+            ),
+        )
+        con.commit()
+        return (cur.rowcount or 0) > 0
+    finally:
+        con.close()
+

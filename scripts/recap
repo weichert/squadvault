@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Operator CLI entrypoint for weekly recap lifecycle.
+# Delegates to scripts/recap.py (Python CLI) so README can point to ONE stable command.
+PYTHONPATH=src exec python -u scripts/recap.py "$@"

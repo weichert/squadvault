@@ -126,3 +126,77 @@ SELECT
 FROM canonical_events ce
 JOIN memory_events me
   ON me.id = ce.best_memory_event_id;
+
+-- =========================
+-- Recap artifacts (MVP)
+-- =========================
+
+CREATE TABLE IF NOT EXISTS recap_artifacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  league_id TEXT NOT NULL,
+  season INTEGER NOT NULL,
+  week_index INTEGER NOT NULL,
+
+  artifact_type TEXT NOT NULL DEFAULT 'WEEKLY_RECAP', -- future-proof but fixed for MVP
+
+  version INTEGER NOT NULL, -- 1..n per (league, season, week, type)
+
+  -- lifecycle state machine: DRAFT | APPROVED | WITHHELD | SUPERSEDED
+  state TEXT NOT NULL,
+
+  -- deterministic provenance
+  selection_fingerprint TEXT NOT NULL,  -- sha256 of ordered canonical_ids
+  window_start TEXT,                    -- ISO-8601
+  window_end TEXT,                      -- ISO-8601
+
+  -- optional output (WITHHELD may leave this NULL)
+  rendered_text TEXT,
+
+  -- governance metadata
+  created_at TEXT NOT NULL,
+  created_by TEXT NOT NULL DEFAULT 'system',
+
+  approved_at TEXT,
+  approved_by TEXT,
+
+  withheld_reason TEXT,
+
+  supersedes_version INTEGER,
+
+  -- hard safety: keep versions unique per week
+  UNIQUE (league_id, season, week_index, artifact_type, version)
+);
+
+CREATE INDEX IF NOT EXISTS ix_recap_artifacts_lookup
+ON recap_artifacts (league_id, season, week_index, artifact_type, version);
+
+CREATE INDEX IF NOT EXISTS ix_recap_artifacts_state
+ON recap_artifacts (league_id, season, state);
+
+-- =========================
+-- Recap runs (process ledger)
+-- =========================
+
+CREATE TABLE IF NOT EXISTS recap_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  league_id TEXT NOT NULL,
+  season INTEGER NOT NULL,
+  week_index INTEGER NOT NULL,
+
+  artifact_type TEXT NOT NULL DEFAULT 'WEEKLY_RECAP',
+  artifact_version INTEGER NOT NULL, -- foreign-key-ish pointer to recap_artifacts.version
+
+  -- run bookkeeping
+  state TEXT NOT NULL,               -- e.g., STARTED | COMPLETED | FAILED (keep boring)
+  reason TEXT,                       -- optional freeform
+  selection_fingerprint TEXT NOT NULL,
+
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_recap_runs_lookup
+ON recap_runs (league_id, season, week_index, artifact_type, artifact_version);
+
