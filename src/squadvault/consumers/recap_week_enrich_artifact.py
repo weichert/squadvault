@@ -1,329 +1,574 @@
 #!/usr/bin/env python3
 """
-Enrich a written weekly recap JSON artifact on disk, and update rendered_text for the
-corresponding recap_artifacts row in SQLite.
+recap_week_enrich_artifact.py
 
-Important behavior (safe / lifecycle-preserving):
-- If recap_vXX_enriched.json already exists, we preserve it (do not clobber facts),
-  but we may re-stamp metadata fields.
-- selection_fingerprint/window_start/window_end are read from recap_runs (source of truth),
-  because selection_fingerprint is NOT NULL in recap_artifacts schema.
-- This script MUST NOT mutate lifecycle fields in recap_artifacts (state, approval, supersedence).
-  It only updates rendered_text for an existing (league, season, week, version) row.
+Purpose:
+- Compute deterministic "What happened (facts)" bullets for a given week (non-quiet only)
+- Prepend them to the latest WEEKLY_RECAP artifact's rendered_text
+- Write the updated rendered_text back to recap_artifacts
 
-Operational guard:
-- We refuse to update DB rendered_text for a non-latest DB version, to prevent historical
-  versions (e.g., v1) from being accidentally rewritten when later versions exist.
+Flags:
+- --remove-facts-block    : strip an existing facts block (if present) and write back
+- --rewrite-facts-block   : remove existing facts block (if present) then regenerate + prepend fresh block
+- --min-events-for-facts N: override quiet-week gating threshold (default: deterministic_bullets_v1.QUIET_WEEK_MIN_EVENTS)
+
+Design constraints:
+- Deterministic (ordering + content)
+- No inference / no hallucination
+- Only uses canonical selection + best_memory_event_id payload_json + directory tables
 """
 
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import json
-import re
 import sqlite3
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 
-ARTIFACT_TYPE = "WEEKLY_RECAP"
-BASE_DIR_DEFAULT = "artifacts"
+# -------------------------
+# Small utilities
+# -------------------------
+
+FACTS_HEADER = "What happened (facts)"
+RECAP_HEADER_PREFIX = "SquadVault Weekly Recap"
 
 
-def db_connect(db_path: str) -> sqlite3.Connection:
+def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    return {k: row[k] for k in row.keys()}
+
+
+def _norm_id(raw: Any) -> str:
+    s = "" if raw is None else str(raw).strip()
+    if not s:
+        return ""
+    if s.isdigit():
+        return s.lstrip("0") or "0"
+    return s
+
+
+def _safe_str(v: Any, default: str = "") -> str:
+    if v is None:
+        return default
+    try:
+        return str(v)
+    except Exception:
+        return default
+
+
+def _has_column(cols: Sequence[str], name: str) -> bool:
+    return name in set(cols)
+
+
+def _ascii_punct(s: str) -> str:
+    # Normalize curly apostrophe and common unicode dashes for stable exports/terminals.
+    return s.replace("\u2019", "'").replace("\u2013", "-").replace("\u2014", "-")
+
+
+def _facts_provenance_line(sel: Any) -> str:
+    """
+    Deterministic provenance line for the facts block.
+    Uses only selection/window fields; no inference.
+    """
+    w = getattr(sel, "window", None)
+    mode = getattr(w, "mode", None) if w is not None else None
+    start = getattr(w, "window_start", None) if w is not None else None
+    end = getattr(w, "window_end", None) if w is not None else None
+    reason = getattr(w, "reason", None) if w is not None else None
+    fp = getattr(sel, "fingerprint", None)
+
+    parts = [
+        f"mode={mode}",
+        f"window={start}→{end}",
+        f"fingerprint={fp}",
+    ]
+    if reason:
+        parts.append(f"reason={reason}")
+    return "(" + "Selection: " + " ".join(parts) + ")"
+
+
+def _selection_allows_facts(sel: Any) -> bool:
+    """
+    Facts are only allowed when the selection window is a safe LOCK_TO_LOCK with non-empty bounds.
+    This prevents writing facts under UNSAFE/degenerate windows.
+    """
+    w = getattr(sel, "window", None)
+    mode = getattr(w, "mode", None) if w is not None else None
+    start = getattr(w, "window_start", None) if w is not None else None
+    end = getattr(w, "window_end", None) if w is not None else None
+    return (mode == "LOCK_TO_LOCK") and bool(start) and bool(end)
+
+
+# -------------------------
+# Directory lookups (deterministic)
+# -------------------------
+
+class DirLookup:
+    """
+    Deterministic directory lookup for names.
+    Tries exact id, then normalized (strip leading zeros).
+    Caches results.
+    """
+
+    def __init__(self, db_path: str, league_id: str, season: int):
+        self.db_path = db_path
+        self.league_id = league_id
+        self.season = season
+        self._fr_cache: Dict[str, str] = {}
+        self._pl_cache: Dict[str, str] = {}
+
+    def franchise(self, fid_raw: Any) -> str:
+        key = "" if fid_raw is None else str(fid_raw).strip()
+        if not key:
+            return "Unknown team"
+        if key in self._fr_cache:
+            return self._fr_cache[key]
+
+        name = self._query_one(
+            "SELECT name FROM franchise_directory WHERE league_id=? AND season=? AND franchise_id=? LIMIT 1",
+            (self.league_id, self.season, key),
+        )
+        if not name:
+            alt = _norm_id(key)
+            if alt and alt != key:
+                name = self._query_one(
+                    "SELECT name FROM franchise_directory WHERE league_id=? AND season=? AND franchise_id=? LIMIT 1",
+                    (self.league_id, self.season, alt),
+                )
+
+        out = _ascii_punct(name or key)  # stable fallback to id
+        self._fr_cache[key] = out
+        return out
+
+    def player(self, pid_raw: Any) -> str:
+        key = "" if pid_raw is None else str(pid_raw).strip()
+        if not key:
+            return "Unknown player"
+        if key in self._pl_cache:
+            return self._pl_cache[key]
+
+        name = self._query_one(
+            "SELECT name FROM player_directory WHERE league_id=? AND season=? AND player_id=? LIMIT 1",
+            (self.league_id, self.season, key),
+        )
+        if not name:
+            alt = _norm_id(key)
+            if alt and alt != key:
+                name = self._query_one(
+                    "SELECT name FROM player_directory WHERE league_id=? AND season=? AND player_id=? LIMIT 1",
+                    (self.league_id, self.season, alt),
+                )
+
+        out = _ascii_punct(name or key)  # stable fallback to id
+        self._pl_cache[key] = out
+        return out
+
+    def _query_one(self, sql: str, params: Tuple[Any, ...]) -> str:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(sql, params)
+        row = cur.fetchone()
+        conn.close()
+        if row is None:
+            return ""
+        v = row[0]
+        return "" if v is None else str(v)
+
+
+# -------------------------
+# Canonical + memory fetch
+# -------------------------
+
+def _fetch_canonical_rows_by_ids(
+    db_path: str,
+    league_id: str,
+    season: int,
+    canonical_ids: List[int],
+) -> List[Dict[str, Any]]:
+    if not canonical_ids:
+        return []
+
+    CHUNK = 500
+    out: List[Dict[str, Any]] = []
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    return conn
+    cur = conn.cursor()
+
+    for i in range(0, len(canonical_ids), CHUNK):
+        chunk = canonical_ids[i : i + CHUNK]
+        placeholders = ",".join(["?"] * len(chunk))
+        cur.execute(
+            f"""
+            SELECT
+              id AS canonical_id,
+              occurred_at,
+              event_type,
+              best_memory_event_id
+            FROM canonical_events
+            WHERE league_id = ?
+              AND season = ?
+              AND id IN ({placeholders})
+            """,
+            [league_id, season, *chunk],
+        )
+        out.extend(_row_to_dict(r) for r in cur.fetchall())
+
+    conn.close()
+    return out
 
 
-def _utc_now_iso() -> str:
-    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+def _fetch_memory_payloads_by_ids(
+    db_path: str,
+    memory_event_ids: List[int],
+) -> Dict[int, Dict[str, Any]]:
+    if not memory_event_ids:
+        return {}
+
+    CHUNK = 500
+    out: Dict[int, Dict[str, Any]] = {}
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    for i in range(0, len(memory_event_ids), CHUNK):
+        chunk = memory_event_ids[i : i + CHUNK]
+        placeholders = ",".join(["?"] * len(chunk))
+        cur.execute(
+            f"""
+            SELECT id, payload_json
+            FROM memory_events
+            WHERE id IN ({placeholders})
+            """,
+            list(chunk),
+        )
+        for r in cur.fetchall():
+            d = _row_to_dict(r)
+            raw = d.get("payload_json") or ""
+            payload: Dict[str, Any] = {}
+            if isinstance(raw, str) and raw.strip():
+                try:
+                    val = json.loads(raw)
+                    payload = val if isinstance(val, dict) else {}
+                except Exception:
+                    payload = {}
+            out[int(d["id"])] = payload
+
+    conn.close()
+    return out
 
 
-def _get_db_latest_version(conn: sqlite3.Connection, league_id: str, season: int, week_index: int) -> int:
-    row = conn.execute(
-        """
-        SELECT MAX(version) AS max_v
-        FROM recap_artifacts
-        WHERE league_id=? AND season=? AND week_index=? AND artifact_type=?
-        """,
-        (league_id, season, week_index, ARTIFACT_TYPE),
-    ).fetchone()
-    return int(row["max_v"]) if row and row["max_v"] is not None else 0
+# -------------------------
+# Artifact read/update
+# -------------------------
+
+def _recap_artifacts_columns(conn: sqlite3.Connection) -> List[str]:
+    cur = conn.cursor()
+    cur.execute("PRAGMA table_info(recap_artifacts);")
+    rows = cur.fetchall()
+    return [r[1] for r in rows]  # (cid, name, type, notnull, dflt_value, pk)
 
 
-def fetch_run_trace(
+def _fetch_latest_weekly_recap_artifact_row(
     conn: sqlite3.Connection,
     league_id: str,
     season: int,
     week_index: int,
-) -> Tuple[str, Optional[str], Optional[str]]:
-    row = conn.execute(
+) -> Optional[Dict[str, Any]]:
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute(
         """
-        SELECT selection_fingerprint, window_start, window_end
-        FROM recap_runs
-        WHERE league_id=? AND season=? AND week_index=?
+        SELECT *
+        FROM recap_artifacts
+        WHERE league_id = ?
+          AND season = ?
+          AND week_index = ?
+          AND artifact_type = 'WEEKLY_RECAP'
+        ORDER BY version DESC
+        LIMIT 1
         """,
         (league_id, season, week_index),
-    ).fetchone()
-    if row is None:
-        raise RuntimeError("recap_runs row missing; run init/write workflow first.")
-    return str(row["selection_fingerprint"]), row["window_start"], row["window_end"]
+    )
+    row = cur.fetchone()
+    return None if row is None else _row_to_dict(row)
 
 
-def find_latest_written_artifact_path(
-    league_id: str,
-    season: int,
-    week_index: int,
-    base_dir: str = BASE_DIR_DEFAULT,
-) -> Tuple[Path, int]:
-    week_dir = Path(base_dir) / "recaps" / str(league_id) / str(season) / f"week_{week_index:02d}"
-    if not week_dir.exists():
-        raise RuntimeError(f"Week directory not found: {week_dir}")
-
-    pat = re.compile(r"^recap_v(\d{2})\.json$")
-    candidates: List[Tuple[int, Path]] = []
-    for p in week_dir.iterdir():
-        m = pat.match(p.name)
-        if m:
-            candidates.append((int(m.group(1)), p))
-
-    if not candidates:
-        raise RuntimeError(f"No written recap_vXX.json found in {week_dir}")
-
-    candidates.sort(key=lambda t: t[0])
-    version, path = candidates[-1]
-    return path, version
-
-
-def load_json(path: Path) -> Dict[str, Any]:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_json(path: Path, obj: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(obj, f, indent=2, sort_keys=True)
-        f.write("\n")
-
-
-def compute_facts_count(enriched: Dict[str, Any]) -> int:
-    # best-effort; extend as needed
-    if isinstance(enriched.get("facts"), list):
-        return len(enriched["facts"])
-    if isinstance(enriched.get("fact_rows"), list):
-        return len(enriched["fact_rows"])
-    if isinstance(enriched.get("items"), list):
-        return len(enriched["items"])
-    if isinstance(enriched.get("facts_json"), list):
-        return len(enriched["facts_json"])
-    return int(enriched.get("facts_count", 0) or 0)
-
-
-def build_rendered_text_minimal(
-    *,
-    league_id: str,
-    season: int,
-    week_index: int,
-    version: int,
-    window_start: Optional[str],
-    window_end: Optional[str],
-    selection_fingerprint: str,
-    facts_count: int,
-) -> str:
-    lines: List[str] = []
-    lines.append(f"SquadVault Weekly Recap — League {league_id} — Season {season} — Week {week_index} (v{version})")
-    lines.append("")
-    if window_start and window_end:
-        lines.append(f"Window: {window_start} → {window_end}")
-    else:
-        lines.append("Window: (unknown)")
-    lines.append(f"Selection fingerprint: {selection_fingerprint}")
-    lines.append("")
-    lines.append(f"Facts: {facts_count}")
-    lines.append("")
-    lines.append("Note: This recap is summary-only and intentionally avoids fabricating details not present in event payloads.")
-    return "\n".join(lines)
-
-
-def update_rendered_text_only(
+def _update_rendered_text(
     conn: sqlite3.Connection,
+    cols: Sequence[str],
     *,
     league_id: str,
     season: int,
     week_index: int,
     version: int,
-    rendered_text: str,
+    new_rendered_text: str,
 ) -> None:
-    """
-    Enrichment is NOT allowed to mutate lifecycle fields (state, approval, supersedence, traceability).
-    It may ONLY update rendered_text for an existing recap_artifacts row.
-    """
-    cur = conn.execute(
+    if not _has_column(cols, "rendered_text"):
+        raise RuntimeError("recap_artifacts table has no 'rendered_text' column; cannot update.")
+
+    cur = conn.cursor()
+    cur.execute(
         """
         UPDATE recap_artifacts
         SET rendered_text = ?
-        WHERE league_id=?
-          AND season=?
-          AND week_index=?
-          AND artifact_type=?
-          AND version=?
+        WHERE league_id = ?
+          AND season = ?
+          AND week_index = ?
+          AND artifact_type = 'WEEKLY_RECAP'
+          AND version = ?
         """,
-        (rendered_text, league_id, season, week_index, ARTIFACT_TYPE, version),
+        (new_rendered_text, league_id, season, week_index, version),
     )
     conn.commit()
 
-    if cur.rowcount == 0:
-        raise SystemExit(
-            "No recap_artifacts row found to update rendered_text. "
-            "Run recap_week_init + recap_week_write_artifact first (or ensure the DB row exists)."
-        )
 
+# -------------------------
+# Deterministic facts block
+# -------------------------
 
-def _restamp_metadata_in_enriched_json(
-    enriched: Dict[str, Any],
+def build_deterministic_facts_block_v1(
     *,
+    db_path: str,
     league_id: str,
     season: int,
-    week_index: int,
-    version: int,
-    selection_fingerprint: str,
-    window_start: Optional[str],
-    window_end: Optional[str],
-) -> Dict[str, Any]:
+    canonical_ids: List[int],
+    sel: Any,
+    min_events_for_facts: Optional[int] = None,
+) -> str:
     """
-    Best-effort metadata stamping. We keep this intentionally conservative:
-    - Preserve existing facts/rows/etc.
-    - Add/update a small 'meta' object and a few top-level convenience fields.
+    Deterministic 'What happened (facts)' block.
+    Uses deterministic bullets module, fed by canonical rows + memory payloads + directory lookups.
+
+    Gating:
+    - Facts are only emitted for safe LOCK_TO_LOCK windows (sel.window)
+    - By default uses deterministic_bullets_v1.QUIET_WEEK_MIN_EVENTS
+    - If min_events_for_facts is provided, overrides the threshold deterministically.
     """
-    meta = enriched.get("meta")
-    if not isinstance(meta, dict):
-        meta = {}
-    meta.update(
+    from squadvault.recaps.deterministic_bullets_v1 import (
+        CanonicalEventRow,
+        QUIET_WEEK_MIN_EVENTS,
+        render_deterministic_bullets_v1,
+    )
+
+    # Hard safety gate: never write facts under UNSAFE/nonstandard windows.
+    if not _selection_allows_facts(sel):
+        return ""
+
+    threshold = QUIET_WEEK_MIN_EVENTS if min_events_for_facts is None else int(min_events_for_facts)
+    if len(canonical_ids) < threshold:
+        return ""
+
+    canon_rows = _fetch_canonical_rows_by_ids(db_path, league_id, season, canonical_ids)
+
+    mem_ids = sorted(
         {
-            "league_id": str(league_id),
-            "season": int(season),
-            "week_index": int(week_index),
-            "version": int(version),
-            "selection_fingerprint": str(selection_fingerprint),
-            "window_start": window_start,
-            "window_end": window_end,
-            "enriched_at": _utc_now_iso(),
+            int(r["best_memory_event_id"])
+            for r in canon_rows
+            if r.get("best_memory_event_id") is not None
         }
     )
-    enriched["meta"] = meta
+    mem_payload_by_id = _fetch_memory_payloads_by_ids(db_path, mem_ids)
 
-    # Also stamp common top-level fields if present/expected by other consumers (safe additions).
-    enriched["league_id"] = str(league_id)
-    enriched["season"] = int(season)
-    enriched["week_index"] = int(week_index)
-    enriched["version"] = int(version)
-    enriched["selection_fingerprint"] = str(selection_fingerprint)
-    enriched["window_start"] = window_start
-    enriched["window_end"] = window_end
+    rows: List[CanonicalEventRow] = []
+    for r in canon_rows:
+        mid = r.get("best_memory_event_id")
+        payload = mem_payload_by_id.get(int(mid), {}) if mid is not None else {}
+        rows.append(
+            CanonicalEventRow(
+                canonical_id=_safe_str(r.get("canonical_id")),
+                occurred_at=_safe_str(r.get("occurred_at")),
+                event_type=_safe_str(r.get("event_type")),
+                payload=payload,
+            )
+        )
 
-    return enriched
+    lookup = DirLookup(db_path=db_path, league_id=league_id, season=season)
+
+    bullets = render_deterministic_bullets_v1(
+        rows,
+        team_resolver=lookup.franchise,
+        player_resolver=lookup.player,
+    )
+    if not bullets:
+        return ""
+
+    bullets = [_ascii_punct(b) for b in bullets]
+
+    prov = _facts_provenance_line(sel)
+    lines: List[str] = [FACTS_HEADER, prov]
+    lines.extend([f"- {b}" for b in bullets])
+    return "\n".join(lines) + "\n\n"
 
 
-def main() -> None:
-    p = argparse.ArgumentParser(description="Enrich weekly recap artifact and update rendered_text in recap_artifacts")
+def _already_has_facts_block(existing_text: str) -> bool:
+    prefix = "\n".join(existing_text.splitlines()[:60])
+    return FACTS_HEADER in prefix
+
+
+def _strip_facts_block(existing_text: str) -> str:
+    """
+    If a facts block exists at/near the top, remove it deterministically by cutting
+    from the recap header onward (robust even if bullets contain blank lines).
+    """
+    if not existing_text:
+        return existing_text
+    idx = existing_text.find(RECAP_HEADER_PREFIX)
+    if idx == -1:
+        return existing_text
+    return existing_text[idx:]
+
+
+def _prepend_block(existing: str, block: str, *, force: bool) -> str:
+    if not block.strip():
+        return existing
+    if not existing:
+        return block
+    if not force and _already_has_facts_block(existing):
+        return existing
+    return block + existing
+
+
+# -------------------------
+# Main
+# -------------------------
+
+def main() -> int:
+    p = argparse.ArgumentParser(description="Enrich a weekly recap artifact by adding deterministic facts bullets.")
     p.add_argument("--db", required=True)
     p.add_argument("--league-id", required=True)
     p.add_argument("--season", type=int, required=True)
     p.add_argument("--week-index", type=int, required=True)
-    p.add_argument("--base-dir", default=BASE_DIR_DEFAULT, help="Artifact base dir (default: artifacts)")
+
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compute and print the would-be rendered_text, but do not write to the DB.",
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Prepend facts even if a facts block appears to already exist.",
+    )
+    p.add_argument(
+        "--remove-facts-block",
+        action="store_true",
+        help="Remove the facts block if present (no regeneration).",
+    )
+    p.add_argument(
+        "--rewrite-facts-block",
+        action="store_true",
+        help="Remove the facts block if present, then regenerate and prepend a fresh one.",
+    )
+    p.add_argument(
+        "--min-events-for-facts",
+        type=int,
+        default=None,
+        help="Override quiet-week gating. Require at least N canonical events to emit a facts block.",
+    )
+
     args = p.parse_args()
 
-    league_id = str(args.league_id)
-    season = int(args.season)
-    week_index = int(args.week_index)
-    base_dir = str(args.base_dir)
+    if args.remove_facts_block and args.rewrite_facts_block:
+        raise SystemExit("Choose only one: --remove-facts-block OR --rewrite-facts-block")
 
-    conn = db_connect(args.db)
+    from squadvault.recaps.select_weekly_recap_events_v1 import select_weekly_recap_events_v1
 
-    written_path, version = find_latest_written_artifact_path(
-        league_id=league_id,
-        season=season,
-        week_index=week_index,
-        base_dir=base_dir,
-    )
-    enriched_path = written_path.with_name(f"recap_v{version:02d}_enriched.json")
+    conn = sqlite3.connect(args.db)
+    cols = _recap_artifacts_columns(conn)
 
-    # Preserve existing enriched file if it exists (do NOT clobber facts)
-    if enriched_path.exists():
-        enriched: Dict[str, Any] = load_json(enriched_path)
-    else:
-        enriched = load_json(written_path)
-
-    selection_fingerprint, window_start, window_end = fetch_run_trace(conn, league_id, season, week_index)
-
-    # Re-stamp metadata (but keep facts intact)
-    enriched = _restamp_metadata_in_enriched_json(
-        enriched,
-        league_id=league_id,
-        season=season,
-        week_index=week_index,
-        version=version,
-        selection_fingerprint=selection_fingerprint,
-        window_start=window_start,
-        window_end=window_end,
-    )
-
-    # Write enriched JSON (always)
-    write_json(enriched_path, enriched)
-
-    facts_count = compute_facts_count(enriched)
-    print(f"enriched_written: {enriched_path}")
-    print(f"facts_count: {facts_count}")
-
-    # Build rendered text (this is what render/view paths show)
-    rendered_text = build_rendered_text_minimal(
-        league_id=league_id,
-        season=season,
-        week_index=week_index,
-        version=version,
-        window_start=window_start,
-        window_end=window_end,
-        selection_fingerprint=selection_fingerprint,
-        facts_count=facts_count,
-    )
-
-    # Guard: never rewrite historical DB versions.
-    db_latest = _get_db_latest_version(conn, league_id, season, week_index)
-    if db_latest == 0:
-        print(
-            "WARNING: no recap_artifacts rows exist for this week yet; "
-            "wrote enriched file only (run recap_week_init + recap_week_write_artifact first).",
-            file=sys.stderr,
-        )
-        return
-
-    if db_latest and version != db_latest:
-        print(
-            f"WARNING: refusing to update DB rendered_text for non-latest version "
-            f"(week={week_index} version={version} latest={db_latest}); wrote enriched file only.",
-            file=sys.stderr,
-        )
-        return
-
-    # Update rendered_text only (no upsert of lifecycle fields).
-    update_rendered_text_only(
+    art = _fetch_latest_weekly_recap_artifact_row(
         conn,
-        league_id=league_id,
-        season=season,
-        week_index=week_index,
-        version=version,
-        rendered_text=rendered_text,
+        league_id=args.league_id,
+        season=args.season,
+        week_index=args.week_index,
     )
-    print(f"db_updated: recap_artifacts week={week_index} version={version} rendered_text_len={len(rendered_text)}")
+    if art is None:
+        conn.close()
+        raise SystemExit("No WEEKLY_RECAP artifact found for this week (recap_artifacts latest is missing).")
+
+    version = int(art.get("version"))
+    existing_text = art.get("rendered_text") or ""
+
+    # Mode: remove only
+    if args.remove_facts_block:
+        updated = _strip_facts_block(existing_text)
+
+        if args.dry_run:
+            print(updated)
+            conn.close()
+            return 0
+
+        _update_rendered_text(
+            conn,
+            cols,
+            league_id=args.league_id,
+            season=args.season,
+            week_index=args.week_index,
+            version=version,
+            new_rendered_text=updated,
+        )
+        conn.close()
+        print(
+            f"recap_week_enrich_artifact: OK (removed facts block) "
+            f"(league={args.league_id} season={args.season} week={args.week_index} version={version})",
+            file=sys.stderr,
+        )
+        return 0
+
+    # For rewrite or default prepend: we need selection + a fresh facts block.
+    sel = select_weekly_recap_events_v1(
+        db_path=args.db,
+        league_id=args.league_id,
+        season=args.season,
+        week_index=args.week_index,
+    )
+    canonical_ids = [int(x) for x in (sel.canonical_ids or [])]
+
+    facts_block = build_deterministic_facts_block_v1(
+        db_path=args.db,
+        league_id=args.league_id,
+        season=args.season,
+        canonical_ids=canonical_ids,
+        sel=sel,
+        min_events_for_facts=args.min_events_for_facts,
+    )
+
+    if args.rewrite_facts_block:
+        base = _strip_facts_block(existing_text)
+        updated = _prepend_block(base, facts_block, force=True)
+    else:
+        updated = _prepend_block(existing_text, facts_block, force=args.force)
+
+    if args.dry_run:
+        print(updated)
+        conn.close()
+        return 0
+
+    _update_rendered_text(
+        conn,
+        cols,
+        league_id=args.league_id,
+        season=args.season,
+        week_index=args.week_index,
+        version=version,
+        new_rendered_text=updated,
+    )
+    conn.close()
+
+    action = "rewrote facts block" if args.rewrite_facts_block else "enriched"
+    print(
+        f"recap_week_enrich_artifact: OK ({action}) "
+        f"(league={args.league_id} season={args.season} week={args.week_index} version={version})",
+        file=sys.stderr,
+    )
+    return 0
 
 
 if __name__ == "__main__":
     try:
-        main()
+        raise SystemExit(main())
     except SystemExit:
         raise
     except Exception as e:

@@ -26,6 +26,16 @@ def render_recap_text_v1(artifact: Dict[str, Any]) -> str:
     win_start = window.get("start")
     win_end = window.get("end")
 
+    # If window is unsafe/nonstandard, surface it explicitly for operator trust.
+    if window is not None:
+        mode = getattr(window, "mode", None)
+        reason = getattr(window, "reason", None)
+        if mode and mode != "LOCK_TO_LOCK":
+            if reason:
+                lines.append(f"Window mode: {mode} ({reason})")
+            else:
+                lines.append(f"Window mode: {mode}")
+
     sel = artifact.get("selection", {}) or {}
     event_count = _safe_int(sel.get("event_count"), 0)
     counts_by_type = sel.get("counts_by_type", {}) or {}
