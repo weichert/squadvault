@@ -1,76 +1,101 @@
+"""
+weekly_selection_v1.py
+
+Deterministically selects recap-worthy canonical events for a given week_index.
+
+Contract:
+- Computes a weekly window via weekly_windows_v1.window_for_week_index
+- Selects canonical_events inside [window_start, window_end) AND event_type is allowlisted
+- Orders deterministically: occurred_at, event_type, canonical_id
+- Fingerprint: sha256 of ordered canonical_ids (as strings) joined by commas
+
+Safety:
+- If window is UNSAFE or missing boundaries, returns empty selection.
+- No inference; selection is purely DB-driven + allowlist.
+"""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence
 import hashlib
-import json
 import sqlite3
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from squadvault.core.recaps.selection.weekly_windows_v1 import RecapWindow, window_for_week_index
+from squadvault.core.recaps.selection.weekly_windows_v1 import WeeklyWindow, window_for_week_index
 
 
-# Conservative v1 allowlist based on observed event_type values.
-RECAP_EVENT_ALLOWLIST_V1: Sequence[str] = (
-    "TRANSACTION_TRADE",
-    "TRANSACTION_FREE_AGENT",
-    "TRANSACTION_WAIVER",
-    "TRANSACTION_BBID_WAIVER",
-    "WAIVER_BID_AWARDED",
-    "TRANSACTION_AUCTION_WON",
-)
+# -------------------------
+# Allowlist (v1)
+# -------------------------
 
+def _load_allowlist_event_types() -> List[str]:
+    """
+    Pull allowlist from config if present. Provide a conservative fallback.
+    """
+    # Preferred location in this repo (based on earlier work)
+    try:
+        from squadvault.config.recap_event_allowlist_v1 import ALLOWLIST_EVENT_TYPES  # type: ignore
+        if isinstance(ALLOWLIST_EVENT_TYPES, (list, tuple)) and ALLOWLIST_EVENT_TYPES:
+            return [str(x) for x in ALLOWLIST_EVENT_TYPES]
+    except Exception:
+        pass
+
+    # Conservative fallback (must match your current MVP coverage)
+    return [
+        "TRANSACTION_FREE_AGENT",
+        "TRANSACTION_TRADE",
+        "TRANSACTION_BBID_WAIVER",
+        "WAIVER_BID_AWARDED",
+        # NOTE: lock events exist but should not be recap bullets; keep them out by default.
+        # "TRANSACTION_LOCK_ALL_PLAYERS",
+        # "TRANSACTION_BBID_AUTO_PROCESS_WAIVERS",
+        # "DRAFT_PICK",
+    ]
+
+
+# -------------------------
+# Selection result
+# -------------------------
 
 @dataclass(frozen=True)
 class SelectionResult:
     week_index: int
-    window: RecapWindow
-    canonical_ids: List[int]               # ordered
+    window: WeeklyWindow
+    canonical_ids: List[str]
     counts_by_type: Dict[str, int]
-    fingerprint: str                       # sha256 of ordered canonical_ids
+    fingerprint: str
 
-_SELECT_SQL_TEMPLATE = """
-SELECT
-  ce.id,
-  ce.event_type,
-  ce.action_fingerprint,
-  ce.best_memory_event_id,
-  me.occurred_at,
-  me.payload_json
-FROM canonical_events ce
-JOIN memory_events me ON me.id = ce.best_memory_event_id
-WHERE
-  ce.league_id = ?
-  AND ce.season = ?
-  AND me.occurred_at >= ?
-  AND me.occurred_at < ?
-  AND ce.event_type IN (?,?,?,?,?,?)
-ORDER BY
-  me.occurred_at ASC,
-  ce.event_type ASC,
-  ce.id ASC;
-"""
 
-def _fingerprint_from_ids(ids: Sequence[int]) -> str:
-    payload = ",".join(str(i) for i in ids).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    return {k: row[k] for k in row.keys()}
+
+
+def _fingerprint_from_ids(ids: List[str]) -> str:
+    # sha256 of comma-joined canonical ids
+    s = ",".join(ids).encode("utf-8")
+    return hashlib.sha256(s).hexdigest()
+
+
+def _db_connect(db_path: str) -> sqlite3.Connection:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 
 def select_weekly_recap_events_v1(
     db_path: str,
     league_id: str,
     season: int,
     week_index: int,
+    *,
+    allowlist_event_types: Optional[List[str]] = None,
 ) -> SelectionResult:
     """
-    Deterministically selects recap-worthy canonical events for a given week_index
-    using lock-to-lock windows and a conservative allowlist.
-
-    - Window: [start_lock, next_lock)
-    - Ordering: occurred_at, event_type, canonical_id
-    - Fingerprint: sha256 of ordered canonical_ids
+    Deterministically select recap-worthy canonical event IDs for a week.
     """
-    window = window_for_week_index(db_path, league_id, season, week_index)
+    window = window_for_week_index(db_path, str(league_id), int(season), int(week_index))
 
-    # Conservative v1: if we can't compute a safe window, return empty selection.
+    # Conservative: refuse to select if we leading-edge can't compute a safe window.
     if window.mode != "LOCK_TO_LOCK" or not window.window_start or not window.window_end:
         return SelectionResult(
             week_index=week_index,
@@ -80,58 +105,63 @@ def select_weekly_recap_events_v1(
             fingerprint=_fingerprint_from_ids([]),
         )
 
-    params = [
-        league_id,
-        season,
-        window.window_start,
-        window.window_end,
-        *RECAP_EVENT_ALLOWLIST_V1,
-    ]
+    # Degenerate lock-to-lock (start == end) is treated as unsafe upstream; but double-guard anyway.
+    if window.window_start == window.window_end:
+        return SelectionResult(
+            week_index=week_index,
+            window=window,
+            canonical_ids=[],
+            counts_by_type={},
+            fingerprint=_fingerprint_from_ids([]),
+        )
 
-    con = sqlite3.connect(db_path)
+    allow = allowlist_event_types if allowlist_event_types is not None else _load_allowlist_event_types()
+    allow = [str(x) for x in allow if x]
+
+    conn = _db_connect(db_path)
     try:
-        cur = con.execute(_SELECT_SQL_TEMPLATE, params)
-        rows = cur.fetchall()
+        cur = conn.cursor()
+
+        # Allowlist filter (parameterized IN)
+        # If allowlist is empty, return empty selection (most conservative)
+        if not allow:
+            return SelectionResult(
+                week_index=week_index,
+                window=window,
+                canonical_ids=[],
+                counts_by_type={},
+                fingerprint=_fingerprint_from_ids([]),
+            )
+
+        placeholders = ",".join(["?"] * len(allow))
+
+        cur.execute(
+            f"""
+            SELECT
+              id AS canonical_id,
+              occurred_at,
+              event_type
+            FROM canonical_events
+            WHERE league_id = ?
+              AND season = ?
+              AND occurred_at IS NOT NULL
+              AND occurred_at >= ?
+              AND occurred_at <  ?
+              AND event_type IN ({placeholders})
+            ORDER BY occurred_at ASC, event_type ASC, id ASC
+            """,
+            [str(league_id), int(season), window.window_start, window.window_end, *allow],
+        )
+
+        rows = [_row_to_dict(r) for r in cur.fetchall()]
     finally:
-        con.close()
+        conn.close()
 
-    canonical_ids: List[int] = []
+    canonical_ids: List[str] = [str(r["canonical_id"]) for r in rows]
     counts: Dict[str, int] = {}
-    seen_trade_sig: Dict[str, int] = {}
-
-    for canonical_id, event_type, _action_fp, _memory_id, _occurred_at, payload_json in rows:
-        cid = int(canonical_id)
-        et = str(event_type)
-        keep = True
-
-        # Deduplicate trades by hashing payload.raw_mfl_json (deterministic)
-        if et == "TRANSACTION_TRADE":
-            try:
-                payload = json.loads(payload_json or "{}")
-            except Exception:
-                payload = {}
-
-            raw = payload.get("raw_mfl_json") or ""
-            sig = hashlib.sha256(str(raw).encode("utf-8")).hexdigest()
-
-            prev = seen_trade_sig.get(sig)
-            if prev is None:
-                seen_trade_sig[sig] = cid
-            else:
-                # deterministic: lowest canonical_id wins
-                if cid < prev:
-                    seen_trade_sig[sig] = cid
-                    try:
-                        canonical_ids.remove(prev)
-                        counts[et] = max(0, counts.get(et, 0) - 1)
-                    except ValueError:
-                        pass
-                else:
-                    keep = False
-
-        if keep:
-            canonical_ids.append(cid)
-            counts[et] = counts.get(et, 0) + 1
+    for r in rows:
+        et = str(r.get("event_type") or "")
+        counts[et] = counts.get(et, 0) + 1
 
     fp = _fingerprint_from_ids(canonical_ids)
 
@@ -143,3 +173,5 @@ def select_weekly_recap_events_v1(
         fingerprint=fp,
     )
 
+
+__all__ = ["SelectionResult", "select_weekly_recap_events_v1"]
