@@ -1,26 +1,45 @@
+#!/usr/bin/env python3
+"""
+Lock-based gating check that can WITHHOLD a week (unique action-aware).
+
+Rules:
+1) If weekly window is unsafe/missing bounds => WITHHELD immediately.
+2) Compare ledger UNIQUE actions vs canonical event count within the same window:
+   - If ledger_unique_actions > canonical_events => WITHHELD (data gap detected)
+   - Otherwise => OK
+
+Notes:
+- We do NOT WITHHOLD solely because canonical_events == 0. A quiet week is valid;
+  the recap can still be generated as summary-only with 0 facts.
+"""
+
+from __future__ import annotations
+
 import argparse
 import sqlite3
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
 
 from squadvault.core.canonicalize.run_canonicalize import action_fingerprint, safe_json_loads
-from squadvault.core.recaps.recap_runs import RecapRunRecord, upsert_recap_run
-from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.recaps.recap_runs import (
     RecapRunRecord,
-    upsert_recap_run,
     get_recap_run_state,
+    upsert_recap_run,
     update_recap_run_state,
 )
+from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
+from squadvault.core.storage.sqlite_store import SQLiteStore
+
+
+SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
+
 
 class VerdictStatus:
     WITHHELD = "WITHHELD"
-    GENERATED = "GENERATED"
+    OK = "OK"
 
 
 class DNGReason:
-    DNG_INCOMPLETE_WEEK = "DNG_INCOMPLETE_WEEK"
     DNG_DATA_GAP_DETECTED = "DNG_DATA_GAP_DETECTED"
 
 
@@ -90,13 +109,11 @@ def _ledger_unique_actions_in_range(
 ) -> int:
     """
     Count unique logical actions in memory_events using the same action_fingerprint()
-    logic as canonicalization. This prevents false "data gap" signals when multiple
-    ledger rows represent the same underlying action.
+    logic as canonicalization. Prevents false "data gap" when ledger duplicates exist.
     """
     rows = _fetch_memory_rows_in_range(conn, league_id, season, start, end)
     fps: Set[str] = set()
 
-    # action_fingerprint expects a MemoryEventRow-like object. We'll use a tiny shim.
     class _RowShim:
         def __init__(self, d: Dict[str, Any]) -> None:
             self.id = d["id"]
@@ -113,10 +130,9 @@ def _ledger_unique_actions_in_range(
         payload = safe_json_loads(d["payload_json"])
         fp = action_fingerprint(_RowShim(d), payload)
 
-        # canonicalize.py skips empty fingerprints; do the same here
+        # canonicalize skips empty fingerprints; match that behavior
         if not fp:
             continue
-
         fps.add(fp)
 
     return len(fps)
@@ -165,22 +181,8 @@ def generation_verdict_unique_actions(
             },
         )
 
-    if canonical == 0:
-        return Verdict(
-            status=VerdictStatus.WITHHELD,
-            reason=DNGReason.DNG_INCOMPLETE_WEEK,
-            evidence={
-                "league_id": league_id,
-                "season": season,
-                "range_start": start,
-                "range_end": end,
-                "ledger_unique_action_count": ledger_unique,
-                "canonical_event_count": 0,
-            },
-        )
-
     return Verdict(
-        status=VerdictStatus.GENERATED,
+        status=VerdictStatus.OK,
         reason=None,
         evidence={
             "league_id": league_id,
@@ -193,22 +195,32 @@ def generation_verdict_unique_actions(
         },
     )
 
+
+def _is_safe_window(mode: Optional[str], start: Optional[str], end: Optional[str]) -> bool:
+    return (mode in SAFE_WINDOW_MODES) and bool(start) and bool(end)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description="Lock-to-lock gating check that can WITHHOLD a week (unique action-aware)."
+        description="Weekly gating check: validate safe window + unique-action gap detection."
     )
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
     ap.add_argument("--season", type=int, required=True)
     ap.add_argument("--week-index", type=int, required=True)
+    ap.add_argument(
+        "--season-end",
+        default=None,
+        help="Optional ISO cap for final-week windowing, e.g. 2024-01-07T18:00:00Z",
+    )
     args = ap.parse_args()
 
     sel = select_weekly_recap_events_v1(
-        args.db, args.league_id, args.season, args.week_index
+        args.db, args.league_id, args.season, args.week_index, season_end=args.season_end
     )
 
-    # 1) Unsafe window → WITHHELD immediately
-    if sel.window.mode != "LOCK_TO_LOCK" or not sel.window.window_start or not sel.window.window_end:
+    # 1) Unsafe window => WITHHELD immediately
+    if not _is_safe_window(sel.window.mode, sel.window.window_start, sel.window.window_end):
         upsert_recap_run(
             args.db,
             RecapRunRecord(
@@ -222,10 +234,10 @@ def main() -> None:
                 selection_fingerprint=sel.fingerprint,
                 canonical_ids=sel.canonical_ids,
                 counts_by_type=sel.counts_by_type,
-                reason="unsafe_window_or_missing_lock",
+                reason="unsafe_window_or_missing_bounds",
             ),
         )
-        print("gating_check: WITHHELD (unsafe_window_or_missing_lock)")
+        print("gating_check: WITHHELD (unsafe_window_or_missing_bounds)")
         return
 
     store = SQLiteStore(args.db)
@@ -242,7 +254,7 @@ def main() -> None:
     finally:
         conn.close()
 
-    # 2) Verdict says WITHHELD → persist and stop
+    # 2) Verdict says WITHHELD => persist and stop
     if v.status == VerdictStatus.WITHHELD:
         upsert_recap_run(
             args.db,
@@ -251,36 +263,46 @@ def main() -> None:
                 season=args.season,
                 week_index=args.week_index,
                 state="WITHHELD",
-                window_mode="LOCK_TO_LOCK",
+                window_mode=sel.window.mode,
                 window_start=sel.window.window_start,
                 window_end=sel.window.window_end,
                 selection_fingerprint=sel.fingerprint,
                 canonical_ids=sel.canonical_ids,
                 counts_by_type=sel.counts_by_type,
-                reason=str(v.reason),
+                reason=v.reason or "withheld",
             ),
         )
-
-        ev = v.evidence
-        print(
-            "gating_check: WITHHELD",
-            v.reason,
-            f"(ledger_unique={ev.get('ledger_unique_action_count')}, "
-            f"canonical={ev.get('canonical_event_count')}, "
-            f"gap={ev.get('gap', 0)})",
-        )
+        print(f"gating_check: WITHHELD ({v.reason})")
+        print("evidence:", v.evidence)
         return
 
-    # 3) Verdict is OK → clear stale WITHHELD so driver can proceed
-    prior = get_recap_run_state(
-        args.db, args.league_id, args.season, args.week_index
-    )
-    if prior == "WITHHELD":
-        update_recap_run_state(
-            args.db, args.league_id, args.season, args.week_index, "SUPERSEDED"
-        )
+    # 3) OK => record OK outcome without penalizing quiet weeks
+    # If previously WITHHELD due to data gap and now OK, nudge state back to DRAFTED to proceed.
+    prev_state = get_recap_run_state(args.db, args.league_id, args.season, args.week_index)
+    if prev_state == "WITHHELD":
+        update_recap_run_state(args.db, args.league_id, args.season, args.week_index, "DRAFTED")
 
-    print("gating_check: OK (no gap detected; unique action-aware)")
+    upsert_recap_run(
+        args.db,
+        RecapRunRecord(
+            league_id=args.league_id,
+            season=args.season,
+            week_index=args.week_index,
+            state=get_recap_run_state(args.db, args.league_id, args.season, args.week_index)
+            or "DRAFTED",
+            window_mode=sel.window.mode,
+            window_start=sel.window.window_start,
+            window_end=sel.window.window_end,
+            selection_fingerprint=sel.fingerprint,
+            canonical_ids=sel.canonical_ids,
+            counts_by_type=sel.counts_by_type,
+            reason=None,
+        ),
+    )
+
+    print("gating_check: OK")
+    print("evidence:", v.evidence)
+
 
 if __name__ == "__main__":
     main()

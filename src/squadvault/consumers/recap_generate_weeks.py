@@ -7,7 +7,8 @@ Modes:
 - drive_workflow: safe init/write/enrich/view driver (DRY-RUN by default; requires --execute to run).
 
 Key behavior:
-- If week state is REVIEW_REQUIRED, we now run enrich -> render (because DB row may be missing).
+- REVIEW_REQUIRED: run enrich -> render (because DB row may be missing / stale).
+- WITHHELD: skip write/enrich/render (never crash because no week directory is expected).
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ import sys
 import sqlite3
 from typing import Optional, List
 
-
+# Only these states are terminal for batch driving purposes.
 TERMINAL_STATES = {"APPROVED", "WITHHELD"}
 
 
@@ -72,12 +73,13 @@ def run_drive_workflow(
 
             print(f"=== week {w:02d} state={state} ===")
 
-            if state in TERMINAL_STATES or state == "APPROVED":
+            # Terminal: do nothing.
+            if state in TERMINAL_STATES:
                 print(f"week {w:02d}: SKIP (terminal state={state})")
                 print("")
                 continue
 
-            # REVIEW_REQUIRED: run enrich -> render (DB row may be missing)
+            # REVIEW_REQUIRED: re-run enrich/render only (idempotent + fixes missing/stale rendered_text).
             if state == "REVIEW_REQUIRED":
                 sh(
                     [
@@ -116,7 +118,7 @@ def run_drive_workflow(
                 print("")
                 continue
 
-            # state is None (no run row) or other non-terminal:
+            # For everything else (None / DRAFTED / WRITTEN / etc.), follow the safe workflow.
             sh(
                 [
                     sys.executable,
@@ -151,6 +153,20 @@ def run_drive_workflow(
                 execute,
             )
 
+            # Critical safety: init may WITHHOLD (unsafe window / missing lock). If so, skip remaining steps.
+            state_after_init = get_run_state(conn, league_id, season, w)
+            if state_after_init == "WITHHELD":
+                print(f"week {w:02d}: WITHHELD (skipping write/enrich/render)")
+                print("")
+                continue
+
+            # If init didn't land in DRAFTED, don't try to write/enrich/render.
+            # This keeps the driver resilient to unexpected states.
+            if state_after_init not in (None, "DRAFTED"):
+                print(f"week {w:02d}: SKIP (post-init state={state_after_init})")
+                print("")
+                continue
+
             sh(
                 [
                     sys.executable,
@@ -170,7 +186,7 @@ def run_drive_workflow(
                 execute,
             )
 
-            # Critical bridge: enrich -> DB
+            # Bridge: enrich -> DB rendered_text
             sh(
                 [
                     sys.executable,
@@ -206,6 +222,7 @@ def run_drive_workflow(
                 execute,
             )
 
+            # At this point, the run should be REVIEW_REQUIRED (awaiting approval step).
             print(f"week {w:02d}: {'DONE' if execute else 'DRY-RUN'} state=REVIEW_REQUIRED")
             print("")
     finally:
@@ -224,6 +241,7 @@ def run_verdicts(
     persist_verdicts: bool,
     verdict_table: str,
 ) -> int:
+    # NOTE: This mode is intentionally report-only in the MVP; wiring is handled elsewhere.
     print("=== Verdicts mode ===")
     print("NOTE: verdicts mode is report-only (no generation).")
     print(f"DB          : {db_path}")
@@ -237,7 +255,9 @@ def run_verdicts(
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Batch recap tooling: verdicts (Phase 2D) + safe workflow driver (Option A)")
+    ap = argparse.ArgumentParser(
+        description="Batch recap tooling: verdicts (Phase 2D) + safe workflow driver (Option A)"
+    )
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
     ap.add_argument("--season", type=int, required=True)
@@ -246,7 +266,7 @@ def main() -> int:
         "--mode",
         choices=["verdicts", "drive_workflow"],
         default="verdicts",
-        help="verdicts = Phase 2D gating report only (no generation). drive_workflow = safe init/write/view driver.",
+        help="verdicts = Phase 2D gating report only (no generation). drive_workflow = safe init/write/enrich/render driver.",
     )
 
     ap.add_argument("--season-start", help="(verdicts) ISO start, e.g. 2024-08-01T00:00:00Z")
@@ -257,7 +277,7 @@ def main() -> int:
     ap.add_argument("--start-week-index", type=int, default=None, help="(drive_workflow) start week index (inclusive)")
     ap.add_argument("--end-week-index", type=int, default=None, help="(drive_workflow) end week index (inclusive)")
     ap.add_argument("--base-dir", default="artifacts", help="(drive_workflow) artifact base dir")
-    ap.add_argument("--execute", action="store_true", help="(drive_workflow) actually run gating/init/write/view.")
+    ap.add_argument("--execute", action="store_true", help="(drive_workflow) actually run gating/init/write/enrich/render.")
 
     args = ap.parse_args()
 

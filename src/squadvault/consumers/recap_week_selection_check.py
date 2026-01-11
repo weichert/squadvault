@@ -1,11 +1,9 @@
 import argparse
 
 from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.recaps.selection.recap_selection_store import (
-    get_stored_selection,
-    is_stale,
-)
+from squadvault.core.recaps.selection.recap_selection_store import get_stored_selection, is_stale
 from squadvault.core.recaps.recap_store import upsert_selection_if_stale
+
 
 def main() -> None:
     ap = argparse.ArgumentParser()
@@ -13,10 +11,17 @@ def main() -> None:
     ap.add_argument("--league-id", required=True)
     ap.add_argument("--season", type=int, required=True)
     ap.add_argument("--week-index", type=int, required=True)
+    ap.add_argument(
+        "--season-end",
+        default=None,
+        help="Optional ISO cap for final-week windowing, e.g. 2024-01-07T18:00:00Z",
+    )
     ap.add_argument("--persist", action="store_true")
     args = ap.parse_args()
 
-    sel = select_weekly_recap_events_v1(args.db, args.league_id, args.season, args.week_index)
+    sel = select_weekly_recap_events_v1(
+        args.db, args.league_id, args.season, args.week_index, season_end=args.season_end
+    )
     stored = get_stored_selection(args.db, args.league_id, args.season, args.week_index)
 
     print("mode:", sel.window.mode)
@@ -36,6 +41,7 @@ def main() -> None:
     if args.persist:
         result = upsert_selection_if_stale(args.db, args.league_id, args.season, sel)
         print("persisted:", result)
+
 
 if __name__ == "__main__":
     main()
