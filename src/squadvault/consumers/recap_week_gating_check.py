@@ -33,6 +33,9 @@ from squadvault.core.storage.sqlite_store import SQLiteStore
 
 SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
 
+# Deterministic fallback reason if window did not provide one.
+WINDOW_UNSAFE_TO_COMPUTE = "WINDOW_UNSAFE_TO_COMPUTE"
+
 
 class VerdictStatus:
     WITHHELD = "WITHHELD"
@@ -221,6 +224,10 @@ def main() -> None:
 
     # 1) Unsafe window => WITHHELD immediately
     if not _is_safe_window(sel.window.mode, sel.window.window_start, sel.window.window_end):
+        # Persist a deterministic reason code for auditability.
+        # Prefer the window's own reason code; fall back to a stable generic code.
+        reason = getattr(sel.window, "reason", None) or WINDOW_UNSAFE_TO_COMPUTE
+
         upsert_recap_run(
             args.db,
             RecapRunRecord(
@@ -234,10 +241,10 @@ def main() -> None:
                 selection_fingerprint=sel.fingerprint,
                 canonical_ids=sel.canonical_ids,
                 counts_by_type=sel.counts_by_type,
-                reason="unsafe_window_or_missing_bounds",
+                reason=reason,
             ),
         )
-        print("gating_check: WITHHELD (unsafe_window_or_missing_bounds)")
+        print(f"gating_check: WITHHELD ({reason})")
         return
 
     store = SQLiteStore(args.db)
@@ -280,7 +287,9 @@ def main() -> None:
     # If previously WITHHELD due to data gap and now OK, nudge state back to DRAFTED to proceed.
     prev_state = get_recap_run_state(args.db, args.league_id, args.season, args.week_index)
     if prev_state == "WITHHELD":
-        update_recap_run_state(args.db, args.league_id, args.season, args.week_index, "DRAFTED")
+        update_recap_run_state(
+            args.db, args.league_id, args.season, args.week_index, "DRAFTED", reason=None
+        )
 
     upsert_recap_run(
         args.db,

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from dotenv import load_dotenv
-
-load_dotenv(".env")
-
 from collections import Counter
+import argparse
 from pathlib import Path
 import os
 import sqlite3
+
+from dotenv import load_dotenv
 
 from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.mfl.client import MflClient
@@ -19,16 +18,10 @@ from squadvault.ingest.waiver_bids import derive_waiver_bid_event_envelopes_from
 from squadvault.core.canonicalize.run_canonicalize import canonicalize
 
 
+# Load env early so argparse defaults can safely reference env vars.
+load_dotenv(".env")
+
 SCHEMA = Path("src/squadvault/core/storage/schema.sql").read_text()
-DB_PATH = Path(".local_squadvault.sqlite")
-
-YEAR = int(os.environ.get("SQUADVAULT_YEAR", "2024"))
-
-LEAGUE_ID = os.environ["MFL_LEAGUE_ID"]  # required
-MFL_SERVER = os.environ["MFL_SERVER"]  # required
-
-MFL_USERNAME = os.environ.get("MFL_USERNAME")
-MFL_PASSWORD = os.environ.get("MFL_PASSWORD")
 
 RAW_JSON_TRUNCATE_CHARS = int(os.environ.get("RAW_JSON_TRUNCATE_CHARS", "2000"))
 
@@ -98,53 +91,116 @@ def run_sql_checks(conn: sqlite3.Connection, league_id: str, season: int) -> Non
 
     print("canonical_by_type =", {et: int(n) for (et, n) in totals})
 
-def main() -> None:
-    print("\n=== SquadVault Daily Driver: ingest -> canonicalize -> checks ===")
-    print("DB_PATH =", DB_PATH.resolve())
-    print("YEAR =", YEAR)
-    print("LEAGUE_ID =", LEAGUE_ID)
-    print("MFL_SERVER =", MFL_SERVER)
 
-    store = SQLiteStore(DB_PATH)
+def _env_required(name: str) -> str:
+    v = os.environ.get(name)
+    if not v:
+        raise SystemExit(f"Missing required environment variable: {name}")
+    return v
+
+
+def parse_args() -> argparse.Namespace:
+    """
+    Daily driver: ingest -> canonicalize -> checks
+
+    Important: this script must NOT run at import-time, and -h must show help and exit.
+    """
+    p = argparse.ArgumentParser(description="SquadVault daily driver: ingest -> canonicalize -> checks")
+
+    p.add_argument(
+        "--db",
+        default=os.environ.get("SQUADVAULT_DB", ".local_squadvault.sqlite"),
+        help="Path to SQLite DB (default: env SQUADVAULT_DB or .local_squadvault.sqlite)",
+    )
+    p.add_argument(
+        "--league-id",
+        default=os.environ.get("MFL_LEAGUE_ID"),
+        help="MFL league id (default: env MFL_LEAGUE_ID)",
+    )
+    p.add_argument(
+        "--season",
+        "--year",
+        dest="season",
+        type=int,
+        default=int(os.environ.get("SQUADVAULT_YEAR", "2024")),
+        help="Season/year (default: env SQUADVAULT_YEAR or 2024)",
+    )
+    p.add_argument(
+        "--mfl-server",
+        default=os.environ.get("MFL_SERVER"),
+        help="MFL server hostname (default: env MFL_SERVER)",
+    )
+    p.add_argument(
+        "--raw-json-truncate-chars",
+        type=int,
+        default=int(os.environ.get("RAW_JSON_TRUNCATE_CHARS", str(RAW_JSON_TRUNCATE_CHARS))),
+        help="Max chars to store for raw_json (default: env RAW_JSON_TRUNCATE_CHARS or 2000)",
+    )
+
+    # Optional auth; required only if your client needs it.
+    p.add_argument("--mfl-username", default=os.environ.get("MFL_USERNAME"), help="MFL username (optional)")
+    p.add_argument("--mfl-password", default=os.environ.get("MFL_PASSWORD"), help="MFL password (optional)")
+
+    return p.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+
+    # Resolve required values: either CLI arg or env var.
+    league_id = args.league_id or _env_required("MFL_LEAGUE_ID")
+    mfl_server = args.mfl_server or _env_required("MFL_SERVER")
+
+    db_path = Path(args.db)
+    season = int(args.season)
+    raw_json_truncate_chars = int(args.raw_json_truncate_chars)
+
+    print("\n=== SquadVault Daily Driver: ingest -> canonicalize -> checks ===")
+    print("DB_PATH =", db_path.resolve())
+    print("YEAR =", season)
+    print("LEAGUE_ID =", league_id)
+    print("MFL_SERVER =", mfl_server)
+
+    store = SQLiteStore(db_path)
 
     # Only initialize schema for a brand-new DB file.
-    if (not DB_PATH.exists()) or DB_PATH.stat().st_size == 0:
+    if (not db_path.exists()) or db_path.stat().st_size == 0:
         store.init_db(SCHEMA)
 
     client = MflClient(
-        server=MFL_SERVER,
-        league_id=LEAGUE_ID,
-        username=MFL_USERNAME,
-        password=MFL_PASSWORD,
+        server=mfl_server,
+        league_id=league_id,
+        username=args.mfl_username,
+        password=args.mfl_password,
     )
 
-    raw_json, source_url = client.get_transactions(year=YEAR)
+    raw_json, source_url = client.get_transactions(year=season)
 
     transactions = raw_json.get("transactions", {}).get("transaction", [])
     if isinstance(transactions, dict):
         transactions = [transactions]
 
-    events = []
+    events: list[dict] = []
     events += derive_auction_event_envelopes_from_transactions(
-        year=YEAR,
-        league_id=LEAGUE_ID,
+        year=season,
+        league_id=league_id,
         transactions=transactions,
         source_url=source_url,
-        raw_json_truncate_chars=RAW_JSON_TRUNCATE_CHARS,
+        raw_json_truncate_chars=raw_json_truncate_chars,
     )
     events += derive_transaction_event_envelopes(
-        year=YEAR,
-        league_id=LEAGUE_ID,
+        year=season,
+        league_id=league_id,
         transactions=transactions,
         source_url=source_url,
-        raw_json_truncate_chars=RAW_JSON_TRUNCATE_CHARS,
+        raw_json_truncate_chars=raw_json_truncate_chars,
     )
     events += derive_waiver_bid_event_envelopes_from_transactions(
-        year=YEAR,
-        league_id=LEAGUE_ID,
+        year=season,
+        league_id=league_id,
         transactions=transactions,
         source_url=source_url,
-        raw_json_truncate_chars=RAW_JSON_TRUNCATE_CHARS,
+        raw_json_truncate_chars=raw_json_truncate_chars,
     )
 
     inserted, skipped = store.append_events(events)
@@ -157,14 +213,23 @@ def main() -> None:
     print("ingest_status =", "no_new_rows" if inserted == 0 else "appended_rows")
 
     print("\n=== Canonicalize ===")
-    canonicalize(league_id=LEAGUE_ID, season=YEAR)
+    # NOTE: canonicalize() uses the default DB in its implementation. If it supports a db_path,
+    # pass it through. If not, we rely on canonicalize reading the same DB from env/config.
+    try:
+        canonicalize(league_id=league_id, season=season, db_path=str(db_path))  # type: ignore[arg-type]
+    except TypeError:
+        # Backward compatible call signature
+        canonicalize(league_id=league_id, season=season)
 
     print("\n=== Post-run checks (SQLite) ===")
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(db_path))
     try:
-        run_sql_checks(conn, league_id=LEAGUE_ID, season=YEAR)
+        run_sql_checks(conn, league_id=league_id, season=season)
     finally:
         conn.close()
 
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

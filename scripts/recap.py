@@ -23,11 +23,11 @@ from squadvault.recaps.weekly_recap_lifecycle import (
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 
-
 def sh(cmd: list[str]) -> int:
     print(f"\n$ {' '.join(cmd)}")
-    return subprocess.call(cmd)
-
+    env = os.environ.copy()
+    env["PYTHONPATH"] = SRC_PATH + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    return subprocess.call(cmd, env=env)
 
 def _jsonable(obj: Any) -> Any:
     """
@@ -502,6 +502,25 @@ def cmd_approve(args: argparse.Namespace) -> int:
     _print_json(res)
     return 0
 
+def cmd_withhold(args: argparse.Namespace) -> int:
+    cmd = [
+        sys.executable,
+        "-u",
+        "src/squadvault/consumers/recap_artifact_withhold.py",
+        "--db",
+        args.db,
+        "--league-id",
+        args.league_id,
+        "--season",
+        str(args.season),
+        "--week-index",
+        str(args.week_index),
+        "--version",
+        str(args.version),
+        "--reason",
+        args.reason,
+    ]
+    return sh(cmd)
 
 def cmd_fetch_approved(args: argparse.Namespace) -> int:
     cmd = [
@@ -547,11 +566,16 @@ def cmd_check(args: argparse.Namespace) -> int:
     cmd = [
         "bash",
         "scripts/check_golden_path_recap.sh",
+        "--db",
         args.db,
-        args.league_id,
+        "--league-id",
+        str(args.league_id),
+        "--season",
         str(args.season),
+        "--start-week",
         str(args.week_index),
-        args.approved_by,
+        "--end-week",
+        str(args.week_index),
     ]
     return sh(cmd)
 
@@ -593,6 +617,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fail fast unless the latest WEEKLY_RECAP artifact is in DRAFT state.",
     )
     sp.set_defaults(fn=cmd_approve)
+
+    sp = sub.add_parser("withhold", help="Withhold a specific weekly recap artifact version (ops-safe)")
+    add_common(sp)
+    sp.add_argument("--version", type=int, required=True)
+    sp.add_argument("--reason", required=True)
+    sp.set_defaults(fn=cmd_withhold)
 
     sp = sub.add_parser("fetch-approved", help="Fetch approved weekly recap (current approved artifact)")
     add_common(sp)

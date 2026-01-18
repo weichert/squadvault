@@ -1,7 +1,13 @@
 import json
 import sqlite3
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
+
+
+# Sentinel that lets callers distinguish:
+# - reason not provided (leave unchanged)
+# - reason explicitly None (clear to NULL)
+_REASON_UNSET: Any = object()
 
 
 @dataclass(frozen=True)
@@ -86,17 +92,44 @@ def get_recap_run_state(db_path: str, league_id: str, season: int, week_index: i
         conn.close()
 
 
-def update_recap_run_state(db_path: str, league_id: str, season: int, week_index: int, new_state: str) -> None:
+def update_recap_run_state(
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    new_state: str,
+    *,
+    reason: Any = _REASON_UNSET,
+) -> None:
+    """
+    Update recap_runs.state, and optionally recap_runs.reason.
+
+    reason behavior:
+    - reason is _REASON_UNSET (default): do not modify reason
+    - reason is None: set reason=NULL (explicitly clear)
+    - reason is str: set reason to that value
+    """
     conn = sqlite3.connect(db_path)
     try:
-        cur = conn.execute(
-            """
-            UPDATE recap_runs
-            SET state=?, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
-            WHERE league_id=? AND season=? AND week_index=?
-            """,
-            (new_state, league_id, season, week_index),
-        )
+        if reason is _REASON_UNSET:
+            cur = conn.execute(
+                """
+                UPDATE recap_runs
+                SET state=?, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+                WHERE league_id=? AND season=? AND week_index=?
+                """,
+                (new_state, league_id, season, week_index),
+            )
+        else:
+            cur = conn.execute(
+                """
+                UPDATE recap_runs
+                SET state=?, reason=?, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+                WHERE league_id=? AND season=? AND week_index=?
+                """,
+                (new_state, reason, league_id, season, week_index),
+            )
+
         if cur.rowcount != 1:
             raise RuntimeError(
                 f"Expected exactly 1 recap_runs row to update for "
@@ -170,7 +203,7 @@ def sync_recap_run_state_from_artifacts(
     week_index: int,
 ) -> Optional[str]:
     """
-    Explicit reconciliation step (call it from render/approve/regenerate).
+    Explicit reconciliation step (call it from render/approve/regenerate/withhold).
 
     Rule (MVP):
     - If latest artifact is DRAFT => recap_runs.state = REVIEW_REQUIRED
@@ -193,9 +226,17 @@ def sync_recap_run_state_from_artifacts(
         new_state = "WITHHELD"
     else:
         # latest_state could be APPROVED or SUPERSEDED
-        new_state = "APPROVED" if _has_any_approved_artifact(db_path, league_id, season, week_index) else None
+        new_state = (
+            "APPROVED"
+            if _has_any_approved_artifact(db_path, league_id, season, week_index)
+            else None
+        )
 
     if new_state is None:
+        return None
+
+    # Best-effort: if recap_runs row doesn't exist, do not crash.
+    if get_recap_run_state(db_path, league_id, season, week_index) is None:
         return None
 
     update_recap_run_state(db_path, league_id, season, week_index, new_state)

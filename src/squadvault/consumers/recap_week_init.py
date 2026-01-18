@@ -26,6 +26,9 @@ from squadvault.core.recaps.recap_store import insert_recap_v1_if_missing
 
 SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
 
+# Deterministic fallback reason if window did not provide one.
+WINDOW_UNSAFE_TO_COMPUTE = "WINDOW_UNSAFE_TO_COMPUTE"
+
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Initialize weekly recap (v1) deterministically.")
@@ -54,11 +57,14 @@ def main() -> None:
         args.league_id,
         args.season,
         args.week_index,
-        season_end=args.season_end,
     )
 
     # 2) HARD GATE: unsafe window => WITHHELD immediately
     if not _is_safe_window(sel.window.mode, sel.window.window_start, sel.window.window_end):
+        # Persist a deterministic reason code for auditability.
+        # Prefer the window's own reason code; fall back to a stable generic code.
+        reason = getattr(sel.window, "reason", None) or WINDOW_UNSAFE_TO_COMPUTE
+
         upsert_recap_run(
             args.db,
             RecapRunRecord(
@@ -72,10 +78,10 @@ def main() -> None:
                 selection_fingerprint=sel.fingerprint,
                 canonical_ids=sel.canonical_ids,
                 counts_by_type=sel.counts_by_type,
-                reason="unsafe_window_or_missing_bounds",
+                reason=reason,
             ),
         )
-        print("recap_init: WITHHELD (unsafe_window_or_missing_bounds)")
+        print(f"recap_init: WITHHELD ({reason})")
         return
 
     # 3) Otherwise: record deterministic inputs and allow drafting (even if selection is empty)

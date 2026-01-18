@@ -25,6 +25,11 @@ from typing import Optional, List
 
 LOCK_EVENT_TYPE = "TRANSACTION_LOCK_ALL_PLAYERS"
 
+# Deterministic UNSAFE reason codes (stable, finite set)
+WINDOW_MISSING_LOCKS = "WINDOW_MISSING_LOCKS"
+WINDOW_INCONSISTENT_LOCK_ORDER = "WINDOW_INCONSISTENT_LOCK_ORDER"
+WINDOW_UNSAFE_TO_COMPUTE = "WINDOW_UNSAFE_TO_COMPUTE"
+
 
 @dataclass(frozen=True)
 class WeeklyWindow:
@@ -56,6 +61,7 @@ def _to_iso_z(t: dt.datetime) -> str:
         .isoformat()
         .replace("+00:00", "Z")
     )
+
 
 def _fetch_lock_times(conn: sqlite3.Connection, league_id: str, season: int) -> List[str]:
     # IMPORTANT: MFL can emit multiple lock events at the same timestamp (e.g. per division).
@@ -103,7 +109,7 @@ def window_for_week_index(
             window_end=None,
             start_lock=None,
             next_lock=None,
-            reason="invalid_week_index",
+            reason=WINDOW_UNSAFE_TO_COMPUTE,
         )
 
     conn = _db_connect(db_path)
@@ -120,7 +126,7 @@ def window_for_week_index(
             window_end=None,
             start_lock=None,
             next_lock=None,
-            reason=f"missing_start_lock (have {len(locks)}, need {week_index})",
+            reason=WINDOW_MISSING_LOCKS,
         )
 
     start_lock = locks[week_index - 1]
@@ -137,7 +143,7 @@ def window_for_week_index(
             window_end=None,
             start_lock=start_lock,
             next_lock=next_lock,
-            reason="degenerate_lock_window",
+            reason=WINDOW_INCONSISTENT_LOCK_ORDER,
         )
 
     # Normal case: lock-to-lock
@@ -163,7 +169,7 @@ def window_for_week_index(
                 window_end=None,
                 start_lock=start_lock,
                 next_lock=None,
-                reason="invalid_season_end_format",
+                reason=WINDOW_UNSAFE_TO_COMPUTE,
             )
 
         return WeeklyWindow(

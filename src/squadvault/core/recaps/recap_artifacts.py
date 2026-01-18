@@ -20,7 +20,26 @@ def _assert_transition(old: str, new: str) -> None:
     if (old, new) not in _ALLOWED_TRANSITIONS:
         raise ValueError(f"Invalid artifact transition: {old} -> {new}")
 
-        
+
+def _normalize_withheld_reason(withheld_reason: str) -> str:
+    """
+    Normalize withheld_reason to reduce drift while preserving backward compatibility.
+
+    - If caller passes a stable deterministic code (e.g., WINDOW_* or DNG_*), keep it.
+    - If empty/whitespace, fall back to a stable generic value.
+    - Otherwise, preserve the provided string (we do not want to break callers).
+    """
+    r = (withheld_reason or "").strip()
+    if not r:
+        return "WITHHELD"
+
+    # Preserve known stable prefixes used elsewhere in the system.
+    if r.startswith("WINDOW_") or r.startswith("DNG_"):
+        return r
+
+    return r
+
+
 def _latest_artifact_row_any_state(
     con: sqlite3.Connection,
     league_id: str,
@@ -168,6 +187,7 @@ def _next_version(
     ).fetchone()
     return int(row[0]) + 1
 
+
 def create_recap_artifact_draft_idempotent(
     db_path: str,
     league_id: str,
@@ -314,6 +334,8 @@ def withhold_recap_artifact(
             raise RuntimeError("Artifact not found to withhold.")
         _assert_transition(str(row[0]), "WITHHELD")
 
+        withheld_reason_norm = _normalize_withheld_reason(withheld_reason)
+
         cur = con.execute(
             """
             UPDATE recap_artifacts
@@ -322,7 +344,7 @@ def withhold_recap_artifact(
             WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND version=?
               AND state='DRAFT'
             """,
-            (withheld_reason, league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
+            (withheld_reason_norm, league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
         )
         if cur.rowcount != 1:
             raise RuntimeError("Withhold failed (state not DRAFT or row missing).")

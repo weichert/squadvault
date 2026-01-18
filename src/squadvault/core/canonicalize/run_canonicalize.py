@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv(".env")
 
+import os
 import hashlib
 import json
 import sqlite3
@@ -13,7 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 
-DB_PATH = Path(".local_squadvault.sqlite")
+DEFAULT_DB_PATH = Path(os.environ.get("SQUADVAULT_DB", ".local_squadvault.sqlite"))  # type: ignore[name-defined]
 
 
 @dataclass(frozen=True)
@@ -294,11 +295,20 @@ def score_event(payload: dict[str, Any], memory_event_id: int) -> int:
     return score
 
 
-def canonicalize(league_id: str, season: int) -> None:
-    if not DB_PATH.exists():
-        raise FileNotFoundError(f"SQLite DB not found at {DB_PATH.resolve()}")
+def canonicalize(league_id: str, season: int, db_path: str | Path | None = None) -> None:
+    """
+    Canonicalize memory_events into canonical_events for a (league_id, season) scope.
 
-    conn = sqlite3.connect(str(DB_PATH))
+    IMPORTANT:
+    - Uses the provided db_path when given.
+    - Falls back to env SQUADVAULT_DB, then .local_squadvault.sqlite.
+    """
+    resolved_db = Path(db_path) if db_path is not None else DEFAULT_DB_PATH
+
+    if not resolved_db.exists():
+        raise FileNotFoundError(f"SQLite DB not found at {resolved_db.resolve()}")
+
+    conn = sqlite3.connect(str(resolved_db))
     try:
         conn.execute("PRAGMA foreign_keys = ON;")
 
@@ -398,10 +408,9 @@ def canonicalize(league_id: str, season: int) -> None:
                         row.id,
                         sc,
                         now_iso_z(),
-                        row.occurred_at,  # <-- NEW
+                        row.occurred_at,
                     ),
                 )
-
                 canonical_id = int(cur.lastrowid)
                 created += 1
             else:
@@ -425,6 +434,7 @@ def canonicalize(league_id: str, season: int) -> None:
                     )
                     updated_best += 1
 
+            # Always set occurred_at (and keep deterministic metadata fresh)
             conn.execute(
                 """
                 UPDATE canonical_events
@@ -444,6 +454,7 @@ def canonicalize(league_id: str, season: int) -> None:
 
         print("canonicalize_done")
         print("league_id =", league_id, "season =", season)
+        print("db_path =", str(resolved_db))
         print("memory_events_processed =", processed)
         print("skipped_empty_fingerprint =", skipped_empty_fingerprint)
         print("canonical_events_created =", created)
@@ -473,13 +484,16 @@ def canonicalize(league_id: str, season: int) -> None:
 
 
 if __name__ == "__main__":
-    print("run_canonicalize.py starting...")
-
+    import argparse
     import os
 
-    league_id = os.environ.get("MFL_LEAGUE_ID", "").strip()
-    if not league_id:
-        raise RuntimeError("MFL_LEAGUE_ID env var required (set it in .env)")
+    p = argparse.ArgumentParser(description="Canonicalize memory events into canonical events")
+    p.add_argument("--db", default=os.environ.get("SQUADVAULT_DB", ".local_squadvault.sqlite"))
+    p.add_argument("--league-id", default=os.environ.get("MFL_LEAGUE_ID", "").strip())
+    p.add_argument("--season", type=int, default=int(os.environ.get("SQUADVAULT_YEAR", "2024")))
+    args = p.parse_args()
 
-    season = int(os.environ.get("SQUADVAULT_YEAR", "2024"))
-    canonicalize(league_id=league_id, season=season)
+    if not args.league_id:
+        raise RuntimeError("MFL_LEAGUE_ID env var required (or pass --league-id)")
+
+    canonicalize(league_id=args.league_id, season=args.season, db_path=args.db)

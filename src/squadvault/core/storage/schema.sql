@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS canonical_events (
   -- bookkeeping
   selection_version INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL,
+  occurred_at TEXT,
 
   FOREIGN KEY(best_memory_event_id) REFERENCES memory_events(id)
 );
