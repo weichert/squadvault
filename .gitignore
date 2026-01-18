@@ -35,3 +35,8 @@ from
 import
 require
 
+
+# Local DBs / backups
+*.sqlite
+*.sqlite*
+*.bak
