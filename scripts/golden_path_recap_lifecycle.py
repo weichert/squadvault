@@ -30,8 +30,8 @@ from squadvault.recaps.weekly_recap_lifecycle import (
 )
 
 
-RUN_STATES = {"REVIEW_REQUIRED", "APPROVED"}
-ARTIFACT_STATES = {"DRAFT", "READY", "APPROVED", "WITHHELD", "SUPERSEDED"}
+RUN_STATES = {"REVIEW_REQUIRED", "APPROVED", "WRITTEN"}
+ARTIFACT_STATES = {"DRAFT", "DRAFTED", "READY", "APPROVED", "WITHHELD", "SUPERSEDED"}
 
 
 @dataclass(frozen=True)
@@ -276,11 +276,24 @@ def main() -> int:
 
     print(f"After regen: recap_runs.state={after_regen_state!r}, latest_artifact={after_regen_art}")
 
-    # No-delta path: fingerprint unchanged -> no new DRAFT minted -> approval is not applicable.
+    # No-delta path: if regen minted nothing new, we may still have an existing draft to approve.
     if not getattr(regen_res, "created_new", False):
-        print("\n=== Phase 3: approve (explicit) ===")
-        print("Skipped: regeneration was a no-op (fingerprint unchanged), so no DRAFT exists to approve.")
-        return 0
+        with db_connect(db_path) as conn:
+            has_draft = conn.execute(
+                """
+                SELECT 1
+                FROM recap_artifacts
+                WHERE league_id=? AND season=? AND week_index=? AND artifact_type='WEEKLY_RECAP'
+                  AND state IN ('DRAFT','DRAFTED')
+                LIMIT 1
+                """,
+                (league_id, season, week_index),
+            ).fetchone() is not None
+
+        if not has_draft:
+            print("\n=== Phase 3: approve (explicit) ===")
+            print("Skipped: regeneration was a no-op and no draft exists to approve.")
+            return 0
 
     # Optional fallback (only if allowed) to validate pipeline when no DRAFT exists
     if (not args.no_force_fallback) and (not force):
@@ -289,7 +302,7 @@ def main() -> int:
                 """
                 SELECT 1
                 FROM recap_artifacts
-                WHERE league_id=? AND season=? AND week_index=? AND artifact_type='WEEKLY_RECAP' AND state='DRAFT'
+                WHERE league_id=? AND season=? AND week_index=? AND artifact_type='WEEKLY_RECAP' AND state IN ('DRAFT','DRAFTED')
                 LIMIT 1
                 """,
                 (league_id, season, week_index),

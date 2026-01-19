@@ -40,3 +40,35 @@ require
 *.sqlite
 *.sqlite*
 *.bak
+
+# --- SquadVault local/runtime artifacts ---
+path1_logs/
+*.log
+
+# Local SQLite dbs
+*.sqlite
+.local_*.sqlite
+
+# Accidental scratch / shell token files
+AND
+OR
+WHERE
+GROUP
+ORDER
+DB
+WEEK
+SEASON
+LEAGUE
+fingerprint
+selection_fingerprint
+window_start
+window_end
+window_mode
+window_mode,
+reason,
+league_id,
+
+# Numeric scratch files (e.g., "8", "9", "10")
+[0-9]
+[0-9][0-9]
+

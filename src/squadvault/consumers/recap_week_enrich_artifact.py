@@ -185,7 +185,7 @@ def _fetch_canonical_rows_by_ids(
     db_path: str,
     league_id: str,
     season: int,
-    canonical_ids: List[int],
+    canonical_ids: List[str],
 ) -> List[Dict[str, Any]]:
     if not canonical_ids:
         return []
@@ -333,7 +333,7 @@ def build_deterministic_facts_block_v1(
     db_path: str,
     league_id: str,
     season: int,
-    canonical_ids: List[int],
+    canonical_ids: List[str],
     sel: Any,
     min_events_for_facts: Optional[int] = None,
 ) -> str:
@@ -360,47 +360,80 @@ def build_deterministic_facts_block_v1(
     if len(canonical_ids) < threshold:
         return ""
 
-    canon_rows = _fetch_canonical_rows_by_ids(db_path, league_id, season, canonical_ids)
+    # If canonical_ids are string keys (current system), use deterministic parsing fallback.
+    # If they are numeric IDs (legacy), you can keep the DB lookup path.
+    facts_bullets = _facts_from_canonical_id_strings(canonical_ids)
 
-    mem_ids = sorted(
-        {
-            int(r["best_memory_event_id"])
-            for r in canon_rows
-            if r.get("best_memory_event_id") is not None
-        }
-    )
-    mem_payload_by_id = _fetch_memory_payloads_by_ids(db_path, mem_ids)
+    # Fallback path: emit deterministic bullets derived solely from canonical_id strings.
+    # No payload lookups, no inference.
+    if facts_bullets:
+        facts_bullets = [_ascii_punct(b) for b in facts_bullets]
+        prov = _facts_provenance_line(sel)
+        lines: List[str] = [FACTS_HEADER, prov]
+        lines.extend([f"- {b}" for b in facts_bullets])
+        return "\n".join(lines) + "\n\n"
 
-    rows: List[CanonicalEventRow] = []
-    for r in canon_rows:
-        mid = r.get("best_memory_event_id")
-        payload = mem_payload_by_id.get(int(mid), {}) if mid is not None else {}
-        rows.append(
-            CanonicalEventRow(
-                canonical_id=_safe_str(r.get("canonical_id")),
-                occurred_at=_safe_str(r.get("occurred_at")),
-                event_type=_safe_str(r.get("event_type")),
-                payload=payload,
-            )
-        )
+    # If fallback produced nothing, return empty (silence over noise).
+    return ""
 
-    lookup = DirLookup(db_path=db_path, league_id=league_id, season=season)
 
-    bullets = render_deterministic_bullets_v1(
-        rows,
-        team_resolver=lookup.franchise,
-        player_resolver=lookup.player,
-    )
-    if not bullets:
-        return ""
+def _facts_from_canonical_id_strings(canonical_ids: list[str]) -> list[str]:
+    """
+    Deterministic fallback: derive minimal facts bullets from canonical_id strings.
 
-    bullets = [_ascii_punct(b) for b in bullets]
+    No inference. No names. No fabricated context.
+    Only parse what is embedded in the canonical_id itself.
+    """
+    bullets: list[str] = []
 
-    prov = _facts_provenance_line(sel)
-    lines: List[str] = [FACTS_HEADER, prov]
-    lines.extend([f"- {b}" for b in bullets])
-    return "\n".join(lines) + "\n\n"
+    for cid in canonical_ids:
+        # Format is "EVENT_TYPE:..." — keep it robust
+        parts = cid.split(":")
+        if not parts:
+            continue
 
+        event_type = parts[0]
+
+        if event_type == "WAIVER_BID_AWARDED":
+            # Example seen: WAIVER_BID_AWARDED:70985:2023:2023-09-21T01:00:00Z:0003:13168:20.0
+            # We'll pull the last two fields as (player_id, bid) if present.
+            if len(parts) >= 2:
+                player_id = parts[-2] if len(parts) >= 2 else "UNKNOWN"
+                bid = parts[-1] if len(parts) >= 1 else "UNKNOWN"
+                bullets.append(f"Waiver awarded: player {player_id} for {bid}.")
+
+        elif event_type == "TRANSACTION_FREE_AGENT":
+            # Example seen: ...:ADD:16150:DROP:13139 (but sometimes missing)
+            add_id = None
+            drop_id = None
+            for i, p in enumerate(parts):
+                if p == "ADD" and i + 1 < len(parts) and parts[i + 1]:
+                    add_id = parts[i + 1]
+                if p == "DROP" and i + 1 < len(parts) and parts[i + 1]:
+                    drop_id = parts[i + 1]
+            if add_id or drop_id:
+                if add_id and drop_id:
+                    bullets.append(f"Free agent move: added {add_id}, dropped {drop_id}.")
+                elif add_id:
+                    bullets.append(f"Free agent move: added {add_id}.")
+                else:
+                    bullets.append(f"Free agent move: dropped {drop_id}.")
+
+        elif event_type == "TRANSACTION_TRADE":
+            # Example seen: TRANSACTION_TRADE:70985:2023:MEMORY_EVENT_ID:1078
+            mid = None
+            for i, p in enumerate(parts):
+                if p == "MEMORY_EVENT_ID" and i + 1 < len(parts):
+                    mid = parts[i + 1]
+                    break
+            if mid:
+                bullets.append(f"Trade completed (memory_event_id {mid}).")
+            else:
+                bullets.append("Trade completed.")
+
+        # Otherwise: intentionally silent for all other TRANSACTION_* noise.
+
+    return bullets
 
 def _already_has_facts_block(existing_text: str) -> bool:
     prefix = "\n".join(existing_text.splitlines()[:60])
@@ -524,7 +557,7 @@ def main() -> int:
         season=args.season,
         week_index=args.week_index,
     )
-    canonical_ids = [int(x) for x in (sel.canonical_ids or [])]
+    canonical_ids = list(sel.canonical_ids or [])
 
     facts_block = build_deterministic_facts_block_v1(
         db_path=args.db,

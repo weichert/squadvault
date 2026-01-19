@@ -237,6 +237,38 @@ def _latest_artifact_in_state(
         return None
     return int(row[0]), str(row[1])
 
+def _latest_draft_artifact_version(
+    con: sqlite3.Connection,
+    league_id: str,
+    season: int,
+    week_index: int,
+) -> Optional[int]:
+    row = con.execute(
+        """
+        SELECT version
+        FROM recap_artifacts
+        WHERE league_id=? AND season=? AND week_index=? AND artifact_type='WEEKLY_RECAP'
+          AND state IN ('DRAFT','DRAFTED')
+        ORDER BY version DESC
+        LIMIT 1
+        """,
+        (league_id, season, week_index),
+    ).fetchone()
+    return None if not row else int(row[0])
+
+def _latest_draft_version(con, league_id, season, week_index) -> Optional[int]:
+    row = con.execute(
+        """
+        SELECT version
+        FROM recap_artifacts
+        WHERE league_id=? AND season=? AND week_index=? AND artifact_type='WEEKLY_RECAP'
+          AND state IN ('DRAFT','DRAFTED')
+        ORDER BY version DESC
+        LIMIT 1
+        """,
+        (league_id, season, week_index),
+    ).fetchone()
+    return None if not row else int(row[0])
 
 def _approve_version_and_supersede_previous(
     db_path: str,
@@ -265,7 +297,7 @@ def _approve_version_and_supersede_previous(
         ).fetchone()
         if not row:
             raise SystemExit(f"No WEEKLY_RECAP artifact found for version={version_to_approve}.")
-        if str(row[0]) != "DRAFT":
+        if str(row[0]) not in ("DRAFT", "DRAFTED"):
             raise SystemExit(f"Refusing to approve version={version_to_approve} because state is '{row[0]}', not DRAFT.")
 
         prev = _latest_artifact_in_state(con, league_id, season, week_index, "APPROVED")
@@ -397,7 +429,7 @@ def approve_latest_weekly_recap(
             """
             SELECT version
             FROM recap_artifacts
-            WHERE league_id=? AND season=? AND week_index=? AND artifact_type='WEEKLY_RECAP' AND state='DRAFT'
+            WHERE league_id=? AND season=? AND week_index=? AND artifact_type='WEEKLY_RECAP' AND state IN ('DRAFT','DRAFTED')
             ORDER BY version DESC
             LIMIT 1
             """,

@@ -138,9 +138,9 @@ def select_weekly_recap_events_v1(
         cur.execute(
             f"""
             SELECT
-              id AS canonical_id,
-              occurred_at,
-              event_type
+                action_fingerprint AS canonical_id,
+                occurred_at,
+                event_type
             FROM canonical_events
             WHERE league_id = ?
               AND season = ?
@@ -148,7 +148,7 @@ def select_weekly_recap_events_v1(
               AND occurred_at >= ?
               AND occurred_at <  ?
               AND event_type IN ({placeholders})
-            ORDER BY occurred_at ASC, event_type ASC, id ASC
+            ORDER BY occurred_at ASC, event_type ASC, action_fingerprint ASC
             """,
             [str(league_id), int(season), window.window_start, window.window_end, *allow],
         )

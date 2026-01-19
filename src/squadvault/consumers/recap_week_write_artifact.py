@@ -50,7 +50,6 @@ def main() -> None:
         league_id=args.league_id,
         season=args.season,
         week_index=args.week_index,
-        season_end=args.season_end,
     )
 
     # Safety: if window isn't safe, don't write an artifact (should have been gated upstream)

@@ -21,13 +21,18 @@ from squadvault.recaps.weekly_recap_lifecycle import (
     generate_weekly_recap_draft,
 )
 
+# NEW: approved export CLI wrapper
+from squadvault.consumers.recap_export_approved import main as export_approved_main
+
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
+
 
 def sh(cmd: list[str]) -> int:
     print(f"\n$ {' '.join(cmd)}")
     env = os.environ.copy()
     env["PYTHONPATH"] = SRC_PATH + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     return subprocess.call(cmd, env=env)
+
 
 def _jsonable(obj: Any) -> Any:
     """
@@ -80,6 +85,7 @@ def _latest_weekly_recap_artifact_state(
         return row[0] if row else None
     finally:
         conn.close()
+
 
 def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
     cur = conn.cursor()
@@ -175,7 +181,6 @@ def _fetch_week_status(db_path: str, league_id: str, season: int, week_index: in
     finally:
         conn.close()
 
-# --- ADD this new command implementation somewhere near cmd_status (after _fetch_week_status is fine) ---
 
 def _list_week_indexes(db_path: str, league_id: str, season: int) -> list[int]:
     """
@@ -209,6 +214,32 @@ def _short_fp(fp: Optional[str]) -> str:
     if not fp:
         return ""
     return fp[:10]
+
+def cmd_review_week(args: argparse.Namespace) -> int:
+    return run_script(
+        "src/squadvault/consumers/editorial_review_week.py",
+        [
+            "--db", args.db,
+            "--league-id", args.league_id,
+            "--season", str(args.season),
+            "--week-index", str(args.week_index),
+            "--actor", args.actor,
+            "--base-dir", args.base_dir,
+        ],
+    )
+
+def cmd_editorial_log(args: argparse.Namespace) -> int:
+    return run_script(
+        "src/squadvault/consumers/editorial_log_week.py",
+        [
+            "--db", args.db,
+            "--league-id", args.league_id,
+            "--season", str(args.season),
+            "--week-index", str(args.week_index),
+            "--limit", str(args.limit),
+        ],
+    )
+
 
 def cmd_list_weeks(args: argparse.Namespace) -> int:
     weeks = _list_week_indexes(args.db, args.league_id, args.season)
@@ -248,11 +279,9 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
             }
         )
 
-    # --- NEW: problems shortcut ---
-    # Definition:
-    # - latest artifact state is DRAFT or WITHHELD
-    # - OR recap_runs missing or not APPROVED
+    # --- problems shortcut ---
     if getattr(args, "problems", False):
+
         def is_problem(r: dict[str, Any]) -> bool:
             run_state = (r.get("run_state") or "").upper()
             latest_state = (r.get("latest_state") or "").upper()
@@ -264,13 +293,16 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
 
         rows = [r for r in rows if is_problem(r)]
 
+        if not rows:
+            print("(no problems)")
+            return 0
+
     # --- filtering ---
     def _norm_states(vals: list[str]) -> set[str]:
         out: set[str] = set()
         for v in vals:
             if not v:
                 continue
-            # allow comma-separated
             for part in v.split(","):
                 part = part.strip()
                 if part:
@@ -281,6 +313,7 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
     scope = (args.scope or "any").lower()
 
     if only_states:
+
         def matches(r: dict[str, Any]) -> bool:
             run_state = (r.get("run_state") or "").upper()
             latest_state = (r.get("latest_state") or "").upper()
@@ -294,11 +327,8 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
                 return latest_state in only_states
 
             if scope == "approved":
-                # Treat presence of an approved artifact as APPROVED
-                # (and also accept approved_state if your table stores it).
                 return ("APPROVED" in only_states) and (has_approved or approved_state == "APPROVED")
 
-            # scope == "any" (default): match if any dimension matches.
             if run_state in only_states:
                 return True
             if latest_state in only_states:
@@ -382,6 +412,7 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
 
     return 0
 
+
 def cmd_status(args: argparse.Namespace) -> int:
     payload = _fetch_week_status(
         db_path=args.db,
@@ -390,12 +421,10 @@ def cmd_status(args: argparse.Namespace) -> int:
         week_index=args.week_index,
     )
 
-    # optional terse format for humans; default JSON for scripts
     if args.format == "json":
         _print_json(payload)
         return 0
 
-    # text format
     wk = payload["week"]
     rr = payload["recap_run"]
     la = payload["latest_artifact"]
@@ -470,8 +499,6 @@ def cmd_regen(args: argparse.Namespace) -> int:
 
 
 def cmd_approve(args: argparse.Namespace) -> int:
-    # We intentionally do NOT provide an Option-A bypass here.
-    # Approval requires a DRAFT to exist in the lifecycle.
     if args.require_draft:
         state = _latest_weekly_recap_artifact_state(
             db_path=args.db,
@@ -502,6 +529,7 @@ def cmd_approve(args: argparse.Namespace) -> int:
     _print_json(res)
     return 0
 
+
 def cmd_withhold(args: argparse.Namespace) -> int:
     cmd = [
         sys.executable,
@@ -522,6 +550,7 @@ def cmd_withhold(args: argparse.Namespace) -> int:
     ]
     return sh(cmd)
 
+
 def cmd_fetch_approved(args: argparse.Namespace) -> int:
     cmd = [
         sys.executable,
@@ -537,6 +566,30 @@ def cmd_fetch_approved(args: argparse.Namespace) -> int:
         str(args.week_index),
     ]
     return sh(cmd)
+
+
+# NEW: export-approved command handler (calls consumer wrapper)
+def cmd_export_approved(args: argparse.Namespace) -> int:
+    argv = [
+        "--db", args.db,
+        "--league-id", str(args.league_id),
+        "--season", str(args.season),
+        "--week-index", str(args.week_index),
+    ]
+
+    if args.out_dir:
+        argv += ["--out-dir", args.out_dir]
+
+    if args.out_root:
+        argv += ["--out-root", args.out_root]
+
+    if args.version is not None:
+        argv += ["--version", str(args.version)]
+
+    if args.non_deterministic:
+        argv += ["--non-deterministic"]
+
+    return export_approved_main(argv)
 
 
 def cmd_golden_path(args: argparse.Namespace) -> int:
@@ -584,7 +637,6 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="recap", description="SquadVault recap operator CLI")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    # Shared args helper
     def add_common(sp: argparse.ArgumentParser) -> None:
         sp.add_argument("--db", required=True)
         sp.add_argument("--league-id", dest="league_id", required=True)
@@ -628,6 +680,46 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(sp)
     sp.set_defaults(fn=cmd_fetch_approved)
 
+    sp = sub.add_parser("review-week", help="Commissioner editorial review loop for a weekly recap")
+    sp.add_argument("--db", required=True)
+    sp.add_argument("--league-id", required=True)
+    sp.add_argument("--season", type=int, required=True)
+    sp.add_argument("--week-index", type=int, required=True)
+    sp.add_argument("--actor", required=True)
+    sp.add_argument("--base-dir", default="artifacts")
+    sp.set_defaults(fn=cmd_review_week)
+
+    sp = sub.add_parser("editorial-log", help="Show editorial history for a week")
+    sp.add_argument("--db", required=True)
+    sp.add_argument("--league-id", required=True)
+    sp.add_argument("--season", type=int, required=True)
+    sp.add_argument("--week-index", type=int, required=True)
+    sp.add_argument("--limit", type=int, default=200)
+    sp.set_defaults(fn=cmd_editorial_log)
+
+    # NEW: export-approved
+    sp = sub.add_parser(
+        "export-approved",
+        help="Export latest APPROVED weekly recap artifact to a portable bundle."
+    )
+    add_common(sp)
+
+    sp.add_argument("--out-dir", help="Exact directory to write export bundle into.")
+    sp.add_argument(
+        "--out-root",
+        help="Root directory under which canonical export path will be created.",
+    )
+
+    sp.add_argument("--version", type=int, default=None)
+    sp.add_argument(
+        "--non-deterministic",
+        dest="non_deterministic",
+        action="store_true",
+        help="Include volatile metadata like exported_at (default is deterministic).",
+    )
+    sp.set_defaults(fn=cmd_export_approved)
+
+
     sp = sub.add_parser("golden-path", help="Run golden path harness (render -> regen -> maybe approve)")
     add_common(sp)
     sp.add_argument("--approved-by", dest="approved_by", required=True)
@@ -649,10 +741,10 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--end-week", dest="end_week", type=int, default=None, help="Optional upper bound week_index")
 
     sp.add_argument(
-    "--only",
-    action="append",
-    default=[],
-    help="Filter to weeks matching state(s). Repeatable or comma-separated (e.g. --only APPROVED or --only DRAFT,WITHHELD).",
+        "--only",
+        action="append",
+        default=[],
+        help="Filter to weeks matching state(s). Repeatable or comma-separated (e.g. --only APPROVED or --only DRAFT,WITHHELD).",
     )
     sp.add_argument(
         "--scope",
@@ -664,12 +756,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(fn=cmd_list_weeks)
 
     sp.add_argument(
-    "--problems",
-    action="store_true",
-    help="Shortcut for surfacing problematic weeks (WITHHELD/DRAFT latest, or recap_run not APPROVED).",
+        "--problems",
+        action="store_true",
+        help="Shortcut for surfacing problematic weeks (WITHHELD/DRAFT latest, or recap_run not APPROVED).",
     )
 
     return p
+
 
 def main() -> int:
     p = build_parser()

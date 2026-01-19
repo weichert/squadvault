@@ -58,7 +58,7 @@ def render_recap_text_v1(artifact: Dict[str, Any]) -> str:
 
     # Traceability / audit section (kept, but compact)
     lines.append("")
-    lines.append("Trace (canonical_event ids):")
+    lines.append("Trace (selection ids):")
     # keep it readable; wrap-ish
     if canonical_ids:
         chunk = []
