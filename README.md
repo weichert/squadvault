@@ -1,129 +1,159 @@
-# squadvault-ingest
+# SquadVault
 
-Python-based MFL → Notion ingestion for SquadVault (PFL Buddies).
+**SquadVault is a deterministic recap engine with governed expressive output.**
 
-## Setup
+It produces auditable, fact-locked weekly recaps from event data, while allowing explicitly non-canonical narrative and voice variants to be generated downstream — safely, repeatably, and without contaminating the source of truth.
 
-1) Create a virtualenv (recommended)
-2) Install deps
-3) Copy env template and fill secrets
-4) Validate schema
-5) Run backfill
+SquadVault is built for group systems where shared history matters more than real-time optimization.
 
-## Commands
+---
 
-Validate-only (no writes):
-```bash
-PYTHONPATH=src python -m squadvault.main --validate-only
-```
+## What Problem Does SquadVault Solve?
 
-Backfill a year:
-```bash
-PYTHONPATH=src python -m squadvault.main --years 2024
-```
+Most recap or summary systems collapse three concerns into one:
 
-Backfill multiple years:
-```bash
-PYTHONPATH=src python -m squadvault.main --years 2019,2020,2021,2022,2023,2024
-```
+- data truth
+- narrative interpretation
+- stylistic expression
 
-## Notes
-* Notion is the canonical warehouse.
-* Schema-first: the app hard-fails if any database schema deviates from expected.
-* Idempotent ingestion: deterministic keys; pages are upserted by Title property.
-* Raw MFL JSON is stored (truncated if necessary) and source URLs are preserved.
+That collapse makes systems brittle:
+- facts drift
+- summaries change silently
+- creative output becomes untraceable
 
-<!-- OPERATOR COMMANDS SENTINEL -->
+**SquadVault separates these concerns by design.**
 
-## Operator Commands (Weekly Recaps)
+- Canonical facts are deterministic, immutable, and auditable
+- Editorial review is explicit and lifecycle-governed
+- Expressive output is downstream, non-canonical, and clearly labeled
 
-SquadVault weekly recaps are governed by a **single canonical lifecycle** and exposed via one operator CLI.
+The result is a system where facts never change accidentally, creativity is allowed but constrained, and every output can be traced back to an approved source.
 
-This is the **only supported entrypoint** for rendering, regenerating, approving, and validating weekly recaps.
+---
 
-```bash
-./scripts/recap <command> [args]
-```
+## Core Principles
 
-### Golden Path (Regression Gate – recommended)
+- **Facts first, always**  
+  Canonical artifacts are deterministic and immutable once approved.
 
-Runs a **non-destructive** end-to-end check:
-- no-delta path (fingerprint unchanged → no approval)
-- forced path (new draft → explicit approval)
-- approval invariants
+- **Explicit separation of truth and expression**  
+  Narrative, tone, and voice never write back to canonical storage.
 
-```bash
+- **No hidden inference**  
+  The system does not guess, infer, or fabricate missing details.
+
+- **Lifecycle over convenience**  
+  Every recap moves through explicit states: drafted → reviewed → approved or withheld.
+
+- **Auditability is a feature**  
+  Fingerprints, counts, and traceability are preserved end-to-end.
+
+---
+
+## High-Level Workflow
+
+1. Ingest and canonicalize events
+2. Select events for a weekly window
+3. Generate a deterministic recap draft
+4. Human editorial review
+5. Approve or withhold the recap
+6. Export outputs
+   - canonical recap (facts only)
+   - non-canonical voice variants
+   - non-canonical narrative assemblies
+
+Once approved, the canonical recap cannot change. All expressive output is strictly downstream.
+
+---
+
+## Canonical vs Non-Canonical Outputs
+
+**Canonical (immutable once approved):**
+
+- weekly recap artifacts
+- fact blocks
+- event counts
+- selection fingerprints
+- traceability metadata
+
+**Non-Canonical (export-only, derived from approved artifacts):**
+
+- voice variants (e.g., neutral, playful, dry)
+- narrative assemblies and sharepacks
+
+---
+
+## Quick Start (Operator)
+
+Run a non-destructive weekly gate:
+
 ./scripts/recap check \
   --db .local_squadvault.sqlite \
   --league-id 70985 \
-  --season 2024 \
-  --week-index 6 \
+  --season 2025 \
+  --week-index 1 \
   --approved-by steve
-```
 
-### Render a week (debug / operator visibility)
+Render an approved recap (facts-only view):
 
-```bash
 ./scripts/recap render-week \
   --db .local_squadvault.sqlite \
   --league-id 70985 \
-  --season 2024 \
-  --week-index 6
-```
+  --season 2025 \
+  --week-index 1 \
+  --approved-only
 
-### Regenerate a DRAFT artifact (idempotent unless forced)
+Export non-canonical deliverables (approved artifacts only):
 
-```bash
-./scripts/recap regen \
+./scripts/recap export-approved \
   --db .local_squadvault.sqlite \
   --league-id 70985 \
-  --season 2024 \
-  --week-index 6 \
-  --reason LEDGER_SYNC
-```
+  --season 2025 \
+  --week-index 1 \
+  --export-dir artifacts
 
-Force-create a new DRAFT even if the fingerprint is unchanged:
+Export deterministic narrative assemblies (approved-only):
 
-```bash
-./scripts/recap regen \
+./scripts/recap export-assemblies \
   --db .local_squadvault.sqlite \
   --league-id 70985 \
-  --season 2024 \
-  --week-index 6 \
-  --reason LEDGER_SYNC \
-  --force
-```
+  --season 2025 \
+  --week-index 1 \
+  --export-dir artifacts
 
-### Approve latest DRAFT artifact
+---
 
-```bash
-./scripts/recap approve \
-  --db .local_squadvault.sqlite \
-  --league-id 70985 \
-  --season 2024 \
-  --week-index 6 \
-  --approved-by steve
-```
+## Export Locations
 
-Require that a DRAFT exists (refuse otherwise):
+Exports are written under:
 
-```bash
-./scripts/recap approve \
-  --db .local_squadvault.sqlite \
-  --league-id 70985 \
-  --season 2024 \
-  --week-index 6 \
-  --approved-by steve \
-  --require-draft
-```
+artifacts/exports/<league_id>/<season>/week_<NN>/
 
-### Fetch the currently APPROVED artifact
+Examples:
 
-```bash
-./scripts/recap fetch-approved \
-  --db .local_squadvault.sqlite \
-  --league-id 70985 \
-  --season 2024 \
-  --week-index 6
-```
+variants_pack_vXX.md
+assembly_plain_v1__approved_vXX.md
+assembly_sharepack_v1__approved_vXX.md
+
+All exported files are explicitly labeled NON-CANONICAL.
+
+---
+
+## Operator Documentation
+
+Weekly recap commands and golden path: docs/operator-weekly-recap.md
+
+Ingestion and historical setup notes: docs/ingestion-mfl-notion.md
+
+---
+
+## Status
+
+The Creative Layer is complete and locked:
+
+Voice Variant Export (Phase 2.2)
+
+Deterministic Narrative Assembly (Phase 2.3)
+
+---
 
