@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 
+from squadvault.core.recaps.render.voice_variants_v1 import get_voice_spec
+
 
 def _safe_int(v: Any, default: int = 0) -> int:
     try:
@@ -11,7 +13,29 @@ def _safe_int(v: Any, default: int = 0) -> int:
         return default
 
 
-def render_recap_text_v1(artifact: Dict[str, Any]) -> str:
+def _apply_voice_framing_v1(*, voice_id: str, rendered_text: str) -> str:
+    """
+    Deterministic render-time framing only.
+    Must not alter facts, counts, ids, fingerprint, or window.
+    """
+    spec = get_voice_spec(voice_id)
+
+    if spec.voice_id == "neutral":
+        return rendered_text
+
+    if spec.voice_id == "playful":
+        prefix = "Commissioner’s note: same facts, different flavor.\n\n"
+        return prefix + rendered_text
+
+    if spec.voice_id == "dry":
+        prefix = "Commissioner’s note: minimal framing.\n\n"
+        return prefix + rendered_text
+
+    # Defensive (get_voice_spec already validates)
+    return rendered_text
+
+
+def render_recap_text_v1(artifact: Dict[str, Any], *, voice_id: str = "neutral") -> str:
     """
     Deterministic, non-hallucinated recap text.
     This does NOT infer details not present in the artifact.
@@ -26,16 +50,6 @@ def render_recap_text_v1(artifact: Dict[str, Any]) -> str:
     win_start = window.get("start")
     win_end = window.get("end")
 
-    # If window is unsafe/nonstandard, surface it explicitly for operator trust.
-    if window is not None:
-        mode = getattr(window, "mode", None)
-        reason = getattr(window, "reason", None)
-        if mode and mode != "LOCK_TO_LOCK":
-            if reason:
-                lines.append(f"Window mode: {mode} ({reason})")
-            else:
-                lines.append(f"Window mode: {mode}")
-
     sel = artifact.get("selection", {}) or {}
     event_count = _safe_int(sel.get("event_count"), 0)
     counts_by_type = sel.get("counts_by_type", {}) or {}
@@ -48,6 +62,18 @@ def render_recap_text_v1(artifact: Dict[str, Any]) -> str:
     lines.append(f"Window: {win_start} → {win_end}")
     lines.append(f"Selection fingerprint: {fingerprint}")
     lines.append("")
+
+    # If window is unsafe/nonstandard, surface it explicitly for operator trust.
+    if window is not None:
+        mode = getattr(window, "mode", None)
+        reason = getattr(window, "reason", None)
+        if mode and mode != "LOCK_TO_LOCK":
+            if reason:
+                lines.append(f"Window mode: {mode} ({reason})")
+            else:
+                lines.append(f"Window mode: {mode}")
+            lines.append("")
+
     lines.append(f"Events selected: {event_count}")
 
     if counts_by_type:
@@ -59,7 +85,6 @@ def render_recap_text_v1(artifact: Dict[str, Any]) -> str:
     # Traceability / audit section (kept, but compact)
     lines.append("")
     lines.append("Trace (selection ids):")
-    # keep it readable; wrap-ish
     if canonical_ids:
         chunk = []
         for cid in canonical_ids:
@@ -74,10 +99,12 @@ def render_recap_text_v1(artifact: Dict[str, Any]) -> str:
 
     lines.append("")
     lines.append("Note: This recap is summary-only and intentionally avoids fabricating details not present in event payloads.")
-    return "\n".join(lines)
+
+    text = "\n".join(lines)
+    return _apply_voice_framing_v1(voice_id=voice_id, rendered_text=text)
 
 
-def render_recap_text_from_path_v1(path: str) -> str:
+def render_recap_text_from_path_v1(path: str, *, voice_id: str = "neutral") -> str:
     with open(path, "r", encoding="utf-8") as f:
         artifact = json.load(f)
-    return render_recap_text_v1(artifact)
+    return render_recap_text_v1(artifact, voice_id=voice_id)

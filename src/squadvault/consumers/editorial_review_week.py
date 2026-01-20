@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sqlite3
 import subprocess
@@ -12,7 +11,10 @@ from typing import Optional, Tuple
 
 from squadvault.consumers.editorial_actions import insert_editorial_action
 
-def latest_version_and_state(conn: sqlite3.Connection, league_id: str, season: int, week_index: int) -> tuple[int | None, str | None]:
+
+def latest_version_and_state(
+    conn: sqlite3.Connection, league_id: str, season: int, week_index: int
+) -> tuple[int | None, str | None]:
     cur = conn.execute(
         """
         SELECT version, state
@@ -27,7 +29,6 @@ def latest_version_and_state(conn: sqlite3.Connection, league_id: str, season: i
     if not row:
         return None, None
     return int(row[0]), str(row[1])
-
 
 
 def die(msg: str, code: int = 2) -> int:
@@ -90,79 +91,84 @@ def extract_fingerprint(payload: dict) -> Optional[str]:
     return None
 
 
-def extract_facts_md(payload: dict) -> str:
-    # Try a few likely shapes
-    for k in ("facts_md", "facts", "facts_block_md", "factsBlockMd"):
-        v = payload.get(k)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    # Some artifacts store facts as list of bullets
-    for k in ("facts_bullets", "factsBullets", "events"):
-        v = payload.get(k)
-        if isinstance(v, list) and v:
-            lines = []
-            for item in v:
-                if isinstance(item, str):
-                    lines.append(f"- {item}")
-                elif isinstance(item, dict) and "text" in item:
-                    lines.append(f"- {item['text']}")
-            if lines:
-                return "\n".join(lines)
-    return "(no facts block found in recap json)"
-
-
-def extract_body_md(payload: dict) -> str:
-    for k in ("body_md", "body", "recap_md", "markdown", "text_md", "content_md"):
-        v = payload.get(k)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    # Sometimes stored under "narrative"
-    nar = payload.get("narrative")
-    if isinstance(nar, dict):
-        v = nar.get("body_md") or nar.get("body") or nar.get("markdown")
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    return "(no draft body found in recap json)"
-
-
-def render_review_packet(db: str, league_id: str, season: int, week_index: int, version: int | None) -> str:
+def render_review_packet(
+    db: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    version: int | None,
+    *,
+    voices: list[str] | None,
+    base_dir: str,
+) -> str:
     """Render a commissioner review packet using the existing renderer.
 
-    This keeps Creative Layer strictly downstream and avoids changing artifact schemas.
+    Creative Layer stays strictly downstream:
+    - no schema changes
+    - no DB writes
+    - voice variants are render-time only
     """
     py = "src/squadvault/consumers/recap_week_render.py"
     cmd = [
-        sys.executable, "-u", py,
-        "--db", db,
-        "--league-id", league_id,
-        "--season", str(season),
-        "--week-index", str(week_index),
+        sys.executable,
+        "-u",
+        py,
+        "--db",
+        db,
+        "--league-id",
+        league_id,
+        "--season",
+        str(season),
+        "--week-index",
+        str(week_index),
+        "--base-dir",
+        base_dir,
         "--suppress-render-warning",
     ]
     if version is not None:
         cmd += ["--version", str(version)]
+
+    if voices:
+        for v in voices:
+            cmd += ["--voice", v]
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
     out = (proc.stdout or "").strip()
     err = (proc.stderr or "").strip()
     if proc.returncode != 0:
         raise RuntimeError(f"Renderer failed (rc={proc.returncode}). stderr:\n{err}")
-    # Renderer may still print non-fatal info to stderr; include if stdout empty.
     if not out:
         return err or "(renderer produced no output)"
     return out
+
 
 def run_script(py_path: str, args: list[str]) -> int:
     cmd = [sys.executable, "-u", py_path] + args
     return subprocess.call(cmd)
 
 
-def ensure_draft_exists(db: str, league_id: str, season: int, week_index: int, base_dir: str) -> Tuple[Path, dict]:
+def ensure_draft_exists(
+    db: str, league_id: str, season: int, week_index: int, base_dir: str
+) -> Tuple[Path, dict]:
     latest = find_latest_recap_json(base_dir, league_id, season, week_index)
     if latest is None:
         # Create draft artifact on disk (existing consumer)
         py = "src/squadvault/consumers/recap_week_write_artifact.py"
-        rc = run_script(py, ["--db", db, "--league-id", league_id, "--season", str(season), "--week-index", str(week_index), "--base-dir", base_dir])
+        rc = run_script(
+            py,
+            [
+                "--db",
+                db,
+                "--league-id",
+                league_id,
+                "--season",
+                str(season),
+                "--week-index",
+                str(week_index),
+                "--base-dir",
+                base_dir,
+            ],
+        )
         if rc != 0:
             raise RuntimeError(f"Failed to create draft via {py} (rc={rc})")
         latest = find_latest_recap_json(base_dir, league_id, season, week_index)
@@ -179,7 +185,15 @@ def prompt(prompt_text: str) -> str:
         return ""
 
 
-def review_loop(db: str, league_id: str, season: int, week_index: int, actor: str, base_dir: str) -> int:
+def review_loop(
+    db: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    actor: str,
+    base_dir: str,
+    voices: list[str],
+) -> int:
     conn = sqlite3.connect(db)
 
     latest_v, state = latest_version_and_state(conn, league_id, season, week_index)
@@ -202,7 +216,15 @@ def review_loop(db: str, league_id: str, season: int, week_index: int, actor: st
         notes_md=None,
     )
 
-    rendered = render_review_packet(db, league_id, season, week_index, version)
+    rendered = render_review_packet(
+        db,
+        league_id,
+        season,
+        week_index,
+        version,
+        voices=voices,
+        base_dir=base_dir,
+    )
 
     print("")
     print("============================================================")
@@ -226,6 +248,7 @@ def review_loop(db: str, league_id: str, season: int, week_index: int, actor: st
         print("  [W] Withhold")
         print("  [N] Notes-only (no state change)")
         print("  [Q] Quit")
+
     choice = prompt("Choose " + ("R/N/Q" if state == "APPROVED" else "A/R/W/N/Q") + ": ").strip().upper()
 
     if choice in ("Q", ""):
@@ -268,7 +291,23 @@ def review_loop(db: str, league_id: str, season: int, week_index: int, actor: st
             notes_md=notes_md,
         )
         py = "src/squadvault/consumers/recap_artifact_approve.py"
-        rc = run_script(py, ["--db", db, "--league-id", league_id, "--season", str(season), "--week-index", str(week_index), "--version", str(version), "--approved-by", actor])
+        rc = run_script(
+            py,
+            [
+                "--db",
+                db,
+                "--league-id",
+                league_id,
+                "--season",
+                str(season),
+                "--week-index",
+                str(week_index),
+                "--version",
+                str(version),
+                "--approved-by",
+                actor,
+            ],
+        )
         return rc
 
     if choice == "W":
@@ -288,9 +327,25 @@ def review_loop(db: str, league_id: str, season: int, week_index: int, actor: st
             notes_md=notes_md,
         )
         py = "src/squadvault/consumers/recap_artifact_withhold.py"
-        # Many withhold scripts accept --reason; if yours doesn’t, remove that arg.
-        rc = run_script(py, ["--db", db, "--league-id", league_id, "--season", str(season), "--week-index", str(week_index), "--withheld-by", actor, "--reason", "EDITORIAL_WITHHOLD"])
+        rc = run_script(
+            py,
+            [
+                "--db",
+                db,
+                "--league-id",
+                league_id,
+                "--season",
+                str(season),
+                "--week-index",
+                str(week_index),
+                "--withheld-by",
+                actor,
+                "--reason",
+                "EDITORIAL_WITHHOLD",
+            ],
+        )
         return rc
+
     if choice == "R":
         insert_editorial_action(
             conn,
@@ -307,12 +362,18 @@ def review_loop(db: str, league_id: str, season: int, week_index: int, actor: st
 
         py = "src/squadvault/consumers/recap_artifact_regenerate.py"
         regen_args = [
-            "--db", db,
-            "--league-id", league_id,
-            "--season", str(season),
-            "--week-index", str(week_index),
-            "--reason", "EDITORIAL_REGENERATE",
-            "--created-by", actor,
+            "--db",
+            db,
+            "--league-id",
+            league_id,
+            "--season",
+            str(season),
+            "--week-index",
+            str(week_index),
+            "--reason",
+            "EDITORIAL_REGENERATE",
+            "--created-by",
+            actor,
         ]
         if state == "APPROVED":
             regen_args.append("--force")
@@ -322,8 +383,7 @@ def review_loop(db: str, league_id: str, season: int, week_index: int, actor: st
             return rc
 
         # Explicit loop: reopen review on the newest draft
-        return review_loop(db, league_id, season, week_index, actor, base_dir)
-
+        return review_loop(db, league_id, season, week_index, actor, base_dir, voices)
 
     return die(f"Unknown choice: {choice}")
 
@@ -336,7 +396,18 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--week-index", type=int, required=True)
     ap.add_argument("--actor", required=True)
     ap.add_argument("--base-dir", default="artifacts", help="Artifact base dir (default: artifacts)")
+
+    # Phase 2.1: voice pack for review (repeatable)
+    ap.add_argument(
+        "--voice",
+        action="append",
+        default=[],
+        help="Render non-canonical voice variant (repeatable). If omitted, defaults to neutral/playful/dry.",
+    )
+
     args = ap.parse_args(argv)
+
+    voices = args.voice if args.voice else ["neutral", "playful", "dry"]
 
     return review_loop(
         db=args.db,
@@ -345,6 +416,7 @@ def main(argv: list[str]) -> int:
         week_index=args.week_index,
         actor=args.actor,
         base_dir=args.base_dir,
+        voices=voices,
     )
 
 
