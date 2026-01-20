@@ -215,6 +215,28 @@ def _short_fp(fp: Optional[str]) -> str:
         return ""
     return fp[:10]
 
+def cmd_export_assemblies(args: argparse.Namespace) -> int:
+    """
+    Phase 2.3: export deterministic narrative assemblies (PLAIN_V1 + SHAREPACK_V1)
+    from APPROVED weekly recap artifacts only. Export-only; no canonical writes.
+    """
+    cmd = [
+        sys.executable, "-u",
+        "src/squadvault/consumers/recap_export_narrative_assemblies_approved.py",
+        "--db", args.db,
+        "--league-id", args.league_id,
+        "--season", str(args.season),
+        "--week-index", str(args.week_index),
+        "--export-dir", args.export_dir,
+    ]
+
+    env = dict(**os.environ)
+    # Ensure module imports resolve when running via scripts/recap.py
+    env["PYTHONPATH"] = "src" + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+
+    proc = subprocess.run(cmd, env=env)
+    return int(proc.returncode)
+
 def cmd_review_week(args: argparse.Namespace) -> int:
     return run_script(
         "src/squadvault/consumers/editorial_review_week.py",
@@ -669,6 +691,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fail fast unless the latest WEEKLY_RECAP artifact is in DRAFT state.",
     )
     sp.set_defaults(fn=cmd_approve)
+
+    sp = sub.add_parser("export-assemblies", help="Export Phase 2.3 narrative assemblies from APPROVED weekly recap artifact")
+    sp.add_argument("--db", required=True)
+    sp.add_argument("--league-id", required=True)
+    sp.add_argument("--season", type=int, required=True)
+    sp.add_argument("--week-index", type=int, required=True)
+    sp.add_argument("--export-dir", default="artifacts", help="Export root (default: artifacts)")
+    sp.set_defaults(fn=cmd_export_assemblies)
 
     sp = sub.add_parser("withhold", help="Withhold a specific weekly recap artifact version (ops-safe)")
     add_common(sp)
