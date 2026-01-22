@@ -72,3 +72,7 @@ league_id,
 [0-9]
 [0-9][0-9]
 
+
+# --- SquadVault: allow committed unit tests ---
+!Tests/
+!Tests/**/*.py
