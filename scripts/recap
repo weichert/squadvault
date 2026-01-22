@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_status.sh"
+
+
 # Operator CLI entrypoint for weekly recap lifecycle.
 # Delegates to scripts/recap.py (Python CLI) so README can point to ONE stable command.
 PYTHONPATH=src exec python -u scripts/recap.py "$@"

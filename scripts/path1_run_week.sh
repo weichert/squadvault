@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_status.sh"
+
+
 DB="${DB:-.local_squadvault.sqlite}"
 LEAGUE_ID="${1:?league_id required}"
 MODE="${MODE:-full}"
