@@ -80,3 +80,9 @@ league_id,
 # --- local scratch outputs ---
 _sprint1_context_*.txt
 faab_splash_sheet*
+
+# --- temporary: untracked legacy tests (decide later) ---
+Tests/test_auction_draft_envelopes.py
+Tests/test_store_append_only.py
+Tests/test_transaction_envelopes.py
+Tests/test_waiver_bid_envelopes.py
