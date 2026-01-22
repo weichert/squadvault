@@ -15,6 +15,7 @@ import dataclasses
 import json
 import sqlite3
 import subprocess
+from collections import Counter
 from typing import Any, Optional
 
 from squadvault.recaps.weekly_recap_lifecycle import (
@@ -37,6 +38,11 @@ def sh(cmd: list[str]) -> int:
     env = os.environ.copy()
     env["PYTHONPATH"] = SRC_PATH + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     return subprocess.call(cmd, env=env)
+
+
+def run_script(script_path: str, argv: list[str]) -> int:
+    cmd = [sys.executable, "-u", script_path] + argv
+    return sh(cmd)
 
 
 def _jsonable(obj: Any) -> Any:
@@ -139,7 +145,6 @@ def _fetch_week_status(db_path: str, league_id: str, season: int, week_index: in
             AND artifact_type = ?
         """
 
-        # Only include columns that exist in *your* DB.
         preferred_artifact_fields = [
             "version",
             "state",
@@ -220,13 +225,15 @@ def _short_fp(fp: Optional[str]) -> str:
         return ""
     return fp[:10]
 
+
 def cmd_export_assemblies(args: argparse.Namespace) -> int:
     """
     Phase 2.3: export deterministic narrative assemblies (PLAIN_V1 + SHAREPACK_V1)
     from APPROVED weekly recap artifacts only. Export-only; no canonical writes.
     """
     cmd = [
-        sys.executable, "-u",
+        sys.executable,
+        "-u",
         "src/squadvault/consumers/recap_export_narrative_assemblies_approved.py",
         "--db", args.db,
         "--league-id", args.league_id,
@@ -236,11 +243,11 @@ def cmd_export_assemblies(args: argparse.Namespace) -> int:
     ]
 
     env = dict(**os.environ)
-    # Ensure module imports resolve when running via scripts/recap.py
     env["PYTHONPATH"] = "src" + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
 
     proc = subprocess.run(cmd, env=env)
     return int(proc.returncode)
+
 
 def cmd_review_week(args: argparse.Namespace) -> int:
     return run_script(
@@ -254,6 +261,7 @@ def cmd_review_week(args: argparse.Namespace) -> int:
             "--base-dir", args.base_dir,
         ],
     )
+
 
 def cmd_editorial_log(args: argparse.Namespace) -> int:
     return run_script(
@@ -271,7 +279,6 @@ def cmd_editorial_log(args: argparse.Namespace) -> int:
 def cmd_list_weeks(args: argparse.Namespace) -> int:
     weeks = _list_week_indexes(args.db, args.league_id, args.season)
 
-    # Optional bounds
     if args.start_week is not None:
         weeks = [w for w in weeks if w >= args.start_week]
     if args.end_week is not None:
@@ -306,7 +313,6 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
             }
         )
 
-    # --- problems shortcut ---
     if getattr(args, "problems", False):
 
         def is_problem(r: dict[str, Any]) -> bool:
@@ -319,12 +325,10 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
             return False
 
         rows = [r for r in rows if is_problem(r)]
-
         if not rows:
             print("(no problems)")
             return 0
 
-    # --- filtering ---
     def _norm_states(vals: list[str]) -> set[str]:
         out: set[str] = set()
         for v in vals:
@@ -349,10 +353,8 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
 
             if scope == "run":
                 return run_state in only_states
-
             if scope == "latest":
                 return latest_state in only_states
-
             if scope == "approved":
                 return ("APPROVED" in only_states) and (has_approved or approved_state == "APPROVED")
 
@@ -368,7 +370,6 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
 
         rows = [r for r in rows if matches(r)]
 
-    # --- output ---
     if args.format == "json":
         _print_json(
             {
@@ -384,7 +385,6 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
         )
         return 0
 
-    # text/table output (human)
     def s(v: Any) -> str:
         return "" if v is None else str(v)
 
@@ -492,20 +492,53 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def _maybe_build_writing_room_selection_set_v1(args: argparse.Namespace) -> None:
+    """Optional deterministic side-artifact: Writing Room SelectionSetV1.
+
+    Non-invasive: produces selection_set_v1.json but does NOT alter recap render/selection yet.
+    """
+    if not getattr(args, "enable_writing_room", False):
+        return
+
+    created_at = getattr(args, "created_at_utc", None) or getattr(args, "writing_room_created_at_utc", None)
+    if not created_at:
+        print("--enable-writing-room requires --created-at-utc (or --writing-room-created-at-utc)", file=sys.stderr)
+        raise SystemExit(2)
+
+    out_path = getattr(args, "writing_room_out", None)
+    if not out_path:
+        out_path = (
+            f"artifacts/writing_room/{args.league_id}/{args.season}/"
+            f"week_{int(args.week_index):02d}/selection_set_v1.json"
+        )
+
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+
+    argv = [
+        "--db", args.db,
+        "--league-id", str(args.league_id),
+        "--season", str(args.season),
+        "--week-index", str(args.week_index),
+        "--created-at-utc", created_at,
+        "--signals-source", "db",
+        "--out", out_path,
+    ]
+
+    rc = int(writing_room_select_main(argv))
+    if rc != 0:
+        raise SystemExit(rc)
+
+
 def cmd_render_week(args: argparse.Namespace) -> int:
     _maybe_build_writing_room_selection_set_v1(args)
     cmd = [
         sys.executable,
         "-u",
         "src/squadvault/consumers/recap_week_render.py",
-        "--db",
-        args.db,
-        "--league-id",
-        args.league_id,
-        "--season",
-        str(args.season),
-        "--week-index",
-        str(args.week_index),
+        "--db", args.db,
+        "--league-id", args.league_id,
+        "--season", str(args.season),
+        "--week-index", str(args.week_index),
     ]
     if args.suppress_render_warning:
         cmd.append("--suppress-render-warning")
@@ -563,18 +596,12 @@ def cmd_withhold(args: argparse.Namespace) -> int:
         sys.executable,
         "-u",
         "src/squadvault/consumers/recap_artifact_withhold.py",
-        "--db",
-        args.db,
-        "--league-id",
-        args.league_id,
-        "--season",
-        str(args.season),
-        "--week-index",
-        str(args.week_index),
-        "--version",
-        str(args.version),
-        "--reason",
-        args.reason,
+        "--db", args.db,
+        "--league-id", args.league_id,
+        "--season", str(args.season),
+        "--week-index", str(args.week_index),
+        "--version", str(args.version),
+        "--reason", args.reason,
     ]
     return sh(cmd)
 
@@ -584,54 +611,12 @@ def cmd_fetch_approved(args: argparse.Namespace) -> int:
         sys.executable,
         "-u",
         "scripts/recap_week_fetch_approved.py",
-        "--db",
-        args.db,
-        "--league-id",
-        args.league_id,
-        "--season",
-        str(args.season),
-        "--week-index",
-        str(args.week_index),
-    ]
-    return sh(cmd)
-
-
-# NEW: export-approved command handler (calls consumer wrapper)
-
-def _maybe_build_writing_room_selection_set_v1(args: argparse.Namespace) -> None:
-    """Optional deterministic side-artifact: Writing Room SelectionSetV1.
-
-    This is intentionally *non-invasive*: it produces selection_set_v1.json but does NOT alter
-    the recap render/selection path yet.
-    """
-    if not getattr(args, "enable_writing_room", False):
-        return
-
-    created_at = getattr(args, "created_at_utc", None) or getattr(args, "writing_room_created_at_utc", None)
-    if not created_at:
-        print("--enable-writing-room requires --created-at-utc (or --writing-room-created-at-utc)", file=sys.stderr)
-        raise SystemExit(2)
-
-    out_path = getattr(args, "writing_room_out", None)
-    if not out_path:
-        # deterministic default path (no timestamps)
-        out_path = f"artifacts/writing_room/{args.league_id}/{args.season}/week_{int(args.week_index):02d}/selection_set_v1.json"
-
-    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-
-    argv = [
         "--db", args.db,
-        "--league-id", str(args.league_id),
+        "--league-id", args.league_id,
         "--season", str(args.season),
         "--week-index", str(args.week_index),
-        "--created-at-utc", created_at,
-        "--signals-source", "db",
-        "--out", out_path,
     ]
-
-    rc = int(writing_room_select_main(argv))
-    if rc != 0:
-        raise SystemExit(rc)
+    return sh(cmd)
 
 
 def cmd_export_approved(args: argparse.Namespace) -> int:
@@ -644,13 +629,10 @@ def cmd_export_approved(args: argparse.Namespace) -> int:
 
     if args.out_dir:
         argv += ["--out-dir", args.out_dir]
-
     if args.out_root:
         argv += ["--out-root", args.out_root]
-
     if args.version is not None:
         argv += ["--version", str(args.version)]
-
     if args.non_deterministic:
         argv += ["--non-deterministic"]
 
@@ -663,16 +645,11 @@ def cmd_golden_path(args: argparse.Namespace) -> int:
         sys.executable,
         "-u",
         "scripts/golden_path_recap_lifecycle.py",
-        "--db",
-        args.db,
-        "--league-id",
-        args.league_id,
-        "--season",
-        str(args.season),
-        "--week-index",
-        str(args.week_index),
-        "--approved-by",
-        args.approved_by,
+        "--db", args.db,
+        "--league-id", args.league_id,
+        "--season", str(args.season),
+        "--week-index", str(args.week_index),
+        "--approved-by", args.approved_by,
     ]
     if args.legacy_force:
         cmd.append("--legacy-force")
@@ -683,22 +660,71 @@ def cmd_golden_path(args: argparse.Namespace) -> int:
 
 def cmd_check(args: argparse.Namespace) -> int:
     _maybe_build_writing_room_selection_set_v1(args)
-
     cmd = [
         "bash",
         "scripts/check_golden_path_recap.sh",
-        "--db",
-        args.db,
-        "--league-id",
-        str(args.league_id),
-        "--season",
-        str(args.season),
-        "--start-week",
-        str(args.week_index),
-        "--end-week",
-        str(args.week_index),
+        "--db", args.db,
+        "--league-id", str(args.league_id),
+        "--season", str(args.season),
+        "--start-week", str(args.week_index),
+        "--end-week", str(args.week_index),
     ]
     return sh(cmd)
+
+
+def cmd_writing_room_review(args: argparse.Namespace) -> int:
+    """
+    Human-auditable review of Writing Room SelectionSetV1 JSON.
+
+    File-only MVP:
+      ./scripts/recap.py writing-room-review --selection-set <path> [--show-included] [--show-excluded]
+    """
+    p = Path(args.selection_set)
+    if not p.exists():
+        print(f"ERROR: selection set not found: {p}", file=sys.stderr)
+        return 2
+
+    data = json.loads(p.read_text(encoding="utf-8"))
+
+    withheld = bool(data.get("withheld", False))
+    withheld_reason = data.get("withheld_reason")
+    included = data.get("included_signal_ids", []) or []
+    excluded = data.get("excluded", []) or []
+
+    reasons = [e.get("reason_code", "UNKNOWN") for e in excluded]
+    c = Counter(reasons)
+
+    print("Writing Room SelectionSetV1 Review")
+    print(f"file: {p}")
+    print(f"withheld: {withheld}")
+    if withheld:
+        print(f"withheld_reason: {withheld_reason}")
+    print(f"included: {len(included)}")
+    print(f"excluded: {len(excluded)}")
+
+    if excluded:
+        print("\nexcluded_by_reason:")
+        for k in sorted(c.keys()):
+            print(f"  - {k}: {c[k]}")
+
+    if args.show_included:
+        print("\nINCLUDED signal_ids:")
+        for sid in included:
+            print(f"  - {sid}")
+
+    if args.show_excluded:
+        print("\nEXCLUDED signals:")
+        for e in excluded:
+            sid = e.get("signal_id")
+            rc = e.get("reason_code")
+            details = e.get("details") or []
+            if details:
+                d_str = ", ".join([f"{d.get('k')}={d.get('v')}" for d in details])
+                print(f"  - {sid}  [{rc}]  ({d_str})")
+            else:
+                print(f"  - {sid}  [{rc}]")
+
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -711,11 +737,13 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--season", type=int, required=True)
         sp.add_argument("--week-index", dest="week_index", type=int, required=True)
 
+    # status
     sp = sub.add_parser("status", help="Show recap_runs + artifact status for a given week")
     add_common(sp)
     sp.add_argument("--format", choices=["json", "text"], default="json")
     sp.set_defaults(fn=cmd_status)
 
+    # render-week
     sp = sub.add_parser("render-week", help="Render weekly recap (selection + render output)")
     add_common(sp)
     sp.add_argument("--suppress-render-warning", action="store_true")
@@ -729,14 +757,21 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional override output path for selection_set_v1.json (deterministic default under artifacts/writing_room/...).",
     )
+    # FIX: accept --created-at-utc on render-week (your earlier error)
+    sp.add_argument(
+        "--created-at-utc",
+        dest="created_at_utc",
+        default=None,
+        help="When --enable-writing-room: ISO-8601 UTC timestamp for Writing Room artifact metadata.",
+    )
     sp.add_argument(
         "--writing-room-created-at-utc",
         default=None,
-        help="Fallback timestamp if the command does not already have --created-at-utc. Prefer --created-at-utc.",
+        help="Alias/fallback timestamp for Writing Room. Prefer --created-at-utc.",
     )
-
     sp.set_defaults(fn=cmd_render_week)
 
+    # regen
     sp = sub.add_parser("regen", help="Regenerate weekly recap artifact draft via lifecycle")
     add_common(sp)
     sp.add_argument("--reason", required=True)
@@ -744,6 +779,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--force", action="store_true")
     sp.set_defaults(fn=cmd_regen)
 
+    # approve
     sp = sub.add_parser("approve", help="Approve latest weekly recap draft via lifecycle")
     add_common(sp)
     sp.add_argument("--approved-by", dest="approved_by", required=True)
@@ -754,7 +790,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sp.set_defaults(fn=cmd_approve)
 
-    sp = sub.add_parser("export-assemblies", help="Export Phase 2.3 narrative assemblies from APPROVED weekly recap artifact")
+    # export-assemblies
+    sp = sub.add_parser(
+        "export-assemblies",
+        help="Export Phase 2.3 narrative assemblies from APPROVED weekly recap artifact",
+    )
     sp.add_argument("--db", required=True)
     sp.add_argument("--league-id", required=True)
     sp.add_argument("--season", type=int, required=True)
@@ -762,16 +802,19 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--export-dir", default="artifacts", help="Export root (default: artifacts)")
     sp.set_defaults(fn=cmd_export_assemblies)
 
+    # withhold
     sp = sub.add_parser("withhold", help="Withhold a specific weekly recap artifact version (ops-safe)")
     add_common(sp)
     sp.add_argument("--version", type=int, required=True)
     sp.add_argument("--reason", required=True)
     sp.set_defaults(fn=cmd_withhold)
 
+    # fetch-approved
     sp = sub.add_parser("fetch-approved", help="Fetch approved weekly recap (current approved artifact)")
     add_common(sp)
     sp.set_defaults(fn=cmd_fetch_approved)
 
+    # review-week
     sp = sub.add_parser("review-week", help="Commissioner editorial review loop for a weekly recap")
     sp.add_argument("--db", required=True)
     sp.add_argument("--league-id", required=True)
@@ -781,6 +824,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--base-dir", default="artifacts")
     sp.set_defaults(fn=cmd_review_week)
 
+    # editorial-log
     sp = sub.add_parser("editorial-log", help="Show editorial history for a week")
     sp.add_argument("--db", required=True)
     sp.add_argument("--league-id", required=True)
@@ -789,19 +833,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--limit", type=int, default=200)
     sp.set_defaults(fn=cmd_editorial_log)
 
-    # NEW: export-approved
+    # export-approved
     sp = sub.add_parser(
         "export-approved",
-        help="Export latest APPROVED weekly recap artifact to a portable bundle."
+        help="Export latest APPROVED weekly recap artifact to a portable bundle.",
     )
     add_common(sp)
-
     sp.add_argument("--out-dir", help="Exact directory to write export bundle into.")
-    sp.add_argument(
-        "--out-root",
-        help="Root directory under which canonical export path will be created.",
-    )
-
+    sp.add_argument("--out-root", help="Root directory under which canonical export path will be created.")
     sp.add_argument("--version", type=int, default=None)
     sp.add_argument(
         "--non-deterministic",
@@ -811,12 +850,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sp.set_defaults(fn=cmd_export_approved)
 
-
+    # golden-path
     sp = sub.add_parser("golden-path", help="Run golden path harness (render -> regen -> maybe approve)")
     add_common(sp)
     sp.add_argument("--approved-by", dest="approved_by", required=True)
     sp.add_argument("--legacy-force", action="store_true")
     sp.add_argument("--no-force-fallback", action="store_true")
+
     sp.add_argument(
         "--enable-writing-room",
         action="store_true",
@@ -828,24 +868,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional override output path for selection_set_v1.json (deterministic default under artifacts/writing_room/...).",
     )
     sp.add_argument(
-        "--writing-room-created-at-utc",
-        default=None,
-        help="Fallback timestamp if the command does not already have --created-at-utc. Prefer --created-at-utc.",
-    )
-    sp.add_argument(
         "--created-at-utc",
         dest="created_at_utc",
         default=None,
         help="When --enable-writing-room: ISO-8601 UTC timestamp for Writing Room artifact metadata.",
     )
-
-
+    sp.add_argument(
+        "--writing-room-created-at-utc",
+        dest="writing_room_created_at_utc",
+        default=None,
+        help="Alias for --created-at-utc (Writing Room only).",
+    )
     sp.set_defaults(fn=cmd_golden_path)
 
+    # check
     sp = sub.add_parser("check", help="Run non-destructive golden path + invariant checks")
     add_common(sp)
     sp.add_argument("--approved-by", dest="approved_by", default="steve")
-    # Optional: Writing Room SelectionSetV1 side-artifact (non-invasive)
+
     sp.add_argument(
         "--enable-writing-room",
         action="store_true",
@@ -869,9 +909,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional output path for selection_set_v1.json (Writing Room).",
     )
-
     sp.set_defaults(fn=cmd_check)
 
+    # list-weeks
     sp = sub.add_parser("list-weeks", help="List all weeks and their recap/artifact status for a season")
     sp.add_argument("--db", required=True)
     sp.add_argument("--league-id", dest="league_id", required=True)
@@ -879,7 +919,6 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--format", choices=["json", "text"], default="text")
     sp.add_argument("--start-week", dest="start_week", type=int, default=None, help="Optional lower bound week_index")
     sp.add_argument("--end-week", dest="end_week", type=int, default=None, help="Optional upper bound week_index")
-
     sp.add_argument(
         "--only",
         action="append",
@@ -892,14 +931,19 @@ def build_parser() -> argparse.ArgumentParser:
         default="any",
         help="Where to apply --only: any (default), run (recap_runs.state), latest (latest artifact state), approved (has approved artifact).",
     )
-
-    sp.set_defaults(fn=cmd_list_weeks)
-
     sp.add_argument(
         "--problems",
         action="store_true",
         help="Shortcut for surfacing problematic weeks (WITHHELD/DRAFT latest, or recap_run not APPROVED).",
     )
+    sp.set_defaults(fn=cmd_list_weeks)
+
+    # NEW: writing-room-review (so your attempted command works)
+    sp = sub.add_parser("writing-room-review", help="Review a Writing Room SelectionSetV1 JSON")
+    sp.add_argument("--selection-set", dest="selection_set", required=True, help="Path to selection_set_v1.json")
+    sp.add_argument("--show-included", action="store_true", help="Print included signal_ids")
+    sp.add_argument("--show-excluded", action="store_true", help="Print excluded signals w/ reason/details")
+    sp.set_defaults(fn=cmd_writing_room_review)
 
     return p
 
