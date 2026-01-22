@@ -48,9 +48,9 @@ def main(argv: List[str] | None = None) -> int:
     ap.add_argument("--league-id", required=True)
     ap.add_argument("--season", type=int, required=True)
     ap.add_argument("--week-index", type=int, required=True)
-    ap.add_argument("--window-id", required=True)
-    ap.add_argument("--window-start", required=True, help="ISO-8601 UTC")
-    ap.add_argument("--window-end", required=True, help="ISO-8601 UTC")
+    ap.add_argument("--window-id", required=False)
+    ap.add_argument("--window-start", required=False, help="ISO-8601 UTC")
+    ap.add_argument("--window-end", required=False, help="ISO-8601 UTC")
     ap.add_argument("--created-at-utc", required=True, help="ISO-8601 UTC")
     ap.add_argument("--signals-source", choices=["json","db"], default="json")
     ap.add_argument("--signals-json", required=False, help="when --signals-source=json: list of dict signals")
@@ -59,7 +59,35 @@ def main(argv: List[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     adapter = DictSignalAdapter()
-    # Load signals
+
+
+    # Resolve window inputs
+    if args.window_start and args.window_end and args.window_id:
+        window_id = args.window_id
+        window_start = args.window_start
+        window_end = args.window_end
+    else:
+        from squadvault.recaps.writing_room.window_resolver_v1 import resolve_weekly_window_v1
+        w = resolve_weekly_window_v1(
+            db_path=args.db,
+            league_id=args.league_id,
+            season=args.season,
+            week_index=args.week_index,
+        )
+        window_id = w.window_id
+        window_start = w.window_start
+        window_end = w.window_end
+
+    ctx = IntakeContextV1(
+        league_id=args.league_id,
+        season=args.season,
+        week_index=args.week_index,
+        window_id=window_id,
+        window_start=window_start,
+        window_end=window_end,
+    )
+
+    # Load signals (must happen AFTER window resolution for db mode)
     if args.signals_source == "json":
         if not args.signals_json:
             raise SystemExit("--signals-json is required when --signals-source=json")
@@ -71,26 +99,17 @@ def main(argv: List[str] | None = None) -> int:
             db_path=args.db,
             league_id=args.league_id,
             season=args.season,
-            window_start=args.window_start,
-            window_end=args.window_end,
+            window_start=window_start,
+            window_end=window_end,
         )
 
-
-    ctx = IntakeContextV1(
-        league_id=args.league_id,
-        season=args.season,
-        week_index=args.week_index,
-        window_id=args.window_id,
-        window_start=args.window_start,
-        window_end=args.window_end,
-    )
 
     # ID (opt-in payload recipe)
     id_payload = selection_set_id_payload_v1(
         league_id=args.league_id,
         season=args.season,
         week_index=args.week_index,
-        window_id=args.window_id,
+        window_id=window_id,
     )
     selection_set_id = compute_sha256_hex_from_payload_v1(id_payload)
 
