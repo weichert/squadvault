@@ -48,6 +48,13 @@ from squadvault.recaps.writing_room.signal_adapter_v1 import SignalAdapterV1
 _ALLOWED_CONFIDENCE = {"A", "B"}
 
 
+# Deterministic intentional silence:
+# If upstream provides signal dict metadata with event_type, suppress known-noise transaction types.
+_INTENTIONALLY_SILENT_EVENT_TYPES = {
+    "TRANSACTION_LOCK_ALL_PLAYERS",
+    "TRANSACTION_BBID_AUTO_PROCESS_WAIVERS",
+}
+
 @dataclass(frozen=True, slots=True)
 class IntakeContextV1:
     """
@@ -94,6 +101,23 @@ def build_selection_set_v1(
 
     for sig in signals_sorted:
         sid = adapter.signal_id(sig)
+
+        # Deterministic exclusion when event_type metadata is present on a signal dict.
+        # This is intentionally evaluated BEFORE any other gating so these never “compete”
+        # for other exclusion reasons.
+        if isinstance(sig, dict):
+            et = sig.get("event_type")
+            if et in _INTENTIONALLY_SILENT_EVENT_TYPES:
+                excluded.append(
+                    ExcludedSignal(
+                        signal_id=sid,
+                        reason_code=ExclusionReasonCode.INTENTIONAL_SILENCE,
+                        details=[
+                            ReasonDetailKV(k="event_type", v=str(et)),
+                        ],
+                    )
+                )
+                continue
 
         # Gate: window inclusion
         if not adapter.is_in_window(
