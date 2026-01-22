@@ -9,8 +9,8 @@ Purpose:
 This is Build Phase / T6 scaffolding:
 - We intentionally do NOT invent a signal schema.
 - Input supports:
-- --signals-source=json with --signals-json (list of dict signals)
-- --signals-source=db (extract from canonical_events for resolved window)
+  - --signals-source=json with --signals-json (list of dict signals)
+  - --signals-source=db (extract from canonical_events for resolved window)
 - Later tasks may replace the db extractor with the real Tier 1 signal feed (keeping the SignalAdapter boundary).
 
 Window inputs:
