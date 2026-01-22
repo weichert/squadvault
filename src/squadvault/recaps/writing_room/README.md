@@ -21,5 +21,5 @@ Sprint 1 creates **module skeletons and schema types only**.
 - Ordering and fingerprinting must be stable and contract-defined.
 
 ## Files
-- `intake_v1.py` — Writing Room intake entrypoint (stub)
+- `intake_v1.py` — Writing Room intake entrypoint (deterministic gates)
 - `selection_set_schema_v1.py` — Selection Set Schema (types to be added in T2)
