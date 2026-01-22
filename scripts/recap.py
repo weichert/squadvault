@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+from pathlib import Path
 
 # --- bootstrap PYTHONPATH so `squadvault` is importable when run as a script ---
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -23,6 +24,10 @@ from squadvault.recaps.weekly_recap_lifecycle import (
 
 # NEW: approved export CLI wrapper
 from squadvault.consumers.recap_export_approved import main as export_approved_main
+
+# NEW: Writing Room SelectionSet v1 consumer wrapper
+from squadvault.consumers.recap_writing_room_select_v1 import main as writing_room_select_main
+
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 
@@ -488,6 +493,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 
 def cmd_render_week(args: argparse.Namespace) -> int:
+    _maybe_build_writing_room_selection_set_v1(args)
     cmd = [
         sys.executable,
         "-u",
@@ -591,6 +597,43 @@ def cmd_fetch_approved(args: argparse.Namespace) -> int:
 
 
 # NEW: export-approved command handler (calls consumer wrapper)
+
+def _maybe_build_writing_room_selection_set_v1(args: argparse.Namespace) -> None:
+    """Optional deterministic side-artifact: Writing Room SelectionSetV1.
+
+    This is intentionally *non-invasive*: it produces selection_set_v1.json but does NOT alter
+    the recap render/selection path yet.
+    """
+    if not getattr(args, "enable_writing_room", False):
+        return
+
+    created_at = getattr(args, "created_at_utc", None) or getattr(args, "writing_room_created_at_utc", None)
+    if not created_at:
+        print("--enable-writing-room requires --created-at-utc (or --writing-room-created-at-utc)", file=sys.stderr)
+        raise SystemExit(2)
+
+    out_path = getattr(args, "writing_room_out", None)
+    if not out_path:
+        # deterministic default path (no timestamps)
+        out_path = f"artifacts/writing_room/{args.league_id}/{args.season}/week_{int(args.week_index):02d}/selection_set_v1.json"
+
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+
+    argv = [
+        "--db", args.db,
+        "--league-id", str(args.league_id),
+        "--season", str(args.season),
+        "--week-index", str(args.week_index),
+        "--created-at-utc", created_at,
+        "--signals-source", "db",
+        "--out", out_path,
+    ]
+
+    rc = int(writing_room_select_main(argv))
+    if rc != 0:
+        raise SystemExit(rc)
+
+
 def cmd_export_approved(args: argparse.Namespace) -> int:
     argv = [
         "--db", args.db,
@@ -615,6 +658,7 @@ def cmd_export_approved(args: argparse.Namespace) -> int:
 
 
 def cmd_golden_path(args: argparse.Namespace) -> int:
+    _maybe_build_writing_room_selection_set_v1(args)
     cmd = [
         sys.executable,
         "-u",
@@ -638,6 +682,8 @@ def cmd_golden_path(args: argparse.Namespace) -> int:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
+    _maybe_build_writing_room_selection_set_v1(args)
+
     cmd = [
         "bash",
         "scripts/check_golden_path_recap.sh",
@@ -673,6 +719,22 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("render-week", help="Render weekly recap (selection + render output)")
     add_common(sp)
     sp.add_argument("--suppress-render-warning", action="store_true")
+    sp.add_argument(
+        "--enable-writing-room",
+        action="store_true",
+        help="Also generate Writing Room SelectionSetV1 as a deterministic side-artifact (does not affect recap yet).",
+    )
+    sp.add_argument(
+        "--writing-room-out",
+        default=None,
+        help="Optional override output path for selection_set_v1.json (deterministic default under artifacts/writing_room/...).",
+    )
+    sp.add_argument(
+        "--writing-room-created-at-utc",
+        default=None,
+        help="Fallback timestamp if the command does not already have --created-at-utc. Prefer --created-at-utc.",
+    )
+
     sp.set_defaults(fn=cmd_render_week)
 
     sp = sub.add_parser("regen", help="Regenerate weekly recap artifact draft via lifecycle")
@@ -755,11 +817,59 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--approved-by", dest="approved_by", required=True)
     sp.add_argument("--legacy-force", action="store_true")
     sp.add_argument("--no-force-fallback", action="store_true")
+    sp.add_argument(
+        "--enable-writing-room",
+        action="store_true",
+        help="Also generate Writing Room SelectionSetV1 as a deterministic side-artifact (does not affect recap yet).",
+    )
+    sp.add_argument(
+        "--writing-room-out",
+        default=None,
+        help="Optional override output path for selection_set_v1.json (deterministic default under artifacts/writing_room/...).",
+    )
+    sp.add_argument(
+        "--writing-room-created-at-utc",
+        default=None,
+        help="Fallback timestamp if the command does not already have --created-at-utc. Prefer --created-at-utc.",
+    )
+    sp.add_argument(
+        "--created-at-utc",
+        dest="created_at_utc",
+        default=None,
+        help="When --enable-writing-room: ISO-8601 UTC timestamp for Writing Room artifact metadata.",
+    )
+
+
     sp.set_defaults(fn=cmd_golden_path)
 
     sp = sub.add_parser("check", help="Run non-destructive golden path + invariant checks")
     add_common(sp)
     sp.add_argument("--approved-by", dest="approved_by", default="steve")
+    # Optional: Writing Room SelectionSetV1 side-artifact (non-invasive)
+    sp.add_argument(
+        "--enable-writing-room",
+        action="store_true",
+        help="Also build Writing Room SelectionSetV1 side-artifact (deterministic, non-invasive).",
+    )
+    sp.add_argument(
+        "--created-at-utc",
+        dest="created_at_utc",
+        default=None,
+        help="When --enable-writing-room: ISO-8601 UTC timestamp for Writing Room artifact metadata.",
+    )
+    sp.add_argument(
+        "--writing-room-created-at-utc",
+        dest="writing_room_created_at_utc",
+        default=None,
+        help="Alias for --created-at-utc (Writing Room only).",
+    )
+    sp.add_argument(
+        "--writing-room-out",
+        dest="writing_room_out",
+        default=None,
+        help="Optional output path for selection_set_v1.json (Writing Room).",
+    )
+
     sp.set_defaults(fn=cmd_check)
 
     sp = sub.add_parser("list-weeks", help="List all weeks and their recap/artifact status for a season")
