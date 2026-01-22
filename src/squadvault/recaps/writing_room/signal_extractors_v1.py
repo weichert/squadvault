@@ -13,16 +13,45 @@ Rules:
 Current extractor:
 - canonical_events -> dict signals (one signal per canonical_event)
 
-Later:
-- richer extraction and redundancy keys (still deterministic)
+Enhancement:
+- Add deterministic redundancy_key when possible to collapse obvious duplicates.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import sqlite3
+
+
+def _table_columns(con: sqlite3.Connection, table_name: str) -> set[str]:
+    cur = con.cursor()
+    cur.execute(f"PRAGMA table_info({table_name})")
+    return {row[1] for row in cur.fetchall()}  # row[1] = column name
+
+
+def _redundancy_key_for_row(
+    *,
+    event_type: str,
+    occurred_at: Optional[str],
+    action_fingerprint: Optional[str],
+) -> Optional[str]:
+    """
+    Deterministic redundancy keys.
+
+    Priority:
+    1) action_fingerprint when present: groups multi-row composites that share an action.
+    2) timestamp bucketing for known noisy event types (LOCK duplicates):
+       event_type + occurred_at.
+    """
+    if action_fingerprint:
+        return f"rk:af:{action_fingerprint}"
+
+    if occurred_at and event_type in {"TRANSACTION_LOCK_ALL_PLAYERS"}:
+        return f"rk:ts:{event_type}:{occurred_at}"
+
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,9 +59,10 @@ class CanonicalEventsSignalExtractorV1:
     """
     Extract dict-signals from canonical_events for a given window.
 
-    Assumptions (current):
-    - canonical_events table exists
-    - has at least: id (or canonical_event_id), league_id, season, occurred_at, event_type
+    Assumptions:
+    - canonical_events exists.
+    - minimum columns: id, league_id, season, occurred_at, event_type
+    - optional column: action_fingerprint
     """
 
     def extract_signals(
@@ -47,13 +77,17 @@ class CanonicalEventsSignalExtractorV1:
         con = sqlite3.connect(db_path)
         try:
             con.row_factory = sqlite3.Row
+            cols = _table_columns(con, "canonical_events")
+
+            select_cols: list[str] = ["id", "occurred_at", "event_type"]
+            if "action_fingerprint" in cols:
+                select_cols.append("action_fingerprint")
+
             cur = con.cursor()
 
-            # NOTE: occurred_at is ISO-8601 UTC text in your system.
-            # We rely on lexicographic ordering equivalence for ISO timestamps.
             rows = cur.execute(
-                """
-                SELECT id, occurred_at, event_type
+                f"""
+                SELECT {", ".join(select_cols)}
                 FROM canonical_events
                 WHERE league_id = ?
                   AND season = ?
@@ -66,26 +100,41 @@ class CanonicalEventsSignalExtractorV1:
 
             signals: List[dict] = []
             for r in rows:
-                # Stable id for the signal: prefix + canonical event id
                 sid = f"ce:{r['id']}"
 
-                # Minimal dict compatible with DictSignalAdapter
-                signals.append(
-                    {
-                        "signal_id": sid,
-                        "confidence": "A",            # v0: treat canonical events as high confidence
-                        "lineage_complete": True,     # canonical_events are already normalized truth
-                        "in_window": True,            # ensured by the query
-                        "sensitive": False,           # v0 default
-                        "ambiguous": False,           # v0 default
-                        # optional redundancy_key could be added later
-                        # "redundancy_key": ...
-                        # keep a few debug-friendly fields (NOT used by adapter, but harmless):
-                        "source": "canonical_events",
-                        "event_type": r["event_type"],
-                        "occurred_at": r["occurred_at"],
-                    }
+                occurred_at = r["occurred_at"]
+                event_type = r["event_type"]
+                action_fingerprint = r["action_fingerprint"] if "action_fingerprint" in r.keys() else None
+
+                rk = _redundancy_key_for_row(
+                    event_type=str(event_type),
+                    occurred_at=str(occurred_at) if occurred_at is not None else None,
+                    action_fingerprint=str(action_fingerprint) if action_fingerprint else None,
                 )
+
+                payload = {
+                    # Required adapter keys
+                    "signal_id": sid,
+                    "confidence": "A",
+                    "lineage_complete": True,
+                    "in_window": True,
+                    "sensitive": False,
+                    "ambiguous": False,
+
+                    # Optional: used by intake_v1 redundancy collapse
+                    "redundancy_key": rk,
+
+                    # Debug-friendly fields (ignored by adapter)
+                    "source": "canonical_events",
+                    "event_type": str(event_type),
+                    "occurred_at": str(occurred_at) if occurred_at is not None else None,
+                }
+
+                # Keep output minimal: drop redundancy_key if None.
+                if payload["redundancy_key"] is None:
+                    payload.pop("redundancy_key")
+
+                signals.append(payload)
 
             return signals
         finally:
