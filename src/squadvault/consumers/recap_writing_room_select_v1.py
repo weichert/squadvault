@@ -2,14 +2,19 @@
 Consumer: Writing Room Selection Set (v1)
 
 Purpose:
-- Load Tier 1 signals (TEMP: dict signals from JSON file)
+- Load Tier 1 signals (dict signals from JSON file or extracted from canonical_events)
 - Run Writing Room intake_v1 deterministic gates
 - Emit SelectionSetV1 artifact JSON
 
 This is Build Phase / T6 scaffolding:
 - We intentionally do NOT invent a signal schema.
-- Input is a JSON file of dict signals ONLY for now.
-- Later tasks will replace the loader with real Tier 1 signals from your pipeline.
+- Input supports:
+- --signals-source=json with --signals-json (list of dict signals)
+- --signals-source=db (extract from canonical_events for resolved window)
+- Later tasks may replace the db extractor with the real Tier 1 signal feed (keeping the SignalAdapter boundary).
+
+Window inputs:
+- If --window-id/--window-start/--window-end are omitted, the consumer auto-resolves the weekly window using existing weekly window logic.
 """
 
 from __future__ import annotations
