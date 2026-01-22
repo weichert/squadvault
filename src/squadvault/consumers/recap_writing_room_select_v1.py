@@ -52,13 +52,29 @@ def main(argv: List[str] | None = None) -> int:
     ap.add_argument("--window-start", required=True, help="ISO-8601 UTC")
     ap.add_argument("--window-end", required=True, help="ISO-8601 UTC")
     ap.add_argument("--created-at-utc", required=True, help="ISO-8601 UTC")
-    ap.add_argument("--signals-json", required=True, help="TEMP: list of dict signals")
+    ap.add_argument("--signals-source", choices=["json","db"], default="json")
+    ap.add_argument("--signals-json", required=False, help="when --signals-source=json: list of dict signals")
     ap.add_argument("--out", required=True, help="output selection_set_v1.json path")
 
     args = ap.parse_args(argv)
 
     adapter = DictSignalAdapter()
-    signals = _read_dict_signals(args.signals_json)
+    # Load signals
+    if args.signals_source == "json":
+        if not args.signals_json:
+            raise SystemExit("--signals-json is required when --signals-source=json")
+        signals = _read_dict_signals(args.signals_json)
+    else:
+        from squadvault.recaps.writing_room.signal_extractors_v1 import CanonicalEventsSignalExtractorV1
+        ex = CanonicalEventsSignalExtractorV1()
+        signals = ex.extract_signals(
+            db_path=args.db,
+            league_id=args.league_id,
+            season=args.season,
+            window_start=args.window_start,
+            window_end=args.window_end,
+        )
+
 
     ctx = IntakeContextV1(
         league_id=args.league_id,

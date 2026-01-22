@@ -21,7 +21,7 @@ class TestWritingRoomConsumerSelectV1(unittest.TestCase):
             ]
             signals_path.write_text(json.dumps(signals), encoding="utf-8")
 
-            rc = main([
+            rc = main([ "--signals-source", "json",
                 "--db", str(d / "db.sqlite"),
                 "--league-id", "70985",
                 "--season", "2024",
