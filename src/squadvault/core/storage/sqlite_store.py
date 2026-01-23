@@ -77,7 +77,7 @@ class SQLiteStore:
         occurred_at_min: Optional[str] = None,
         occurred_at_max: Optional[str] = None,
         limit: int = 1000,
-        use_canonical: bool = True,
+        use_canonical: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Downstream consumer read surface.

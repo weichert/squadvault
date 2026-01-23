@@ -123,6 +123,14 @@ def derive_transaction_event_envelopes(
         involved_ids = added_ids + dropped_ids
         primary_player_id = added_ids[0] if added_ids else (dropped_ids[0] if dropped_ids else None)
 
+        # Some transaction feeds (and unit tests) provide a single player directly,
+        # without the compact pipe-delimited "transaction" field.
+        if primary_player_id is None:
+            direct_player_id = txn.get("player_id") or txn.get("player")
+            if isinstance(direct_player_id, str) and direct_player_id:
+                primary_player_id = direct_player_id
+
+
         bid_amount = _extract_bid_amount(txn)
 
         # TRUE MFL IDENTITY

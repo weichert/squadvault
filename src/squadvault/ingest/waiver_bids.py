@@ -129,6 +129,24 @@ def derive_waiver_bid_event_envelopes_from_transactions(
 
         added_ids, bid_amount, dropped_ids = _parse_mfl_transaction_field(txn)
 
+        # Some feeds provide waiver bid info directly (no compact "transaction" string).
+        # Support: { "player": "...", "bid": "13" } (and/or player_id/bid_amount variants).
+        if not added_ids:
+            direct_player_id = txn.get("player_id") or txn.get("player")
+            if isinstance(direct_player_id, str) and direct_player_id:
+                added_ids = [direct_player_id]
+
+        if bid_amount is None:
+            direct_bid = txn.get("bid_amount") or txn.get("bid")
+            if isinstance(direct_bid, (int, float)):
+                bid_amount = float(direct_bid)
+            elif isinstance(direct_bid, str) and direct_bid.strip():
+                try:
+                    bid_amount = float(direct_bid.strip())
+                except Exception:
+                    bid_amount = None
+
+
         # Prevent "stub" rows: if we can't parse any details, skip emitting an award/request event.
         if not added_ids and bid_amount is None and not dropped_ids:
             continue
