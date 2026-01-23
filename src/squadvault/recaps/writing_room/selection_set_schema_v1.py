@@ -307,3 +307,82 @@ __all__ = [
     "sha256_hex",
     "sha256_of_canonical_json",
 ]
+
+
+# -----------------------------
+# SignalGrouping generation (v1)
+# -----------------------------
+
+from dataclasses import dataclass
+from typing import Callable, Iterable
+
+@dataclass(frozen=True)
+class SignalGroupingExtractorV1:
+    """
+    Adapter contract: signals are opaque objects.
+    No new Signal schema is introduced here.
+    """
+    get_signal_id: Callable[[object], str]
+    get_scope_key: Callable[[object], str]
+    get_subject_key: Callable[[object], str]
+    get_fact_basis_keys: Callable[[object], Iterable[str]]
+
+def _norm_keys(xs: Iterable[str] | str | None) -> list[str]:
+    if xs is None:
+        return []
+    if isinstance(xs, (list, tuple)):
+        return [str(x) for x in xs]
+    return [str(xs)]
+
+def _sha256_hex(s: str) -> str:
+    import hashlib
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+def _group_id_v1(group_basis: str, scope_key: str, subject_key: str, fact_basis_key: str) -> str:
+    canonical = f"SignalGrouping|v1.0|{group_basis}|scope={scope_key}|subject={subject_key}|fact={fact_basis_key}"
+    return _sha256_hex(canonical)
+
+def build_signal_groupings_v1(
+    included_signals: list[object],
+    extractor: SignalGroupingExtractorV1,
+) -> list["SignalGrouping"]:
+    """
+    Deterministic grouping v1:
+      - eligibility: SAME_SCOPE + SAME_SUBJECT + SHARED_FACT_BASIS
+      - emitted basis: SHARED_FACT_BASIS
+      - ordering: groupings sorted by group_id; signal_ids lexicographically sorted
+    """
+    # Buckets keyed by (scope, subject, fact_basis_key)
+    buckets: dict[tuple[str, str, str], list[str]] = {}
+
+    for sig in included_signals:
+        sid = str(extractor.get_signal_id(sig))
+        scope_key = str(extractor.get_scope_key(sig))
+        subject_key = str(extractor.get_subject_key(sig))
+        fact_keys = sorted(_norm_keys(extractor.get_fact_basis_keys(sig)))
+
+        # No inference: missing keys => not eligible for grouping
+        if not scope_key or not subject_key or not fact_keys:
+            continue
+
+        for fk in fact_keys:
+            buckets.setdefault((scope_key, subject_key, fk), []).append(sid)
+
+    groupings: list[SignalGrouping] = []
+    for (scope_key, subject_key, fk), sids in buckets.items():
+        uniq = sorted(set(sids))
+        if len(uniq) < 2:
+            continue
+
+        gid = _group_id_v1("SHARED_FACT_BASIS", scope_key, subject_key, fk)
+        groupings.append(
+            SignalGrouping(
+                group_id=gid,
+                group_basis=GroupBasisCode.SHARED_FACT_BASIS,
+                signal_ids=uniq,
+                group_label=None,
+            )
+        )
+
+    groupings.sort(key=lambda g: g.group_id)
+    return groupings

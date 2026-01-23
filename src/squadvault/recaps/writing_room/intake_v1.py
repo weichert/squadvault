@@ -21,6 +21,7 @@ from squadvault.recaps.writing_room.selection_set_schema_v1 import (
     ReasonDetailKV,
     ExclusionReasonCode,
     WithheldReasonCode,
+    build_signal_groupings_v1,
 )
 
 def _details_one(k: str, v: object) -> list[ReasonDetailKV]:
@@ -241,6 +242,8 @@ def build_selection_set_v1(*args: Any, **kwargs: Any) -> SelectionSetV1:
     signals_sorted = sorted(signals, key=lambda s: adapter.signal_id(s))
 
     included_ids: list[str] = []
+    included_signals: list[Any] = []
+
     excluded: list[ExcludedSignal] = []
 
     seen_redundancy: dict[str, str] = {}  # redundancy_key -> kept_signal_id
@@ -332,6 +335,8 @@ def build_selection_set_v1(*args: Any, **kwargs: Any) -> SelectionSetV1:
 
         included_ids.append(sid)
 
+        included_signals.append(sig)
+
     included_ids = sorted(included_ids)
     excluded = sorted(excluded, key=lambda e: e.signal_id)
 
@@ -341,7 +346,14 @@ def build_selection_set_v1(*args: Any, **kwargs: Any) -> SelectionSetV1:
         withheld = True
         withheld_reason = WithheldReasonCode.NO_ELIGIBLE_SIGNALS
 
+    
+    groupings = None
+    grouping_extractor = kwargs.get('grouping_extractor')
+    if grouping_extractor is not None:
+        groupings = build_signal_groupings_v1(included_signals, grouping_extractor)
+
     return SelectionSetV1(
+        groupings=groupings,
         selection_set_id=selection_set_id,
         league_id=ctx.league_id,
         season=ctx.season,
