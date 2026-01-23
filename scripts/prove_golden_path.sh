@@ -40,8 +40,8 @@ fi
 
 # Find highest approved version deterministically (by numeric suffix)
 ASSEMBLY="$(
-  ls -1 "$WEEK_DIR"/assembly_plain_v1__approved_v*.md 2>/dev/null \
-  | sed -E 's/.*__approved_v([0-9]+)\.md$/\1 \0/' \
+  find "$WEEK_DIR" -maxdepth 1 -type f -name 'assembly_plain_v1__approved_v*.md' -print 2>/dev/null \
+  | sed -E 's/.*__approved_v([0-9]+)\.md$/\1 &/' \
   | sort -n \
   | tail -n 1 \
   | cut -d' ' -f2-
@@ -52,6 +52,7 @@ if [[ -z "${ASSEMBLY:-}" || ! -f "$ASSEMBLY" ]]; then
   echo "Expected pattern: assembly_plain_v1__approved_v*.md" >&2
   exit 2
 fi
+echo "Selected assembly: $ASSEMBLY"
 
 echo "== NAC harness =="
 python3 Tests/_nac_check_assembly_plain_v1.py "$ASSEMBLY"
