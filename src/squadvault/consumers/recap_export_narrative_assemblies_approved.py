@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
+import json
 import sqlite3
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 BANNER = (
     "NON-CANONICAL — Narrative Assembly Export\n"
@@ -20,6 +22,7 @@ MARKERS = {
     "FINGERPRINT": ("<!-- BEGIN_CANONICAL_FINGERPRINT -->", "<!-- END_CANONICAL_FINGERPRINT -->"),
     "COUNTS": ("<!-- BEGIN_CANONICAL_COUNTS -->", "<!-- END_CANONICAL_COUNTS -->"),
     "TRACE": ("<!-- BEGIN_CANONICAL_TRACE -->", "<!-- END_CANONICAL_TRACE -->"),
+    "WRITING_ROOM": ("<!-- BEGIN_WRITING_ROOM_SELECTION_SET_V1 -->", "<!-- END_WRITING_ROOM_SELECTION_SET_V1 -->"),
 }
 
 ALLOWED_HEADINGS = {
@@ -29,6 +32,7 @@ ALLOWED_HEADINGS = {
     "## Traceability — canonical",
     "## Window — canonical",
     "## Notes (non-canonical)",
+    "## Writing Room (SelectionSetV1)",
 }
 
 
@@ -180,7 +184,8 @@ def validate_outside_text_allowlist(full_text: str, allowed_outside_lines: Tuple
             continue
         if line in ALLOWED_HEADINGS:
             continue
-        if line.startswith("<!-- BEGIN_CANONICAL_") or line.startswith("<!-- END_CANONICAL_"):
+        # allow any block markers we use (canonical + writing room)
+        if line.startswith("<!-- BEGIN_") or line.startswith("<!-- END_"):
             continue
         raise RuntimeError(f"Unexpected outside-block line (NAC violation): {line}")
 
@@ -193,12 +198,98 @@ def validate_protected_blocks_byte_stable(full_text: str, sources: Dict[str, str
             raise RuntimeError(f"Protected block mismatch for {key} (byte-stability violation)")
 
 
-def assemble_plain_v1(a: ApprovedArtifact, blocks: Dict[str, str]) -> str:
+def writing_room_selection_set_v1_path(base: str, league_id: str, season: int, week_index: int) -> Path:
+    """
+    Deterministic default path for Writing Room SelectionSetV1 side-artifact.
+    File-only side artifact: may or may not exist.
+    """
+    return (
+        Path(base)
+        / "writing_room"
+        / str(league_id)
+        / str(season)
+        / f"week_{int(week_index):02d}"
+        / "selection_set_v1.json"
+    )
+
+
+def _safe_get_list(d: Dict[str, Any], k: str) -> list:
+    v = d.get(k, [])
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return v
+    return []
+
+
+def _summarize_selection_set_v1(data: Dict[str, Any]) -> str:
+    """
+    Deterministic, non-volatile summary.
+    - No timestamps emitted.
+    - Derived counters sorted lexicographically.
+    """
+    selection_set_id = str(data.get("selection_set_id") or "")
+    selection_fp = str(data.get("selection_fingerprint") or "")
+
+    withheld = bool(data.get("withheld", False))
+    withheld_reason = data.get("withheld_reason")
+
+    included = _safe_get_list(data, "included_signal_ids")
+    excluded = _safe_get_list(data, "excluded")
+
+    reason_codes = []
+    for e in excluded:
+        if isinstance(e, dict):
+            rc = e.get("reason_code")
+            if rc is not None:
+                reason_codes.append(str(rc))
+    c = Counter(reason_codes)
+
+    out: list[str] = []
+    if selection_set_id:
+        out.append(f"- selection_set_id: {selection_set_id}")
+    if selection_fp:
+        out.append(f"- selection_fingerprint: {selection_fp}")
+    out.append(f"- withheld: {str(withheld).lower()}")
+    if withheld and withheld_reason:
+        out.append(f"- withheld_reason: {withheld_reason}")
+    out.append(f"- included_count: {len(included)}")
+    out.append(f"- excluded_count: {len(excluded)}")
+
+    if c:
+        out.append("")
+        out.append("excluded_by_reason:")
+        for k in sorted(c.keys()):
+            out.append(f"- {k}: {c[k]}")
+
+    return "\n".join(out).rstrip() + "\n"
+
+
+def load_writing_room_block_or_not_available(base: str, league_id: str, season: int, week_index: int) -> str:
+    """
+    Non-blocking: never fails export. Always returns a deterministic block.
+    """
+    p = writing_room_selection_set_v1_path(base, league_id, season, week_index)
+    if not p.exists():
+        return "Not available\n"
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return "Not available\n"
+        return _summarize_selection_set_v1(data)
+    except Exception:
+        return "Not available\n"
+
+
+def assemble_plain_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_room_block: str) -> str:
     out = []
     out.append(BANNER.rstrip("\n"))
     out.append("")
     out.append("## Provenance")
     out.append(f"Approved artifact: league={a.league_id} season={a.season} week={a.week_index} approved_version=v{a.version:02d}")
+    out.append("")
+    out.append("## Writing Room (SelectionSetV1)")
+    out.append(wrap("WRITING_ROOM", writing_room_block).rstrip("\n"))
     out.append("")
     out.append("## Window — canonical")
     out.append(wrap("WINDOW", blocks["WINDOW"]).rstrip("\n"))
@@ -217,13 +308,16 @@ def assemble_plain_v1(a: ApprovedArtifact, blocks: Dict[str, str]) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
-def assemble_sharepack_v1(a: ApprovedArtifact, blocks: Dict[str, str]) -> str:
+def assemble_sharepack_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_room_block: str) -> str:
     out = []
     out.append(BANNER.rstrip("\n"))
     out.append("")
     out.append("## Provenance")
     out.append(f"Approved artifact: league={a.league_id} season={a.season} week={a.week_index} approved_version=v{a.version:02d}")
     out.append("Selection fingerprint is embedded verbatim below.")
+    out.append("")
+    out.append("## Writing Room (SelectionSetV1)")
+    out.append(wrap("WRITING_ROOM", writing_room_block).rstrip("\n"))
     out.append("")
     out.append(wrap("FINGERPRINT", blocks["FINGERPRINT"]).rstrip("\n"))
     out.append("")
@@ -247,7 +341,9 @@ def export_dir(base: str, league_id: str, season: int, week_index: int) -> Path:
 
 
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(description="Phase 2.3: Export deterministic narrative assemblies from APPROVED recap artifacts (export-only)")
+    ap = argparse.ArgumentParser(
+        description="Phase 2.3: Export deterministic narrative assemblies from APPROVED recap artifacts (export-only)"
+    )
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
     ap.add_argument("--season", type=int, required=True)
@@ -267,8 +363,15 @@ def main(argv: list[str]) -> int:
     neutral = run_neutral_recap_render(args.db, args.league_id, args.season, args.week_index)
     blocks = extract_blocks_from_neutral(neutral)
 
-    out_plain = assemble_plain_v1(approved, blocks)
-    out_share = assemble_sharepack_v1(approved, blocks)
+    writing_room_block = load_writing_room_block_or_not_available(
+        args.export_dir,
+        approved.league_id,
+        approved.season,
+        approved.week_index,
+    )
+
+    out_plain = assemble_plain_v1(approved, blocks, writing_room_block=writing_room_block)
+    out_share = assemble_sharepack_v1(approved, blocks, writing_room_block=writing_room_block)
 
     sources = {
         "FACTS": approved.rendered_text,
@@ -276,6 +379,7 @@ def main(argv: list[str]) -> int:
         "FINGERPRINT": blocks["FINGERPRINT"],
         "COUNTS": blocks["COUNTS"],
         "TRACE": blocks["TRACE"],
+        "WRITING_ROOM": writing_room_block,
     }
 
     allowed_plain = (
