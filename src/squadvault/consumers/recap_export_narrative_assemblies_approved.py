@@ -321,7 +321,7 @@ def assemble_sharepack_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_r
     out.append("")
     out.append("## Provenance")
     out.append(f"Approved artifact: league={a.league_id} season={a.season} week={a.week_index} approved_version=v{a.version:02d}")
-    out.append("Selection fingerprint is embedded verbatim below.")
+    out.append("Two fingerprints follow: the Writing Room SelectionSet fingerprint (derived) and the Canonical Recap Selection fingerprint (approved).")
     out.append("")
     out.append("## Writing Room (SelectionSetV1)")
     out.append(wrap("WRITING_ROOM", writing_room_block).rstrip("\n"))
@@ -395,7 +395,7 @@ def main(argv: list[str]) -> int:
         f"Approved artifact: league={approved.league_id} season={approved.season} week={approved.week_index} approved_version=v{approved.version:02d}",
     )
     allowed_share = allowed_plain + (
-        "Selection fingerprint is embedded verbatim below.",
+        "Two fingerprints follow: the Writing Room SelectionSet fingerprint (derived) and the Canonical Recap Selection fingerprint (approved).",
     )
 
     validate_outside_text_allowlist(out_plain, allowed_plain)
