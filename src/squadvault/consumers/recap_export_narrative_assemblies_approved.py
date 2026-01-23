@@ -109,7 +109,7 @@ def extract_blocks_from_neutral(neutral_text: str) -> Dict[str, str]:
     w_prefix = "Window: "
     fp_prefix = "Selection fingerprint: "
     ev_prefix = "Events selected: "
-    trace_prefix = "Trace (selection ids):"
+    trace_prefixes = ("Trace (canonical_event ids):", "Trace (selection ids):")
 
     window_line = next((l for l in lines if l.startswith(w_prefix)), None)
     fp_line = next((l for l in lines if l.startswith(fp_prefix)), None)
@@ -122,7 +122,7 @@ def extract_blocks_from_neutral(neutral_text: str) -> Dict[str, str]:
         raise RuntimeError("missing Events selected line in neutral output")
 
     try:
-        tr_i = next(i for i, l in enumerate(lines) if l.startswith(trace_prefix))
+        tr_i = next(i for i, l in enumerate(lines) if any(l.startswith(p) for p in trace_prefixes))
     except StopIteration:
         raise RuntimeError("missing Trace section in neutral output")
 
@@ -134,6 +134,13 @@ def extract_blocks_from_neutral(neutral_text: str) -> Dict[str, str]:
             stop = i
             break
     trace_block = "\n".join(lines[tr_i:stop]).rstrip("\n") + "\n"
+
+    # Normalize TRACE header label for NAC/auditability (no content change beyond the label)
+    trace_block = trace_block.replace(
+        "Trace (selection ids):",
+        "Trace (canonical_event ids):",
+        1,
+    )
 
     return {
         "WINDOW": window_line + "\n",
