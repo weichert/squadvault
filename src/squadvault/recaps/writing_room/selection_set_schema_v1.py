@@ -232,9 +232,69 @@ def sha256_of_canonical_json(obj: Any) -> str:
     """
     return sha256_hex(canonical_json(obj).encode("utf-8"))
 
+# ----------------------------
+# Identity helpers (v1.0)
+# ----------------------------
+# NOTE: These are deterministic helpers used by tests and higher-level callers.
+# They do not change schema; they provide canonical hashing recipes.
+
+from hashlib import sha256
+
+def _sha256_hex(s: str) -> str:
+    return sha256(s.encode("utf-8")).hexdigest()
+
+def build_selection_fingerprint(
+    *,
+    league_id: str,
+    season: int,
+    week_index: int,
+    window_id: str,
+    included_signal_ids: list[str],
+    excluded: list["ExcludedSignal"],
+) -> str:
+    """
+    Deterministic fingerprint recipe:
+    - Stable concatenation of core identity + sorted ids + (signal_id, reason_code) pairs
+    - SHA256 hex digest
+    """
+    inc = ",".join(sorted(included_signal_ids))
+    exc = ",".join(
+        f"{e.signal_id}:{e.reason_code.value}"
+        for e in sorted(excluded, key=lambda x: (x.signal_id, x.reason_code.value))
+    )
+    payload = f"{league_id}|{season}|{week_index}|{window_id}|{inc}|{exc}"
+    return _sha256_hex(payload)
+
+def build_selection_set_id(selection_fingerprint: str) -> str:
+    # Simple deterministic id: sha256 of fingerprint
+    return _sha256_hex(selection_fingerprint)
+
+def build_group_id(*, group_basis: "GroupBasisCode", signal_ids: list[str]) -> str:
+    payload = group_basis.value + "|" + "|".join(sorted(signal_ids))
+    return _sha256_hex(payload)
+
+# ----------------------------
+# Deterministic sort helpers (v1.0)
+# ----------------------------
+
+def deterministic_sort_str(values: list[str]) -> list[str]:
+    return sorted(values)
+
+def deterministic_sort_excluded(values: list["ExcludedSignal"]) -> list["ExcludedSignal"]:
+    return sorted(values, key=lambda x: (x.signal_id, x.reason_code.value))
+
+def deterministic_sort_reason_kv(values: list["ReasonDetailKV"]) -> list["ReasonDetailKV"]:
+    return sorted(values, key=lambda x: (x.k, x.v))
+
 
 __all__ = [
-    "ExclusionReasonCode",
+    "deterministic_sort_str",
+    "deterministic_sort_excluded",
+    "deterministic_sort_reason_kv",
+        "build_selection_fingerprint",
+    "build_selection_set_id",
+    "build_group_id",
+"ExclusionReasonCode",
     "WithheldReasonCode",
     "GroupBasisCode",
     "SelectionNoteCode",
