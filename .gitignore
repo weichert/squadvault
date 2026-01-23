@@ -31,6 +31,7 @@ txns/
 --*
 =
 PY
+!scripts/py
 from
 import
 require

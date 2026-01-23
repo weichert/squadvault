@@ -1,0 +1,19 @@
+#!/bin/sh
+# SquadVault repo python wrapper (deterministic import path)
+# Usage:
+#   scripts/py -c "import squadvault; print(squadvault.__file__)"
+#   scripts/py -m py_compile src/...
+#   scripts/py src/squadvault/consumers/...
+
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+SRC="$ROOT/src"
+
+if [ -n "${PYTHONPATH:-}" ]; then
+  export PYTHONPATH="$SRC:$PYTHONPATH"
+else
+  export PYTHONPATH="$SRC"
+fi
+
+exec python "$@"
