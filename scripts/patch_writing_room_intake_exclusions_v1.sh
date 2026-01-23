@@ -24,13 +24,13 @@ else
 fi
 
 
-echo "=== Patch: Writing Room intake_v1 ExcludedSignal(details) + restore schema ==="
+echo "=== Patch: Writing Room intake_v1 exclusions (schema-aligned) ==="
 echo "repo_root: $ROOT"
 echo "python:    $PY_BIN"
 echo
 
 
-echo "Step 1: patch intake_v1 to use ExcludedSignal(details=...)"
+echo "Step 1: patch intake_v1 ExcludedSignal(details=...)"
 "$PY_BIN" scripts/_patch_intake_v1_excluded_signal_details.py
 
 echo
