@@ -87,3 +87,18 @@ Tests/test_auction_draft_envelopes.py
 Tests/test_store_append_only.py
 Tests/test_transaction_envelopes.py
 Tests/test_waiver_bid_envelopes.py
+
+# Local/one-off patchers (kept out of canonical history)
+scripts/_patch_*_wip*.py
+
+# Local/one-off patchers (kept out of canonical history)
+scripts/_patch_*.py
+
+# Canonical patchers (DO track these)
+!scripts/_patch_ops_shims_cwd_polish_oneshot_v1.py
+!scripts/_patch_ops_shims_cwd_independence_v1.py
+!scripts/_patch_prove_golden_path_add_script_dir_repo_root_v1.py
+!scripts/_patch_check_shims_compliance_add_script_dir_repo_root_v1.py
+!scripts/_patch_check_shims_compliance_use_repo_root_paths_v2.py
+!scripts/_patch_recap_sh_single_exec_bash_v1.py
+!scripts/_patch_check_golden_path_recap_default_recap_script_py_v1.py
