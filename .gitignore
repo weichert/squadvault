@@ -123,3 +123,10 @@ scripts/_diag_*.py
 !scripts/_patch_create_minimal_documentation_map_v1.py
 !scripts/_patch_lock_ops_shim_cwd_contract_v1.py
 
+# --- SquadVault: canonical patchers (MUST be tracked) ---
+!scripts/_patch_create_minimal_documentation_map_v1.py
+!scripts/_patch_lock_ops_shim_cwd_contract_v1.py
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v1.py
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v2.py
+!scripts/_patch_gitignore_pin_whitelist_after_patch_glob_v1.py
+# --- end canonical patchers ---
