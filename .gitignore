@@ -132,4 +132,6 @@ scripts/_diag_*.py
 !scripts/_patch_gitignore_force_unignore_canonical_patchers_eof_v1.py
 !scripts/_patch_gitignore_whitelist_force_unignore_patcher_v1.py
 !scripts/_patch_gitignore_rewrite_canonical_patchers_block_v1.py
+!scripts/_patch_lock_signal_taxonomy_v1.py
+
 # --- end canonical patchers ---
