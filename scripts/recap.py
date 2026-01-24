@@ -608,7 +608,7 @@ def cmd_withhold(args: argparse.Namespace) -> int:
 
 def cmd_fetch_approved(args: argparse.Namespace) -> int:
     cmd = [
-        sys.executable,
+        "./scripts/py",
         "-u",
         "scripts/recap_week_fetch_approved.py",
         "--db", args.db,
@@ -642,7 +642,7 @@ def cmd_export_approved(args: argparse.Namespace) -> int:
 def cmd_golden_path(args: argparse.Namespace) -> int:
     _maybe_build_writing_room_selection_set_v1(args)
     cmd = [
-        sys.executable,
+        "./scripts/py",
         "-u",
         "scripts/golden_path_recap_lifecycle.py",
         "--db", args.db,
