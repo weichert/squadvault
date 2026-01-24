@@ -1,3 +1,16 @@
+"""DEPRECATED (Ops)
+This patcher was used to retrofit scripts/run_week6_writing_room_gate.sh to use shims.
+
+As of:
+- scripts/run_week6_writing_room_gate.sh delegates to scripts/run_writing_room_gate_v1.sh
+- scripts/run_writing_room_gate_v1.sh is the canonical Writing Room gate
+
+Do not use this patcher. It is retained only for historical reference.
+"""
+import sys
+print("DEPRECATED: do not run this patcher. Use scripts/run_writing_room_gate_v1.sh (canonical).", file=sys.stderr)
+raise SystemExit(2)
+
 from pathlib import Path
 
 p = Path("scripts/run_week6_writing_room_gate.sh")
