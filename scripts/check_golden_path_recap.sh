@@ -40,7 +40,7 @@ Required:
 Optional:
   --start-week N        (inclusive)
   --end-week N          (inclusive)
-  --recap-script PATH   (default: ${SCRIPT_DIR}/recap.sh)
+  --recap-script PATH   (default: ${SCRIPT_DIR}/recap.py)
   --python PATH         (default: python)
   --pythonpath PATH     (default: src)
   --verbose
@@ -53,7 +53,7 @@ LEAGUE_ID=""
 SEASON=""
 START_WEEK=""
 END_WEEK=""
-RECAP_SCRIPT="${SCRIPT_DIR}/recap.sh"
+RECAP_SCRIPT="${SCRIPT_DIR}/recap.py"
 PYTHON_BIN="python"
 PYTHONPATH_DIR="src"
 VERBOSE="0"
@@ -72,7 +72,9 @@ while [[ $# -gt 0 ]]; do
     --verbose) VERBOSE="1"; shift 1 ;;
     --debug-json) DEBUG_JSON="1"; shift 1 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "Unknown arg: $1" >&2; usage; exit 2 ;;
+    *) echo "Unknown arg: $1" >&2
+       echo "Hint: don't pass placeholders like '...'. Use real flags (e.g., --db ... --league-id ... --season ...)." >&2
+       usage; exit 2 ;;
   esac
 done
 
@@ -170,7 +172,9 @@ elif [[ "$CHECK_EXISTS" == "1" && -n "$CHECK_JSON_ARGS" ]]; then
   PERWEEK_SUB="check"
   PERWEEK_JSON_ARGS="$CHECK_JSON_ARGS"
 else
-  echo "NOTE: JSON capability probe bypassed; using recap.py status --format json via ${PY_SHIM}." >&2
+if [[ "${SV_DEBUG:-}" == "1" ]]; then
+    echo "NOTE: JSON capability probe bypassed; using recap.py status --format json via ${PY_SHIM}." >&2
+fi
   echo "" >&2
   if [[ "$STATUS_EXISTS" == "1" ]]; then
     echo "status -h output:" >&2

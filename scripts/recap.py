@@ -5,9 +5,13 @@ from pathlib import Path
 
 def _python_cmd_prefix() -> list[str]:
     # Prefer deterministic repo shim, fallback to current interpreter.
-    # This keeps recap.py usable even if run outside repo root.
-    if Path("scripts/py").exists():
-        return ["./scripts/py"]
+    #
+    # Important: resolve relative to repo root (based on this file's location),
+    # not the caller's current working directory.
+    repo_root = Path(__file__).resolve().parent.parent
+    shim = repo_root / "scripts" / "py"
+    if shim.exists():
+        return [str(shim)]
     return [sys.executable]
 
 
@@ -667,7 +671,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     _maybe_build_writing_room_selection_set_v1(args)
     cmd = [
         "bash",
-        "scripts/check_golden_path_recap.sh",
+        str((Path(REPO_ROOT) / "scripts/check_golden_path_recap.sh").resolve()),
         "--db", args.db,
         "--league-id", str(args.league_id),
         "--season", str(args.season),
