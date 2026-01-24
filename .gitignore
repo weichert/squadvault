@@ -95,6 +95,7 @@ scripts/_patch_*_wip*.py
 scripts/_patch_*.py
 
 # Canonical patchers (DO track these)
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v1.py
 !scripts/_patch_ops_shims_cwd_polish_oneshot_v1.py
 !scripts/_patch_ops_shims_cwd_independence_v1.py
 !scripts/_patch_prove_golden_path_add_script_dir_repo_root_v1.py
