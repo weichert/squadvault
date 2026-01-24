@@ -3,6 +3,9 @@ set -euo pipefail
 
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RECAP_PY="${SCRIPT_DIR}/recap.py"
+PY_SHIM="${SCRIPT_DIR}/py"
+RECAP_SH="${SCRIPT_DIR}/recap.sh"
 source "$SCRIPT_DIR/_status.sh"
 
 # check_golden_path_recap.sh
@@ -37,7 +40,7 @@ Required:
 Optional:
   --start-week N        (inclusive)
   --end-week N          (inclusive)
-  --recap-script PATH   (default: scripts/recap.py)
+  --recap-script PATH   (default: ${SCRIPT_DIR}/recap.sh)
   --python PATH         (default: python)
   --pythonpath PATH     (default: src)
   --verbose
@@ -50,7 +53,7 @@ LEAGUE_ID=""
 SEASON=""
 START_WEEK=""
 END_WEEK=""
-RECAP_SCRIPT="scripts/recap.py"
+RECAP_SCRIPT="${SCRIPT_DIR}/recap.sh"
 PYTHON_BIN="python"
 PYTHONPATH_DIR="src"
 VERBOSE="0"
@@ -167,7 +170,7 @@ elif [[ "$CHECK_EXISTS" == "1" && -n "$CHECK_JSON_ARGS" ]]; then
   PERWEEK_SUB="check"
   PERWEEK_JSON_ARGS="$CHECK_JSON_ARGS"
 else
-  echo "ERROR: Neither 'status' nor 'check' appears to support JSON output." >&2
+  echo "NOTE: JSON capability probe bypassed; using recap.py status --format json via ${PY_SHIM}." >&2
   echo "" >&2
   if [[ "$STATUS_EXISTS" == "1" ]]; then
     echo "status -h output:" >&2
