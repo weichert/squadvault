@@ -3,6 +3,14 @@ import os
 import sys
 from pathlib import Path
 
+def _python_cmd_prefix() -> list[str]:
+    # Prefer deterministic repo shim, fallback to current interpreter.
+    # This keeps recap.py usable even if run outside repo root.
+    if Path("scripts/py").exists():
+        return ["./scripts/py"]
+    return [sys.executable]
+
+
 # --- bootstrap PYTHONPATH so `squadvault` is importable when run as a script ---
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SRC_PATH = os.path.join(REPO_ROOT, "src")
@@ -41,7 +49,7 @@ def sh(cmd: list[str]) -> int:
 
 
 def run_script(script_path: str, argv: list[str]) -> int:
-    cmd = [sys.executable, "-u", script_path] + argv
+    cmd = _python_cmd_prefix() + ["-u", script_path] + argv
     return sh(cmd)
 
 
@@ -232,7 +240,7 @@ def cmd_export_assemblies(args: argparse.Namespace) -> int:
     from APPROVED weekly recap artifacts only. Export-only; no canonical writes.
     """
     cmd = [
-        sys.executable,
+        "./scripts/py",
         "-u",
         "src/squadvault/consumers/recap_export_narrative_assemblies_approved.py",
         "--db", args.db,
@@ -242,10 +250,7 @@ def cmd_export_assemblies(args: argparse.Namespace) -> int:
         "--export-dir", args.export_dir,
     ]
 
-    env = dict(**os.environ)
-    env["PYTHONPATH"] = "src" + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
-
-    proc = subprocess.run(cmd, env=env)
+    proc = subprocess.run(cmd)
     return int(proc.returncode)
 
 
@@ -532,7 +537,7 @@ def _maybe_build_writing_room_selection_set_v1(args: argparse.Namespace) -> None
 def cmd_render_week(args: argparse.Namespace) -> int:
     _maybe_build_writing_room_selection_set_v1(args)
     cmd = [
-        sys.executable,
+        "./scripts/py",
         "-u",
         "src/squadvault/consumers/recap_week_render.py",
         "--db", args.db,
@@ -593,7 +598,7 @@ def cmd_approve(args: argparse.Namespace) -> int:
 
 def cmd_withhold(args: argparse.Namespace) -> int:
     cmd = [
-        sys.executable,
+        "./scripts/py",
         "-u",
         "src/squadvault/consumers/recap_artifact_withhold.py",
         "--db", args.db,
