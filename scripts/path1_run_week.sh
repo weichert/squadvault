@@ -36,7 +36,7 @@ set +e
 # MODE=render-only: observe only (render), do not touch lifecycle.
 if [ "${MODE}" = "render-only" ]; then
   set +e
-  PYTHONPATH=src python -u src/squadvault/consumers/recap_week_render.py \
+  ./scripts/py -u src/squadvault/consumers/recap_week_render.py \
     --db "${DB}" \
     --league-id "${LEAGUE_ID}" \
     --season "${SEASON}" \
@@ -53,7 +53,7 @@ if [ "${MODE}" = "render-only" ]; then
 fi
 
 # --- FULL MODE: lifecycle regeneration ---
-PYTHONPATH=src python -u scripts/golden_path_recap_lifecycle.py \
+./scripts/py -u scripts/golden_path_recap_lifecycle.py \
   --db "${DB}" \
   --league-id "${LEAGUE_ID}" \
   --season "${SEASON}" \

@@ -24,7 +24,7 @@ pytest -q Tests
 echo
 
 echo "== Export assemblies =="
-./scripts/recap.py export-assemblies \
+./scripts/recap.sh export-assemblies \
   --db "$DB" \
   --league-id "$LEAGUE_ID" \
   --season "$SEASON" \
