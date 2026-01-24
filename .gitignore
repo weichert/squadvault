@@ -102,3 +102,21 @@ scripts/_patch_*.py
 !scripts/_patch_check_shims_compliance_use_repo_root_paths_v2.py
 !scripts/_patch_recap_sh_single_exec_bash_v1.py
 !scripts/_patch_check_golden_path_recap_default_recap_script_py_v1.py
+
+# Local/one-off patchers (kept out of canonical history)
+scripts/_patch_*.py
+scripts/_diag_*.py
+
+# Canonical patchers (DO track these)
+!scripts/_patch_ops_shims_cwd_polish_oneshot_v1.py
+!scripts/_patch_ops_shims_cwd_independence_v1.py
+!scripts/_patch_prove_golden_path_add_script_dir_repo_root_v1.py
+!scripts/_patch_check_shims_compliance_add_script_dir_repo_root_v1.py
+!scripts/_patch_check_shims_compliance_use_repo_root_paths_v2.py
+!scripts/_patch_recap_sh_single_exec_bash_v1.py
+!scripts/_patch_check_golden_path_recap_default_recap_script_py_v1.py
+
+# Canonical doc lock patchers (DO track these)
+!scripts/_patch_create_minimal_documentation_map_v1.py
+!scripts/_patch_lock_ops_shim_cwd_contract_v1.py
+
