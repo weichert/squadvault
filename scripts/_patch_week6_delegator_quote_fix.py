@@ -1,4 +1,12 @@
-#!/usr/bin/env bash
+from pathlib import Path
+
+p = Path("scripts/run_week6_writing_room_gate.sh")
+s = p.read_text(encoding="utf-8")
+
+if "exec \"$(CDPATH=" not in s and "run_writing_room_gate_v1.sh" not in s:
+    raise SystemExit("ERROR: week6 delegator not in expected state; refusing to patch.")
+
+new = """#!/usr/bin/env bash
 set -euo pipefail
 
 # Delegator: preserved legacy entrypoint for Week 6 Writing Room gate.
@@ -17,3 +25,6 @@ export DB LEAGUE_ID SEASON WEEK_INDEX APPROVED_BY CREATED_AT_UTC
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 exec "${SCRIPT_DIR}/run_writing_room_gate_v1.sh"
+"""
+p.write_text(new, encoding="utf-8")
+print("OK: patched week6 delegator to avoid nested quoting in exec path")
