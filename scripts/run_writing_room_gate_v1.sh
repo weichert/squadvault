@@ -13,6 +13,9 @@ CREATED_AT_UTC="${CREATED_AT_UTC:-2026-01-23T00:00:00Z}"
 WR_OUT="artifacts/writing_room/${LEAGUE_ID}/${SEASON}/week_$(printf '%02d' "${WEEK_INDEX}")/selection_set_v1.json"
 
 echo "=== SquadVault: Writing Room side-artifact gate (v1) ==="
+echo "=== Shim compliance ==="
+bash scripts/check_shims_compliance.sh
+echo
 echo "DB=${DB}"
 echo "League=${LEAGUE_ID} Season=${SEASON} Week=${WEEK_INDEX}"
 echo "ApprovedBy=${APPROVED_BY}"

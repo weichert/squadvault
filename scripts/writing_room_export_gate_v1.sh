@@ -10,6 +10,9 @@ CREATED_AT_UTC="${CREATED_AT_UTC:-2026-01-23T07:45:00Z}"
 OUT_DIR="${OUT_DIR:-/tmp/sv_writing_room_export_gate_v1}"
 
 echo "=== SquadVault: Writing Room export gate (v1) ==="
+echo "=== Shim compliance ==="
+bash scripts/check_shims_compliance.sh
+echo
 echo "DB=${DB}"
 echo "League=${LEAGUE_ID} Season=${SEASON} Week=${WEEK_INDEX}"
 echo "CreatedAtUTC=${CREATED_AT_UTC}"

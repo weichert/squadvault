@@ -11,6 +11,9 @@
 #     --created-at-utc "2026-01-23T07:00:00Z"
 
 set -eu
+echo "=== Shim compliance ==="
+bash scripts/check_shims_compliance.sh
+echo
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 exec "$ROOT/scripts/recap.py" check \
