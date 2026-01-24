@@ -21,6 +21,10 @@ echo
 
 echo "== Tests =="
 pytest -q Tests
+
+echo "== Shim compliance =="
+bash scripts/check_shims_compliance.sh
+echo
 echo
 
 echo "== Export assemblies =="
