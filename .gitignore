@@ -93,9 +93,11 @@ scripts/_patch_*_wip*.py
 
 # Local/one-off patchers (kept out of canonical history)
 scripts/_patch_*.py
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v1.py
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v2.py
+!scripts/_patch_gitignore_pin_whitelist_after_patch_glob_v1.py
 
 # Canonical patchers (DO track these)
-!scripts/_patch_gitignore_whitelist_canonical_patchers_v1.py
 !scripts/_patch_ops_shims_cwd_polish_oneshot_v1.py
 !scripts/_patch_ops_shims_cwd_independence_v1.py
 !scripts/_patch_prove_golden_path_add_script_dir_repo_root_v1.py
