@@ -16,7 +16,7 @@ bash scripts/check_shims_compliance.sh
 echo
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-exec "$ROOT/scripts/recap.py" check \
+exec "$ROOT/scripts/recap.sh" check \
   --db "${DB:-.local_squadvault.sqlite}" \
   --league-id "${LEAGUE_ID:-70985}" \
   --season "${SEASON:-2024}" \

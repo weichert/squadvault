@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 
 : "${HISTTIMEFORMAT:=}"
 : "${size:=}"
@@ -59,7 +62,7 @@ fi
 echo "Selected assembly: $ASSEMBLY"
 
 echo "== NAC harness =="
-python3 Tests/_nac_check_assembly_plain_v1.py "$ASSEMBLY"
+"$REPO_ROOT/scripts/py" "$REPO_ROOT/Tests/_nac_check_assembly_plain_v1.py" "$ASSEMBLY"
 echo
 
 echo "OK: Golden path proof mode passed."

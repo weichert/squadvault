@@ -7,4 +7,8 @@ source "$SCRIPT_DIR/_status.sh"
 
 # Operator CLI entrypoint for weekly recap lifecycle.
 # Delegates to scripts/recap.py (Python CLI) so README can point to ONE stable command.
-PYTHONPATH=src exec python -u scripts/recap.py "$@"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Delegate to the canonical shim (CWD-independent, shim-first).
+exec "${SCRIPT_DIR}/recap.sh" "$@"
