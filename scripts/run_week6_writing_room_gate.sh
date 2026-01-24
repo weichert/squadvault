@@ -21,13 +21,13 @@ echo "WritingRoomOut=${WR_OUT}"
 echo
 
 echo "=== 1) Unit tests (Writing Room + CLI flag) ==="
-PYTHONPATH=src python -m unittest -v \
+./scripts/py -m unittest -v \
   Tests/test_writing_room_intake_v1_intentional_silence.py \
   Tests/test_recap_cli_writing_room_flag.py
 echo
 
 echo "=== 2) Non-destructive golden path check (WITH Writing Room) ==="
-./scripts/recap.py check \
+./scripts/recap.sh check \
   --db "${DB}" \
   --league-id "${LEAGUE_ID}" \
   --season "${SEASON}" \
@@ -37,7 +37,7 @@ echo "=== 2) Non-destructive golden path check (WITH Writing Room) ==="
 echo
 
 echo "=== 3) Golden path lifecycle (WITH Writing Room) ==="
-./scripts/recap.py golden-path \
+./scripts/recap.sh golden-path \
   --db "${DB}" \
   --league-id "${LEAGUE_ID}" \
   --season "${SEASON}" \
