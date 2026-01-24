@@ -677,7 +677,7 @@ def cmd_writing_room_review(args: argparse.Namespace) -> int:
     Human-auditable review of Writing Room SelectionSetV1 JSON.
 
     File-only MVP:
-      ./scripts/recap.py writing-room-review --selection-set <path> [--show-included] [--show-excluded]
+      ./scripts/recap.sh writing-room-review --selection-set <path> [--show-included] [--show-excluded]
     """
     p = Path(args.selection_set)
     if not p.exists():

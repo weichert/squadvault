@@ -198,7 +198,7 @@ def main() -> int:
 
     TARGET.write_text(s2, encoding="utf-8")
     print(f"OK: patched adapter-first gates into {TARGET.relative_to(ROOT)}")
-    print("Next: PYTHONPATH=src python -m py_compile ... and run tests")
+    print("Next: ./scripts/py -m py_compile ... and run tests")
     return 0
 
 if __name__ == "__main__":

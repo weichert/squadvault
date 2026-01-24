@@ -187,7 +187,7 @@ def main() -> int:
     patch_intake()
 
     print("\nNext:")
-    print("  PYTHONPATH=src python -c \"from squadvault.recaps.writing_room.selection_set_schema_v1 import build_signal_groupings_v1; print('import ok')\"")
+    print("  ./scripts/py -c \"from squadvault.recaps.writing_room.selection_set_schema_v1 import build_signal_groupings_v1; print('import ok')\"")
     print("  pytest")
     print("  ./scripts/test.sh")
     return 0
