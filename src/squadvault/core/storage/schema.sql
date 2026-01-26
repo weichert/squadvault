@@ -194,6 +194,10 @@ CREATE TABLE IF NOT EXISTS recap_runs (
   reason TEXT,                       -- optional freeform
   selection_fingerprint TEXT NOT NULL,
 
+
+  -- EAL v1 (Editorial Attunement Layer) persistence
+  editorial_attunement_v1 TEXT,
+
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
