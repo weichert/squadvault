@@ -4,6 +4,10 @@
 # If Lock E changes, update python patchers and this file only.
 set -euo pipefail
 
+# Guard: refuse to run if this wrapper is syntactically broken.
+bash -n "$0" || { echo "ERROR: shell syntax broken: $0" >&2; exit 2; }
+
+
 echo "=== Patch: Apply Lock E final state (Rivalry Chronicle approval pipeline) ==="
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -38,15 +42,39 @@ echo "OK: Lock E final state applied and verified."
 # --- Optional sanity probe (requires sqlite3 + SV_DB_PATH) ---
 if command -v sqlite3 >/dev/null 2>&1 && [[ -n "${SV_DB_PATH:-}" ]]; then
   echo
-  echo "=== Sanity: latest APPROVED RIVALRY_CHRONICLE_V1 has approved_at set ==="
-  sqlite3 "${SV_DB_PATH}" "
-    SELECT week_index, version, state, approved_at, approved_by
-    FROM recap_artifacts
-    WHERE artifact_type='RIVALRY_CHRONICLE_V1'
-      AND state='APPROVED'
-    ORDER BY week_index DESC, version DESC
-    LIMIT 1;
-  " || true
+# LOCK_E_APPLY_WRAPPER_TINY_POLISH_V1
+
+# Optional sqlite sanity probe (set SV_DB_PATH=/path/to.db)
+if [[ -n "${SV_DB_PATH:-}" ]]; then
+  echo
+  echo "=== Sanity: latest APPROVED RIVALRY_CHRONICLE_V1 approved_at ==="
+  row="$(
+    sqlite3 -separator '|' "$SV_DB_PATH" <<'SQL'
+SELECT week_index, version, state, approved_at, approved_by
+FROM recap_artifacts
+WHERE artifact_type='RIVALRY_CHRONICLE_V1' AND state='APPROVED'
+ORDER BY week_index DESC, version DESC
+LIMIT 1;
+SQL
+  )"
+
+  if [[ -z "$row" ]]; then
+    echo "ERROR: no APPROVED RIVALRY_CHRONICLE_V1 artifacts found"
+  else
+    IFS='|' read -r week version state approved_at approved_by <<<"$row"
+    if [[ -n "${approved_at:-}" ]]; then
+      echo "OK: latest APPROVED RIVALRY_CHRONICLE_V1 has approved_at set"
+      echo "  week_index=${week} version=${version} approved_at=${approved_at} approved_by=${approved_by}"
+    else
+      echo "ERROR: latest APPROVED RIVALRY_CHRONICLE_V1 has NULL approved_at"
+      echo "  week_index=${week} version=${version} approved_by=${approved_by}"
+    fi
+  fi
 fi
 
-# LOCK_E_APPLY_WRAPPER_TINY_POLISH_V1
+# LOCK_E_SQLITE_PROBE_PRETTY_V1C
+
+# LOCK_E_SQLITE_PROBE_FIXUP_V1
+
+# PATCH: close dangling block(s) (bash -n fixup)
+fi
