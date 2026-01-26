@@ -4,7 +4,7 @@ import sqlite3
 from dataclasses import dataclass
 from squadvault.core_engine.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
 from typing import Optional, Tuple
-
+from squadvault.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
 from squadvault.core.recaps.render.render_recap_text_v1 import render_recap_text_from_path_v1
 from squadvault.core.recaps.recap_runs import (
     get_recap_run_state,
@@ -395,8 +395,16 @@ def generate_weekly_recap_draft(
         raise SystemExit("No recap_runs row found for that week.")
 
     path = _get_active_artifact_path(db_path, league_id, season, week_index)
-    rendered_text = render_recap_text_from_path_v1(path)
+    # --- EAL v1 writer consumption boundary (read-only) ---
+    eal_directives = load_eal_directives_v1(
+        db_path=db_path,
+        recap_run_id=state,
+    )
 
+    rendered_text = render_recap_text_from_path_v1(
+        path,
+        eal_directives=eal_directives,
+    )
     selection_fingerprint, window_start, window_end = _get_recap_run_trace(
         db_path, league_id, season, week_index
     )

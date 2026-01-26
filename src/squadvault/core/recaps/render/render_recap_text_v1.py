@@ -1,4 +1,6 @@
 from __future__ import annotations
+from typing import Optional
+from squadvault.eal.consume_v1 import EALDirectivesV1
 
 import json
 from typing import Any, Dict
@@ -104,7 +106,15 @@ def render_recap_text_v1(artifact: Dict[str, Any], *, voice_id: str = "neutral")
     return _apply_voice_framing_v1(voice_id=voice_id, rendered_text=text)
 
 
-def render_recap_text_from_path_v1(path: str, *, voice_id: str = "neutral") -> str:
+
+def render_recap_text_from_path_v1(
+    path: str,
+    *,
+    voice_id: str = "neutral",
+    eal_directives: Optional[EALDirectivesV1] = None,
+) -> str:
+    _ = eal_directives  # EAL v1: accepted but not applied at render layer
     with open(path, "r", encoding="utf-8") as f:
         artifact = json.load(f)
     return render_recap_text_v1(artifact, voice_id=voice_id)
+
