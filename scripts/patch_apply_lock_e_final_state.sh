@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# CANONICAL ENTRYPOINT — DO NOT WRAP
+# All Lock E patchers are invoked directly here.
+# If Lock E changes, update python patchers and this file only.
 set -euo pipefail
 
 echo "=== Patch: Apply Lock E final state (Rivalry Chronicle approval pipeline) ==="
@@ -32,3 +35,18 @@ pytest -q Tests/test_rivalry_chronicle_approve_idempotency_v1.py -q
 
 echo
 echo "OK: Lock E final state applied and verified."
+# --- Optional sanity probe (requires sqlite3 + SV_DB_PATH) ---
+if command -v sqlite3 >/dev/null 2>&1 && [[ -n "${SV_DB_PATH:-}" ]]; then
+  echo
+  echo "=== Sanity: latest APPROVED RIVALRY_CHRONICLE_V1 has approved_at set ==="
+  sqlite3 "${SV_DB_PATH}" "
+    SELECT week_index, version, state, approved_at, approved_by
+    FROM recap_artifacts
+    WHERE artifact_type='RIVALRY_CHRONICLE_V1'
+      AND state='APPROVED'
+    ORDER BY week_index DESC, version DESC
+    LIMIT 1;
+  " || true
+fi
+
+# LOCK_E_APPLY_WRAPPER_TINY_POLISH_V1
