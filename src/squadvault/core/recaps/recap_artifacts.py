@@ -280,6 +280,7 @@ def approve_recap_artifact(
     week_index: int,
     version: int,
     approved_by: str,
+    artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> None:
     con = sqlite3.connect(db_path)
     try:
@@ -304,7 +305,7 @@ def approve_recap_artifact(
             WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND version=?
               AND state='DRAFT'
             """,
-            (approved_by, league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
+            (approved_by, league_id, season, week_index, artifact_type, version),
         )
         if cur.rowcount != 1:
             raise RuntimeError("Approve failed (state not DRAFT or row missing).")
@@ -320,6 +321,7 @@ def withhold_recap_artifact(
     week_index: int,
     version: int,
     withheld_reason: str,
+    artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> None:
     con = sqlite3.connect(db_path)
     try:
@@ -345,7 +347,7 @@ def withhold_recap_artifact(
             WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND version=?
               AND state='DRAFT'
             """,
-            (withheld_reason_norm, league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
+            (withheld_reason_norm, league_id, season, week_index, artifact_type, version),
         )
         if cur.rowcount != 1:
             raise RuntimeError("Withhold failed (state not DRAFT or row missing).")
