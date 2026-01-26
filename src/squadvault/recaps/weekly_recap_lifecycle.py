@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
+from squadvault.core_engine.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
 from typing import Optional, Tuple
 
 from squadvault.core.recaps.render.render_recap_text_v1 import render_recap_text_from_path_v1
@@ -73,31 +74,107 @@ def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_in
     return str(row[0])
 
 
+# SV_FIX_GET_RECAP_RUN_TRACE_OPTIONAL_EAL_RETURN_V1
 def _get_recap_run_trace(
-    db_path: str, league_id: str, season: int, week_index: int
-) -> tuple[str, str | None, str | None]:
-    """
-    Reads the selection fingerprint + window bounds from recap_runs.
-    This is the trace linkage between (week selection) and (artifact versions).
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    include_editorial: bool = False,
+) -> tuple[str, str | None, str | None] | tuple[str, str | None, str | None, str | None]:
+    """Reads selection_fingerprint + window bounds from recap_runs.
+
+    If include_editorial=True:
+      - returns (fp, window_start, window_end, editorial_attunement_v1_or_None)
+      - if recap_runs lacks the column, the editorial value is None
+
+    If include_editorial=False:
+      - returns (fp, window_start, window_end)
     """
     con = sqlite3.connect(db_path)
     try:
-        row = con.execute(
-            """
-            SELECT selection_fingerprint, window_start, window_end
-            FROM recap_runs
-            WHERE league_id=? AND season=? AND week_index=?
-            """,
-            (league_id, season, week_index),
-        ).fetchone()
+        if include_editorial:
+            cols = {str(r[1]) for r in con.execute("PRAGMA table_info(recap_runs)").fetchall()}
+            has_eal = "editorial_attunement_v1" in cols
+
+            if has_eal:
+                row = con.execute(
+                    """
+                    SELECT selection_fingerprint, window_start, window_end, editorial_attunement_v1
+                    FROM recap_runs
+                    WHERE league_id=? AND season=? AND week_index=?
+                    """,
+                    (league_id, season, week_index),
+                ).fetchone()
+            else:
+                row = con.execute(
+                    """
+                    SELECT selection_fingerprint, window_start, window_end
+                    FROM recap_runs
+                    WHERE league_id=? AND season=? AND week_index=?
+                    """,
+                    (league_id, season, week_index),
+                ).fetchone()
+
+                if row:
+                    row = (row[0], row[1], row[2], None)
+
+        else:
+            row = con.execute(
+                """
+                SELECT selection_fingerprint, window_start, window_end
+                FROM recap_runs
+                WHERE league_id=? AND season=? AND week_index=?
+                """,
+                (league_id, season, week_index),
+            ).fetchone()
     finally:
         con.close()
 
     if not row or not row[0]:
         raise SystemExit("No recap_runs row found (missing selection_fingerprint).")
 
-    return str(row[0]), (str(row[1]) if row[1] else None), (str(row[2]) if row[2] else None)
+    fp = str(row[0])
+    ws = (str(row[1]) if row[1] else None)
+    we = (str(row[2]) if row[2] else None)
 
+    if include_editorial:
+        eal = (str(row[3]) if row[3] else None)
+        return fp, ws, we, eal
+
+    return fp, ws, we
+
+def _persist_editorial_attunement_v1_to_recap_runs(
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    directive: str,
+) -> None:
+    """Persist EAL directive into recap_runs in a runtime-safe, additive way.
+
+    - If recap_runs lacks editorial_attunement_v1, add the column.
+    - Update all rows for (league_id, season, week_index). Safe for both
+      one-row-per-week and multi-row-per-week schemas.
+    """
+    directive = (directive or "").strip()
+    if not directive:
+        return
+
+    con = sqlite3.connect(db_path)
+    try:
+        cur = con.execute("PRAGMA table_info(recap_runs)")
+        cols = {str(r[1]) for r in cur.fetchall()}  # (cid, name, type, notnull, dflt_value, pk)
+        if "editorial_attunement_v1" not in cols:
+            con.execute("ALTER TABLE recap_runs ADD COLUMN editorial_attunement_v1 TEXT")
+
+        con.execute(
+            "UPDATE recap_runs SET editorial_attunement_v1=? WHERE league_id=? AND season=? AND week_index=?",
+            (directive, league_id, season, week_index),
+        )
+        con.commit()
+    finally:
+        con.close()
 
 def _create_recap_artifact_draft_always_new(
     db_path: str,
@@ -323,6 +400,33 @@ def generate_weekly_recap_draft(
     selection_fingerprint, window_start, window_end = _get_recap_run_trace(
         db_path, league_id, season, week_index
     )
+
+    # SV_EAL_V1_BEGIN: Editorial Attunement Layer v1 (restraint-only, metadata-only)
+    # NOTE: This must not modify selection, ordering, or facts. It only constrains expression.
+    included_count = None
+    # Prefer deterministic locals if present; otherwise remain None.
+    for _name in ('events_selected', 'selected_count', 'n_selected', 'num_selected'):
+        if _name in locals() and isinstance(locals()[_name], int):
+            included_count = int(locals()[_name])
+            break
+    meta = EALMeta(
+        has_selection_set=True,
+        has_window=True,
+        included_count=included_count,
+        excluded_count=None,
+    )
+    editorial_attunement_v1 = evaluate_editorial_attunement_v1(meta)
+
+
+    # SV_EAL_RECAP_RUNS_PERSIST_V1_CALL: persist directive into recap_runs (additive metadata)
+    _persist_editorial_attunement_v1_to_recap_runs(
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
+        week_index=week_index,
+        directive=editorial_attunement_v1,
+    )
+    # SV_EAL_V1_END
 
     prev_approved = latest_approved_version(db_path, league_id, season, week_index)
 
