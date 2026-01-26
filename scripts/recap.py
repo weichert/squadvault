@@ -798,6 +798,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fail fast unless the latest WEEKLY_RECAP artifact is in DRAFT state.",
     )
     sp.set_defaults(fn=cmd_approve)
+    # approve-rivalry-chronicle
+    sp = sub.add_parser("approve-rivalry-chronicle", help="Approve latest Rivalry Chronicle v1 draft (lifecycle-aligned)")
+    sp.add_argument("--db", required=True)
+    sp.add_argument("--league-id", required=True)
+    sp.add_argument("--season", type=int, required=True)
+    sp.add_argument("--week-index", type=int, required=True, help="Storage week_index anchor (use start_week)")
+    sp.add_argument("--approved-by", dest="approved_by", required=True)
+    sp.add_argument(
+        "--require-draft",
+        action="store_true",
+        help="Fail fast unless the latest RIVALRY_CHRONICLE_V1 artifact is in DRAFT state.",
+    )
+    sp.set_defaults(fn=_cmd_approve_rivalry_chronicle_v1)
+
+
+
+
+    # rivalry-chronicle
+    sp = sub.add_parser("rivalry-chronicle", help="Generate Rivalry Chronicle v1 (draft; lifecycle-aligned)")
+    sp.add_argument("--db", required=True, help="Path to SQLite db")
+    sp.add_argument("--league-id", type=int, required=True)
+    sp.add_argument("--season", type=int, required=True)
+    sp.add_argument("--team-a-id", type=int, required=True)
+    sp.add_argument("--team-b-id", type=int, required=True)
+    sp.add_argument("--start-week", type=int, required=True, help="Start week_index (inclusive)")
+    sp.add_argument("--end-week", type=int, required=True, help="End week_index (inclusive)")
+    sp.add_argument("--requested-at-utc", default=None, help="Optional: metadata only (ISO-8601 UTC)")
+    sp.add_argument("--out", default=None, help="Optional: write draft payload JSON to this path")
+    sp.set_defaults(fn=_cmd_rivalry_chronicle_v1)
+    # export-assemblies
 
     # export-assemblies
     sp = sub.add_parser(
@@ -956,6 +986,35 @@ def build_parser() -> argparse.ArgumentParser:
 
     return p
 
+
+def _cmd_rivalry_chronicle_v1(args) -> int:
+    from squadvault.consumers.rivalry_chronicle_generate_v1 import main as consumer_main
+    argv = []
+    argv += ["--db", str(args.db)]
+    argv += ["--league-id", str(args.league_id)]
+    argv += ["--season", str(args.season)]
+    argv += ["--team-a-id", str(args.team_a_id)]
+    argv += ["--team-b-id", str(args.team_b_id)]
+    argv += ["--start-week", str(args.start_week)]
+    argv += ["--end-week", str(args.end_week)]
+    if getattr(args, "requested_at_utc", None):
+        argv += ["--requested-at-utc", str(args.requested_at_utc)]
+    if getattr(args, "out", None):
+        argv += ["--out", str(args.out)]
+    return consumer_main(argv)
+
+def _cmd_approve_rivalry_chronicle_v1(args):
+    from squadvault.consumers.rivalry_chronicle_approve_v1 import main as consumer_main
+    argv = [
+        "--db", str(args.db),
+        "--league-id", str(args.league_id),
+        "--season", str(args.season),
+        "--week-index", str(args.week_index),
+        "--approved-by", str(args.approved_by),
+    ]
+    if getattr(args, "require_draft", False):
+        argv.append("--require-draft")
+    return int(consumer_main(argv))
 
 def main() -> int:
     p = build_parser()

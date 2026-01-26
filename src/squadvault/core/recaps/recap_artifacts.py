@@ -4,6 +4,8 @@ from typing import Optional, Tuple
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 
+ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1 = "RIVALRY_CHRONICLE_V1"
+
 # Artifact state machine: DRAFT | APPROVED | WITHHELD | SUPERSEDED
 _ALLOWED_TRANSITIONS = {
     ("DRAFT", "APPROVED"),
@@ -44,8 +46,7 @@ def _latest_artifact_row_any_state(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int,
-) -> Optional[sqlite3.Row]:
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[sqlite3.Row]:
     return con.execute(
         """
         SELECT version, state, selection_fingerprint
@@ -54,7 +55,7 @@ def _latest_artifact_row_any_state(
         ORDER BY version DESC
         LIMIT 1
         """,
-        (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP),
+        (league_id, season, week_index, artifact_type),
     ).fetchone()
 
 
@@ -62,9 +63,8 @@ def _latest_artifact_version_any_state(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int,
-) -> Optional[int]:
-    row = _latest_artifact_row_any_state(con, league_id, season, week_index)
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[int]:
+    row = _latest_artifact_row_any_state(con, league_id, season, week_index, artifact_type)
     return int(row[0]) if row else None
 
 
@@ -72,9 +72,8 @@ def _latest_artifact_fingerprint_any_state(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int,
-) -> Optional[str]:
-    row = _latest_artifact_row_any_state(con, league_id, season, week_index)
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[str]:
+    row = _latest_artifact_row_any_state(con, league_id, season, week_index, artifact_type)
     if not row:
         return None
     fp = row[2]
@@ -86,6 +85,7 @@ def latest_approved_version(
     league_id: str,
     season: int,
     week_index: int,
+    artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> Optional[int]:
     con = sqlite3.connect(db_path)
     try:
@@ -98,7 +98,7 @@ def latest_approved_version(
             ORDER BY version DESC
             LIMIT 1
             """,
-            (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP),
+            (league_id, season, week_index, artifact_type),
         ).fetchone()
         return int(row[0]) if row else None
     finally:
@@ -110,6 +110,7 @@ def _latest_approved_fingerprint(
     league_id: str,
     season: int,
     week_index: int,
+    artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> Optional[str]:
     row = con.execute(
         """
@@ -120,7 +121,7 @@ def _latest_approved_fingerprint(
         ORDER BY version DESC
         LIMIT 1
         """,
-        (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP),
+        (league_id, season, week_index, artifact_type),
     ).fetchone()
     return str(row[0]) if row and row[0] else None
 
@@ -129,8 +130,7 @@ def _latest_approved_version_in_conn(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int,
-) -> Optional[int]:
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[int]:
     row = con.execute(
         """
         SELECT version
@@ -140,7 +140,7 @@ def _latest_approved_version_in_conn(
         ORDER BY version DESC
         LIMIT 1
         """,
-        (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP),
+        (league_id, season, week_index, artifact_type),
     ).fetchone()
     return int(row[0]) if row else None
 
@@ -151,6 +151,7 @@ def _find_existing_draft_version(
     season: int,
     week_index: int,
     selection_fingerprint: str,
+    artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> Optional[int]:
     """
     Idempotency helper: if a DRAFT already exists for this exact fingerprint,
@@ -166,7 +167,7 @@ def _find_existing_draft_version(
         ORDER BY version DESC
         LIMIT 1
         """,
-        (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, selection_fingerprint),
+        (league_id, season, week_index, artifact_type, selection_fingerprint),
     ).fetchone()
     return int(row[0]) if row else None
 
@@ -175,15 +176,14 @@ def _next_version(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int,
-) -> int:
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> int:
     row = con.execute(
         """
         SELECT COALESCE(MAX(version), 0)
         FROM recap_artifacts
         WHERE league_id=? AND season=? AND week_index=? AND artifact_type=?
         """,
-        (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP),
+        (league_id, season, week_index, artifact_type),
     ).fetchone()
     return int(row[0]) + 1
 
@@ -197,6 +197,7 @@ def create_recap_artifact_draft_idempotent(
     window_start: Optional[str],
     window_end: Optional[str],
     rendered_text: str,
+    artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
     created_by: str = "system",
     supersedes_version: Optional[int] = None,
     force: bool = False,
@@ -218,29 +219,29 @@ def create_recap_artifact_draft_idempotent(
     con = sqlite3.connect(db_path)
     try:
         # Case (1): latest artifact (ANY state) already matches fingerprint => no-op (unless forced).
-        latest_fp = _latest_artifact_fingerprint_any_state(con, league_id, season, week_index)
+        latest_fp = _latest_artifact_fingerprint_any_state(con, league_id, season, week_index, artifact_type)
         if (not force) and (latest_fp is not None) and (latest_fp == selection_fingerprint):
-            latest_v = _latest_artifact_version_any_state(con, league_id, season, week_index)
+            latest_v = _latest_artifact_version_any_state(con, league_id, season, week_index, artifact_type)
             if latest_v is not None:
                 return latest_v, False
 
         # Case (3): already approved with same fingerprint => do nothing (prevents version spam).
-        approved_fp = _latest_approved_fingerprint(con, league_id, season, week_index)
+        approved_fp = _latest_approved_fingerprint(con, league_id, season, week_index, artifact_type)
         if (not force) and (approved_fp is not None) and (approved_fp == selection_fingerprint):
-            approved_v = _latest_approved_version_in_conn(con, league_id, season, week_index)
+            approved_v = _latest_approved_version_in_conn(con, league_id, season, week_index, artifact_type)
             if approved_v is not None:
                 return approved_v, False
 
         # Case (2): draft already exists for this fingerprint => idempotent.
-        existing = _find_existing_draft_version(con, league_id, season, week_index, selection_fingerprint)
+        existing = _find_existing_draft_version(con, league_id, season, week_index, selection_fingerprint, artifact_type)
         if existing is not None:
             return existing, False
 
         # Default supersedes_version to latest version (ANY state) if not provided.
         if supersedes_version is None:
-            supersedes_version = _latest_artifact_version_any_state(con, league_id, season, week_index)
+            supersedes_version = _latest_artifact_version_any_state(con, league_id, season, week_index, artifact_type)
 
-        v = _next_version(con, league_id, season, week_index)
+        v = _next_version(con, league_id, season, week_index, artifact_type)
         con.execute(
             f"""
             INSERT INTO recap_artifacts (
@@ -256,7 +257,7 @@ def create_recap_artifact_draft_idempotent(
                 league_id,
                 season,
                 week_index,
-                ARTIFACT_TYPE_WEEKLY_RECAP,
+                artifact_type,
                 v,
                 selection_fingerprint,
                 window_start,
@@ -288,7 +289,7 @@ def approve_recap_artifact(
             FROM recap_artifacts
             WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND version=?
             """,
-            (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
+            (league_id, season, week_index, artifact_type, version),
         ).fetchone()
         if not row:
             raise RuntimeError("Artifact not found to approve.")
@@ -328,7 +329,7 @@ def withhold_recap_artifact(
             FROM recap_artifacts
             WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND version=?
             """,
-            (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
+            (league_id, season, week_index, artifact_type, version),
         ).fetchone()
         if not row:
             raise RuntimeError("Artifact not found to withhold.")
@@ -368,7 +369,7 @@ def supersede_approved_recap_artifact(
             FROM recap_artifacts
             WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND version=?
             """,
-            (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
+            (league_id, season, week_index, artifact_type, version),
         ).fetchone()
         if not row:
             raise RuntimeError("Artifact not found to supersede.")
@@ -381,7 +382,7 @@ def supersede_approved_recap_artifact(
             WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND version=?
               AND state='APPROVED'
             """,
-            (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
+            (league_id, season, week_index, artifact_type, version),
         )
         if cur.rowcount != 1:
             raise RuntimeError("Supersede failed (state not APPROVED or row missing).")
