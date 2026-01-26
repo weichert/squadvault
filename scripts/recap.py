@@ -805,12 +805,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--season", type=int, required=True)
     sp.add_argument("--week-index", type=int, required=True, help="Storage week_index anchor (use start_week)")
     sp.add_argument("--approved-by", dest="approved_by", required=True)
+    sp.add_argument("--approved-at-utc", dest="approved_at_utc", default=None)
     sp.add_argument(
         "--require-draft",
         action="store_true",
         help="Fail fast unless the latest RIVALRY_CHRONICLE_V1 artifact is in DRAFT state.",
     )
     sp.set_defaults(fn=_cmd_approve_rivalry_chronicle_v1)
+    # APPROVE_RIVALRY_CHRONICLE_APPROVED_AT_UTC_V1
 
 
 
@@ -1012,6 +1014,9 @@ def _cmd_approve_rivalry_chronicle_v1(args):
         "--week-index", str(args.week_index),
         "--approved-by", str(args.approved_by),
     ]
+    if getattr(args, "approved_at_utc", None):
+        argv += ["--approved-at-utc", str(args.approved_at_utc)]
+    # APPROVE_RIVALRY_CHRONICLE_FORWARD_APPROVED_AT_UTC_V2
     if getattr(args, "require_draft", False):
         argv.append("--require-draft")
     return int(consumer_main(argv))

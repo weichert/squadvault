@@ -280,8 +280,14 @@ def approve_recap_artifact(
     week_index: int,
     version: int,
     approved_by: str,
-    artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
+    approved_at_utc: Optional[str] = None, artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> None:
+    # CORE_APPROVE_RECAP_ARTIFACT_APPROVED_AT_UTC_V1
+    # If approved_at_utc is provided, persist it. Otherwise preserve existing 'now' behavior.
+    effective_approved_at = approved_at_utc
+    if effective_approved_at is None:
+        from datetime import datetime, timezone
+        effective_approved_at = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     con = sqlite3.connect(db_path)
     try:
         row = con.execute(
@@ -300,15 +306,34 @@ def approve_recap_artifact(
             f"""
             UPDATE recap_artifacts
             SET state='APPROVED',
-                approved_at={_utc_now_sql()},
+                approved_at = ?,
                 approved_by=?
             WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND version=?
               AND state='DRAFT'
             """,
-            (approved_by, league_id, season, week_index, artifact_type, version),
+            (effective_approved_at, approved_by, league_id, season, week_index, artifact_type, version),
         )
         if cur.rowcount != 1:
             raise RuntimeError("Approve failed (state not DRAFT or row missing).")
+
+
+        # CORE_APPROVE_RECAP_ARTIFACT_FORCE_APPROVED_AT_V3C
+        # Force-write approved_at (legacy approval paths did not always persist it).
+        con.execute(
+            """
+            UPDATE recap_artifacts
+            SET approved_at = ?
+            WHERE league_id=? AND season=? AND week_index=? AND version=? AND artifact_type=?
+            """,
+            (
+                effective_approved_at,
+                str(league_id),
+                int(season),
+                int(week_index),
+                int(version),
+                str(artifact_type),
+            ),
+        )
         con.commit()
     finally:
         con.close()
@@ -391,3 +416,9 @@ def supersede_approved_recap_artifact(
         con.commit()
     finally:
         con.close()
+
+# CORE_APPROVE_RECAP_ARTIFACT_APPROVED_AT_UTC_V1
+
+# CORE_APPROVE_RECAP_ARTIFACT_FORCE_APPROVED_AT_V3B
+
+# CORE_APPROVE_RECAP_ARTIFACT_FORCE_APPROVED_AT_V3C

@@ -54,6 +54,32 @@ def _latest_version_and_state(
     return int(row["version"]), str(row["state"] or "")
 
 
+
+# LOCK_E_APPROVE_LATEST_DRAFT_V3
+def _latest_draft_version(
+    con: sqlite3.Connection,
+    *,
+    league_id: int,
+    season: int,
+    week_index: int,
+    artifact_type: str,
+) -> Optional[int]:
+    """
+    Return latest DRAFT version for this key. If none exists, return None.
+    """
+    row = con.execute(
+        """
+        SELECT version
+        FROM recap_artifacts
+        WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND state='DRAFT'
+        ORDER BY version DESC
+        LIMIT 1
+        """,
+        (str(league_id), int(season), int(week_index), str(artifact_type)),
+    ).fetchone()
+    if not row:
+        return None
+    return int(row["version"])
 def _find_approve_primitive() -> Callable[..., Any]:
     # Prefer explicit names, but fall back to "any callable with approve in the name".
     from squadvault.core.recaps import recap_artifacts as ra
@@ -86,9 +112,8 @@ class ApproveRequest:
     season: int
     week_index: int
     approved_by: str
-    require_draft: bool
-
-
+    approved_at_utc: Optional[str] = None
+    require_draft: bool = False
 def approve_latest(req: ApproveRequest) -> int:
     con = _db_connect(req.db)
     try:
@@ -106,31 +131,91 @@ def approve_latest(req: ApproveRequest) -> int:
             )
             return 2
 
-        if req.require_draft and st != "DRAFT":
+# LOCK_E_IDEMPOTENT_IF_APPROVED_V7
+        # Idempotency: if any APPROVED exists for this key, treat as success and do nothing.
+        # This prevents retro-approving older drafts after an approval already exists.
+        row = con.execute(
+            """
+            SELECT 1
+            FROM recap_artifacts
+            WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND state='APPROVED'
+            LIMIT 1
+            """,
+            (str(req.league_id), int(req.season), int(req.week_index), str(ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1)),
+        ).fetchone()
+        if row:
             print(
-                f"ERROR: require-draft set, but latest is state={st!r} "
-                f"for v{v} ({ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1})."
+                f"rivalry_chronicle_approve_v1: OK (idempotent; already approved; artifact_type={ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1})"
             )
-            return 2
+            return 0
 
-        fn = _find_approve_primitive()
 
-        # Call core approve primitive with signature-filtered kwargs.
-        # We pass both common naming variants to survive drift.
-        _sv_call_with_signature_filter(
-            fn,
-            con=con,
-            conn=con,
+        draft_v = _latest_draft_version(
+            con,
             league_id=req.league_id,
             season=req.season,
             week_index=req.week_index,
             artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
-            version=v,
-            approved_by=req.approved_by,
-            approved_at=None,  # allow core default/now semantics
         )
 
-        print(f"rivalry_chronicle_approve_v1: OK (approved v{v}; artifact_type={ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1})")
+        if draft_v is None:
+            if req.require_draft:
+                print(
+                    f"ERROR: require-draft set, but no DRAFT exists "
+                    f"for v_latest={v} state_latest={st!r} "
+                    f"({ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1})."
+                )
+                return 2
+
+            # Idempotency: if an APPROVED exists, treat as success.
+            row = con.execute(
+                """
+                SELECT 1
+                FROM recap_artifacts
+                WHERE league_id=? AND season=? AND week_index=? AND artifact_type=? AND state='APPROVED'
+                LIMIT 1
+                """,
+                (str(req.league_id), int(req.season), int(req.week_index), str(ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1)),
+            ).fetchone()
+            if row:
+                print(
+                    f"rivalry_chronicle_approve_v1: OK (idempotent; already approved; artifact_type={ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1})"
+                )
+                return 0
+
+            print(
+                f"ERROR: No DRAFT exists and no APPROVED exists "
+                f"for (league_id={req.league_id} season={req.season} week_index={req.week_index}) "
+                f"artifact_type={ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1}."
+            )
+            return 2
+        fn = _find_approve_primitive()
+
+        # Call core approve primitive with signature-filtered kwargs.
+        # We pass both common naming variants to survive drift.
+        # LOCK_E_DB_PATH_COMPAT_V6
+        sig = inspect.signature(fn)
+        params = set(sig.parameters.keys())
+        common = dict(
+            league_id=req.league_id,
+            season=req.season,
+            week_index=req.week_index,
+            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
+            version=draft_v,
+            approved_by=req.approved_by,
+            approved_at=req.approved_at_utc,
+            approved_at_utc=req.approved_at_utc,
+        )
+        # Some core primitives require db_path (and open their own connection),
+        # others accept an existing connection via con/conn. Support both.
+        if "db_path" in params:
+            _sv_call_with_signature_filter(fn, db_path=req.db, **common)
+        elif "db" in params:
+            _sv_call_with_signature_filter(fn, db=req.db, **common)
+        else:
+            _sv_call_with_signature_filter(fn, con=con, conn=con, **common)
+
+        print(f"rivalry_chronicle_approve_v1: OK (approved v{draft_v}; artifact_type={ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1})")
         return 0
 
     finally:
@@ -144,6 +229,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--season", type=int, required=True)
     ap.add_argument("--week-index", type=int, required=True, help="Storage week_index anchor (use start_week).")
     ap.add_argument("--approved-by", dest="approved_by", required=True)
+    ap.add_argument("--approved-at-utc", dest="approved_at_utc", default=None)
     ap.add_argument("--require-draft", action="store_true")
     args = ap.parse_args(argv)
 
@@ -153,6 +239,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         season=int(args.season),
         week_index=int(args.week_index),
         approved_by=str(args.approved_by),
+        approved_at_utc=getattr(args, 'approved_at_utc', None),
         require_draft=bool(args.require_draft),
     )
     return int(approve_latest(req))
@@ -160,3 +247,9 @@ def main(argv: Optional[list[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# LOCK_E_APPROVED_AT_UTC_OPTIONAL_V8
+
+# LOCK_E_DATACLASS_DEFAULT_ORDER_FIX_V9
+
+# LOCK_E_PLUMB_ARGS_APPROVED_AT_UTC_INTO_REQUEST_V11
