@@ -5,8 +5,8 @@ import argparse
 import os
 import sys
 
+from squadvault.chronicle.generate_rivalry_chronicle_v1 import generate_rivalry_chronicle_v1
 from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
-from squadvault.chronicle.persist_rivalry_chronicle_v1 import persist_rivalry_chronicle_v1
 
 
 def _debug(msg: str) -> None:
@@ -15,7 +15,7 @@ def _debug(msg: str) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Generate + persist Rivalry Chronicle v1 (APPROVED recaps only).")
+    ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", type=int, required=True)
     ap.add_argument("--season", type=int, required=True)
@@ -28,9 +28,10 @@ def main() -> int:
         "--missing-weeks-policy",
         choices=[p.value for p in MissingWeeksPolicy],
         default=MissingWeeksPolicy.REFUSE.value,
-        help="refuse (default) OR acknowledge_missing",
     )
+
     ap.add_argument("--created-at-utc", required=True)
+    ap.add_argument("--out", required=True)
 
     args = ap.parse_args()
 
@@ -42,7 +43,7 @@ def main() -> int:
         week_indices = tuple(int(x.strip()) for x in args.weeks.split(",") if x.strip() != "")
         week_range = None
 
-    res = persist_rivalry_chronicle_v1(
+    res = generate_rivalry_chronicle_v1(
         db_path=args.db,
         league_id=args.league_id,
         season=args.season,
@@ -52,11 +53,10 @@ def main() -> int:
         created_at_utc=args.created_at_utc,
     )
 
-    # Quiet-by-default: no stdout on success.
-    _debug(
-        f"OK: {res.artifact_type} league={res.league_id} season={res.season} "
-        f"anchor_week={res.anchor_week_index} v={res.version} created_new={res.created_new}"
-    )
+    with open(args.out, "w", encoding="utf-8") as f:
+        f.write(res.text)
+
+    _debug(f"Wrote: {args.out} (missing_weeks={list(res.missing_weeks)})")
     return 0
 
 

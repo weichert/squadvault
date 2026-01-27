@@ -15,7 +15,7 @@ def _debug(msg: str) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Generate + persist Rivalry Chronicle v1 (APPROVED recaps only).")
+    ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", type=int, required=True)
     ap.add_argument("--season", type=int, required=True)
@@ -28,8 +28,8 @@ def main() -> int:
         "--missing-weeks-policy",
         choices=[p.value for p in MissingWeeksPolicy],
         default=MissingWeeksPolicy.REFUSE.value,
-        help="refuse (default) OR acknowledge_missing",
     )
+
     ap.add_argument("--created-at-utc", required=True)
 
     args = ap.parse_args()
@@ -52,9 +52,8 @@ def main() -> int:
         created_at_utc=args.created_at_utc,
     )
 
-    # Quiet-by-default: no stdout on success.
     _debug(
-        f"OK: {res.artifact_type} league={res.league_id} season={res.season} "
+        f"Persisted {res.artifact_type} league={res.league_id} season={res.season} "
         f"anchor_week={res.anchor_week_index} v={res.version} created_new={res.created_new}"
     )
     return 0
