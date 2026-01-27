@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Source this from repo root:  source scripts/dev_env.sh
-set -euo pipefail
+# SV_PATCH_DEV_ENV_V1: source-from-anywhere header
+# Source this from anywhere inside the repo:
+#   source /path/to/repo/scripts/dev_env.sh
 
 export REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PYTHONPATH="${PYTHONPATH:-$REPO_ROOT/src}"

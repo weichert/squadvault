@@ -6,6 +6,7 @@ import os
 import sys
 
 from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
+from squadvault.chronicle.generate_rivalry_chronicle_v1 import generate_rivalry_chronicle_v1
 from squadvault.chronicle.persist_rivalry_chronicle_v1 import persist_rivalry_chronicle_v1
 
 
@@ -42,15 +43,38 @@ def main() -> int:
         week_indices = tuple(int(x.strip()) for x in args.weeks.split(",") if x.strip() != "")
         week_range = None
 
-    res = persist_rivalry_chronicle_v1(
+    # SV_PATCH_V4: chronicle consumer generates gen.text before persist
+    # SV_PATCH_V4_1: pass exactly one of week_indices/week_range to generator
+    # SV_PATCH_RIVALRY_CHRONICLE_GENERATE_V1: generate text, validate non-empty, pass persist kwargs
+    gen_kwargs = dict(
+        db_path=args.db,
+        league_id=int(args.league_id),
+        season=int(args.season),
+        missing_weeks_policy=MissingWeeksPolicy(args.missing_weeks_policy),
+        created_at_utc=str(args.created_at_utc),
+    )
+    if week_indices is not None:
+        gen_kwargs['week_indices'] = week_indices
+    else:
+        gen_kwargs['week_range'] = week_range
+    gen = generate_rivalry_chronicle_v1(**gen_kwargs)
+    txt = str(getattr(gen, 'text', None) or '')
+    if not txt.strip():
+        raise SystemExit('ERROR: rivalry_chronicle_generate_v1 produced empty gen.text; refusing to persist.')
+    # SV_PATCH_V4_2: pass exactly one of week_indices/week_range to persist
+    persist_kwargs = dict(
+        rendered_text=txt,
         db_path=args.db,
         league_id=args.league_id,
         season=args.season,
-        week_indices=week_indices,
-        week_range=week_range,
         missing_weeks_policy=MissingWeeksPolicy(args.missing_weeks_policy),
         created_at_utc=args.created_at_utc,
     )
+    if week_indices is not None:
+        persist_kwargs['week_indices'] = week_indices
+    else:
+        persist_kwargs['week_range'] = week_range
+    res = persist_rivalry_chronicle_v1(**persist_kwargs)
 
     # Quiet-by-default: no stdout on success.
     _debug(

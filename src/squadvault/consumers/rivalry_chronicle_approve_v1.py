@@ -131,7 +131,7 @@ def approve_latest(req: ApproveRequest) -> int:
             )
             return 2
 
-# LOCK_E_IDEMPOTENT_IF_APPROVED_V7
+        # LOCK_E_IDEMPOTENT_IF_APPROVED_V7
         # Idempotency: if any APPROVED exists for this key, treat as success and do nothing.
         # This prevents retro-approving older drafts after an approval already exists.
         row = con.execute(
@@ -208,12 +208,37 @@ def approve_latest(req: ApproveRequest) -> int:
         )
         # Some core primitives require db_path (and open their own connection),
         # others accept an existing connection via con/conn. Support both.
+        # SV_PATCH_APPROVE_GUARD_CANON_V1: single unconditional empty-text guard (draft row; deterministic)
+        # Guard: never approve an empty Rivalry Chronicle. Validate the DRAFT row's rendered_text.
+        row = con.execute(
+            """
+            SELECT rendered_text
+            FROM recap_artifacts
+            WHERE league_id = ?
+              AND season = ?
+              AND week_index = ?
+              AND artifact_type = ?
+              AND version = ?
+              AND state = 'DRAFT'
+            ORDER BY version DESC, id DESC
+            LIMIT 1
+            """,
+            (int(req.league_id), int(req.season), int(req.week_index), str(ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1), int(draft_v)),
+        ).fetchone()
+        txt = "" if row is None else str(row[0] or "")
+        if not txt.strip():
+            raise SystemExit(
+                "ERROR: refusing to approve empty Rivalry Chronicle rendered_text. "
+                "Re-run generate; no APPROVED stamp was applied."
+            )
+
         if "db_path" in params:
             _sv_call_with_signature_filter(fn, db_path=req.db, **common)
         elif "db" in params:
             _sv_call_with_signature_filter(fn, db=req.db, **common)
         else:
             _sv_call_with_signature_filter(fn, con=con, conn=con, **common)
+
 
         print(f"rivalry_chronicle_approve_v1: OK (approved v{draft_v}; artifact_type={ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1})")
         return 0
