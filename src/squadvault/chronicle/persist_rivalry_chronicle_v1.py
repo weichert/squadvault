@@ -1,11 +1,14 @@
 from __future__ import annotations
+# SV_PATCH_FIX_PERSIST_RC_RECAP_ARTIFACTS_IMPORT_BLOCK_V2: collapse recap_artifacts import to single-line
+# SV_PATCH_FIX_PERSIST_RC_V1_V1_SYMBOL_V1: normalize ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1_V1 -> _V1 and fix import
+# SV_PATCH_PERSIST_RC_TYPE_TO_V1: persist uses ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1 (not legacy RIVALRY_CHRONICLE)
 
 import sqlite3
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
+from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
 from squadvault.chronicle.generate_rivalry_chronicle_v1 import (
-    ARTIFACT_TYPE_RIVALRY_CHRONICLE,
     RivalryChronicleGeneratedV1,
     generate_rivalry_chronicle_v1,
 )
@@ -103,7 +106,7 @@ def _latest_approved_chronicle_row(
         ORDER BY version DESC
         LIMIT 1
         """,
-        (int(league_id), int(season), int(anchor_week_index), ARTIFACT_TYPE_RIVALRY_CHRONICLE),
+        (int(league_id), int(season), int(anchor_week_index), ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1),
     ).fetchone()
 
 
@@ -117,7 +120,7 @@ def _next_version(conn: sqlite3.Connection, league_id: int, season: int, anchor_
           AND week_index = ?
           AND artifact_type = ?
         """,
-        (int(league_id), int(season), int(anchor_week_index), ARTIFACT_TYPE_RIVALRY_CHRONICLE),
+        (int(league_id), int(season), int(anchor_week_index), ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1),
     ).fetchone()
     max_v = row[0] if row else None
     return int(max_v or 0) + 1
@@ -157,7 +160,7 @@ def persist_rivalry_chronicle_v1(
                     league_id=int(league_id),
                     season=int(season),
                     anchor_week_index=int(gen.anchor_week_index),
-                    artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE,
+                    artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
                     version=latest_v,
                     created_new=False,
                 )
@@ -171,7 +174,7 @@ def persist_rivalry_chronicle_v1(
             league_id=int(league_id),
             season=int(season),
             week_index=int(gen.anchor_week_index),
-            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE,
+            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
             version=int(new_v),
             state="APPROVED",
             selection_fingerprint=str(gen.fingerprint),
@@ -184,7 +187,7 @@ def persist_rivalry_chronicle_v1(
             league_id=int(league_id),
             season=int(season),
             anchor_week_index=int(gen.anchor_week_index),
-            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE,
+            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
             version=int(new_v),
             created_new=True,
         )
