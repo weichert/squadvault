@@ -1,4 +1,22 @@
-# Tone Engine — Contract Card (v1.0)
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Patch: expand Tone Engine Contract Card to full canonical (v1) ==="
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+PATCHER="scripts/_patch_expand_tone_engine_contract_card_v1.py"
+
+cat > "${PATCHER}" <<'PY'
+#!/usr/bin/env python3
+import os
+import sys
+
+PATH = "docs/canonical/contracts/Tone_Engine_Contract_Card_v1.0.md"
+
+NEW = """# Tone Engine — Contract Card (v1.0)
 
 Contract Name: TONE_ENGINE  
 Version: v1.0  
@@ -115,19 +133,18 @@ The Tone Engine outputs a deterministic `ToneDirectiveSet`: a set of enumerable 
 
 ## 7) Precedence & Conflict Resolution
 
-1. Safety constraints
-2. Canonical constitution + core invariants
-3. Editorial Attunement Layer
-4. Human overrides
-5. Tone Engine
-6. Creative Layer
+1. Safety constraints  
+2. Canonical constitution + core invariants  
+3. Editorial Attunement Layer  
+4. Human overrides  
+5. Tone Engine  
+6. Creative Layer  
 
 ---
 
 ## 8) Failure Modes
 
-If tone risks trust (overconfidence, tone-deaf framing, or cultural mismatch), the correct response is restraint.
-The Tone Engine must reduce expressiveness rather than compensate with inference.
+If tone risks trust, the correct response is restraint.
 
 ---
 
@@ -142,4 +159,40 @@ The Tone Engine must reduce expressiveness rather than compensate with inference
 ## 10) Canonical Declaration
 
 Any behavior not explicitly permitted is forbidden.
+"""
 
+def main():
+    if not os.path.exists(PATH):
+        print(f"ERROR: missing file: {PATH}", file=sys.stderr)
+        return 2
+
+    cur = open(PATH, "r", encoding="utf-8").read()
+
+    if cur.strip() == NEW.strip():
+        print("OK: Tone Engine contract already canonical")
+        return 0
+
+    markers = [
+        "## Purpose",
+        "## In Scope",
+        "## Out of Scope (Hard Stop)",
+        "Tone is governed expression, not learned preference.",
+    ]
+    if not all(m in cur for m in markers):
+        print("ERROR: refusing to overwrite unexpected file shape", file=sys.stderr)
+        return 2
+
+    with open(PATH, "w", encoding="utf-8", newline="\n") as f:
+        f.write(NEW + "\n")
+
+    print("OK: Tone Engine contract expanded to canonical form")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+PY
+
+chmod +x "${PATCHER}"
+
+python "${PATCHER}"
+echo "==> DONE"
