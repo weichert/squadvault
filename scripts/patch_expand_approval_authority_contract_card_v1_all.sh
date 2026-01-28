@@ -1,4 +1,21 @@
-# Approval Authority — Contract Card (v1.0)
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Patch: expand Approval Authority Contract Card to canonical form (v1) ==="
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+python="${PYTHON:-python}"
+
+"$python" - <<'PY'
+from pathlib import Path
+import sys
+
+PATH = Path("docs/canonical/contracts/Approval_Authority_Contract_Card_v1.0.md")
+
+NEW = """# Approval Authority — Contract Card (v1.0)
 
 Contract Name: APPROVAL_AUTHORITY  
 Version: v1.0  
@@ -158,4 +175,35 @@ Changes require:
 - explicit version bump
 - Documentation Map update
 - and (where applicable) a migration note.
+"""
 
+if not PATH.exists():
+    print(f"ERROR: missing file: {PATH}", file=sys.stderr)
+    raise SystemExit(2)
+
+cur = PATH.read_text(encoding="utf-8")
+
+# Idempotent
+if cur.strip() == NEW.strip():
+    print("OK: Approval Authority already canonical")
+    raise SystemExit(0)
+
+# Refusal-safe: only overwrite if it still looks like the stub.
+markers = [
+    "# Approval Authority — Contract Card (v1.0)",
+    "## Purpose",
+    "## Hard Invariants",
+    "## Delegation",
+    "## Audit",
+    "## Canonical Declaration",
+    "AI drafts; humans decide.",
+]
+if not all(m in cur for m in markers):
+    print("ERROR: refusing to overwrite unexpected file shape", file=sys.stderr)
+    raise SystemExit(2)
+
+PATH.write_text(NEW + "\n", encoding="utf-8", newline="\n")
+print("OK: Approval Authority expanded to canonical form")
+PY
+
+echo "==> DONE"
