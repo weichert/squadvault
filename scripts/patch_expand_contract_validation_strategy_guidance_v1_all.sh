@@ -1,4 +1,21 @@
-# Contract Validation Strategy — Guidance (v1.0)
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Patch: expand Contract Validation Strategy Guidance to playbook (v1) ==="
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+python="${PYTHON:-python}"
+
+"$python" - <<'PY'
+from pathlib import Path
+import sys
+
+PATH = Path("docs/canon_pointers/Contract_Validation_Strategy_Guidance_v1.0.md")
+
+NEW = """# Contract Validation Strategy — Guidance (v1.0)
 
 Status: CANONICAL POINTER  
 Applies To: All Tier 2 Contract Cards (Active Governance)
@@ -118,4 +135,32 @@ Add this section verbatim (and fill it in):
 Validation strategy is part of the contract.
 
 A contract change is incomplete unless its validation strategy remains true and the referenced proofs/tests still pass.
+"""
 
+if not PATH.exists():
+    print(f"ERROR: missing file: {PATH}", file=sys.stderr)
+    raise SystemExit(2)
+
+cur = PATH.read_text(encoding="utf-8")
+
+if cur.strip() == NEW.strip():
+    print("OK: validation guidance already expanded")
+    raise SystemExit(0)
+
+markers = [
+    "# Contract Validation Strategy — Guidance (v1.0)",
+    "Each Contract Card must declare:",
+    "- Automated invariants",
+    "- Gate-enforced invariants",
+    "- Human-judgment invariants",
+    "If an invariant cannot be enforced, it is not an invariant.",
+]
+if not all(m in cur for m in markers):
+    print("ERROR: refusing to overwrite unexpected file shape", file=sys.stderr)
+    raise SystemExit(2)
+
+PATH.write_text(NEW + "\n", encoding="utf-8", newline="\n")
+print("OK: expanded Contract Validation Strategy Guidance")
+PY
+
+echo "==> DONE"
