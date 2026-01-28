@@ -12,7 +12,7 @@ OUT="${1:-SquadVault_Claude_Independent_Review_Pack_2026-01-28.zip}"
 
 REQUIRED_FILES=(
   "docs/40_specs/architecture/SquadVault_Phase_1_Architecture_Complete.docx"
-  "docs/80_indices/SquadVault_Documentation_Map_v1.5.docx"
+  "docs/SquadVault_Documentation_Map_v1.5.docx"
   "docs/50_ops_and_build/SquadVault_Development_Playbook_MVP_v1.1.docx"
   "docs/50_ops_and_build/SquadVault_Implementation_Readiness_Package_IRP_v1.0.docx"
   "docs/50_ops_and_build/SquadVault_Technical_Diligence_Companion_v1.0.docx"
