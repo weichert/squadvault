@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+# SV_PATCH_RC_GENERATE_PASS_BOTH_WEEK_SELECTORS_V4: restore-from-HEAD then pass both week_indices+week_range safely
 
 import argparse
 import os
@@ -46,22 +47,41 @@ def main() -> int:
     # SV_PATCH_V4: chronicle consumer generates gen.text before persist
     # SV_PATCH_V4_1: pass exactly one of week_indices/week_range to generator
     # SV_PATCH_RIVALRY_CHRONICLE_GENERATE_V1: generate text, validate non-empty, pass persist kwargs
+    # Generator/persist may require week_indices and/or week_range (kw-only).
+    # Compute BOTH and pass supported kwargs (signature-filtered).
+    import inspect
+
+    def _filter_kwargs(fn, kwargs):
+        params = set(inspect.signature(fn).parameters.keys())
+        return {k: v for k, v in kwargs.items() if k in params}
+
+    # CLI guarantees exactly one of (week_indices, week_range) is set.
+    if week_range is None:
+        if not week_indices:
+            raise SystemExit('ERROR: --weeks provided but empty')
+        week_indices_eff = tuple(int(x) for x in week_indices)
+        week_range_eff = (min(week_indices_eff), max(week_indices_eff))
+    else:
+        w0, w1 = int(week_range[0]), int(week_range[1])
+        if w1 < w0:
+            raise SystemExit('ERROR: --week-range end < start')
+        week_range_eff = (w0, w1)
+        week_indices_eff = tuple(range(w0, w1 + 1))
+
     gen_kwargs = dict(
         db_path=args.db,
         league_id=int(args.league_id),
         season=int(args.season),
         missing_weeks_policy=MissingWeeksPolicy(args.missing_weeks_policy),
         created_at_utc=str(args.created_at_utc),
+        week_indices=week_indices_eff,
+        week_range=week_range_eff,
     )
-    if week_indices is not None:
-        gen_kwargs['week_indices'] = week_indices
-    else:
-        gen_kwargs['week_range'] = week_range
-    gen = generate_rivalry_chronicle_v1(**gen_kwargs)
+    gen = generate_rivalry_chronicle_v1(**_filter_kwargs(generate_rivalry_chronicle_v1, gen_kwargs))
     txt = str(getattr(gen, 'text', None) or '')
     if not txt.strip():
-        raise SystemExit('ERROR: rivalry_chronicle_generate_v1 produced empty gen.text; refusing to persist.')
-    # SV_PATCH_V4_2: pass exactly one of week_indices/week_range to persist
+        raise SystemExit('ERROR: rivalry_chronicle_generate_v1 produced empty gen.text; refusing to persist')
+
     persist_kwargs = dict(
         rendered_text=txt,
         db_path=args.db,
@@ -69,14 +89,11 @@ def main() -> int:
         season=args.season,
         missing_weeks_policy=MissingWeeksPolicy(args.missing_weeks_policy),
         created_at_utc=args.created_at_utc,
+        week_indices=week_indices_eff,
+        week_range=week_range_eff,
     )
-    if week_indices is not None:
-        persist_kwargs['week_indices'] = week_indices
-    else:
-        persist_kwargs['week_range'] = week_range
-    res = persist_rivalry_chronicle_v1(**persist_kwargs)
+    res = persist_rivalry_chronicle_v1(**_filter_kwargs(persist_rivalry_chronicle_v1, persist_kwargs))
 
-    # Quiet-by-default: no stdout on success.
     _debug(
         f"OK: {res.artifact_type} league={res.league_id} season={res.season} "
         f"anchor_week={res.anchor_week_index} v={res.version} created_new={res.created_new}"
