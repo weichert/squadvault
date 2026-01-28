@@ -1,4 +1,21 @@
-# Core Invariants Registry (v1.0)
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Patch: expand Core Invariants Registry to registry format (v1) ==="
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+python="${PYTHON:-python}"
+
+"$python" - <<'PY'
+from pathlib import Path
+import sys
+
+PATH = Path("docs/canonical/Core_Invariants_Registry_v1.0.md")
+
+NEW = """# Core Invariants Registry (v1.0)
 
 Status: CANONICAL  
 Applies To: SquadVault Core Engine and all modules, consumers, and operators
@@ -94,4 +111,36 @@ If a new feature cannot satisfy these invariants, the feature is out of scope.
 - Modifying an invariant requires explicit justification and a migration note if it affects tests or operator workflows.
 - Removing an invariant is presumed forbidden unless the Constitution changes.
 
+"""
 
+if not PATH.exists():
+    print(f"ERROR: missing file: {PATH}", file=sys.stderr)
+    raise SystemExit(2)
+
+cur = PATH.read_text(encoding="utf-8")
+
+if cur.strip() == NEW.strip():
+    print("OK: Core Invariants Registry already expanded")
+    raise SystemExit(0)
+
+# Refusal-safe: only overwrite if it's still the stub shape.
+markers = [
+    "# Core Invariants Registry (v1.0)",
+    "## Memory",
+    "## Determinism",
+    "## Authority",
+    "## Restraint",
+    "- MemoryEvents are append-only",
+    "- Identical inputs → identical outputs",
+    "- Human approval gates publication",
+    "- Silence is a valid outcome",
+]
+if not all(m in cur for m in markers):
+    print("ERROR: refusing to overwrite unexpected file shape", file=sys.stderr)
+    raise SystemExit(2)
+
+PATH.write_text(NEW + "\n", encoding="utf-8", newline="\n")
+print("OK: Core Invariants Registry expanded to registry format")
+PY
+
+echo "==> DONE"
