@@ -1,4 +1,21 @@
-# Editorial Attunement Layer — Calibration Contract (v1.0)
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Patch: expand EAL Calibration Contract to canonical form (v1) ==="
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+python="${PYTHON:-python}"
+
+"$python" - <<'PY'
+from pathlib import Path
+import sys
+
+PATH = Path("docs/canonical/contracts/EAL_Calibration_Contract_v1.0.md")
+
+NEW = """# Editorial Attunement Layer — Calibration Contract (v1.0)
 
 Contract Name: EAL_CALIBRATION  
 Version: v1.0  
@@ -144,4 +161,35 @@ Changes require:
 - explicit version bump
 - Documentation Map update
 - and (where applicable) a migration note.
+"""
 
+if not PATH.exists():
+    print(f"ERROR: missing file: {PATH}", file=sys.stderr)
+    raise SystemExit(2)
+
+cur = PATH.read_text(encoding="utf-8")
+
+# Idempotent
+if cur.strip() == NEW.strip():
+    print("OK: EAL Calibration already canonical")
+    raise SystemExit(0)
+
+# Refusal-safe: only overwrite if it still looks like the stub.
+markers = [
+    "# Editorial Attunement Layer — Calibration Contract (v1.0)",
+    "## Purpose",
+    "## Allowed Calibration",
+    "## Forbidden",
+    "## Validation",
+    "## Canonical Declaration",
+    "Calibration prioritizes trust over coverage.",
+]
+if not all(m in cur for m in markers):
+    print("ERROR: refusing to overwrite unexpected file shape", file=sys.stderr)
+    raise SystemExit(2)
+
+PATH.write_text(NEW + "\n", encoding="utf-8", newline="\n")
+print("OK: EAL Calibration expanded to canonical form")
+PY
+
+echo "==> DONE"
