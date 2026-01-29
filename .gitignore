@@ -135,3 +135,4 @@ scripts/_diag_*.py
 !scripts/_patch_lock_signal_taxonomy_v1.py
 
 # --- end canonical patchers ---
+_extracted_txt/
