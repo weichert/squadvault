@@ -1,19 +1,18 @@
-#!/bin/sh
-# SquadVault repo python wrapper (deterministic import path)
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Minimal, deterministic python runner for this repo.
+# No env bootstrap. No interactivity. CWD-independent.
+#
 # Usage:
-#   scripts/py -c "import squadvault; print(squadvault.__file__)"
-#   scripts/py -m py_compile src/...
-#   scripts/py src/squadvault/consumers/...
+#   ./scripts/py path/to/script.py [args...]
+#   ./scripts/py -c 'print("ok")'
 
-set -eu
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
 
-ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-SRC="$ROOT/src"
+PYTHON="${PYTHON:-python3}"
+export PYTHONPATH="src${PYTHONPATH:+:${PYTHONPATH}}"
 
-if [ -n "${PYTHONPATH:-}" ]; then
-  export PYTHONPATH="$SRC:$PYTHONPATH"
-else
-  export PYTHONPATH="$SRC"
-fi
-
-exec python "$@"
+exec "${PYTHON}" "$@"
