@@ -11,13 +11,11 @@ db="${1:-}"
 league_id="${2:-}"
 season="${3:-}"
 week_index="${4:-}"
-approved_by="${5:-}"
-
-if [[ -z "${db}" || -z "${league_id}" || -z "${season}" || -z "${week_index}" || -z "${approved_by}" ]]; then
+approved_by=""
+if [[ -z "${db}" || -z "${league_id}" || -z "${season}" || -z "${week_index}" ]]; then
   cat <<'USAGE'
 Usage:
-  ./scripts/prove_rivalry_chronicle_end_to_end_v1.sh --db PATH --league-id ID --season YEAR --week-index N --approved-by NAME
-
+  ./scripts/prove_rivalry_chronicle_end_to_end_v1.sh --db PATH --league-id ID --season YEAR --week-index N [--approved-by NAME]
 Example:
   ./scripts/prove_rivalry_chronicle_end_to_end_v1.sh --db .local_squadvault.sqlite --league-id 70985 --season 2024 --week-index 6 --approved-by "steve"
 USAGE
@@ -31,13 +29,23 @@ while [[ $# -gt 0 ]]; do
     --league-id) league_id="$2"; shift 2;;
     --season) season="$2"; shift 2;;
     --week-index) week_index="$2"; shift 2;;
-    --approved-by) approved_by="$2"; shift 2;;
+    --approved-by)
+      if [[ $# -lt 2 || "${2:-}" == --* ]]; then
+        echo "ERROR: --approved-by requires a value" >&2
+        exit 2
+      fi
+      approved_by="$2"; shift 2;;
+
     *)
       echo "Unknown arg: $1" >&2
       exit 2
       ;;
   esac
 done
+
+# PROVE_RC_APPROVED_BY_DEFAULT_V1
+approved_by="${approved_by:-prove-script}"
+
 
 if [[ ! -f "${db}" ]]; then
   echo "ERROR: db not found: ${db}" >&2
@@ -121,6 +129,17 @@ PY
 
 echo
 echo "==> Approve (DRAFT → APPROVED)"
+
+# PROVE_RC_APPROVED_BY_GUARD_V1
+# Ensure approved_by is never empty and never a flag token.
+
+if [[ -z "${approved_by}" ]]; then
+  approved_by="prove-script"
+fi
+if [[ "${approved_by}" == --* ]]; then
+  echo "ERROR: approved_by resolved to a flag token (${approved_by})." >&2
+  exit 2
+fi
 PYTHONPATH="${PYTHONPATH}" python -u src/squadvault/consumers/rivalry_chronicle_approve_v1.py \
   --db "${db}" \
   --league-id "${league_id}" \
