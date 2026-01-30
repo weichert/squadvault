@@ -8,7 +8,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 echo "==> py_compile"
-PYTHONPATH=src python -m py_compile src/squadvault/core/versioning/version_presentation_navigation_v1.py
+./scripts/py -m py_compile src/squadvault/core/versioning/version_presentation_navigation_v1.py
 echo "OK: compile"
 
 echo

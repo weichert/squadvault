@@ -214,7 +214,7 @@ print("OK: installed canonical approve guard (single, unconditional, determinist
 PY
 
 echo "==> py_compile"
-PYTHONPATH=src python -m py_compile scripts/dev_env.sh >/dev/null 2>&1 || true
-PYTHONPATH=src python -m py_compile src/squadvault/consumers/rivalry_chronicle_generate_v1.py
-PYTHONPATH=src python -m py_compile src/squadvault/consumers/rivalry_chronicle_approve_v1.py
+./scripts/py -m py_compile scripts/dev_env.sh >/dev/null 2>&1 || true
+./scripts/py -m py_compile src/squadvault/consumers/rivalry_chronicle_generate_v1.py
+./scripts/py -m py_compile src/squadvault/consumers/rivalry_chronicle_approve_v1.py
 echo "OK: consolidated patch v2 complete."
