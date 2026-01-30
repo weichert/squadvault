@@ -136,3 +136,36 @@ scripts/_diag_*.py
 
 # --- end canonical patchers ---
 _extracted_txt/
+
+# Canonical patchers (tracked) — keep unignored
+!scripts/_patch_add_status_helper.py
+!scripts/_patch_check_golden_path_recap_absolute_shims_v1.py
+!scripts/_patch_deprecate_week6_shim_patcher.py
+!scripts/_patch_examples_use_shims_v1.py
+!scripts/_patch_fix_writing_room_intake_v1_broken_import_block.py
+!scripts/_patch_fix_writing_room_intake_v1_return_indent_v2.py
+!scripts/_patch_gitignore_allow_scripts_py.py
+!scripts/_patch_gitignore_whitelist_signal_taxonomy_patcher_v1.py
+!scripts/_patch_intake_v1_excluded_signal_details.py
+!scripts/_patch_intake_v1_remove_stray_backref.py
+!scripts/_patch_intake_v1_restore_adapter_gates.py
+!scripts/_patch_operator_scripts_use_shims_v1.py
+!scripts/_patch_patch_writing_room_wrapper_set_pythonpath.py
+!scripts/_patch_phase_a_docmap_add_tier2_ops_contract_cards_v1.py
+!scripts/_patch_phase_a_ops_contract_cards_headers_v1.py
+!scripts/_patch_pytest_import_paths_repo_root_and_src.py
+!scripts/_patch_recap_remaining_cmd_lists_use_py_shim_v1.py
+!scripts/_patch_recap_subprocess_use_py_shim_v1.py
+!scripts/_patch_run_week6_gate_delegate_to_v1.py
+!scripts/_patch_run_week6_writing_room_gate_use_shims.py
+!scripts/_patch_selection_set_schema_add_deterministic_helpers.py
+!scripts/_patch_selection_set_schema_add_identity_helpers.py
+!scripts/_patch_week6_delegator_quote_fix.py
+!scripts/_patch_wrapper_autodetect_pytest_python.py
+!scripts/_patch_wrapper_polish_writing_room_intake_exclusions_banner.py
+!scripts/_patch_wrapper_remove_extra_pytest_invocations.py
+!scripts/_patch_wrapper_stop_restoring_schema.py
+!scripts/_patch_wrapper_use_abs_pythonpath_and_python_m_pytest.py
+!scripts/_patch_writing_room_gates_add_shim_compliance.py
+!scripts/_patch_writing_room_signal_grouping_v1.py
+!scripts/_patch_writing_room_signal_grouping_v1_intake_fix_v3.py
