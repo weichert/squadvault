@@ -1,7 +1,36 @@
 #!/usr/bin/env bash
 
 echo
-echo "==> unit tests (pytest)"
+echo "==> unit tests (pytest; git-tracked paths)"
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${REPO_ROOT}"
+
+# Prefer git-tracked test paths (avoids tests/ vs Tests/ case collisions)
+mapfile -t eal_tests < <(
+  git ls-files \
+    'tests/test_editorial_attunement_v1.py' \
+    'Tests/test_editorial_attunement_v1.py' \
+    'tests/test_eal_writer_boundary_v1.py' \
+    'Tests/test_eal_writer_boundary_v1.py' \
+    'tests/test_recap_runs_eal_persistence_v1.py' \
+    'Tests/test_recap_runs_eal_persistence_v1.py' \
+    'tests/test_get_recap_run_trace_optional_eal_v1.py' \
+    'Tests/test_get_recap_run_trace_optional_eal_v1.py'
+)
+
+echo "Tracked EAL test files: ${#eal_tests[@]}"
+if [[ ${#eal_tests[@]} -eq 0 ]]; then
+  echo "ERROR: none of the expected EAL test files are tracked in git." >&2
+  echo "DEBUG: here are tracked test roots:" >&2
+  git ls-files 'tests/*.py' 'Tests/*.py' | sed -n '1,120p' >&2 || true
+  exit 2
+fi
+
+# Run exactly what git says exists
+./scripts/py -m pytest -q "${eal_tests[@]}"
+
+
 
 # Always run from repo root (pytest path resolution depends on cwd)
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
