@@ -169,3 +169,7 @@ _extracted_txt/
 !scripts/_patch_writing_room_gates_add_shim_compliance.py
 !scripts/_patch_writing_room_signal_grouping_v1.py
 !scripts/_patch_writing_room_signal_grouping_v1_intake_fix_v3.py
+
+# CI fixture DB (explicit allow)
+!fixtures/
+!fixtures/ci_squadvault.sqlite
