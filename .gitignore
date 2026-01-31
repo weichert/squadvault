@@ -189,3 +189,6 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 
 # Ops: allowlisted patchers (v1)
 !scripts/_patch_fix_ops_orchestrate_wrapper_path_normalization_v1.py
+
+# Ops: allowlist ops_orchestrate patchers (v1)
+!scripts/_patch_fix_ops_orchestrate_*_v*.py
