@@ -15,3 +15,5 @@ This index enumerates **active, enforced CI guardrails** for the SquadVault inge
 
 - Guardrails listed here are **runtime-enforced**, not advisory.
 - Any addition to this index must correspond to a concrete, testable enforcement mechanism.
+
+- ENV_Determinism_Invariant_v1.0.md — Enforces deterministic locale/time/hash envelope for all CI proofs (export + fail-loud gate in prove_ci.sh).
