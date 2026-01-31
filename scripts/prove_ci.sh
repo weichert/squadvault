@@ -104,6 +104,9 @@ echo "== CI Proof Suite =="
 echo "==> Filesystem ordering determinism gate"
 ./scripts/check_filesystem_ordering_determinism.sh
 
+echo "==> Time & timestamp determinism gate"
+./scripts/check_time_timestamp_determinism.sh
+
 bash scripts/check_shell_syntax.sh
 bash scripts/check_shims_compliance.sh
 bash scripts/check_no_memory_reads.sh
