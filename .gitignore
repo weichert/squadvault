@@ -194,7 +194,15 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 !scripts/_patch_fix_ops_orchestrate_*_v*.py
 
 # === SquadVault: track canonical ops patchers (auto) ===
-!scripts/_patch_*.py
+# NOTE: Do NOT use broad globs like !scripts/_patch_*.py (will vacuum historical patchers).
+# Canonical allowlist only:
+!scripts/_patch_fix_ops_orchestrate_commit_before_prove_v1.py
+!scripts/_patch_fix_ops_orchestrate_idempotency_semantics_v1.py
+!scripts/_patch_fix_ops_orchestrate_wrapper_path_normalization_v1.py
+!scripts/_patch_gitignore_allow_ops_orchestrate_patchers_v1.py
+!scripts/_patch_gitignore_allow_ops_orchestrate_path_norm_patcher_v1.py
+!scripts/_patch_gitignore_track_canonical_ops_patchers_v1.py
+# Shell wrappers are canonical by convention:
 !scripts/patch_*.sh
 !scripts/ops_*.sh
 # === /SquadVault: track canonical ops patchers (auto) ===
