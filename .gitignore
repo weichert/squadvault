@@ -180,3 +180,4 @@ _extracted_txt/
 .local_audit/
 !scripts/_patch_docs_rewrite_stale_import_refs_v1.py
 PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
+!scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py
