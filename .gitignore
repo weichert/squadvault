@@ -192,3 +192,9 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 
 # Ops: allowlist ops_orchestrate patchers (v1)
 !scripts/_patch_fix_ops_orchestrate_*_v*.py
+
+# === SquadVault: track canonical ops patchers (auto) ===
+!scripts/_patch_*.py
+!scripts/patch_*.sh
+!scripts/ops_*.sh
+# === /SquadVault: track canonical ops patchers (auto) ===
