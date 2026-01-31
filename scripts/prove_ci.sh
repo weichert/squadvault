@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+# === DETERMINISTIC EXECUTION ENVELOPE (v1) ===
+# Export early so every downstream script inherits a stable baseline.
+# - Locale affects sort/collation/byte ordering
+# - TZ affects any incidental date/time formatting
+# - PYTHONHASHSEED stabilizes hash-based ordering hazards
+export LC_ALL=C
+export LANG=C
+export TZ=UTC
+export PYTHONHASHSEED=0
+# === /DETERMINISTIC EXECUTION ENVELOPE (v1) ===
+
 # --- Temp workspace normalization (bash 3.2 safe) ---
 SV_TMPDIR="${TMPDIR:-/tmp}"
 SV_TMPDIR="${SV_TMPDIR%/}"
@@ -37,7 +48,7 @@ FIXTURE_DB="fixtures/ci_squadvault.sqlite"
 WORK_DB="${FIXTURE_DB}"
 if [[ -f "${FIXTURE_DB}" ]]; then
   echo "==> CI safety: using temp working DB copy (fixture remains immutable)"
-# NOTE: BSD mktemp requires template end with XXXXXX (no suffix).
+  # NOTE: BSD mktemp requires template end with XXXXXX (no suffix).
   WORK_DB="$(mktemp "${SV_TMPDIR}/squadvault_ci_workdb.XXXXXX")"
   if [[ -z "${WORK_DB}" ]]; then
     echo "ERROR: mktemp failed to create WORK_DB" >&2
@@ -45,7 +56,7 @@ if [[ -f "${FIXTURE_DB}" ]]; then
   fi
 
   cleanup_work_db() { rm -f "${WORK_DB}" >/dev/null 2>&1 || true; }
-    cp -p "${FIXTURE_DB}" "${WORK_DB}"
+  cp -p "${FIXTURE_DB}" "${WORK_DB}"
   echo "    fixture_db=${FIXTURE_DB}"
   echo "    working_db=${WORK_DB}"
 fi
@@ -53,6 +64,27 @@ fi
 
 # --- /Fixture immutability guard (CI) ---
 set -euo pipefail
+
+# === DETERMINISTIC EXECUTION ENVELOPE GATE (v1) ===
+sv_fail_env() {
+  echo "ERROR: deterministic env gate failed: $*" >&2
+  exit 2
+}
+sv_require_kv() {
+  local k="$1"
+  local expected="$2"
+  # Indirect expansion; treat unset as sentinel for clearer errors.
+  local actual="${!k-unset}"
+  if [[ "${actual}" != "${expected}" ]]; then
+    sv_fail_env "${k} must be '${expected}' (got '${actual}')"
+  fi
+}
+sv_require_kv "LC_ALL" "C"
+sv_require_kv "LANG" "C"
+sv_require_kv "TZ" "UTC"
+sv_require_kv "PYTHONHASHSEED" "0"
+echo "OK: deterministic env envelope"
+# === /DETERMINISTIC EXECUTION ENVELOPE GATE (v1) ===
 
 # === CI CLEANLINESS GUARDRAIL (v1) ===
 # Enforce: CI proofs must not dirty the working tree.
@@ -67,7 +99,6 @@ sv_ci_on_exit() {
 }
 trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
-
 
 echo "== CI Proof Suite =="
 
@@ -112,4 +143,3 @@ fi
 
 echo "OK: CI proof suite passed"
 echo "OK: CI working tree remained clean (guardrail enforced)."
-
