@@ -53,9 +53,14 @@ if [[ ! -f "${db}" ]]; then
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export PYTHONPATH="${PYTHONPATH:-$repo_root/src}"
+cd "${repo_root}"
 
-ts_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+if [[ ! -x "./scripts/py" ]]; then
+  echo "ERROR: missing shim: ./scripts/py (expected executable)" >&2
+  exit 2
+fi
+
+ts_utc="${SV_PROVE_TS_UTC:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 export_dir="artifacts/exports/${league_id}/${season}/week_$(printf "%02d" "${week_index}")"
 mkdir -p "${export_dir}"
 
@@ -70,7 +75,7 @@ echo "export_dir:  ${export_dir}"
 echo
 
 echo "==> Generate (DRAFT)"
-PYTHONPATH="${PYTHONPATH}" python -u src/squadvault/consumers/rivalry_chronicle_generate_v1.py \
+./scripts/py -u src/squadvault/consumers/rivalry_chronicle_generate_v1.py \
   --db "${db}" \
   --league-id "${league_id}" \
   --season "${season}" \
@@ -89,7 +94,7 @@ export SV_WEEK_INDEX="$week_index"
 
 echo
 echo "==> DB probe: recap_artifacts rows for RIVALRY_CHRONICLE_V1 (any state)"
-python - <<'PY'
+./scripts/py - <<'PY'
 import os, sqlite3
 
 db = os.environ.get('SV_DB', '')
@@ -140,7 +145,7 @@ if [[ "${approved_by}" == --* ]]; then
   echo "ERROR: approved_by resolved to a flag token (${approved_by})." >&2
   exit 2
 fi
-PYTHONPATH="${PYTHONPATH}" python -u src/squadvault/consumers/rivalry_chronicle_approve_v1.py \
+./scripts/py -u src/squadvault/consumers/rivalry_chronicle_approve_v1.py \
   --db "${db}" \
   --league-id "${league_id}" \
   --season "${season}" \
@@ -157,7 +162,7 @@ export SV_EXPORT_DIR="$export_dir"
 export SV_LEAGUE_ID="$league_id"
 export SV_SEASON="$season"
 export SV_WEEK_INDEX="$week_index"
-python - <<'PY'
+./scripts/py - <<'PY'
 # SV_PATCH_RC_PROVE_EXPORT_DB_TEXT_V3C: week filter conditional on column presence (no anchor_week_index assumption)
 import os
 import sqlite3
