@@ -46,7 +46,9 @@ def _repo_root_from_here() -> Path:
 
 def _find_unique_under(root: Path, filename: str) -> Path:
     matches: List[Path] = []
-    for dirpath, _, files in os.walk(root):
+    for dirpath, dirs, files in os.walk(root):
+        dirs.sort()
+        files.sort()
         if filename in files:
             matches.append(Path(dirpath) / filename)
     if not matches:

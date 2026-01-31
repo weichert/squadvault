@@ -48,7 +48,7 @@ def find_latest_recap_json(base_dir: str, league_id: str, season: int, week_inde
     if not d.exists():
         return None
     candidates = []
-    for p in d.glob("recap_v*.json"):
+    for p in sorted(d.glob("recap_v*.json")):
         m = _V_RE.search(p.name)
         if not m:
             continue
