@@ -59,6 +59,9 @@ _Phase A Canonical Promotion: Tier-2 operational contract cards promoted to CANO
 
 ## Notes
 
+- **CI + Docs hardening freeze:**  
+  → [CI_Docs_Hardening_Freeze_v1.0.md](../addenda/CI_Docs_Hardening_Freeze_v1.0.md)
+
 - Canonical documents live under `docs/canonical/`.
 - Tier placement governs precedence. Higher tiers override lower tiers.
 
