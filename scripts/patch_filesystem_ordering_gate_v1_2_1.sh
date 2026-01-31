@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "=== Patch: filesystem ordering determinism gate v1.2.1 (no grep regex errors; fail loud) ==="
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+cat > scripts/check_filesystem_ordering_determinism.sh <<'GATE'
+#!/usr/bin/env bash
+set -euo pipefail
+
 # === SquadVault: Filesystem Ordering Determinism Gate (v1.2.1) ===
 # Goal: catch unordered filesystem iteration that can affect behavior/output.
 # Scope: runtime + consumers (src/) and non-patcher ops scripts (scripts/).
@@ -112,3 +122,11 @@ if [ "${FAIL}" -ne 0 ]; then
 fi
 
 say "OK: filesystem ordering determinism gate passed."
+GATE
+
+chmod +x scripts/check_filesystem_ordering_determinism.sh
+
+echo "==> bash -n"
+bash -n scripts/check_filesystem_ordering_determinism.sh
+
+echo "OK"
