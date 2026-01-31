@@ -1,7 +1,45 @@
 #!/usr/bin/env bash
 
 echo
-echo "==> unit tests (pytest; git-tracked paths)"
+echo "==> unit tests (pytest; tracked Tests/ paths; bash3-safe)"
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${REPO_ROOT}"
+
+# Prefer canonical Tests/ (capital T). Fall back to tests/ only if needed.
+TEST_DIR=""
+if [[ -d "Tests" ]]; then TEST_DIR="Tests"; fi
+if [[ -z "${TEST_DIR}" && -d "tests" ]]; then TEST_DIR="tests"; fi
+if [[ -z "${TEST_DIR}" ]]; then
+  echo "ERROR: no Tests/ or tests/ directory found" >&2
+  exit 2
+fi
+echo "Using TEST_DIR=${TEST_DIR}"
+
+# Build a newline-separated list from git (no mapfile; bash 3.2 compatible)
+tests_list="$(
+  git ls-files \
+    "${TEST_DIR}/test_editorial_attunement_v1.py" \
+    "${TEST_DIR}/test_eal_writer_boundary_v1.py" \
+    "${TEST_DIR}/test_recap_runs_eal_persistence_v1.py" \
+    "${TEST_DIR}/test_get_recap_run_trace_optional_eal_v1.py" \
+  || true
+)"
+
+if [[ -z "${tests_list}" ]]; then
+  echo "ERROR: expected EAL test files not tracked under ${TEST_DIR}/" >&2
+  echo "DEBUG: tracked ${TEST_DIR} root (first 120):" >&2
+  git ls-files "${TEST_DIR}/*.py" | sed -n '1,120p' >&2 || true
+  exit 2
+fi
+
+echo "Tracked EAL tests:"
+echo "${tests_list}"
+
+# Run them. (Safe: filenames have no spaces.)
+./scripts/py -m pytest -q ${tests_list}
+
+
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}"
