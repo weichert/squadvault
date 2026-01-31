@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
+
+# --- Temp workspace normalization (bash 3.2 safe) ---
+SV_TMPDIR="${TMPDIR:-/tmp}"
+SV_TMPDIR="${SV_TMPDIR%/}"
+# --- /Temp workspace normalization ---
+
 # --- Fixture immutability guard (CI) ---
 # We forbid proofs from mutating committed fixtures (especially fixture DBs).
 # This is a LOUD early failure to prevent masked nondeterminism.
-STATEFILE="$(mktemp "${TMPDIR:-/tmp}/squadvault_fixture_state.XXXXXX")"
+STATEFILE="$(mktemp "${SV_TMPDIR}/squadvault_fixture_state.XXXXXX")"
+if [[ -z "${STATEFILE}" ]]; then
+  echo "ERROR: mktemp failed to create STATEFILE" >&2
+  exit 2
+fi
+
 cleanup_fixture_state() { rm -f "${STATEFILE}" >/dev/null 2>&1 || true; }
-trap cleanup_fixture_state EXIT
 
 # Collect fixture files used by CI proofs.
 # - Always include the known CI DB fixture.
@@ -27,10 +37,14 @@ FIXTURE_DB="fixtures/ci_squadvault.sqlite"
 WORK_DB="${FIXTURE_DB}"
 if [[ -f "${FIXTURE_DB}" ]]; then
   echo "==> CI safety: using temp working DB copy (fixture remains immutable)"
-  WORK_DB="$(mktemp "${TMPDIR:-/tmp}/squadvault_ci_workdb.XXXXXX.sqlite")"
+  WORK_DB="$(mktemp "${SV_TMPDIR}/squadvault_ci_workdb.XXXXXX")"
+  if [[ -z "${WORK_DB}" ]]; then
+    echo "ERROR: mktemp failed to create WORK_DB" >&2
+    exit 2
+  fi
+
   cleanup_work_db() { rm -f "${WORK_DB}" >/dev/null 2>&1 || true; }
-  trap cleanup_work_db EXIT
-  cp -p "${FIXTURE_DB}" "${WORK_DB}"
+    cp -p "${FIXTURE_DB}" "${WORK_DB}"
   echo "    fixture_db=${FIXTURE_DB}"
   echo "    working_db=${WORK_DB}"
 fi
@@ -44,7 +58,13 @@ set -euo pipefail
 # - Fail early if starting dirty
 # - Fail on exit if anything dirtied the repo (even on proof failure)
 ./scripts/check_repo_cleanliness_ci.sh --phase before
-trap './scripts/check_repo_cleanliness_ci.sh --phase after' EXIT
+sv_ci_on_exit() {
+  # Safe temp cleanup (outside repo)
+  rm -f "${WORK_DB:-}" "${STATEFILE:-}" >/dev/null 2>&1 || true
+  # Repo cleanliness guardrail (no cleanup / no masking)
+  ./scripts/check_repo_cleanliness_ci.sh --phase after
+}
+trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
 
 
