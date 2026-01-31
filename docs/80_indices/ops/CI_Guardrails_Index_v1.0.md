@@ -11,9 +11,26 @@ This index enumerates **active, enforced CI guardrails** for the SquadVault inge
 - **Details:**  
   → [CI_Cleanliness_Invariant_v1.0.md](./CI_Cleanliness_Invariant_v1.0.md)
 
+### Filesystem Ordering Determinism Guardrail
+- **Status:** ACTIVE (enforced)
+- **Entrypoint:** `scripts/prove_ci.sh`
+- **Enforcement:** `scripts/check_filesystem_ordering_determinism.sh`
+- **Invariant:** CI must reject nondeterministic filesystem ordering dependencies.
+- **Details:**  
+  → [Filesystem_Ordering_Determinism_Invariant_v1.0.md](../../ops/invariants/Filesystem_Ordering_Determinism_Invariant_v1.0.md)
+
+### Time & Timestamp Determinism Guardrail
+- **Status:** ACTIVE (enforced)
+- **Entrypoint:** `scripts/prove_ci.sh`
+- **Enforcement:** `scripts/check_time_timestamp_determinism.sh`
+- **Invariant:** CI must reject unsafe wall-clock time usage and implicit local-time conversions unless explicitly allowlisted.
+- **Notes:** `SV_TIME_OK` is the inline escape hatch for deliberate exceptions.
+
 ## Notes
 
 - Guardrails listed here are **runtime-enforced**, not advisory.
 - Any addition to this index must correspond to a concrete, testable enforcement mechanism.
 
-- ENV_Determinism_Invariant_v1.0.md — Enforces deterministic locale/time/hash envelope for all CI proofs (export + fail-loud gate in prove_ci.sh).
+- **ENV determinism envelope:**  
+  → [ENV_Determinism_Invariant_v1.0.md](../../ops/invariants/ENV_Determinism_Invariant_v1.0.md)
+
