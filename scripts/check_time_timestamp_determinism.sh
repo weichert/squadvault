@@ -18,6 +18,15 @@ cd "${REPO_ROOT}"
 
 SCAN_DIRS=("src" "scripts")
 
+# --- Precondition: expected scan directories must exist ---
+for d in "${SCAN_DIRS[@]}"; do
+  if [[ ! -d "${d}" ]]; then
+    echo "ERROR: scan directory missing: ${d}" >&2
+    exit 2
+  fi
+done
+# --- /Precondition ---
+
 EXCLUDE_DIRS=(
   ".venv"
   "venv"
