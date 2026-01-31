@@ -178,3 +178,4 @@ _extracted_txt/
 !scripts/_patch_check_no_memory_reads_allowlist_v1.py
 
 .local_audit/
+!scripts/_patch_docs_rewrite_stale_import_refs_v1.py
