@@ -15,6 +15,8 @@ ALLOWLIST=(
   "src/squadvault/consumers/recap_week_gating_check.py"
   "src/squadvault/consumers/recap_range_preview.py"
   "src/squadvault/consumers/recap_week_diagnose_empty.py"
+  "src/squadvault/core/canonicalize/run_ingest_then_canonicalize.py"
+  "src/squadvault/core/canonicalize/run_canonicalize.py"
 )
 
 # Build a grep -v -f filter file from the allowlist (exact path matches)
