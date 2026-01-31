@@ -66,8 +66,19 @@ SV_PROVE_TS_UTC="2026-01-01T00:00:00Z" ./scripts/prove_rivalry_chronicle_end_to_
   --week-index 6 \
   --approved-by "ci"
 
-
 # --- Fixture immutability guard (CI) ---
 ./scripts/check_fixture_immutability_ci.sh verify "${STATEFILE}" "${fixture_files[@]}"
 # --- /Fixture immutability guard (CI) ---
+
+# --- CI debug: DB source summary ---
+if [[ "${WORK_DB}" == "${FIXTURE_DB}" ]]; then
+  echo "CI DB source: fixture (read-only path used)"
+else
+  echo "CI DB source: temp working copy (derived from fixture)"
+  echo "  fixture_db=${FIXTURE_DB}"
+  echo "  working_db=${WORK_DB}"
+fi
+# --- /CI debug ---
+
 echo "OK: CI proof suite passed"
+
