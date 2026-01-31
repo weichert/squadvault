@@ -176,3 +176,5 @@ _extracted_txt/
 
 # Canonical patchers (tracked) — keep unignored
 !scripts/_patch_check_no_memory_reads_allowlist_v1.py
+
+.local_audit/
