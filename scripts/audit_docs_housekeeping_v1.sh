@@ -68,7 +68,7 @@ from collections import defaultdict
 root = Path("docs")
 by_stem = defaultdict(list)
 
-for p in root.rglob("*"):
+for p in sorted(root.rglob("*")):
     if p.is_file():
         by_stem[p.stem.lower()].append(p)
 
