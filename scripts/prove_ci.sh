@@ -39,6 +39,15 @@ fi
 # --- /Fixture immutability guard (CI) ---
 set -euo pipefail
 
+# === CI CLEANLINESS GUARDRAIL (v1) ===
+# Enforce: CI proofs must not dirty the working tree.
+# - Fail early if starting dirty
+# - Fail on exit if anything dirtied the repo (even on proof failure)
+./scripts/check_repo_cleanliness_ci.sh --phase before
+trap './scripts/check_repo_cleanliness_ci.sh --phase after' EXIT
+# === /CI CLEANLINESS GUARDRAIL (v1) ===
+
+
 echo "== CI Proof Suite =="
 
 bash scripts/check_shell_syntax.sh
