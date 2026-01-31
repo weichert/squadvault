@@ -96,3 +96,12 @@ If a change affects:
 
 **This document formalizes the repo process:**
 > Script-first + wrappers-first is the default operating mode for SquadVault.
+
+## Docs + CI Mutation Policy (Enforced)
+
+All changes that modify `docs/` or CI guardrails must be implemented via:
+- a **versioned patcher** (`scripts/_patch_*.py`), and
+- a **versioned wrapper** (`scripts/patch_*.sh`).
+
+Manual edits are permitted only for emergency repair and must be followed by a patcher+wrapper retrofit.
+
