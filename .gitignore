@@ -173,3 +173,6 @@ _extracted_txt/
 # CI fixture DB (explicit allow)
 !fixtures/
 !fixtures/ci_squadvault.sqlite
+
+# Canonical patchers (tracked) — keep unignored
+!scripts/_patch_check_no_memory_reads_allowlist_v1.py
