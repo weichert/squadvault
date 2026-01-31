@@ -61,3 +61,8 @@ _Phase A Canonical Promotion: Tier-2 operational contract cards promoted to CANO
 
 - Canonical documents live under `docs/canonical/`.
 - Tier placement governs precedence. Higher tiers override lower tiers.
+
+## Ops Invariants
+
+- **Ops Invariants Index (v1.0)**
+  `docs/ops/invariants/INDEX_v1.0.md`
