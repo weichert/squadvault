@@ -101,6 +101,8 @@ trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
 
 echo "== CI Proof Suite =="
+echo "==> Filesystem ordering determinism gate"
+./scripts/check_filesystem_ordering_determinism.sh
 
 bash scripts/check_shell_syntax.sh
 bash scripts/check_shims_compliance.sh
