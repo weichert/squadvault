@@ -185,3 +185,4 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 !scripts/_patch_ci_guardrails_index_add_time_and_fs_v1.py
 !scripts/_patch_ci_guardrails_index_fix_env_bullet_v1.py
 !scripts/_patch_docs_add_ci_docs_hardening_freeze_v1.py
+!scripts/_patch_rules_of_engagement_add_docs_mutation_policy_v1.py
