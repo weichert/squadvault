@@ -147,13 +147,14 @@ if [[ "${pass2_diff}" != "${pass1_diff}" ]] || [[ "${pass2_diff_cached}" != "${p
   echo "==> status after pass2:"
   git status --porcelain >&2
   die "idempotency failure: pass2 changed the diff state vs pass1"
+  fi
 fi
 echo "==> idempotency OK (pass2 introduced no new changes)"
 
 if [[ "${commit_enabled}" == "1" ]]; then
   if [[ "${pass1_changed}" != "1" ]]; then
-    die "--commit requested but no changes occurred"
-  fi
+    echo "OK: --commit requested but no changes occurred (no-op); skipping commit"
+  else
 
   echo
   echo "=== Commit (explicit) ==="
