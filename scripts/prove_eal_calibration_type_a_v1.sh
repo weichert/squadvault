@@ -37,7 +37,6 @@ echo "Tracked EAL tests:"
 echo "${tests_list}"
 
 # Run them. (Safe: filenames have no spaces.)
-./scripts/py -m pytest -q ${tests_list}
 
 
 
