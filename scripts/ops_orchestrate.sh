@@ -168,17 +168,14 @@ if [[ "${commit_enabled}" == "1" ]]; then
   fi
 fi
 
-  echo "=== Prove: scripts/prove_ci.sh ==="
-  ./scripts/prove_ci.sh
-else
-  if [[ -n "$(git status --porcelain)" ]]; then
-    die "tree not clean after successful run; use --commit or revert changes"
-  fi
-
-  echo
-  echo "=== Prove: scripts/prove_ci.sh ==="
-  ./scripts/prove_ci.sh
+# If we did not commit, then we must not leave a dirty tree after applying a patch.
+if [[ "${commit_enabled}" != "1" && "${pass1_changed}" == "1" ]]; then
+  die "tree not clean after successful run; use --commit or revert changes"
 fi
+
+echo
+echo "=== Prove: scripts/prove_ci.sh ==="
+./scripts/prove_ci.sh
 
 echo
 echo "=== Ops Orchestrator: OK ==="
