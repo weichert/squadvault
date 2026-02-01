@@ -155,21 +155,20 @@ if [[ "${commit_enabled}" == "1" ]]; then
   if [[ "${pass1_changed}" != "1" ]]; then
     echo "OK: --commit requested but no changes occurred (no-op); skipping commit"
   else
+    echo
+    echo "=== Commit (explicit) ==="
+    git add -A
+    if git diff --cached --quiet; then
+      die "unexpected: nothing staged after git add -A"
+    fi
+    git commit -m "${commit_msg}"
 
-  echo
-  echo "=== Commit (explicit) ==="
-  git add -A
-  if git diff --cached --quiet; then
-    die "unexpected: nothing staged after git add -A"
+    if [[ -n "$(git status --porcelain)" ]]; then
+      die "post-commit tree not clean (unexpected)"
+    fi
   fi
-  git commit -m "${commit_msg}"
+fi
 
-  if [[ -n "$(git status --porcelain)" ]]; then
-    die "post-commit tree not clean (unexpected)"
-  fi
-  echo "==> commit OK"
-
-  echo
   echo "=== Prove: scripts/prove_ci.sh ==="
   ./scripts/prove_ci.sh
 else
