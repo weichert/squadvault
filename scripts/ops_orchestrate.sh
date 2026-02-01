@@ -147,7 +147,6 @@ if [[ "${pass2_diff}" != "${pass1_diff}" ]] || [[ "${pass2_diff_cached}" != "${p
   echo "==> status after pass2:"
   git status --porcelain >&2
   die "idempotency failure: pass2 changed the diff state vs pass1"
-  fi
 fi
 echo "==> idempotency OK (pass2 introduced no new changes)"
 
