@@ -26,6 +26,12 @@ This index enumerates **active, enforced CI guardrails** for the SquadVault inge
 - **Invariant:** CI must reject unsafe wall-clock time usage and implicit local-time conversions unless explicitly allowlisted.
 - **Notes:** `SV_TIME_OK` is the inline escape hatch for deliberate exceptions.
 
+## Proof Surface
+
+- **CI Proof Surface Registry (v1.0)**  
+  Canonical, frozen list of all proof runners invoked by CI.  
+  → docs/80_indices/ops/CI_Proof_Surface_Registry_v1.0.md
+
 ## Notes
 
 - Guardrails listed here are **runtime-enforced**, not advisory.
