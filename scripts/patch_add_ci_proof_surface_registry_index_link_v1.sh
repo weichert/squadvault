@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== Patch: add CI proof surface registry link to CI index (v1) ==="
+echo "=== Patch: link CI proof surface registry from CI guardrails index (v1) ==="
 
 self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${self_dir}/.." && pwd)"
@@ -14,4 +14,4 @@ else
   "${python}" "${repo_root}/scripts/_patch_add_ci_proof_surface_registry_index_link_v1.py"
 fi
 
-echo "OK: CI index updated (v1)."
+echo "OK: CI guardrails index updated (v1)."

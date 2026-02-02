@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +23,7 @@ def main() -> None:
   INDEX.parent.mkdir(parents=True, exist_ok=True)
 
   if not INDEX.exists():
-    INDEX.write_text(HEADER + "\n" + BLOCK + "\n", encoding="utf-8")
+    INDEX.write_text(HEADER + "\n\n" + BLOCK + "\n", encoding="utf-8")
     return
 
   text = INDEX.read_text(encoding="utf-8")
