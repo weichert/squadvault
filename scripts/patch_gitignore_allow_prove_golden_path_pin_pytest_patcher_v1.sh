@@ -2,9 +2,6 @@
 set -euo pipefail
 
 echo "=== Patch: .gitignore allowlist Golden Path pytest pin patcher (v1) ==="
-python="${PYTHON:-p
-
-echo "=== Patch: .gitignore allowlist Golden Path pytest pin patcher (v1) ==="
 python="${PYTHON:-python}"
 
 "$python" scripts/_patch_gitignore_allow_prove_golden_path_pin_pytest_patcher_v1.py
