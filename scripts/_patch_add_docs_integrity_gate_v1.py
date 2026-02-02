@@ -156,7 +156,7 @@ def sorted_files_under(rel_root: str) -> List[Path]:
     if not root.exists():
         die(f"FAIL: canonical root missing: {rel_root}")
 
-    # Deterministic traversal: no Path.rglob(). Use os.walk with explicit sorting.
+    # Deterministic traversal: no recursive glob(). Use os.walk with explicit sorting.
     import os
     out: List[Path] = []
     for dirpath, dirnames, filenames in os.walk(str(root)):
