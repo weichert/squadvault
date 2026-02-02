@@ -18,7 +18,7 @@ s = p.read_text(encoding="utf-8")
 
 # Guardrails: ensure expected anchors exist (refuse to patch if drift)
 needles = [
-    "PYTHONPATH=src python -m unittest -v",
+    "./scripts/py -m unittest -v",
     "./scripts/recap.py check \\",
     "./scripts/recap.py golden-path \\",
 ]
@@ -30,7 +30,7 @@ s2 = s
 
 # 1) Unit tests: use scripts/py wrapper
 s2 = s2.replace(
-    "PYTHONPATH=src python -m unittest -v",
+    "./scripts/py -m unittest -v",
     "./scripts/py -m unittest -v",
     1,
 )

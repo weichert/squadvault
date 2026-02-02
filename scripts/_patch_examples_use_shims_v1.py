@@ -8,9 +8,9 @@ TARGETS = [
 
 def patch_text(s: str) -> str:
     # Replace example invocations shown to operators.
-    s = s.replace("PYTHONPATH=src python -c ", "./scripts/py -c ")
-    s = s.replace("PYTHONPATH=src python -m py_compile", "./scripts/py -m py_compile")
-    s = s.replace("PYTHONPATH=src python -m unittest", "./scripts/py -m unittest")
+    s = s.replace("./scripts/py -c ", "./scripts/py -c ")
+    s = s.replace("./scripts/py -m py_compile", "./scripts/py -m py_compile")
+    s = s.replace("./scripts/py -m unittest", "./scripts/py -m unittest")
 
     # recap.py help text examples
     s = s.replace("./scripts/recap.py ", "./scripts/recap.sh ")

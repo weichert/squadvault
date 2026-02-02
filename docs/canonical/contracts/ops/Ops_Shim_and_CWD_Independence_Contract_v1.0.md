@@ -68,7 +68,7 @@ Debug logs MUST be gated behind `SV_DEBUG=1` (or an explicitly documented debug 
 
 The following are forbidden in operator entrypoints and gates:
 
-1) `PYTHONPATH=src python ...` (or any variant that relies on caller environment)
+1) `./scripts/py ...` (or any variant that relies on caller environment)
 2) Direct `./scripts/recap.py ...` invocation in operator docs or scripts (use `./scripts/recap.sh`)
 3) Relative repo paths that assume repo root CWD, e.g.:
    - `find scripts ...`

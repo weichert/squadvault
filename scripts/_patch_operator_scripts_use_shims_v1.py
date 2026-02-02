@@ -7,8 +7,8 @@ TARGETS = [
 
 def patch_text(s: str) -> str:
     # Prefer shim: scripts/py
-    s = s.replace("PYTHONPATH=src python -u ", "./scripts/py -u ")
-    s = s.replace("PYTHONPATH=src python ", "./scripts/py ")
+    s = s.replace("./scripts/py -u ", "./scripts/py -u ")
+    s = s.replace("./scripts/py ", "./scripts/py ")
 
     # Prefer shim: scripts/recap.sh
     s = s.replace("./scripts/recap.py ", "./scripts/recap.sh ")

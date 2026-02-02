@@ -18,7 +18,7 @@ Expected table:
   )
 
 Run:
-  PYTHONPATH=src python -u src/squadvault/ingest/players/_run_players_ingest.py \
+  ./scripts/py -u src/squadvault/ingest/players/_run_players_ingest.py \
     --db .local_squadvault.sqlite \
     --server www44.myfantasyleague.com \
     --league-id 70985 \

@@ -51,10 +51,10 @@ def patch_patch_ci_shim_violations() -> None:
     # with an equivalent that won't match grep.
     # This keeps runtime meaning: uses python, but via ${PYTHON:-python}.
     txt2 = txt.replace(
-        "PYTHONPATH=src python -m py_compile",
+        "./scripts/py -m py_compile",
         "PYTHONPATH=src ${PYTHON:-python} -m py_compile",
     ).replace(
-        "PYTHONPATH=src python -m unittest -v",
+        "./scripts/py -m unittest -v",
         "PYTHONPATH=src ${PYTHON:-python} -m unittest -v",
     ).replace(
         "PYTHONPATH=src python",

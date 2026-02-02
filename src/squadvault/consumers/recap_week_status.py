@@ -78,14 +78,14 @@ def _suggest_next_action(
     week_index: int,
 ) -> str:
     common = (
-        f"PYTHONPATH=src python -u "
+        f"./scripts/py -u "
         f"--db {db_path} --league-id {league_id} --season {season} --week-index {week_index}"
     )
 
     if state is None:
         return (
             "NEXT: init\n"
-            f"  PYTHONPATH=src python -u src/squadvault/consumers/recap_week_init.py "
+            f"  ./scripts/py -u src/squadvault/consumers/recap_week_init.py "
             f"--db {db_path} --league-id {league_id} --season {season} --week-index {week_index}"
         )
 
@@ -95,7 +95,7 @@ def _suggest_next_action(
     if state == "DRAFTED":
         return (
             "NEXT: write artifact (creates artifact -> REVIEW_REQUIRED)\n"
-            f"  PYTHONPATH=src python -u src/squadvault/consumers/recap_week_write_artifact.py "
+            f"  ./scripts/py -u src/squadvault/consumers/recap_week_write_artifact.py "
             f"--db {db_path} --base-dir artifacts --league-id {league_id} --season {season} --week-index {week_index}"
         )
 
@@ -103,17 +103,17 @@ def _suggest_next_action(
         if has_active_artifact:
             return (
                 "NEXT: human review (view recap)\n"
-                f"  PYTHONPATH=src python -u src/squadvault/consumers/recap_week_render.py "
+                f"  ./scripts/py -u src/squadvault/consumers/recap_week_render.py "
                 f"--db {db_path} --league-id {league_id} --season {season} --week-index {week_index}\n"
                 "\n"
                 "NEXT (manual approval):\n"
-                f"  PYTHONPATH=src python -u src/squadvault/consumers/recap_week_approve.py "
+                f"  ./scripts/py -u src/squadvault/consumers/recap_week_approve.py "
                 f"--db {db_path} --league-id {league_id} --season {season} --week-index {week_index}"
 
             )
         return (
             "NEXT: write artifact (artifact missing)\n"
-            f"  PYTHONPATH=src python -u src/squadvault/consumers/recap_week_write_artifact.py "
+            f"  ./scripts/py -u src/squadvault/consumers/recap_week_write_artifact.py "
             f"--db {db_path} --base-dir artifacts --league-id {league_id} --season {season} --week-index {week_index}"
         )
 

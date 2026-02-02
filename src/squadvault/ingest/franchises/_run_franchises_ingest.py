@@ -12,7 +12,7 @@ Upserts into:
   franchise_directory(league_id, season, franchise_id, name, owner_name, raw_json, updated_at)
 
 Usage:
-  PYTHONPATH=src python -u src/squadvault/ingest/franchises/_run_franchises_ingest.py \
+  ./scripts/py -u src/squadvault/ingest/franchises/_run_franchises_ingest.py \
     --db .local_squadvault.sqlite \
     --server www44.myfantasyleague.com \
     --league-id 70985 \
