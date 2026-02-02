@@ -29,6 +29,7 @@ This registry is intentionally boring and auditable.
 - scripts/prove_ci.sh — Single blessed CI entrypoint; runs gates + invokes all proof runners below.
 
 ## Proof Runners (invoked by scripts/prove_ci.sh)
+- scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
 
 - scripts/prove_eal_calibration_type_a_v1.sh — Proves EAL calibration Type A invariants end-to-end.
 - scripts/prove_golden_path.sh — Proves canonical operator golden path via shims and gates.

@@ -3,6 +3,14 @@
 This index enumerates **active, enforced CI guardrails** for the SquadVault ingest system.
 
 ## Active Guardrails
+### Docs Integrity Guardrail
+- **Status:** ACTIVE (enforced)
+- **Entrypoint:** `scripts/prove_ci.sh`
+- **Enforcement:** `scripts/prove_docs_integrity_v1.sh`
+- **Invariant:** Enforces structural governance invariants for canonical docs; fail-closed.
+- **Details:**  
+  → [Docs_Integrity_Gate_Invariant_v1.0.md](./Docs_Integrity_Gate_Invariant_v1.0.md)
+
 
 ### CI Cleanliness & Determinism Guardrail
 - **Status:** ACTIVE (enforced)
