@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "=== Gate: Enforce canonical test DB routing (v1) ==="
+
 # Gate: Enforce canonical test DB routing (v1)
 
 self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,3 +40,5 @@ if [[ -n "$violations" ]]; then
   printf '%s\n' "$violations" >&2
   exit 1
 fi
+
+echo "OK: test DB routing gate passed."
