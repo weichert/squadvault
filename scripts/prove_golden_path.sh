@@ -24,25 +24,22 @@ echo
 
 echo "== Tests =="
 # SV_PATCH: pinned, git-tracked pytest list (avoid broad `pytest -q Tests`)
-if command -v git >/dev/null 2>&1; then
-  # Prefer a stable, deterministic order.
-  # We rely on git-tracked tests only to avoid picking up untracked/renamed files.
-  if command -v sort >/dev/null 2>&1; then
-    mapfile -t gp_tests < <(git ls-files 'Tests/test_*.py' | sort)
-  else
-    mapfile -t gp_tests < <(git ls-files 'Tests/test_*.py')
-  fi
+  {
+    # Bash-3-safe pinned, git-tracked pytest list.
+    # We explicitly enumerate git-tracked Tests/test_*.py files to prevent accidental surface expansion.
+    gp_tests=()
+    while IFS= read -r p; do
+      gp_tests+=("$p")
+    done < <(git ls-files 'Tests/test_*.py' | sort)
 
-  if [[ "${#gp_tests[@]}" -eq 0 ]]; then
-    echo "ERROR: no git-tracked Tests/test_*.py files found for golden path" >&2
-    exit 1
-  fi
+    if [ "${#gp_tests[@]}" -eq 0 ]; then
+      echo "ERROR: no git-tracked Tests/test_*.py files found for golden path" >&2
+      exit 1
+    fi
 
-  pytest -q "${gp_tests[@]}"
-else
-  # Fallback (should not happen in CI, but keeps local runs resilient).
-  pytest -q Tests
-fi
+    pytest -q "${gp_tests[@]}"
+  }
+
 # /SV_PATCH: pinned, git-tracked pytest list
 
 echo "== Shim compliance =="
