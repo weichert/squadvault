@@ -30,27 +30,27 @@ PY
 
 # 1) Replace shim-violating invocations with scripts/py shim
 replace_in_file "scripts/prove_eal_calibration_type_a_v1.sh" \
-  "PYTHONPATH=src python -m py_compile" \
+  "PYTHONPATH=src ${PYTHON:-python} -m py_compile" \
   "./scripts/py -m py_compile"
 
 replace_in_file "scripts/prove_tone_engine_type_a_v1.sh" \
-  "PYTHONPATH=src python -m py_compile" \
+  "PYTHONPATH=src ${PYTHON:-python} -m py_compile" \
   "./scripts/py -m py_compile"
 
 replace_in_file "scripts/prove_version_presentation_navigation_type_a_v1.sh" \
-  "PYTHONPATH=src python -m py_compile" \
+  "PYTHONPATH=src ${PYTHON:-python} -m py_compile" \
   "./scripts/py -m py_compile"
 
 replace_in_file "scripts/patch_rc_input_contract_fix_resolve_v4.sh" \
-  "PYTHONPATH=src python -m py_compile" \
+  "PYTHONPATH=src ${PYTHON:-python} -m py_compile" \
   "./scripts/py -m py_compile"
 
 replace_in_file "scripts/patch_rc_input_contract_fix_resolve_v4.sh" \
-  "PYTHONPATH=src python -m unittest -v" \
+  "PYTHONPATH=src ${PYTHON:-python} -m unittest -v" \
   "./scripts/py -m unittest -v"
 
 replace_in_file "scripts/patch_rivalry_chronicle_consolidated_v2.sh" \
-  "PYTHONPATH=src python -m py_compile" \
+  "PYTHONPATH=src ${PYTHON:-python} -m py_compile" \
   "./scripts/py -m py_compile"
 
 echo
