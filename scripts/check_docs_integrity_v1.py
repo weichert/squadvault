@@ -35,7 +35,6 @@ def sorted_files_under(rel_root: str) -> List[Path]:
     if not root.exists():
         die(f"FAIL: canonical root missing: {rel_root}")
 
-    # Deterministic traversal: no recursive glob(). Use os.walk with explicit sorting.
     import os
     out: List[Path] = []
     for dirpath, dirnames, filenames in os.walk(str(root)):
@@ -45,6 +44,7 @@ def sorted_files_under(rel_root: str) -> List[Path]:
             out.append(Path(dirpath) / fn)
 
     return out
+
 
 def is_versioned_text_doc(p: Path) -> bool:
     if not VERSIONED_RE.search(p.name):
