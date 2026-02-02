@@ -96,8 +96,8 @@ if [ -n "${py_hits_oswalk_raw}" ]; then
     end=$((ln + 5))
     window="$(sed -n "${start},${end}p" "${f}" 2>/dev/null || true)"
 
-    echo "${window}" | grep -q 'dirs\.sort[[:space:]]*()' || { py_hits_oswalk_unsorted="${py_hits_oswalk_unsorted}${hit}\n"; continue; }
-    echo "${window}" | grep -q 'files\.sort[[:space:]]*()' || { py_hits_oswalk_unsorted="${py_hits_oswalk_unsorted}${hit}\n"; continue; }
+    echo "${window}" | grep -q '\(dirs\|dirnames\)\.sort[[:space:]]*()'  # accept_dirnames_filenames_sorts_v3 || { py_hits_oswalk_unsorted="${py_hits_oswalk_unsorted}${hit}\n"; continue; }
+    echo "${window}" | grep -q '\(files\|filenames\)\.sort[[:space:]]*()'  # accept_dirnames_filenames_sorts_v3 || { py_hits_oswalk_unsorted="${py_hits_oswalk_unsorted}${hit}\n"; continue; }
   done <<EOF
 ${py_hits_oswalk_raw}
 EOF
