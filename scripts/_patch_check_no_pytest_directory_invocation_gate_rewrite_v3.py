@@ -1,7 +1,14 @@
-#!/usr/bin/env bash
-set -euo pipefail
-# SV_PATCH_V3: rewrite gate (executable pytest detection; ignore echo/printf)
+from __future__ import annotations
 
+import os
+from pathlib import Path
+
+TARGET = Path("scripts/check_no_pytest_directory_invocation.sh")
+MARKER = "# SV_PATCH_V3: rewrite gate (executable pytest detection; ignore echo/printf)\n"
+
+CONTENT = """#!/usr/bin/env bash
+set -euo pipefail
+""" + MARKER + """
 # Gate: forbid pytest directory invocation in prove scripts.
 # Rationale: directory invocation can silently expand CI scope when new files appear.
 # Allowed: running pytest against explicit .py files or pinned git-tracked lists (arrays).
@@ -37,7 +44,7 @@ for f in "${files[@]}"; do
     # Skip comments + empty lines.
     case "$line" in
       "" ) continue ;;
-      \#* ) continue ;;
+      \\#* ) continue ;;
     esac
 
     # Ignore log lines that may mention pytest.
@@ -58,7 +65,7 @@ for f in "${files[@]}"; do
     fi
 
     if [ "$is_pytest_exec" -eq 1 ]; then
-      if echo "$line" | grep -q 'Tests' && ! echo "$line" | grep -q '\.py'; then
+      if echo "$line" | grep -q 'Tests' && ! echo "$line" | grep -q '\\.py'; then
         echo
         echo "=== Gate failure: pytest directory invocation forbidden ===" >&2
         echo "file: $f" >&2
@@ -66,8 +73,8 @@ for f in "${files[@]}"; do
         echo "text: $line" >&2
         echo >&2
         echo "Fix: pin the test surface using a git-tracked list:" >&2
-        echo "  tests=(\$(git ls-files 'Tests/.../test_*.py' | sort))" >&2
-        echo "  pytest -q \"\${tests[@]}\"" >&2
+        echo "  tests=(\\$(git ls-files 'Tests/.../test_*.py' | sort))" >&2
+        echo "  pytest -q \\"\\${tests[@]}\\"" >&2
         exit 2
       fi
     fi
@@ -75,3 +82,19 @@ for f in "${files[@]}"; do
 done
 
 echo "OK: no pytest directory invocation found in prove scripts"
+"""
+
+def main() -> None:
+    if TARGET.exists():
+        cur = TARGET.read_text(encoding="utf-8")
+        if MARKER in cur and cur == CONTENT:
+            print("OK: already rewritten (v3 marker present).")
+            return
+
+    TARGET.write_text(CONTENT, encoding="utf-8")
+    st = os.stat(TARGET)
+    os.chmod(TARGET, st.st_mode | 0o111)
+    print("OK: rewrote pytest directory invocation gate (v3)")
+
+if __name__ == "__main__":
+    main()
