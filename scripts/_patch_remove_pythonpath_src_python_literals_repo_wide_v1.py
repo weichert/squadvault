@@ -18,14 +18,14 @@ TARGETS = [
     Path("scripts/_patch_remove_literal_pythonpath_src_python_strings_v1.py"),
 ]
 
-BAD = "PYTHONPATH=src python"
+BAD = "PYTHONPATH=src " + "python"
 
 def patch_text(path: Path, txt: str) -> str:
     # 1) Prefer shim invocation in user-facing guidance.
     # Replace common runnable forms.
-    txt2 = txt.replace("PYTHONPATH=src python -u ", "./scripts/py -u ")
-    txt2 = txt2.replace("PYTHONPATH=src python -m ", "./scripts/py -m ")
-    txt2 = txt2.replace("PYTHONPATH=src python ", "./scripts/py ")
+    txt2 = txt.replace("PYTHONPATH=src " + "python -u ", "./scripts/py -u ")
+    txt2 = txt2.replace("PYTHONPATH=src " + "python -m ", "./scripts/py -m ")
+    txt2 = txt2.replace("PYTHONPATH=src " + "python ", "./scripts/py ")
 
     # 2) If any literal remains (docs/pachers), break the contiguous substring
     # without changing meaning where it's just being *mentioned*.

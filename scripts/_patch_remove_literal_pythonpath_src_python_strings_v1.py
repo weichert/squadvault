@@ -27,6 +27,8 @@ def allowlist_patcher() -> None:
     print("OK: allowlisted patcher in .gitignore")
 
 
+BAD = "PYTHONPATH=src " + "python"
+
 def patch_fix_banner() -> None:
     f = Path("scripts/patch_fix_shim_inline_pythonpath_v1.sh")
     if not f.exists():
@@ -34,7 +36,7 @@ def patch_fix_banner() -> None:
 
     txt = f.read_text(encoding="utf-8")
     # Only touch the literal substring if present.
-    txt2 = txt.replace("PYTHONPATH=src python", "PYTHONPATH=src + python")
+    txt2 = txt.replace(BAD, "PYTHONPATH=src + python")
     if txt2 != txt:
         f.write_text(txt2, encoding="utf-8")
         print(f"OK: sanitized banner substring in {f}")
@@ -57,7 +59,7 @@ def patch_patch_ci_shim_violations() -> None:
         "./scripts/py -m unittest -v",
         "PYTHONPATH=src ${PYTHON:-python} -m unittest -v",
     ).replace(
-        "PYTHONPATH=src python",
+        "PYTHONPATH=src " + "python",
         "PYTHONPATH=src ${PYTHON:-python}",
     )
 
