@@ -1,3 +1,4 @@
+import os
 from __future__ import annotations
 
 import sqlite3
@@ -40,7 +41,7 @@ def _try_insert_eal_directives(
 
 class TestEALWriterBoundaryV1(unittest.TestCase):
     def test_eal_writer_does_not_affect_selection_or_facts(self) -> None:
-        db_path = ".local_squadvault.sqlite"
+        db_path = os.environ.get("SQUADVAULT_TEST_DB", ".local_squadvault.sqlite")
         league_id = "70985"
         season = 2024
         week_index = 6

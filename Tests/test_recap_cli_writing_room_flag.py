@@ -1,3 +1,4 @@
+import os
 from __future__ import annotations
 
 import unittest
@@ -42,7 +43,7 @@ class TestRecapCliWritingRoomFlag(unittest.TestCase):
             league_id="70985",
             season=2024,
             week_index=6,
-            db=".local_squadvault.sqlite",
+            db=os.environ.get("SQUADVAULT_TEST_DB", ".local_squadvault.sqlite"),
             writing_room_out=None,  # triggers deterministic default
             created_at_utc="2026-01-22T00:00:00Z",
             writing_room_created_at_utc=None,

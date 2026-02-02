@@ -90,6 +90,9 @@ Tests/test_waiver_bid_envelopes.py
 
 # Local/one-off patchers (kept out of canonical history)
 scripts/_patch_*_wip*.py
+scripts/_patch_allowlist_new_patchers_for_ci_db_fix_v1.py
+scripts/_patch_export_squadvault_test_db_in_prove_ci_v1.py
+scripts/_patch_tests_use_squadvault_test_db_env_v1.py
 
 # Local/one-off patchers (kept out of canonical history)
 scripts/_patch_*.py
