@@ -62,6 +62,10 @@ def is_canonical_looking(p: Path, txt: str) -> bool:
 def gate_header_presence(files: List[Path]) -> None:
     missing: List[str] = []
     for p in files:
+        # docs_integrity_scope_canonical_only_v1: header enforcement only applies to docs/canonical/**
+        rp = rel(p)
+        if not rp.startswith('docs/canonical/'):
+            continue
         if not is_versioned_text_doc(p):
             continue
         txt = p.read_text(encoding="utf-8", errors="replace")
