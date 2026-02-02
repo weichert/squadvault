@@ -52,3 +52,5 @@ This index enumerates **active, enforced CI guardrails** for the SquadVault inge
 ## Ops Bundles
 
 - `scripts/ops_bundle_ci_docs_hardening_v1.sh` — CI + docs hardening sweep (idempotent; runs via `scripts/ops_orchestrate.sh`).
+
+- `docs/80_indices/ops/Docs_Integrity_Gate_Invariant_v1.0.md`  <!-- ci_guardrails_index_add_docs_integrity_link_v1 -->
