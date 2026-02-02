@@ -71,7 +71,14 @@ repo_root_for_gate="$(
   cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1
   pwd
 )"
-bash "${repo_root_for_gate}/scripts/gate_cwd_independence_shims_v1.sh"
+gate_path="${repo_root_for_gate}/scripts/gate_cwd_independence_shims_v1.sh"
+echo "    repo_root_for_gate=${repo_root_for_gate}"
+echo "    gate_path=${gate_path}"
+if [[ ! -f "${gate_path}" ]]; then
+  echo "ERROR: missing CWD gate: ${gate_path}"
+  exit 1
+fi
+bash "${gate_path}"
 
 
 # --- /Fixture immutability guard (CI) ---
