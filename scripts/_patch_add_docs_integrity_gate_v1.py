@@ -126,6 +126,51 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Set
 
+# docs_integrity_scope_canonical_only_v3: post-process generated checker so header enforcement applies only to docs/canonical/**
+def _sv_postprocess_docs_integrity_checker_scope() -> None:
+    import re
+    from pathlib import Path
+
+    checker = Path("scripts/check_docs_integrity_v1.py")
+    if not checker.exists():
+        return
+
+    src = checker.read_text(encoding="utf-8")
+
+    # already patched?
+    if "docs_integrity_scope_canonical_only_v3" in src:
+        return
+
+    m = re.search(r"(?m)^def gate_header_presence\(\s*files:\s*List\[Path\]\s*\)\s*->\s*None:\s*\n", src)
+    if not m:
+        return
+
+    m_for = re.search(r"(?m)^[ \t]+for p in files:\s*\n", src[m.end():])
+    if not m_for:
+        return
+
+    for_line_abs = m.end() + m_for.start()
+    for_line = src[for_line_abs : for_line_abs + (m_for.end() - m_for.start())]
+
+    m_indent = re.match(r"^([ \t]+)for p in files:", for_line)
+    if not m_indent:
+        return
+
+    body_indent = m_indent.group(1) + (" " * 4)
+    injection = (
+        f"{body_indent}# docs_integrity_scope_canonical_only_v3: header enforcement only applies to docs/canonical/**\n"
+        f"{body_indent}rp = rel(p)\n"
+        f"{body_indent}if not rp.startswith('docs/canonical/'):\n"
+        f"{body_indent}    continue\n"
+    )
+
+    window = src[for_line_abs : for_line_abs + 600]
+    if "if not rp.startswith('docs/canonical/'):" in window:
+        return
+
+    out = src[: (for_line_abs + len(for_line))] + injection + src[(for_line_abs + len(for_line)) :]
+    checker.write_text(out, encoding="utf-8", newline="\n")
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # v1 LOCK: canonical roots allowlist (frozen at patch time)
@@ -506,6 +551,7 @@ def main() -> None:
     if prove_ci2 != prove_ci:
         write_text(CI_ENTRYPOINT, prove_ci2)
 
+    _sv_postprocess_docs_integrity_checker_scope()  # docs_integrity_scope_canonical_only_v3
     print(PATCH_SUCCESS)
 
 
