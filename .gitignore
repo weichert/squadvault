@@ -102,8 +102,10 @@ scripts/_patch_*.py
 !scripts/_patch_fix_prove_rc_approved_by_v5.py
 !scripts/_patch_gitignore_pin_whitelist_after_patch_glob_v1.py
 !scripts/_patch_gitignore_unignore_new_patchers_ci_db_fix_v2.py
+!scripts/_patch_gitignore_unignore_new_patchers_ci_recap_runs_v5.py
 !scripts/_patch_gitignore_whitelist_canonical_patchers_v1.py
 !scripts/_patch_gitignore_whitelist_canonical_patchers_v2.py
+!scripts/_patch_move_squadvault_test_db_export_after_workdb_final_v3.py
 !scripts/_patch_tests_use_squadvault_test_db_env_v1.py
 
 # Canonical patchers (DO track these)

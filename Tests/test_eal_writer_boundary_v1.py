@@ -39,12 +39,98 @@ def _try_insert_eal_directives(
         con.close()
 
 
+def _ensure_recap_runs_row(db_path: str, league_id: str, season: int, week_index: int) -> None:
+    import sqlite3
+
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='recap_runs' LIMIT 1"
+        )
+        if cur.fetchone() is None:
+            raise AssertionError("recap_runs table missing in test DB")
+
+        cur.execute(
+            "SELECT 1 FROM recap_runs WHERE league_id=? AND season=? AND week_index=? LIMIT 1",
+            (league_id, season, week_index),
+        )
+        if cur.fetchone() is not None:
+            return
+
+        cur.execute("PRAGMA table_info(recap_runs)")
+        cols = cur.fetchall()
+        if not cols:
+            raise AssertionError("PRAGMA table_info(recap_runs) returned no columns")
+
+        by_name = {c[1]: c for c in cols}
+
+        def has(name: str) -> bool:
+            return name in by_name
+
+        values = {}
+
+        if has("league_id"):
+            values["league_id"] = league_id
+        if has("season"):
+            values["season"] = int(season)
+        if has("week_index"):
+            values["week_index"] = int(week_index)
+
+        if has("selection_fingerprint"):
+            values["selection_fingerprint"] = "test-fingerprint"
+
+        for nm in list(by_name.keys()):
+            low = nm.lower()
+            if "window" in low and "start" in low:
+                values[nm] = int(week_index)
+            if "window" in low and "end" in low:
+                values[nm] = int(week_index)
+
+        for _, name, typ, notnull, dflt, _pk in cols:
+            if notnull != 1:
+                continue
+            if dflt is not None:
+                continue
+            if name in values:
+                continue
+
+            t = (typ or "").upper()
+            lname = name.lower()
+
+            if "INT" in t:
+                values[name] = 0
+            elif "REAL" in t or "FLOA" in t or "DOUB" in t:
+                values[name] = 0.0
+            else:
+                if "time" in lname or "created_at" in lname or "updated_at" in lname:
+                    values[name] = "1970-01-01T00:00:00Z"
+                elif "id" == lname or lname.endswith("_id"):
+                    values[name] = "test-id"
+                else:
+                    values[name] = ""
+
+        if not values:
+            raise AssertionError("could not derive any insert values for recap_runs")
+
+        col_names = sorted(values.keys())
+        placeholders = ",".join(["?"] * len(col_names))
+        sql = f"INSERT INTO recap_runs ({','.join(col_names)}) VALUES ({placeholders})"
+        cur.execute(sql, tuple(values[c] for c in col_names))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 class TestEALWriterBoundaryV1(unittest.TestCase):
     def test_eal_writer_does_not_affect_selection_or_facts(self) -> None:
         db_path = os.environ.get("SQUADVAULT_TEST_DB", ".local_squadvault.sqlite")
         league_id = "70985"
         season = 2024
         week_index = 6
+
+        _ensure_recap_runs_row(db_path, league_id, season, week_index)
 
         # --- Run 1: baseline ---
         generate_weekly_recap_draft(
