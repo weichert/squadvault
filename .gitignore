@@ -210,4 +210,6 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 # Shell wrappers are canonical by convention:
 !scripts/patch_*.sh
 !scripts/ops_*.sh
+!scripts/_patch_add_golden_path_production_freeze_v1.py
 # === /SquadVault: track canonical ops patchers (auto) ===
+
