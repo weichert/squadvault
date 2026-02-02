@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
     branches: [ main ]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true  # ci_add_concurrency_cancel_in_progress_v1
+
 
 jobs:
   test:
