@@ -99,6 +99,7 @@ scripts/_patch_*.py
 !scripts/_patch_gitignore_pin_whitelist_after_patch_glob_v1.py
 
 # Canonical patchers (DO track these)
+!scripts/_patch_prove_golden_path_pin_pytest_list_v3.py
 !scripts/_patch_prove_golden_path_remove_pytest_dir_invocation_v2.py
 !scripts/_patch_prove_golden_path_remove_pytest_dir_invocation_v1.py
 !scripts/_patch_prove_golden_path_pin_pytest_list_v2.py
