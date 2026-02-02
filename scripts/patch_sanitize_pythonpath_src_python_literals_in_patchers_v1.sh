@@ -7,7 +7,8 @@ python="${PYTHON:-python}"
 
 echo "==> sanity: repo-wide grep (excluding shim checker) should now be clean"
 git ls-files | grep -v '^scripts/check_shims_compliance\.sh$' | \
-  xargs grep -n 'PYTHONPATH=src python' \
+  pat='PYTHONPATH=src '"'"'python'"'"'' \
+  xargs grep -n "$pat" \
   && { echo "ERROR: still found contiguous literal"; exit 2; } \
   || echo "OK: contiguous literal not present outside shim checker"
 
