@@ -21,7 +21,4 @@ echo "==> py_compile patcher"
 echo "==> smoke: run fs ordering gate"
 bash scripts/check_filesystem_ordering_determinism.sh
 
-echo "==> full prove"
-bash scripts/prove_ci.sh
-
-echo "OK: patch complete"
+echo "OK: patch applied. Now commit, then run: bash scripts/prove_ci.sh"
