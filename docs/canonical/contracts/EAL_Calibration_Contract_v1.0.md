@@ -1,3 +1,5 @@
+[SV_CANONICAL_HEADER_V1]
+
 # Editorial Attunement Layer — Calibration Contract (v1.0)
 
 Contract Name: EAL_CALIBRATION  

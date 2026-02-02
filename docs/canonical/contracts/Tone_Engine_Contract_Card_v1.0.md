@@ -1,3 +1,5 @@
+[SV_CANONICAL_HEADER_V1]
+
 # Tone Engine — Contract Card (v1.0)
 
 Contract Name: TONE_ENGINE  

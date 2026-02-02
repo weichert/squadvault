@@ -1,3 +1,5 @@
+[SV_CANONICAL_HEADER_V1]
+
 # Approval Authority — Contract Card (v1.0)
 
 Contract Name: APPROVAL_AUTHORITY  

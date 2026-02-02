@@ -1,3 +1,5 @@
+[SV_CANONICAL_HEADER_V1]
+
 # SquadVault — Signal Taxonomy Contract
 
 Version: v1.0  

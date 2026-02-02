@@ -1,3 +1,5 @@
+[SV_CANONICAL_HEADER_V1]
+
 # Core Invariants Registry (v1.0)
 
 Status: CANONICAL  

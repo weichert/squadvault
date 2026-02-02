@@ -1,3 +1,5 @@
+[SV_CANONICAL_HEADER_V1]
+
 # Golden Path — Production Freeze (v1.0)
 
 Status: FROZEN — PRODUCTION-GRADE

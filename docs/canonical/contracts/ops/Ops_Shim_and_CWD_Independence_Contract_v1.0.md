@@ -1,3 +1,5 @@
+[SV_CANONICAL_HEADER_V1]
+
 # SquadVault — Ops Shim & CWD Independence Contract
 
 Version: v1.0  
