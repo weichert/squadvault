@@ -61,7 +61,7 @@ if [[ -f "${FIXTURE_DB}" ]]; then
   echo "    working_db=${WORK_DB}"
 fi
 # --- /Fixture DB working copy ---
-export SQUADVAULT_TEST_DB
+export SQUADVAULT_TEST_DB="${WORK_DB}"
 
 # Gate: enforce canonical test DB routing (v1)
 bash scripts/gate_enforce_test_db_routing_v1.sh
