@@ -200,6 +200,7 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 # === SquadVault: track canonical ops patchers (auto) ===
 # NOTE: Do NOT use broad globs like !scripts/_patch_*.py (will vacuum historical patchers).
 # Canonical allowlist only:
+!scripts/_patch_docs_add_golden_path_production_freeze_to_docmap_v1.py
 !scripts/_patch_prove_eal_remove_redundant_pytest_run_v1.py
 !scripts/_patch_fix_ops_orchestrate_commit_before_prove_v1.py
 !scripts/_patch_fix_ops_orchestrate_idempotency_semantics_v1.py
