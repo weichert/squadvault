@@ -7,7 +7,7 @@ python="${PYTHON:-python}"
 
 echo "==> sanity: grep should find none (repo-wide; excluding shim checker)"
 git ls-files | grep -v "^scripts/check_shims_compliance\.sh$" | \
-  pat="PYTHONPATH=src ""python""; \
+pat="PYTHONPATH=src ""python"
   xargs grep -n "$pat" \
   && { echo "ERROR: still found literal substring"; exit 2; } \
   || echo "OK: substring not present anywhere except shim checker"

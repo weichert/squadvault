@@ -200,6 +200,7 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 # === SquadVault: track canonical ops patchers (auto) ===
 # NOTE: Do NOT use broad globs like !scripts/_patch_*.py (will vacuum historical patchers).
 # Canonical allowlist only:
+!scripts/_patch_fix_repo_wide_wrapper_pat_quote_v1.py
 !scripts/_patch_sanitize_pythonpath_src_python_literals_in_patchers_v1.py
 !scripts/_patch_fix_repo_wide_grep_sanity_excludes_checker_v1.py
 !scripts/_patch_remove_pythonpath_src_python_literals_repo_wide_v1.py
