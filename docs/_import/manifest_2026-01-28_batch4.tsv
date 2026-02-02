@@ -1,0 +1,5 @@
+source_path	dest_rel_path
+docs/_import/VENDOR/2026-01-28_batch4/SquadVault_Core_Engine_Technical_Specification_v1.0.docx	docs/40_specs/SquadVault_Core_Engine_Technical_Specification_v1.0.docx
+docs/_import/VENDOR/2026-01-28_batch4/SquadVault_Development_Playbook_MVP_v1.1.docx	docs/50_ops_and_build/SquadVault_Development_Playbook_MVP_v1.1.docx
+docs/_import/VENDOR/2026-01-28_batch4/SquadVault_Implementation_Readiness_Package_IRP_v1.0.docx	docs/50_ops_and_build/SquadVault_Implementation_Readiness_Package_IRP_v1.0.docx
+docs/_import/VENDOR/2026-01-28_batch4/SquadVault_Technical_Diligence_Companion_v1.0.docx	docs/50_ops_and_build/SquadVault_Technical_Diligence_Companion_v1.0.docx

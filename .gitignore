@@ -1,0 +1,217 @@
+*.save
+
+# Generated artifacts
+artifacts/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+
+# Environment & secrets
+.env
+.env.*
+
+# Local databases
+*.sqlite
+*.db
+
+# OS junk
+.DS_Store
+
+# Test artifacts / scratch
+Tests/
+txns/
+
+# CLI scratch files accidentally created
+--*
+=
+PY
+!scripts/py
+from
+import
+require
+
+
+# Local DBs / backups
+*.sqlite
+*.sqlite*
+*.bak
+
+# --- SquadVault local/runtime artifacts ---
+path1_logs/
+*.log
+
+# Local SQLite dbs
+*.sqlite
+.local_*.sqlite
+
+# Accidental scratch / shell token files
+AND
+OR
+WHERE
+GROUP
+ORDER
+DB
+WEEK
+SEASON
+LEAGUE
+fingerprint
+selection_fingerprint
+window_start
+window_end
+window_mode
+window_mode,
+reason,
+league_id,
+
+# Numeric scratch files (e.g., "8", "9", "10")
+[0-9]
+[0-9][0-9]
+
+
+# --- SquadVault: allow committed unit tests ---
+!Tests/
+!Tests/**/*.py
+
+# --- local scratch outputs ---
+_sprint1_context_*.txt
+faab_splash_sheet*
+
+# --- temporary: untracked legacy tests (decide later) ---
+Tests/test_auction_draft_envelopes.py
+Tests/test_store_append_only.py
+Tests/test_transaction_envelopes.py
+Tests/test_waiver_bid_envelopes.py
+
+# Local/one-off patchers (kept out of canonical history)
+scripts/_patch_*_wip*.py
+
+# Local/one-off patchers (kept out of canonical history)
+scripts/_patch_*.py
+!scripts/_patch_fix_prove_rc_approved_by_v5.py
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v1.py
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v2.py
+!scripts/_patch_gitignore_pin_whitelist_after_patch_glob_v1.py
+
+# Canonical patchers (DO track these)
+!scripts/_patch_gitignore_allow_post_pytest_surface_hardening_tidy_patchers_v1.py
+!scripts/_patch_docs_add_golden_path_pytest_pinning_index_v1.py
+!scripts/_patch_deprecate_obsolete_golden_path_patchers_v1.py
+!scripts/_patch_prove_golden_path_add_pinned_note_v1.py
+!scripts/_patch_prove_golden_path_pin_pytest_list_v3.py
+!scripts/_patch_prove_golden_path_remove_pytest_dir_invocation_v2.py
+!scripts/_patch_prove_golden_path_remove_pytest_dir_invocation_v1.py
+!scripts/_patch_prove_golden_path_pin_pytest_list_v2.py
+!scripts/_patch_ops_shims_cwd_polish_oneshot_v1.py
+!scripts/_patch_ops_shims_cwd_independence_v1.py
+!scripts/_patch_prove_golden_path_add_script_dir_repo_root_v1.py
+!scripts/_patch_check_shims_compliance_add_script_dir_repo_root_v1.py
+!scripts/_patch_check_shims_compliance_use_repo_root_paths_v2.py
+!scripts/_patch_recap_sh_single_exec_bash_v1.py
+!scripts/_patch_check_golden_path_recap_default_recap_script_py_v1.py
+
+# Local/one-off patchers (kept out of canonical history)
+scripts/_diag_*.py
+
+# Canonical patchers (DO track these)
+!scripts/_patch_ops_shims_cwd_polish_oneshot_v1.py
+!scripts/_patch_ops_shims_cwd_independence_v1.py
+!scripts/_patch_prove_golden_path_add_script_dir_repo_root_v1.py
+!scripts/_patch_check_shims_compliance_add_script_dir_repo_root_v1.py
+!scripts/_patch_check_shims_compliance_use_repo_root_paths_v2.py
+!scripts/_patch_recap_sh_single_exec_bash_v1.py
+!scripts/_patch_check_golden_path_recap_default_recap_script_py_v1.py
+
+# Canonical doc lock patchers (DO track these)
+!scripts/_patch_create_minimal_documentation_map_v1.py
+!scripts/_patch_lock_ops_shim_cwd_contract_v1.py
+
+# --- SquadVault: canonical patchers (MUST be tracked) ---
+!scripts/_patch_create_minimal_documentation_map_v1.py
+!scripts/_patch_lock_ops_shim_cwd_contract_v1.py
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v1.py
+!scripts/_patch_gitignore_whitelist_canonical_patchers_v2.py
+!scripts/_patch_gitignore_pin_whitelist_after_patch_glob_v1.py
+!scripts/_patch_gitignore_force_unignore_canonical_patchers_eof_v1.py
+!scripts/_patch_gitignore_whitelist_force_unignore_patcher_v1.py
+!scripts/_patch_gitignore_rewrite_canonical_patchers_block_v1.py
+!scripts/_patch_lock_signal_taxonomy_v1.py
+
+# --- end canonical patchers ---
+_extracted_txt/
+
+# Canonical patchers (tracked) — keep unignored
+!scripts/_patch_add_status_helper.py
+!scripts/_patch_check_golden_path_recap_absolute_shims_v1.py
+!scripts/_patch_deprecate_week6_shim_patcher.py
+!scripts/_patch_examples_use_shims_v1.py
+!scripts/_patch_fix_writing_room_intake_v1_broken_import_block.py
+!scripts/_patch_fix_writing_room_intake_v1_return_indent_v2.py
+!scripts/_patch_gitignore_allow_scripts_py.py
+!scripts/_patch_gitignore_whitelist_signal_taxonomy_patcher_v1.py
+!scripts/_patch_intake_v1_excluded_signal_details.py
+!scripts/_patch_intake_v1_remove_stray_backref.py
+!scripts/_patch_intake_v1_restore_adapter_gates.py
+!scripts/_patch_operator_scripts_use_shims_v1.py
+!scripts/_patch_patch_writing_room_wrapper_set_pythonpath.py
+!scripts/_patch_phase_a_docmap_add_tier2_ops_contract_cards_v1.py
+!scripts/_patch_phase_a_ops_contract_cards_headers_v1.py
+!scripts/_patch_pytest_import_paths_repo_root_and_src.py
+!scripts/_patch_recap_remaining_cmd_lists_use_py_shim_v1.py
+!scripts/_patch_recap_subprocess_use_py_shim_v1.py
+!scripts/_patch_run_week6_gate_delegate_to_v1.py
+!scripts/_patch_run_week6_writing_room_gate_use_shims.py
+!scripts/_patch_selection_set_schema_add_deterministic_helpers.py
+!scripts/_patch_selection_set_schema_add_identity_helpers.py
+!scripts/_patch_week6_delegator_quote_fix.py
+!scripts/_patch_wrapper_autodetect_pytest_python.py
+!scripts/_patch_wrapper_polish_writing_room_intake_exclusions_banner.py
+!scripts/_patch_wrapper_remove_extra_pytest_invocations.py
+!scripts/_patch_wrapper_stop_restoring_schema.py
+!scripts/_patch_wrapper_use_abs_pythonpath_and_python_m_pytest.py
+!scripts/_patch_writing_room_gates_add_shim_compliance.py
+!scripts/_patch_writing_room_signal_grouping_v1.py
+!scripts/_patch_writing_room_signal_grouping_v1_intake_fix_v3.py
+
+# CI fixture DB (explicit allow)
+!fixtures/
+!fixtures/ci_squadvault.sqlite
+
+# Canonical patchers (tracked) — keep unignored
+!scripts/_patch_check_no_memory_reads_allowlist_v1.py
+
+.local_audit/
+!scripts/_patch_docs_rewrite_stale_import_refs_v1.py
+PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
+!scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py
+!scripts/_patch_audit_docs_housekeeping_sort_rglob_v1.py
+!scripts/_patch_ci_guardrails_index_add_time_and_fs_v1.py
+!scripts/_patch_ci_guardrails_index_fix_env_bullet_v1.py
+!scripts/_patch_docs_add_ci_docs_hardening_freeze_v1.py
+!scripts/_patch_rules_of_engagement_add_docs_mutation_policy_v1.py
+
+# Ops: allowlisted patchers (v1)
+!scripts/_patch_fix_ops_orchestrate_wrapper_path_normalization_v1.py
+
+# Ops: allowlist ops_orchestrate patchers (v1)
+!scripts/_patch_fix_ops_orchestrate_*_v*.py
+
+# === SquadVault: track canonical ops patchers (auto) ===
+# NOTE: Do NOT use broad globs like !scripts/_patch_*.py (will vacuum historical patchers).
+# Canonical allowlist only:
+!scripts/_patch_prove_eal_remove_redundant_pytest_run_v1.py
+!scripts/_patch_fix_ops_orchestrate_commit_before_prove_v1.py
+!scripts/_patch_fix_ops_orchestrate_idempotency_semantics_v1.py
+!scripts/_patch_fix_ops_orchestrate_wrapper_path_normalization_v1.py
+!scripts/_patch_gitignore_allow_ops_orchestrate_patchers_v1.py
+!scripts/_patch_gitignore_allow_ops_orchestrate_path_norm_patcher_v1.py
+!scripts/_patch_gitignore_track_canonical_ops_patchers_v1.py
+# Shell wrappers are canonical by convention:
+!scripts/patch_*.sh
+!scripts/ops_*.sh
+# === /SquadVault: track canonical ops patchers (auto) ===
