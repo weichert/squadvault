@@ -120,6 +120,8 @@ trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
 
 echo "== CI Proof Suite =="
+# ==> Gate: CI proof surface registry (v1)
+bash scripts/check_ci_proof_surface_matches_registry_v1.sh
 echo "==> Filesystem ordering determinism gate"
 ./scripts/check_filesystem_ordering_determinism.sh
 
