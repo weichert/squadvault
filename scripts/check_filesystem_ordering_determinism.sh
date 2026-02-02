@@ -89,6 +89,9 @@ if [ -n "${py_hits_oswalk_raw}" ]; then
   while IFS= read -r hit; do
     f="$(printf "%s" "${hit}" | cut -d: -f1)"
     ln="$(printf "%s" "${hit}" | cut -d: -f2)"
+    # oswalk_numeric_guard_v1: defensive; ignore non-numeric line fields
+    printf "%s" "${ln}" | grep -E -q '^[0-9]+$' || continue
+
     start=$((ln + 1))
     end=$((ln + 5))
     window="$(sed -n "${start},${end}p" "${f}" 2>/dev/null || true)"
