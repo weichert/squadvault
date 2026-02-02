@@ -32,7 +32,8 @@ bash -n scripts/patch_ci_guardrails_index_add_docs_integrity_link_v1.sh
 echo "==> docs integrity proof"
 bash scripts/prove_docs_integrity_v1.sh
 
-echo "==> full prove"
-bash scripts/prove_ci.sh
+# wrapper_avoid_prove_ci_cleanliness_trap_v2: do not run prove_ci from a dirty repo
+echo "OK: docs integrity proof passed."
+echo "Next: git add + commit + push, then run: bash scripts/prove_ci.sh"
 
 echo "OK: patch complete (v1). Now git add + commit + push."
