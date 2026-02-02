@@ -96,10 +96,15 @@ scripts/_patch_tests_use_squadvault_test_db_env_v1.py
 
 # Local/one-off patchers (kept out of canonical history)
 scripts/_patch_*.py
+!scripts/_patch_allowlist_new_patchers_for_ci_db_fix_v1.py
+!scripts/_patch_export_squadvault_test_db_in_prove_ci_v1.py
+!scripts/_patch_fix_future_import_order_for_os_v1.py
 !scripts/_patch_fix_prove_rc_approved_by_v5.py
+!scripts/_patch_gitignore_pin_whitelist_after_patch_glob_v1.py
+!scripts/_patch_gitignore_unignore_new_patchers_ci_db_fix_v2.py
 !scripts/_patch_gitignore_whitelist_canonical_patchers_v1.py
 !scripts/_patch_gitignore_whitelist_canonical_patchers_v2.py
-!scripts/_patch_gitignore_pin_whitelist_after_patch_glob_v1.py
+!scripts/_patch_tests_use_squadvault_test_db_env_v1.py
 
 # Canonical patchers (DO track these)
 !scripts/_patch_prove_golden_path_pin_pytest_list_v3.py
