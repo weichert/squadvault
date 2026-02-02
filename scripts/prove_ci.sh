@@ -134,6 +134,8 @@ bash scripts/prove_eal_calibration_type_a_v1.sh
 bash scripts/prove_tone_engine_type_a_v1.sh
 bash scripts/prove_version_presentation_navigation_type_a_v1.sh
 
+bash scripts/prove_signal_scout_tier1_type_a_v1.sh
+
 # Golden path uses local db by default; point it at the fixture explicitly if supported.
 # If prove_golden_path.sh already has flags, pass them here; otherwise we patch it next.
 if bash scripts/prove_golden_path.sh --help 2>/dev/null | grep -q -- '--db'; then
