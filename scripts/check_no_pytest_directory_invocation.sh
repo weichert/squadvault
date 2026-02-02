@@ -40,16 +40,19 @@ for f in "${files[@]}"; do
       \#*) continue ;;
     esac
 
-    # Only consider lines that appear to run pytest.
-    # Covers:
-    #   pytest ...
-    #   python -m pytest ...
-    #   scripts/py -m pytest ...
-    case "$line" in
-      *pytest* )
-        # If the line references Tests but not .py, it's almost certainly a directory invocation.
-        # This intentionally fails closed.
-        if echo "$line" | grep -q 'Tests' && ! echo "$line" | grep -q '\.py'; then
+    # SV_PATCH_V2: refine detection (ignore echo/printf; only executable pytest lines)
+SV_PATCH_V2: refine detection (ignore echo/printf; only executable pytest lines)
+    # Only consider lines that appear to EXECUTE pytest.
+    # - Ignore echo/printf lines (they may mention 'pytest' in log text)
+    # - Match either: command starts with pytest, or contains '-m pytest'
+    if echo "$line" | grep -Eq '^[[:space:]]*(echo|printf)[[:space:]]'; then
+      continue
+    fi
+
+    if echo "$line" | grep -Eq '^[[:space:]]*pytest[[:space:]]' || echo "$line" | grep -Eq '[[:space:]]-m[[:space:]]+pytest[[:space:]]'; then
+      # If the line references Tests but not .py, it's almost certainly a directory invocation.
+      # This intentionally fails closed.
+      if echo "$line" | grep -q 'Tests' && ! echo "$line" | grep -q '\.py'; then
           echo
           echo "=== Gate failure: pytest directory invocation forbidden ===" >&2
           echo "file: $f" >&2
@@ -61,8 +64,6 @@ for f in "${files[@]}"; do
           echo "  pytest -q \"\${tests[@]}\"" >&2
           exit 2
         fi
-        ;;
-    esac
   done < "$f"
 done
 
