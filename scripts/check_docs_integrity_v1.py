@@ -34,8 +34,17 @@ def sorted_files_under(rel_root: str) -> List[Path]:
     root = REPO_ROOT / rel_root
     if not root.exists():
         die(f"FAIL: canonical root missing: {rel_root}")
-    files = [p for p in root.rglob("*") if p.is_file()]
-    return sorted(files, key=lambda x: str(x))
+
+    # Deterministic traversal: no Path.rglob(). Use os.walk with explicit sorting.
+    import os
+    out: List[Path] = []
+    for dirpath, dirnames, filenames in os.walk(str(root)):
+        dirnames.sort()
+        filenames.sort()
+        for fn in filenames:
+            out.append(Path(dirpath) / fn)
+
+    return out
 
 def is_versioned_text_doc(p: Path) -> bool:
     if not VERSIONED_RE.search(p.name):
