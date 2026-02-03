@@ -13,8 +13,7 @@ cd "$ROOT"
 LEAGUE_ID="${LEAGUE_ID:-70985}"
 SEASON="${SEASON:-2024}"
 WEEK_INDEX="${WEEK_INDEX:-6}"
-DB="${DB:-.local_squadvault.sqlite}"
-
+DB="${WORK_DB:-${CI_WORK_DB:-${DB:-.local_squadvault.sqlite}}}"  # prove_golden_path_use_work_db_v2
 export PYTHONPATH=".:src"
 
 echo "== Proof Mode =="
