@@ -238,3 +238,6 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 
 # local CI log downloads
 .local_ci_logs/
+
+# local-only CI helpers
+scripts/ci_watch_and_diagnose_run_v*.sh
