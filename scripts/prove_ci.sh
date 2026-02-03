@@ -46,6 +46,9 @@ done
 # Proofs may write to the DB; committed fixtures must remain immutable.
 FIXTURE_DB="fixtures/ci_squadvault.sqlite"
 WORK_DB="${FIXTURE_DB}"
+export CI_WORK_DB="${WORK_DB}"  # prove_ci_export_ci_work_db_v2
+export WORK_DB="${WORK_DB}"     # prove_ci_export_ci_work_db_v2
+
 if [[ -f "${FIXTURE_DB}" ]]; then
   echo "==> CI safety: using temp working DB copy (fixture remains immutable)"
   # NOTE: BSD mktemp requires template end with XXXXXX (no suffix).
