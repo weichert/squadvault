@@ -6,6 +6,7 @@ from collections import Counter
 import json
 import sqlite3
 import subprocess
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -360,8 +361,10 @@ def main(argv: list[str]) -> int:
 
     approved = fetch_approved_weekly_recap(args.db, args.league_id, args.season, args.week_index)
     if approved is None:
-        print("ERROR: No APPROVED WEEKLY_RECAP artifact found for this week. Refusing export.", file=sys.stderr)
-        return 2
+        print("WARN: No APPROVED WEEKLY_RECAP artifact found for this week. Skipping export.", file=sys.stderr)
+        if os.environ.get("SV_STRICT_EXPORTS", "0") == "1":
+            return 2
+        return 0
 
     if not approved.rendered_text.strip():
         print("ERROR: Approved artifact rendered_text is empty (facts block missing). Refusing export.", file=sys.stderr)

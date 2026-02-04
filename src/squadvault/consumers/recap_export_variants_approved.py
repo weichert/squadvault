@@ -5,6 +5,7 @@ import argparse
 import json
 import sqlite3
 import subprocess
+import os
 import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -131,8 +132,10 @@ def main(argv: List[str]) -> int:
         week_index=args.week_index,
     )
     if approved is None:
-        print("ERROR: No APPROVED WEEKLY_RECAP artifact found for this week. Refusing export.", file=sys.stderr)
-        return 2
+        print("WARN: No APPROVED WEEKLY_RECAP artifact found for this week. Skipping export.", file=sys.stderr)
+        if os.environ.get("SV_STRICT_EXPORTS", "0") == "1":
+            return 2
+        return 0
 
     lifecycle_version = _safe_int(approved.get("version"), 0)
     lifecycle_state = str(approved.get("state") or "")
