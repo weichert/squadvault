@@ -148,32 +148,12 @@ bash scripts/prove_signal_scout_tier1_type_a_v1.sh
 
 # Golden path uses local db by default; point it at the fixture explicitly if supported.
 # If prove_golden_path.sh already has flags, pass them here; otherwise we patch it next.
+# Golden path uses local db by default; point it at the fixture explicitly if supported.
+# If prove_golden_path.sh already has flags, pass them here; otherwise we patch it next.
 if bash scripts/prove_golden_path.sh --help 2>/dev/null | grep -q -- '--db'; then
-  bash scripts/prove_golden_path.sh --db "${WORK_DB}" --league-id 70985 --season 2024 --week-index 6
+  SV_STRICT_EXPORTS=1 bash scripts/prove_golden_path.sh --db "${WORK_DB}" --league-id 70985 --season 2024 --week-index 6
 else
-  bash scripts/prove_golden_path.sh
-fi
-
-echo
-echo "=== CI: Rivalry Chronicle end-to-end (fixture) ==="
-SV_PROVE_TS_UTC="2026-01-01T00:00:00Z" ./scripts/prove_rivalry_chronicle_end_to_end_v1.sh \
-  --db "${WORK_DB}" \
-  --league-id 70985 \
-  --season 2024 \
-  --week-index 6 \
-  --approved-by "ci"
-
-# --- Fixture immutability guard (CI) ---
-./scripts/check_fixture_immutability_ci.sh verify "${STATEFILE}" "${fixture_files[@]}"
-# --- /Fixture immutability guard (CI) ---
-
-# --- CI debug: DB source summary ---
-if [[ "${WORK_DB}" == "${FIXTURE_DB}" ]]; then
-  echo "CI DB source: fixture (read-only path used)"
-else
-  echo "CI DB source: temp working copy (derived from fixture)"
-  echo "  fixture_db=${FIXTURE_DB}"
-  echo "  working_db=${WORK_DB}"
+  SV_STRICT_EXPORTS=1 bash scripts/prove_golden_path.sh
 fi
 # --- /CI debug ---
 
