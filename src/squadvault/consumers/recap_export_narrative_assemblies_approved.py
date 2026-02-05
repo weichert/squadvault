@@ -431,6 +431,7 @@ def main(argv: list[str]) -> int:
     # when it is a valid 64-lower-hex value. The neutral render output may contain a placeholder
     # (e.g., 'test-fingerprint'), which is not acceptable for NAC.
     _approved_fp = str(getattr(approved, "selection_fingerprint", "") or "").strip()
+# SV_PATCH_EXPORT_ASSEMBLIES_DEFINE_HEX64_RE_V4
     if HEX64_RE.match(_approved_fp):
         blocks["FINGERPRINT"] = f"Selection fingerprint: {_approved_fp}\n"
 
