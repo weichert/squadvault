@@ -62,6 +62,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
+# SV_PATCH_EXPORT_ASSEMBLIES_REMOVE_HEX64_RE_V4_ARTIFACT_V6
+
 BANNER = (
     "NON-CANONICAL — Narrative Assembly Export\n"
     "Derived strictly from an APPROVED recap artifact. No new facts. No inference. No personalization.\n"
@@ -431,9 +433,7 @@ def main(argv: list[str]) -> int:
     # when it is a valid 64-lower-hex value. The neutral render output may contain a placeholder
     # (e.g., 'test-fingerprint'), which is not acceptable for NAC.
     _approved_fp = str(getattr(approved, "selection_fingerprint", "") or "").strip()
-# SV_PATCH_EXPORT_ASSEMBLIES_DEFINE_HEX64_RE_V4
     # SV_PATCH_EXPORT_ASSEMBLIES_DEFINE_HEX64_RE_LOCAL_V5
-    HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
     if HEX64_RE.match(_approved_fp):
         blocks["FINGERPRINT"] = f"Selection fingerprint: {_approved_fp}\n"
 
