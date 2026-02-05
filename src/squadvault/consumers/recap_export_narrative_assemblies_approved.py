@@ -432,6 +432,8 @@ def main(argv: list[str]) -> int:
     # (e.g., 'test-fingerprint'), which is not acceptable for NAC.
     _approved_fp = str(getattr(approved, "selection_fingerprint", "") or "").strip()
 # SV_PATCH_EXPORT_ASSEMBLIES_DEFINE_HEX64_RE_V4
+    # SV_PATCH_EXPORT_ASSEMBLIES_DEFINE_HEX64_RE_LOCAL_V5
+    HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
     if HEX64_RE.match(_approved_fp):
         blocks["FINGERPRINT"] = f"Selection fingerprint: {_approved_fp}\n"
 
