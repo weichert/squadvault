@@ -14,6 +14,11 @@ Default: Any behavior not explicitly permitted by this registry is forbidden.
 
 # SquadVault — CI Proof Surface Registry (v1.0)
 
+
+<!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
+- **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` normalizes placeholder `Selection fingerprint: test-fingerprint` to a **64-lower-hex** fingerprint before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`).
+<!-- /SV_PATCH: nac fingerprint preflight doc (v1) -->
+
 ## FROZEN DECLARATION (ENFORCED)
 
 This registry defines the **complete, authoritative CI proof surface**.

@@ -2,6 +2,11 @@
 
 This index enumerates **active, enforced CI guardrails** for the SquadVault ingest system.
 
+
+<!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
+- **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` normalizes placeholder `Selection fingerprint: test-fingerprint` to a **64-lower-hex** fingerprint before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`).
+<!-- /SV_PATCH: nac fingerprint preflight doc (v1) -->
+
 ## Active Guardrails
 ### Docs Integrity Guardrail
 - **Status:** ACTIVE (enforced)
