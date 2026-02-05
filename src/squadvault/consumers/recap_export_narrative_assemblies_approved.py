@@ -287,6 +287,9 @@ def _summarize_selection_set_v1(data: Dict[str, Any]) -> str:
     """
     selection_set_id = str(data.get("selection_set_id") or "")
     selection_fp = _effective_selection_fp(conn, league_id, season, week_index, str(data.get("selection_fingerprint") or ""))
+    # SV_PATCH_EXPORT_ASSEMBLIES_FORCE_DATA_SELECTION_FP_V2
+    # Force real selection_fingerprint back into data for all downstream render paths.
+    data['selection_fingerprint'] = selection_fp
 
     withheld = bool(data.get("withheld", False))
     withheld_reason = data.get("withheld_reason")
