@@ -78,6 +78,7 @@ echo
 echo
 
 echo "== Export assemblies =="
+echo "NOTE: set SV_KEEP_EXPORT_TMP=1 to preserve the temp export dir for inspection"
 
 strict_exports="${SV_STRICT_EXPORTS:-0}"
 export_rc=0
@@ -98,7 +99,12 @@ fi
 if [[ -n "${_SV_GP_TMP_EXPORT_ROOT:-}" ]]; then
   _sv_gp_prev_exit_trap="$(trap -p EXIT | sed -E "s/^trap -- '(.*)' EXIT$/\1/")"
   if [[ -n "${_sv_gp_prev_exit_trap:-}" ]]; then
+# SV_PATCH_KEEP_EXPORT_TMP_V1
+if [[ "${SV_KEEP_EXPORT_TMP:-0}" == "1" ]]; then
+  echo "NOTE: SV_KEEP_EXPORT_TMP=1 — preserving golden path export temp dir"
+else
     trap "${_sv_gp_prev_exit_trap}; rm -rf '${_SV_GP_TMP_EXPORT_ROOT}'" EXIT
+fi
   else
     trap "rm -rf '${_SV_GP_TMP_EXPORT_ROOT}'" EXIT
   fi
