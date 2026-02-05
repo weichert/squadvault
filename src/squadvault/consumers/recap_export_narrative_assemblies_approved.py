@@ -1,6 +1,55 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+# SV_PATCH_EXPORT_ASSEMBLIES_EMBED_REAL_SELECTION_FP_V1
+# Ensure exported narrative assemblies embed the REAL selection_fingerprint for the week.
+# This avoids downstream NAC preflight normalization of placeholder fingerprints.
+def _is_placeholder_selection_fp(fp: str) -> bool:
+    s = (fp or "").strip()
+    if not s:
+        return True
+    if s in ("__pending__", "__placeholder__"):
+        return True
+    if set(s) == {"0"} and len(s) >= 32:
+        return True
+    return False
+
+
+def _fetch_latest_approved_weekly_recap_fp(conn, league_id: str, season: int, week_index: int) -> str:
+    """Return latest APPROVED WEEKLY_RECAP selection_fingerprint for the week, or '' if not found."""
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT selection_fingerprint
+          FROM recap_artifacts
+         WHERE league_id=?
+           AND season=?
+           AND week_index=?
+           AND artifact_type='WEEKLY_RECAP'
+           AND state='APPROVED'
+         ORDER BY version DESC
+         LIMIT 1
+        """,
+        (str(league_id), int(season), int(week_index)),
+    )
+    row = cur.fetchone()
+    if not row:
+        return ""
+    try:
+        val = row["selection_fingerprint"]
+    except Exception:
+        val = row[0]
+    return str(val or "")
+
+
+def _effective_selection_fp(conn, league_id: str, season: int, week_index: int, candidate: str) -> str:
+    """If candidate is missing/placeholder, replace with DB-approved fp; else return candidate."""
+    if not _is_placeholder_selection_fp(candidate):
+        return str(candidate).strip()
+    fallback = _fetch_latest_approved_weekly_recap_fp(conn, league_id, season, week_index).strip()
+    return fallback or (str(candidate or "").strip())
+
+
 import argparse
 from collections import Counter
 import json
@@ -237,7 +286,7 @@ def _summarize_selection_set_v1(data: Dict[str, Any]) -> str:
     - Derived counters sorted lexicographically.
     """
     selection_set_id = str(data.get("selection_set_id") or "")
-    selection_fp = str(data.get("selection_fingerprint") or "")
+    selection_fp = _effective_selection_fp(conn, league_id, season, week_index, str(data.get("selection_fingerprint") or ""))
 
     withheld = bool(data.get("withheld", False))
     withheld_reason = data.get("withheld_reason")
