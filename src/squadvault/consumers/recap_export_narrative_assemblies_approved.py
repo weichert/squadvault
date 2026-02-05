@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+import re
 
 # SV_PATCH_EXPORT_ASSEMBLIES_EMBED_REAL_SELECTION_FP_V1
 # Ensure exported narrative assemblies embed the REAL selection_fingerprint for the week.
@@ -424,6 +425,15 @@ def main(argv: list[str]) -> int:
 
     neutral = run_neutral_recap_render(args.db, args.league_id, args.season, args.week_index)
     blocks = extract_blocks_from_neutral(neutral)
+
+    # SV_PATCH_EXPORT_ASSEMBLIES_USE_APPROVED_FP_FOR_FINGERPRINT_BLOCK_V3
+    # The assembly's canonical fingerprint block must reflect the APPROVED artifact selection_fingerprint
+    # when it is a valid 64-lower-hex value. The neutral render output may contain a placeholder
+    # (e.g., 'test-fingerprint'), which is not acceptable for NAC.
+    _approved_fp = str(getattr(approved, "selection_fingerprint", "") or "").strip()
+    if HEX64_RE.match(_approved_fp):
+        blocks["FINGERPRINT"] = f"Selection fingerprint: {_approved_fp}\n"
+
 
     writing_room_block = load_writing_room_block_or_not_available(
         args.export_dir,
