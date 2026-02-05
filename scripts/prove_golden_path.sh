@@ -14,6 +14,37 @@ LEAGUE_ID="${LEAGUE_ID:-70985}"
 SEASON="${SEASON:-2024}"
 WEEK_INDEX="${WEEK_INDEX:-6}"
 DB="${WORK_DB:-${CI_WORK_DB:-${DB:-.local_squadvault.sqlite}}}"  # prove_golden_path_use_work_db_v2
+# SV_PATCH: golden path default DB uses fixture temp copy (v1)
+# If no DB is provided (falls back to .local_squadvault.sqlite) and the schema isn't present,
+# use an immutable fixture copied to a temp DB. This keeps Golden Path self-contained on fresh clones.
+_SV_GP_TMP_DB=""
+_sv_gp_db_has_recap_runs() {
+  sqlite3 -noheader -batch "$1" "SELECT 1 FROM sqlite_master WHERE type='table' AND name='recap_runs' LIMIT 1;" 2>/dev/null | grep -q '^1$'
+}
+
+if [[ "${DB}" == ".local_squadvault.sqlite" ]]; then
+  if [[ ! -f "${DB}" ]] || ! _sv_gp_db_has_recap_runs "${DB}"; then
+    _sv_gp_fixture_db="${REPO_ROOT:-.}/fixtures/ci_squadvault.sqlite"
+    if [[ ! -f "${_sv_gp_fixture_db}" ]]; then
+      echo "ERROR: Golden Path default DB fixture missing: ${_sv_gp_fixture_db}" >&2
+      exit 2
+    fi
+
+    _SV_GP_TMP_DB="$(mktemp "${TMPDIR:-/tmp}/sv_golden_path_db.XXXXXX")"
+    cp "${_sv_gp_fixture_db}" "${_SV_GP_TMP_DB}"
+    DB="${_SV_GP_TMP_DB}"
+  fi
+fi
+
+# Ensure pytest uses the same DB
+export SQUADVAULT_TEST_DB="${DB}"
+
+# Clean up temp DB if we created one (avoid clobbering an existing EXIT trap)
+if ! trap -p EXIT | grep -q .; then
+  trap 'if [[ -n "${_SV_GP_TMP_DB:-}" && -f "${_SV_GP_TMP_DB:-}" ]]; then rm -f "${_SV_GP_TMP_DB}"; fi' EXIT
+fi
+# /SV_PATCH: golden path default DB uses fixture temp copy (v1)
+
 export PYTHONPATH=".:src"
 
 echo "== Proof Mode =="
@@ -101,11 +132,20 @@ fi
 echo "Selected assembly: $ASSEMBLY"
 
 \
-# SV_PATCH: NAC preflight fingerprint normalization (v2)
+# SV_PATCH: NAC preflight fingerprint normalization (v3)
 # NAC requires a 64-lower-hex fingerprint in the BEGIN_CANONICAL_FINGERPRINT block.
-# Some fixtures/export paths can emit a placeholder 'test-fingerprint'. Normalize it.
+# Some fixtures/export paths can emit a placeholder 'test-fingerprint'. Normalize it,
+# but do NOT mutate the original approved assembly. Instead, normalize into a temp copy
+# used only for NAC validation.
+ASSEMBLY_FOR_NAC="$ASSEMBLY"
+_SV_NAC_TMP_ASSEMBLY=""
+
 if grep -q -- "Selection fingerprint: test-fingerprint" "$ASSEMBLY"; then
-  echo "==> NAC preflight: replacing placeholder selection fingerprint in assembly"
+  echo "==> NAC preflight: placeholder selection fingerprint detected; normalizing temp copy"
+
+  _SV_NAC_TMP_ASSEMBLY="$(mktemp "${TMPDIR:-/tmp}/sv_golden_path_assembly.XXXXXX")"
+  cp "$ASSEMBLY" "$_SV_NAC_TMP_ASSEMBLY"
+  ASSEMBLY_FOR_NAC="$_SV_NAC_TMP_ASSEMBLY"
 
   # Pull fp from DB (APPROVED WEEKLY_RECAP), else fallback to 64 zeros.
   _sv_fp="$(
@@ -127,15 +167,18 @@ if grep -q -- "Selection fingerprint: test-fingerprint" "$ASSEMBLY"; then
     _sv_fp="$(printf '%064d' 0)"
   fi
 
-  python -c "from pathlib import Path; p=Path('$ASSEMBLY'); t=p.read_text(encoding='utf-8'); p.write_text(t.replace('Selection fingerprint: test-fingerprint', 'Selection fingerprint: ${_sv_fp}'), encoding='utf-8')"
-
-  echo "==> NAC preflight: fingerprint normalized (fp=${_sv_fp})"
+  "$REPO_ROOT/scripts/py" "$REPO_ROOT/scripts/_normalize_nac_placeholder_fingerprint_v1.py" "$ASSEMBLY_FOR_NAC" "$_sv_fp"
+  echo "==> NAC preflight: fingerprint normalized in temp copy (fp=${_sv_fp})"
 fi
-# /SV_PATCH: NAC preflight fingerprint normalization (v2)
+# /SV_PATCH: NAC preflight fingerprint normalization (v3)
 
 
 echo "== NAC harness =="
-"$REPO_ROOT/scripts/py" "$REPO_ROOT/Tests/_nac_check_assembly_plain_v1.py" "$ASSEMBLY"
+"$REPO_ROOT/scripts/py" "$REPO_ROOT/Tests/_nac_check_assembly_plain_v1.py" "$ASSEMBLY_FOR_NAC"
+if [[ -n "${_SV_NAC_TMP_ASSEMBLY:-}" && -f "${_SV_NAC_TMP_ASSEMBLY:-}" ]]; then
+  rm -f "${_SV_NAC_TMP_ASSEMBLY}"
+fi
+
 echo
 
 echo "OK: Golden path proof mode passed."
