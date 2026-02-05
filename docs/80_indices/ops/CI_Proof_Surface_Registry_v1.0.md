@@ -16,7 +16,7 @@ Default: Any behavior not explicitly permitted by this registry is forbidden.
 
 
 <!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
-- **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` normalizes placeholder `Selection fingerprint: test-fingerprint` to a **64-lower-hex** fingerprint before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`).
+- **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` detects placeholder `Selection fingerprint: test-fingerprint` and normalizes it to a **64-lower-hex** fingerprint **in a temp copy used only for NAC validation (non-mutating)** before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`). **Exports are ephemeral by default** (temp export root); set `SV_KEEP_EXPORTS=1` to persist exports under `artifacts/`.
 <!-- /SV_PATCH: nac fingerprint preflight doc (v1) -->
 
 ## FROZEN DECLARATION (ENFORCED)
@@ -37,7 +37,7 @@ This registry is intentionally boring and auditable.
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
 
 - scripts/prove_eal_calibration_type_a_v1.sh — Proves EAL calibration Type A invariants end-to-end.
-- scripts/prove_golden_path.sh — Proves canonical operator golden path via shims and gates.
+- scripts/prove_golden_path.sh — Proves canonical operator golden path via shims and gates (exports ephemeral by default; set `SV_KEEP_EXPORTS=1` to persist; NAC normalization is non-mutating).
 - scripts/prove_rivalry_chronicle_end_to_end_v1.sh — Proves Rivalry Chronicle generate → approve → export flow.
 - scripts/prove_signal_scout_tier1_type_a_v1.sh — Proves Signal Scout Tier-1 Type A derivation + determinism.
 - scripts/prove_tone_engine_type_a_v1.sh — Proves Tone Engine Type A contract/invariants.
