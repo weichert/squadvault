@@ -125,6 +125,28 @@ trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
 
 echo "== CI Proof Suite =="
+
+# SV_PATCH_PROVE_CI_RETIRE_SEMANTICS_GATE_V2
+
+# === Gate: retire semantics (v2) ===
+# If the last commit message claims "retire", require that any removed patch scripts
+# were archived under scripts/_retired/ in the same commit.
+if git log -1 --pretty=%B | grep -qiE '\bretire(d)?\b'; then
+  deleted_patch_scripts="$(git show --name-status --pretty="" HEAD | awk '$1=="D" && $2 ~ /^scripts\/(patch_|_patch_)/ {print $2}')"
+  added_retired="$(git show --name-status --pretty="" HEAD | awk '$1=="A" && $2 ~ /^scripts\/_retired\// {print $2}')"
+  if [[ -n "${deleted_patch_scripts}" && -z "${added_retired}" ]]; then
+    echo "ERROR: retire semantics gate failed — commit message says retire, but deleted patch scripts without archiving under scripts/_retired/"
+    echo "Deleted:"
+    echo "${deleted_patch_scripts}" | sed 's/^/  - /'
+    echo ""
+    echo "Fix options:"
+    echo "  - amend message (remove 'retire'), OR"
+    echo "  - archive scripts under scripts/_retired/ in the same commit"
+    exit 2
+  fi
+fi
+# === End Gate: retire semantics (v2) ===
+
 # ==> Gate: CI proof surface registry (v1)
 bash scripts/check_ci_proof_surface_matches_registry_v1.sh
 echo "==> Filesystem ordering determinism gate"
