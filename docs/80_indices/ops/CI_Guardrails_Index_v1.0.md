@@ -7,6 +7,18 @@ This index enumerates **active, enforced CI guardrails** for the SquadVault inge
 - **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` detects placeholder `Selection fingerprint: test-fingerprint` and normalizes it to a **64-lower-hex** fingerprint **in a temp copy used only for NAC validation (non-mutating)** before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`). **Exports are ephemeral by default** (temp export root); set `SV_KEEP_EXPORTS=1` to persist exports under `artifacts/`.
 <!-- /SV_PATCH: nac fingerprint preflight doc (v1) -->
 
+## Operator Safety Note (Build Mode)
+
+When running inspection commands from interactive shells (e.g. zsh), avoid leaking `set -u` into your session.
+Use either a subshell:
+
+- `( set -euo pipefail; <command> )`
+
+or the canonical helper:
+
+- `./scripts/strict_subshell_v1.sh '<command>'`
+
+
 ## Active Guardrails
 ### Docs Integrity Guardrail
 - **Status:** ACTIVE (enforced)
