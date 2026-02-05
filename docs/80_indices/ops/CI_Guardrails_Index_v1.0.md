@@ -71,3 +71,7 @@ or the canonical helper:
 - `scripts/ops_bundle_ci_docs_hardening_v1.sh` — CI + docs hardening sweep (idempotent; runs via `scripts/ops_orchestrate.sh`).
 
 - `docs/80_indices/ops/Docs_Integrity_Gate_Invariant_v1.0.md`  <!-- ci_guardrails_index_add_docs_integrity_link_v1 -->
+
+## Local-only helpers (not invoked by CI)
+
+- `scripts/prove_local_clean_then_ci_v1.sh` — detects common untracked scratch patcher/wrapper files (dry-run by default) and then runs `bash scripts/prove_ci.sh`
