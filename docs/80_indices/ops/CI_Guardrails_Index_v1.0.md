@@ -74,4 +74,4 @@ or the canonical helper:
 
 ## Local-only helpers (not invoked by CI)
 
-- `scripts/prove_local_clean_then_ci_v1.sh` — detects common untracked scratch patcher/wrapper files (dry-run by default) and then runs `bash scripts/prove_ci.sh`
+- `scripts/prove_local_clean_then_ci_v2.sh` — detects common untracked scratch patcher/wrapper files (dry-run by default; requires `SV_LOCAL_CLEAN=1` to delete) and then runs `bash scripts/prove_ci.sh`
