@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# SV_PATCH: fix safe_grep invocation signature (drop leading -I) (v2)
+# safe_grep signature is: safe_grep VAR_NAME <command...>
+# Do not pass '-I' as VAR_NAME; move it into grep args.
+# /SV_PATCH
+
+
 # SV_PATCH: fs-order scan ignore __pycache__/ and *.pyc (portable v3)
 # Portable exclusion: BSD grep lacks --exclude/--exclude-dir.
 EXCLUDE_RE='(/__pycache__/|\.pyc$)'
@@ -65,9 +71,9 @@ safe_grep() {
 }
 
 # --- Shell checks (narrow) ---
-safe_grep -I shell_hits_ls_while grep -R -n -E '(^|[[:space:];&(])ls([[:space:]].*)?[[:space:]]*\|[[:space:]]*while[[:space:]]+read' scripts
-safe_grep -I shell_hits_ls_xargs grep -R -n -E '(^|[[:space:];&(])ls([[:space:]].*)?[[:space:]]*\|[[:space:]]*xargs' scripts
-safe_grep -I shell_hits_find_while grep -R -n -E 'find[[:space:]].*\|[[:space:]]*while[[:space:]]+read' scripts
+safe_grep shell_hits_ls_while grep -I -R -n -E '(^|[[:space:];&(])ls([[:space:]].*)?[[:space:]]*\|[[:space:]]*while[[:space:]]+read' scripts
+safe_grep shell_hits_ls_xargs grep -I -R -n -E '(^|[[:space:];&(])ls([[:space:]].*)?[[:space:]]*\|[[:space:]]*xargs' scripts
+safe_grep shell_hits_find_while grep -I -R -n -E 'find[[:space:]].*\|[[:space:]]*while[[:space:]]+read' scripts
 
 shell_hits_ls_while="$(printf "%s\n" "${shell_hits_ls_while}" | filter_exclusions || true)"
 shell_hits_ls_xargs="$(printf "%s\n" "${shell_hits_ls_xargs}" | filter_exclusions || true)"
@@ -78,8 +84,8 @@ report_hits "shell: 'ls | xargs' (ls as data source; ordering/whitespace hazards
 report_hits "shell: 'find ... | grep -Ev "$EXCLUDE_RE" | while read' (traversal order)" "${shell_hits_find_while}"
 
 # --- Python checks ---
-safe_grep -I py_hits_listdir grep -R -n -E 'os\.listdir[[:space:]]*\(' src scripts
-safe_grep -I py_hits_globglob grep -R -n -E 'glob\.glob[[:space:]]*\(' src scripts
+safe_grep py_hits_listdir grep -I -R -n -E 'os\.listdir[[:space:]]*\(' src scripts
+safe_grep py_hits_globglob grep -I -R -n -E 'glob\.glob[[:space:]]*\(' src scripts
 
 py_hits_listdir="$(printf "%s\n" "${py_hits_listdir}" | filter_exclusions || true)"
 py_hits_globglob="$(printf "%s\n" "${py_hits_globglob}" | filter_exclusions || true)"
@@ -88,12 +94,12 @@ report_hits "python: os.listdir() used (must sort)" "${py_hits_listdir}"
 report_hits "python: glob.glob() used (must sort)" "${py_hits_globglob}"
 
 # Path.glob()/rglob(): do NOT flag if same line contains 'sorted(' (simple substring filter; no regex parens)
-safe_grep -I py_hits_pathglob grep -R -n -E '\.r?glob[[:space:]]*\(' src scripts
+safe_grep py_hits_pathglob grep -I -R -n -E '\.r?glob[[:space:]]*\(' src scripts
 py_hits_pathglob="$(printf "%s\n" "${py_hits_pathglob}" | filter_exclusions | grep -v "sorted(" || true)"
 report_hits "python: Path.glob()/rglob() used without sorted(...)" "${py_hits_pathglob}"
 
 # os.walk(): do NOT flag if dirs.sort() and files.sort() appear within next 5 lines
-safe_grep -I py_hits_oswalk_raw grep -R -n -E 'os\.walk[[:space:]]*\(' src scripts
+safe_grep py_hits_oswalk_raw grep -I -R -n -E 'os\.walk[[:space:]]*\(' src scripts
 py_hits_oswalk_raw="$(printf "%s\n" "${py_hits_oswalk_raw}" | filter_exclusions || true)"
 
 py_hits_oswalk_unsorted=""
