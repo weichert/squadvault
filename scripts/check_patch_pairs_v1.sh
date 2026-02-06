@@ -10,6 +10,11 @@ echo "    legacy exceptions: scripts/patch_pair_allowlist_v1.txt"
 
 ALLOWLIST="scripts/patch_pair_allowlist_v1.txt"
 
+# Verbosity: set SV_PATCH_PAIR_VERBOSE=1 to print allowlisted details.
+SV_PATCH_PAIR_VERBOSE="${SV_PATCH_PAIR_VERBOSE:-0}"
+allowlisted_count=0
+
+
 is_allowlisted() {
   local path="$1"
   [ -f "$ALLOWLIST" ] || return 1
@@ -26,14 +31,18 @@ note_missing() {
   local expected="$2"
 
   if is_allowlisted "$src"; then
-    echo "ALLOWLISTED: missing pair for $src"
-    echo "            expected: $expected"
+    allowlisted_count=$((allowlisted_count + 1))
+    if [ "${SV_PATCH_PAIR_VERBOSE}" = "1" ]; then
+      echo "ALLOWLISTED: missing pair for $src"
+      echo "            expected: $expected"
+    fi
     return 0
   fi
 
   echo "ERROR: missing pair for $src"
   echo "       expected: $expected"
   missing_pairs=1
+}
 }
 
 # Wrapper -> patcher (avoid pipe subshell; bash 3.2 safe)
@@ -79,4 +88,8 @@ if [ "$missing_pairs" -ne 0 ]; then
   exit 1
 fi
 
-echo "OK: patcher/wrapper pairing gate passed."
+if [ "$allowlisted_count" -ne 0 ] && [ "${SV_PATCH_PAIR_VERBOSE}" != "1" ]; then
+  echo "OK: patcher/wrapper pairing gate passed. (allowlisted missing pairs: ${allowlisted_count}; suppressed; set SV_PATCH_PAIR_VERBOSE=1)"
+else
+  echo "OK: patcher/wrapper pairing gate passed."
+fi
