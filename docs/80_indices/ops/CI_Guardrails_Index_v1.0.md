@@ -98,3 +98,7 @@ ordering guarantees for tracked source files.
 
 - `scripts/prove_local_clean_then_ci_v3.sh` — local-only helper: cleans *only* untracked scratch files named `scripts/_patch__*.py` and `scripts/patch__*.sh` (dry-run by default; requires `SV_LOCAL_CLEAN=1` to delete), then runs `bash scripts/prove_ci.sh`
 - [CI Patcher/Wrapper Pairing Gate (v1.0)](CI_Patcher_Wrapper_Pairing_Gate_v1.0.md)
+
+## Local Workstation Hygiene
+- [Local Bash Nounset Guards (v1.0)](Local_Bash_Nounset_Guards_v1.0.md)
+
