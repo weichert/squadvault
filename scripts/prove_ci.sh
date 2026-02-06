@@ -89,6 +89,14 @@ bash "${gate_path}"
 # --- /Fixture immutability guard (CI) ---
 set -euo pipefail
 
+# ==> Determinism: pin locale + timezone (cross-runner stability)
+# NOTE: Locale affects sort/collation, string casing, and some tooling output.
+# Keep this pinned at the *authoritative* CI proof surface.
+export TZ="${TZ:-UTC}"
+export LC_ALL="${LC_ALL:-C}"
+export LANG="${LANG:-C}"
+
+
 # === DETERMINISTIC EXECUTION ENVELOPE GATE (v1) ===
 sv_fail_env() {
   echo "ERROR: deterministic env gate failed: $*" >&2
