@@ -97,6 +97,23 @@ export LC_ALL="${LC_ALL:-C}"
 export LANG="${LANG:-C}"
 
 
+# ==> Provenance stamp (single-run, log self-identification)
+# Prints commit/branch/cleanliness + key determinism env to make pasted logs auditable.
+if command -v git >/dev/null 2>&1; then
+  sv_commit="$(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
+  sv_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo UNKNOWN)"
+  if [[ "${sv_branch}" == "HEAD" ]]; then sv_branch="DETACHED"; fi
+  sv_clean="DIRTY"
+  if [[ -z "$(git status --porcelain=v1 2>/dev/null)" ]]; then sv_clean="CLEAN"; fi
+else
+  sv_commit="NO_GIT"
+  sv_branch="NO_GIT"
+  sv_clean="UNKNOWN"
+fi
+
+echo "==> prove_ci provenance: commit=${sv_commit} branch=${sv_branch} repo=${sv_clean} TZ=${TZ:-} LC_ALL=${LC_ALL:-} LANG=${LANG:-}"
+
+
 # === DETERMINISTIC EXECUTION ENVELOPE GATE (v1) ===
 sv_fail_env() {
   echo "ERROR: deterministic env gate failed: $*" >&2
