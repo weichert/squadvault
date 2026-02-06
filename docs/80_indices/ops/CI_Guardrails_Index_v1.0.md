@@ -37,6 +37,24 @@ or the canonical helper:
   → [CI_Cleanliness_Invariant_v1.0.md](./CI_Cleanliness_Invariant_v1.0.md)
 
 ### Filesystem Ordering Determinism Guardrail
+
+<!-- SV_PATCH: filesystem ordering gate ignores pyc/__pycache__ (v1) -->
+### Filesystem Ordering Determinism — Bytecode Exclusion
+
+The filesystem ordering determinism gate intentionally ignores:
+
+- `__pycache__/` directories
+- `*.pyc` Python bytecode files
+
+Rationale:
+- bytecode is **not** a source-of-truth input
+- local `py_compile` runs can embed incidental string fragments
+- scanning bytecode creates **false positives** unrelated to real ordering bugs
+
+This exclusion is **narrow**, **portable (BSD/GNU compatible)**, and does **not** weaken
+ordering guarantees for tracked source files.
+<!-- /SV_PATCH: filesystem ordering gate ignores pyc/__pycache__ (v1) -->
+
 - **Status:** ACTIVE (enforced)
 - **Entrypoint:** `scripts/prove_ci.sh`
 - **Enforcement:** `scripts/check_filesystem_ordering_determinism.sh`
