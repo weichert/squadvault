@@ -11,7 +11,7 @@ def main() -> None:
         return
 
     changed = 0
-    for p in sorted(RET.iterdir()):
+    for p in sorted(RET.rglob("*")):
         if not p.is_file():
             continue
         if p.suffix == ".sh":
