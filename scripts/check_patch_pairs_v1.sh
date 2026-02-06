@@ -11,6 +11,10 @@ echo "    legacy exceptions: scripts/patch_pair_allowlist_v1.txt"
 
 ALLOWLIST="scripts/patch_pair_allowlist_v1.txt"
 
+# Patch-pairing gate: ignore archive paths (v1)
+PATCH_PAIR_IGNORE_PREFIX="scripts/_graveyard/"
+
+
 # SV_PATCH_PAIR_IGNORE_GRAVEYARD_V1
 # Ignore historical patch artifacts under scripts/_graveyard/ (not part of active tooling).
 SV_PATCH_PAIR_IGNORE_GRAVEYARD="${SV_PATCH_PAIR_IGNORE_GRAVEYARD:-1}"
@@ -38,8 +42,8 @@ is_allowlisted() {
   grep -Fxq "$path" "$ALLOWLIST"
 }
 
-wrappers="$(git ls-files 'scripts/patch_*.sh' || true)"
-patchers="$(git ls-files 'scripts/_patch_*.py' || true)"
+wrappers="$(git ls-files 'scripts/patch_*.sh' | grep -v "^${PATCH_PAIR_IGNORE_PREFIX}" || true)"
+patchers="$(git ls-files 'scripts/_patch_*.py' | grep -v "^${PATCH_PAIR_IGNORE_PREFIX}" || true)"
 
 missing_pairs=0
 
