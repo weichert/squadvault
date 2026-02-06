@@ -125,6 +125,9 @@ trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
 
 echo "== CI Proof Suite ==
+echo "==> No-bare-chevron markers gate"
+bash scripts/gate_no_bare_chevron_markers_v1.sh
+
 echo "==> Ops: patcher/wrapper pairing gate"
 bash scripts/check_patch_pairs_v1.sh
 "
