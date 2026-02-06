@@ -10,10 +10,26 @@ echo "    legacy exceptions: scripts/patch_pair_allowlist_v1.txt"
 
 ALLOWLIST="scripts/patch_pair_allowlist_v1.txt"
 
+# SV_PATCH_PAIR_IGNORE_GRAVEYARD_V1
+# Ignore historical patch artifacts under scripts/_graveyard/ (not part of active tooling).
+SV_PATCH_PAIR_IGNORE_GRAVEYARD="${SV_PATCH_PAIR_IGNORE_GRAVEYARD:-1}"
+GRAVEYARD_PREFIX="scripts/_graveyard/"
+
+
 # Verbosity: set SV_PATCH_PAIR_VERBOSE=1 to print allowlisted details.
 SV_PATCH_PAIR_VERBOSE="${SV_PATCH_PAIR_VERBOSE:-0}"
 allowlisted_count=0
 
+
+is_ignored_path() {
+  local path="$1"
+  if [ "${SV_PATCH_PAIR_IGNORE_GRAVEYARD}" = "1" ]; then
+    case "$path" in
+      ${GRAVEYARD_PREFIX}*) return 0 ;;
+    esac
+  fi
+  return 1
+}
 
 is_allowlisted() {
   local path="$1"
@@ -48,6 +64,7 @@ note_missing() {
 if [ -n "$wrappers" ]; then
   while IFS= read -r w; do
     [ -z "$w" ] && continue
+    is_ignored_path "$w" && continue
     base="$(basename "$w")"           # patch_foo_v1.sh
     stem="${base%.sh}"               # patch_foo_v1
     expected="scripts/_${stem}.py"   # scripts/_patch_foo_v1.py
@@ -61,6 +78,7 @@ fi
 if [ -n "$patchers" ]; then
   while IFS= read -r p; do
     [ -z "$p" ] && continue
+    is_ignored_path "$p" && continue
     base="$(basename "$p")"          # _patch_foo_v1.py
     stem="${base%.py}"               # _patch_foo_v1
     if [ "${stem#_}" = "$stem" ]; then
