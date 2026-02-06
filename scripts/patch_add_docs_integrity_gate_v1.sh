@@ -31,7 +31,7 @@ fi
 
 python_bin="${PYTHON:-python}"
 
-"$python_bin" scripts/_patch_add_docs_integrity_gate_v1.py
+./scripts/py scripts/_patch_add_docs_integrity_gate_v1.py
 
 echo "==> bash -n new proof runner"
 bash -n scripts/prove_docs_integrity_v1.sh

@@ -25,7 +25,7 @@ fi
 python_bin="${PYTHON:-python}"
 
 echo "==> run patcher"
-"$python_bin" scripts/_patch_prove_golden_path_use_work_db_v2.py
+./scripts/py scripts/_patch_prove_golden_path_use_work_db_v2.py
 
 echo "==> py_compile patcher"
 "$python_bin" -m py_compile scripts/_patch_prove_golden_path_use_work_db_v2.py

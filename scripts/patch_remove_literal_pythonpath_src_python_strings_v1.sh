@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "=== Patch: remove literal 'PYTHONPATH=src + python' substrings from helper scripts (v1) ==="
 python="${PYTHON:-python}"
-"$python" scripts/_patch_remove_literal_pythonpath_src_python_strings_v1.py
+./scripts/py scripts/_patch_remove_literal_pythonpath_src_python_strings_v1.py
 
 echo "==> shim compliance"
 bash scripts/check_shims_compliance.sh

@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 python="${PYTHON:-python}"
-"${python}" scripts/_patch_fix_ops_orchestrate_wrapper_path_normalization_v1.py
+./scripts/py scripts/_patch_fix_ops_orchestrate_wrapper_path_normalization_v1.py
 
 echo "==> bash syntax check"
 bash -n scripts/ops_orchestrate.sh

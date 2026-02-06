@@ -10,7 +10,7 @@ else
 fi
 
 python="${PYTHON:-python}"
-${python} scripts/_patch_rules_of_engagement_add_docs_mutation_policy_v1.py
+./scripts/py scripts/_patch_rules_of_engagement_add_docs_mutation_policy_v1.py
 
 echo "==> git diff --name-only"
 git diff --name-only || true

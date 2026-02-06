@@ -11,7 +11,7 @@ else
   exit 2
 fi
 
-$python scripts/_patch_ci_guardrails_index_add_time_and_fs_v1.py
+./scripts/py scripts/_patch_ci_guardrails_index_add_time_and_fs_v1.py
 
 echo "==> show diff"
 git diff -- docs/80_indices/ops/CI_Guardrails_Index_v1.0.md || true

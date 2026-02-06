@@ -12,7 +12,7 @@ else
   py="${PYTHON:-python}"
 fi
 
-$py scripts/_patch_ci_fixture_seed_weekly_recap_approved_v2.py
+./scripts/py scripts/_patch_ci_fixture_seed_weekly_recap_approved_v2.py
 
 $py - <<'PY'
 import sqlite3

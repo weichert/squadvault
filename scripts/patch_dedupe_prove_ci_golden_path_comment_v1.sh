@@ -10,7 +10,7 @@ else
   py="${PYTHON:-python}"
 fi
 
-$py scripts/_patch_dedupe_prove_ci_golden_path_comment_v1.py
+./scripts/py scripts/_patch_dedupe_prove_ci_golden_path_comment_v1.py
 
 echo "==> bash -n: prove_ci.sh"
 bash -n scripts/prove_ci.sh

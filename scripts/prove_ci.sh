@@ -151,6 +151,10 @@ trap 'sv_ci_on_exit' EXIT
 
 echo "== CI Proof Suite =="
 
+echo "==> Python shim compliance gate"
+./scripts/check_python_shim_compliance_v2.sh
+
+
 echo "==> No-bare-chevron markers gate"
 
 echo "==> No-xtrace guardrail gate"

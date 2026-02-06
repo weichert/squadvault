@@ -11,7 +11,7 @@ else
   exit 2
 fi
 
-$python scripts/_patch_audit_docs_housekeeping_text_only_refs_v1.py
+./scripts/py scripts/_patch_audit_docs_housekeeping_text_only_refs_v1.py
 
 echo "==> re-run audit"
 ./scripts/audit_docs_housekeeping_v1.sh

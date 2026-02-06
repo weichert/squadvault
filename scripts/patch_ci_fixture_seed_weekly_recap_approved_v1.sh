@@ -15,7 +15,7 @@ else
   python_exec="${PYTHON:-python}"
 fi
 
-"$python_exec" scripts/_patch_ci_fixture_seed_weekly_recap_approved_v1.py
+./scripts/py scripts/_patch_ci_fixture_seed_weekly_recap_approved_v1.py
 
 echo "==> validate: APPROVED WEEKLY_RECAP exists for 70985/2024/week_06"
 "$python_exec" - <<'PY'

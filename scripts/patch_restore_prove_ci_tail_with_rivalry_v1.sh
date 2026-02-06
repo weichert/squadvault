@@ -10,7 +10,7 @@ else
   py="${PYTHON:-python}"
 fi
 
-$py scripts/_patch_restore_prove_ci_tail_with_rivalry_v1.py
+./scripts/py scripts/_patch_restore_prove_ci_tail_with_rivalry_v1.py
 
 echo "==> bash -n: prove_ci.sh"
 bash -n scripts/prove_ci.sh

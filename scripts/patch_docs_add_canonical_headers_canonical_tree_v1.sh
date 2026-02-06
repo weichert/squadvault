@@ -24,7 +24,7 @@ fi
 python_bin="${PYTHON:-python}"
 
 echo "==> run patcher"
-"$python_bin" scripts/_patch_docs_add_canonical_headers_canonical_tree_v1.py
+./scripts/py scripts/_patch_docs_add_canonical_headers_canonical_tree_v1.py
 
 echo "==> py_compile patcher"
 "$python_bin" -m py_compile scripts/_patch_docs_add_canonical_headers_canonical_tree_v1.py

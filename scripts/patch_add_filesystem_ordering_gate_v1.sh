@@ -12,7 +12,7 @@ if ! command -v "${python}" >/dev/null 2>&1; then
   python="python"
 fi
 
-"${python}" scripts/_patch_add_filesystem_ordering_gate_v1.py
+./scripts/py scripts/_patch_add_filesystem_ordering_gate_v1.py
 
 echo "==> bash -n"
 bash -n scripts/check_filesystem_ordering_determinism.sh

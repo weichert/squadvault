@@ -7,6 +7,6 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 python="${PYTHON:-python}"
-"${python}" scripts/_patch_ci_guardrails_index_add_ops_bundle_pointer_v1.py
+./scripts/py scripts/_patch_ci_guardrails_index_add_ops_bundle_pointer_v1.py
 
 echo "==> done"

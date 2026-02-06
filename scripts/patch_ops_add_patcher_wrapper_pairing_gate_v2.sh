@@ -12,7 +12,7 @@ else
   PY="${PYTHON:-python}"
 fi
 
-"$PY" scripts/_patch_ops_add_patcher_wrapper_pairing_gate_v2.py
+./scripts/py scripts/_patch_ops_add_patcher_wrapper_pairing_gate_v2.py
 
 echo "==> bash syntax check"
 bash -n scripts/check_patch_pairs_v1.sh

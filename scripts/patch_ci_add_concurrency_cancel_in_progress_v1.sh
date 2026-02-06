@@ -25,7 +25,7 @@ fi
 python_bin="${PYTHON:-python}"
 
 echo "==> run patcher"
-"$python_bin" scripts/_patch_ci_add_concurrency_cancel_in_progress_v1.py
+./scripts/py scripts/_patch_ci_add_concurrency_cancel_in_progress_v1.py
 
 echo "==> py_compile patcher"
 "$python_bin" -m py_compile scripts/_patch_ci_add_concurrency_cancel_in_progress_v1.py

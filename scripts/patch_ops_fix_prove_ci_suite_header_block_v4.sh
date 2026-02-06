@@ -12,7 +12,7 @@ else
   PY="${PYTHON:-python}"
 fi
 
-"$PY" scripts/_patch_ops_fix_prove_ci_suite_header_block_v4.py
+./scripts/py scripts/_patch_ops_fix_prove_ci_suite_header_block_v4.py
 
 echo "==> bash syntax check"
 bash -n scripts/prove_ci.sh

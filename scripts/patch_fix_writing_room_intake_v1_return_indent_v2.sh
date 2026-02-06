@@ -8,7 +8,7 @@ echo "python:    ${PYTHON:-python}"
 echo
 
 echo "Step 1: apply patch"
-PYTHONPATH=src "${PYTHON:-python}" scripts/_patch_fix_writing_room_intake_v1_return_indent_v2.py
+PYTHONPATH=src ./scripts/py scripts/_patch_fix_writing_room_intake_v1_return_indent_v2.py
 
 echo
 echo "Step 2: compile check"

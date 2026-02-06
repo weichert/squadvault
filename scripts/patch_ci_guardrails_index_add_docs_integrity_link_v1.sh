@@ -24,7 +24,7 @@ fi
 python_bin="${PYTHON:-python}"
 
 echo "==> run patcher"
-"$python_bin" scripts/_patch_ci_guardrails_index_add_docs_integrity_link_v1.py
+./scripts/py scripts/_patch_ci_guardrails_index_add_docs_integrity_link_v1.py
 
 echo "==> bash -n sanity"
 bash -n scripts/patch_ci_guardrails_index_add_docs_integrity_link_v1.sh

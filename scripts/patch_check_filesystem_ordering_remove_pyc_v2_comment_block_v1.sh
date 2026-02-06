@@ -8,7 +8,7 @@ python="${PYTHON:-python}"
 echo "==> py_compile patcher"
 "$python" -m py_compile scripts/_patch_check_filesystem_ordering_remove_pyc_v2_comment_block_v1.py
 
-"$python" scripts/_patch_check_filesystem_ordering_remove_pyc_v2_comment_block_v1.py
+./scripts/py scripts/_patch_check_filesystem_ordering_remove_pyc_v2_comment_block_v1.py
 
 echo "==> bash syntax check"
 bash -n scripts/check_filesystem_ordering_determinism.sh

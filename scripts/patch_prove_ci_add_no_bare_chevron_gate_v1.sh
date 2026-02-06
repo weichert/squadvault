@@ -12,7 +12,7 @@ else
   PY="${PYTHON:-python}"
 fi
 
-"$PY" scripts/_patch_prove_ci_add_no_bare_chevron_gate_v1.py
+./scripts/py scripts/_patch_prove_ci_add_no_bare_chevron_gate_v1.py
 
 echo "==> bash syntax check"
 bash -n scripts/prove_ci.sh

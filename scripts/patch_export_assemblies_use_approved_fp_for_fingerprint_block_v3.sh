@@ -5,7 +5,7 @@ echo "=== Patch: export assemblies fingerprint block uses approved.selection_fin
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 py="${repo_root}/scripts/py"
 
-"$py" "${repo_root}/scripts/_patch_export_assemblies_use_approved_fp_for_fingerprint_block_v3.py"
+"${repo_root}/scripts/py" "${repo_root}/scripts/_patch_export_assemblies_use_approved_fp_for_fingerprint_block_v3.py"
 
 echo "==> py_compile"
 "$py" - <<'PY'

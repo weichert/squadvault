@@ -17,7 +17,7 @@ if [ -x "scripts/py" ]; then
 fi
 
 echo "==> apply patcher"
-$py scripts/_patch_prove_ci_export_final_work_db_v3.py
+./scripts/py scripts/_patch_prove_ci_export_final_work_db_v3.py
 
 echo "==> bash syntax check"
 bash -n scripts/prove_ci.sh

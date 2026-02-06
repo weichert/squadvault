@@ -11,7 +11,7 @@ else
   py="${PYTHON:-python}"
 fi
 
-$py scripts/_patch_prove_golden_path_normalize_fingerprint_v2.py
+./scripts/py scripts/_patch_prove_golden_path_normalize_fingerprint_v2.py
 
 echo "==> bash -n: scripts/prove_golden_path.sh"
 bash -n scripts/prove_golden_path.sh

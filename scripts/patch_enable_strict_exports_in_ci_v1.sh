@@ -14,7 +14,7 @@ else
   python_exec="${PYTHON:-python}"
 fi
 
-"$python_exec" scripts/_patch_enable_strict_exports_in_ci_v1.py
+./scripts/py scripts/_patch_enable_strict_exports_in_ci_v1.py
 
 echo "==> bash -n"
 bash -n scripts/prove_ci.sh

@@ -4,7 +4,7 @@ set -euo pipefail
 echo "=== Patch: .gitignore allowlist post-hardening tidy patchers (v1) ==="
 python="${PYTHON:-python}"
 
-"$python" scripts/_patch_gitignore_allow_post_pytest_surface_hardening_tidy_patchers_v1.py
+./scripts/py scripts/_patch_gitignore_allow_post_pytest_surface_hardening_tidy_patchers_v1.py
 
 echo "==> verify allowlist lines present"
 grep -n '^\!scripts/_patch_gitignore_allow_post_pytest_surface_hardening_tidy_patchers_v1\.py$' .gitignore >/dev/null

@@ -11,7 +11,7 @@ else
   exit 2
 fi
 
-$python scripts/_patch_audit_docs_housekeeping_sort_rglob_v1.py
+./scripts/py scripts/_patch_audit_docs_housekeeping_sort_rglob_v1.py
 
 echo "==> show diff (no pager)"
 GIT_PAGER=cat git diff -- scripts/audit_docs_housekeeping_v1.sh || true

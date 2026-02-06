@@ -8,7 +8,7 @@ echo "python:    ${PYTHON:-python}"
 echo
 
 echo "Step 1: apply patch"
-PYTHONPATH=src "${PYTHON:-python}" scripts/_patch_writing_room_signal_grouping_v1_intake_fix_v3.py
+PYTHONPATH=src ./scripts/py scripts/_patch_writing_room_signal_grouping_v1_intake_fix_v3.py
 
 echo
 echo "Step 2: run tests"

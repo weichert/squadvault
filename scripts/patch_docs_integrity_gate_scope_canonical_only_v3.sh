@@ -23,7 +23,7 @@ fi
 
 python_bin="${PYTHON:-python}"
 
-"$python_bin" scripts/_patch_docs_integrity_gate_scope_canonical_only_v3.py
+./scripts/py scripts/_patch_docs_integrity_gate_scope_canonical_only_v3.py
 
 echo "==> py_compile target patcher"
 "$python_bin" -m py_compile scripts/_patch_add_docs_integrity_gate_v1.py

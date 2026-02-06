@@ -17,7 +17,7 @@ if [ -x "scripts/py" ]; then
 fi
 
 echo "==> apply patcher"
-$py scripts/_patch_prove_golden_path_strict_exports_gate_v1.py
+./scripts/py scripts/_patch_prove_golden_path_strict_exports_gate_v1.py
 
 echo "==> bash syntax check"
 bash -n scripts/prove_golden_path.sh

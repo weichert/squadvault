@@ -23,7 +23,7 @@ if [ -n "$dirty" ]; then
 fi
 
 python_bin="${PYTHON:-python}"
-"$python_bin" scripts/_patch_fs_order_gate_accept_dirnames_filenames_sorts_v1.py
+./scripts/py scripts/_patch_fs_order_gate_accept_dirnames_filenames_sorts_v1.py
 
 echo "==> bash -n target"
 bash -n scripts/check_filesystem_ordering_determinism.sh

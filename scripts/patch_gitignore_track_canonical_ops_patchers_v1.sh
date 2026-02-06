@@ -7,6 +7,6 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 python="${PYTHON:-python}"
-"${python}" scripts/_patch_gitignore_track_canonical_ops_patchers_v1.py
+./scripts/py scripts/_patch_gitignore_track_canonical_ops_patchers_v1.py
 
 echo "OK"

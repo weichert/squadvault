@@ -4,7 +4,7 @@ set -euo pipefail
 echo "=== Patch: weekly recap clean-room safety (materialize ACTIVE recap json) (v1) ==="
 python="${PYTHON:-python}"
 
-"$python" scripts/_patch_weekly_recap_materialize_active_recap_json_v1.py
+./scripts/py scripts/_patch_weekly_recap_materialize_active_recap_json_v1.py
 
 echo "==> py_compile"
 PYTHONPATH=src "$python" -m py_compile src/squadvault/recaps/weekly_recap_lifecycle.py

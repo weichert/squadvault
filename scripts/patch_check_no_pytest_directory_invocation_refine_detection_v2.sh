@@ -4,7 +4,7 @@ set -euo pipefail
 echo "=== Patch: refine pytest directory gate detection (v2) ==="
 python="${PYTHON:-python}"
 
-"$python" scripts/_patch_check_no_pytest_directory_invocation_refine_detection_v2.py
+./scripts/py scripts/_patch_check_no_pytest_directory_invocation_refine_detection_v2.py
 
 echo "==> bash -n"
 bash -n scripts/check_no_pytest_directory_invocation.sh

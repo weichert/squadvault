@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 python="${PYTHON:-python}"
-"${python}" scripts/_patch_gitignore_allow_ops_orchestrate_path_norm_patcher_v1.py
+./scripts/py scripts/_patch_gitignore_allow_ops_orchestrate_path_norm_patcher_v1.py
 
 echo "==> bash syntax check"
 bash -n scripts/patch_gitignore_allow_ops_orchestrate_path_norm_patcher_v1.sh

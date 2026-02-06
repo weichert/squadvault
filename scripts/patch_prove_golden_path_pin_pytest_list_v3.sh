@@ -4,7 +4,7 @@ set -euo pipefail
 echo "=== Patch: prove_golden_path pin pytest list (v3; bash3-safe; removes fallback) ==="
 python="${PYTHON:-python}"
 
-"$python" scripts/_patch_prove_golden_path_pin_pytest_list_v3.py
+./scripts/py scripts/_patch_prove_golden_path_pin_pytest_list_v3.py
 
 echo "==> bash syntax check"
 bash -n scripts/prove_golden_path.sh

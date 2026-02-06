@@ -4,7 +4,7 @@ set -euo pipefail
 echo "=== Patch: add gate forbidding pytest directory invocation (v1) ==="
 python="${PYTHON:-python}"
 
-"$python" scripts/_patch_add_no_pytest_directory_invocation_gate_v1.py
+./scripts/py scripts/_patch_add_no_pytest_directory_invocation_gate_v1.py
 
 echo "==> bash -n"
 bash -n scripts/check_no_pytest_directory_invocation.sh

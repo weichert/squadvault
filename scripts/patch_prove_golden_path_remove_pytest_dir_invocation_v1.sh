@@ -4,7 +4,7 @@ set -euo pipefail
 echo "=== Patch: remove forbidden 'pytest -q Tests' from prove_golden_path (v1) ==="
 python="${PYTHON:-python}"
 
-"$python" scripts/_patch_prove_golden_path_remove_pytest_dir_invocation_v1.py
+./scripts/py scripts/_patch_prove_golden_path_remove_pytest_dir_invocation_v1.py
 
 echo "==> bash syntax check"
 bash -n scripts/prove_golden_path.sh

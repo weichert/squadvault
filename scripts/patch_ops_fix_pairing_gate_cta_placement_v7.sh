@@ -13,7 +13,7 @@ else
 fi
 
 # Re-run the v6 patcher (idempotent) to ensure the desired state.
-"$PY" scripts/_patch_ops_fix_pairing_gate_cta_placement_v7.py
+./scripts/py scripts/_patch_ops_fix_pairing_gate_cta_placement_v7.py
 
 echo "==> bash syntax check (spot)"
 bash -n scripts/check_patch_pairs_v1.sh

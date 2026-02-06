@@ -12,7 +12,7 @@ else
   PY="${PYTHON:-python}"
 fi
 
-"$PY" scripts/_patch_ops_ignore_graveyard_in_patch_pair_gate_v1.py
+./scripts/py scripts/_patch_ops_ignore_graveyard_in_patch_pair_gate_v1.py
 
 echo "==> bash syntax check (spot)"
 bash -n scripts/check_patch_pairs_v1.sh

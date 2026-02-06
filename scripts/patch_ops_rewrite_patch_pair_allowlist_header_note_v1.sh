@@ -12,7 +12,7 @@ else
   PY="${PYTHON:-python}"
 fi
 
-"$PY" scripts/_patch_ops_rewrite_patch_pair_allowlist_header_note_v1.py
+./scripts/py scripts/_patch_ops_rewrite_patch_pair_allowlist_header_note_v1.py
 
 echo "==> bash syntax check (spot)"
 bash -n scripts/patch_ops_rewrite_patch_pair_allowlist_header_note_v1.sh

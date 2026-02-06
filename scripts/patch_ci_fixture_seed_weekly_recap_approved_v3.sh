@@ -10,7 +10,7 @@ else
   py="${PYTHON:-python}"
 fi
 
-$py scripts/_patch_ci_fixture_seed_weekly_recap_approved_v3.py
+./scripts/py scripts/_patch_ci_fixture_seed_weekly_recap_approved_v3.py
 
 echo "==> validate: header present in fixture row"
 $py - <<'PY'

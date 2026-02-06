@@ -17,7 +17,7 @@ if [ -x "scripts/py" ]; then
 fi
 
 echo "==> apply patcher"
-$py scripts/_patch_soften_missing_approved_weekly_recap_export_gate_v1.py
+./scripts/py scripts/_patch_soften_missing_approved_weekly_recap_export_gate_v1.py
 
 echo "==> bash syntax check (all scripts)"
 bash -n scripts/*.sh

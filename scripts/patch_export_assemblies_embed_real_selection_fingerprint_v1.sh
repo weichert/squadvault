@@ -7,7 +7,7 @@ echo "=== Patch: export assemblies embed real selection_fingerprint (v1) ==="
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 py="${repo_root}/scripts/py"
 
-"$py" "${repo_root}/scripts/_patch_export_assemblies_embed_real_selection_fingerprint_v1.py"
+"${repo_root}/scripts/py" "${repo_root}/scripts/_patch_export_assemblies_embed_real_selection_fingerprint_v1.py"
 
 echo "==> py_compile"
 python - <<'PY'

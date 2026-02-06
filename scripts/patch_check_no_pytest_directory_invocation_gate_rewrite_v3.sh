@@ -4,7 +4,7 @@ set -euo pipefail
 echo "=== Patch: rewrite pytest directory invocation gate (v3) ==="
 python="${PYTHON:-python}"
 
-"$python" scripts/_patch_check_no_pytest_directory_invocation_gate_rewrite_v3.py
+./scripts/py scripts/_patch_check_no_pytest_directory_invocation_gate_rewrite_v3.py
 
 echo "==> bash -n"
 bash -n scripts/check_no_pytest_directory_invocation.sh
