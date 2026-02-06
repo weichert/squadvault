@@ -12,11 +12,6 @@ EXCLUDE_RE='(/__pycache__/|\.pyc$)'
 # /SV_PATCH
 
 
-# SV_PATCH: fs-order scan ignore __pycache__/ and *.pyc (v2)
-# NOTE: wrappers run py_compile; __pycache__/*.pyc can contain incidental strings
-# that trip this static scanner. Exclude bytecode + ignore binary files.
-# /SV_PATCH
-
 set -euo pipefail
 
 # === SquadVault: Filesystem Ordering Determinism Gate (v1.2.1) ===
