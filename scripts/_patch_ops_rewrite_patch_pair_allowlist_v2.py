@@ -17,6 +17,7 @@ HEADER = """# patch_pair_allowlist_v1.txt
 #   - If an exception is truly required, add it here (reviewable).
 #
 # One path per line, exact match, git-tracked only.
+# NOTE: This file is auto-rewritten by scripts/patch_ops_rewrite_patch_pair_allowlist_v2.sh
 """
 
 
