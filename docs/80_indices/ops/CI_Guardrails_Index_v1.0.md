@@ -85,8 +85,18 @@ ordering guarantees for tracked source files.
 - `docs/80_indices/ops/Docs_Integrity_Gate_Invariant_v1.0.md`  <!-- ci_guardrails_index_add_docs_integrity_link_v1 -->
 
 ## Local-only helpers (not invoked by CI)
+- `scripts/prove_local_shell_hygiene_v1.sh` — local-only helper: validates bash nounset startup/teardown safety (SV_NOUNSET_GUARDS_V1)
+
 - `scripts/prove_local_clean_then_ci_v3.sh` — local-only helper: cleans *only* untracked scratch files named `scripts/_patch__*.py` and `scripts/patch__*.sh` (dry-run by default; requires `SV_LOCAL_CLEAN=1` to delete), then runs `bash scripts/prove_ci.sh`
 - [CI Patcher/Wrapper Pairing Gate (v1.0)](CI_Patcher_Wrapper_Pairing_Gate_v1.0.md)
 
 ## Local Workstation Hygiene
 - [Local Bash Nounset Guards (v1.0)](Local_Bash_Nounset_Guards_v1.0.md)
+
+## CWD Independence
+- [CI CWD Independence Gate (Shims) (v1.0)](CI_CWD_Independence_Shims_Gate_v1.0.md)
+
+
+## Guardrails Development
+- [CI Guardrails Extension Playbook (v1.0)](CI_Guardrails_Extension_Playbook_v1.0.md)
+
