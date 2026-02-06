@@ -52,7 +52,7 @@ done <<< "${targets}"
 if [[ "$fail" -ne 0 ]]; then
   cat <<'EOF'
 
-==> remediation
+Remediation:
 Remove 'set -x' from CI proof/gate scripts.
 If you need debugging, prefer:
   - explicit echo statements of non-sensitive values, or
