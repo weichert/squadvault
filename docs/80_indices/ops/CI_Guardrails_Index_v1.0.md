@@ -2,6 +2,13 @@
 
 This index enumerates **active, enforced CI guardrails** for the SquadVault ingest system.
 
+## How to Read This Index
+
+- **Active Guardrails** are enforced by CI and will fail builds if violated.
+- Sections explicitly labeled **local-only** document helpers or hygiene practices that are *not* invoked by CI.
+- If a guardrail appears here, it must correspond to a concrete enforcement mechanism.
+
+
 <!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
 - **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` detects placeholder `Selection fingerprint: test-fingerprint` and normalizes it to a **64-lower-hex** fingerprint **in a temp copy used only for NAC validation (non-mutating)** before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`). **Exports are ephemeral by default** (temp export root); set `SV_KEEP_EXPORTS=1` to persist exports under `artifacts/`.
 <!-- /SV_PATCH: nac fingerprint preflight doc (v1) -->
@@ -69,7 +76,7 @@ ordering guarantees for tracked source files.
   → docs/80_indices/ops/CI_Proof_Surface_Registry_v1.0.md
 
 ## Notes
-- Guardrails listed here are **runtime-enforced**, not advisory.
+- Unless explicitly marked as **local-only**, guardrails listed in **Active Guardrails** are **runtime-enforced**, not advisory.
 - Any addition to this index must correspond to a concrete, testable enforcement mechanism.
 
 - **ENV determinism envelope:**  
@@ -99,4 +106,3 @@ ordering guarantees for tracked source files.
 
 ## Guardrails Development
 - [CI Guardrails Extension Playbook (v1.0)](CI_Guardrails_Extension_Playbook_v1.0.md)
-
