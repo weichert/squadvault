@@ -124,7 +124,10 @@ sv_ci_on_exit() {
 trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
 
-echo "== CI Proof Suite =="
+echo "== CI Proof Suite ==
+echo "==> Ops: patcher/wrapper pairing gate"
+bash scripts/check_patch_pairs_v1.sh
+"
 
 # SV_PATCH_PROVE_CI_RETIRE_SEMANTICS_GATE_V2
 
