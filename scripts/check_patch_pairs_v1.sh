@@ -8,15 +8,6 @@ echo "==> Gate: patcher/wrapper pairing (v1)"
 echo "    rule: scripts/patch_*.sh <-> scripts/_patch_*.py"
 echo "    legacy exceptions: scripts/patch_pair_allowlist_v1.txt"
 
-if [ "${rc}" -ne 0 ]; then
-  echo
-  echo "=== NEXT: Fix patcher/wrapper pairing failures ==="
-  echo "1) Add the missing pair(s): scripts/patch_*.sh <-> scripts/_patch_*.py"
-  echo "2) Then regenerate the allowlist (if still needed):"
-  echo "   bash scripts/patch_ops_rewrite_patch_pair_allowlist_v2.sh"
-  echo "NOTE: scripts/patch_pair_allowlist_v1.txt is auto-generated; manual edits will be overwritten."
-  echo
-fi
 
 ALLOWLIST="scripts/patch_pair_allowlist_v1.txt"
 
@@ -117,6 +108,13 @@ echo "1) Add the missing pair(s): scripts/patch_*.sh <-> scripts/_patch_*.py"
 echo "2) Then regenerate the allowlist (if still needed):"
 echo "   bash scripts/patch_ops_rewrite_patch_pair_allowlist_v2.sh"
 echo "NOTE: scripts/patch_pair_allowlist_v1.txt is auto-generated; manual edits will be overwritten."
+echo
+echo "=== NEXT: Fix patcher/wrapper pairing failures ==="
+echo "1) Add the missing pair(s): scripts/patch_*.sh <-> scripts/_patch_*.py"
+echo "2) Then regenerate the allowlist (if still needed):"
+echo "   bash scripts/patch_ops_rewrite_patch_pair_allowlist_v2.sh"
+echo "NOTE: scripts/patch_pair_allowlist_v1.txt is auto-generated; manual edits will be overwritten."
+echo
 echo
   echo "        $ALLOWLIST"
   exit 1
