@@ -5,6 +5,7 @@ echo "=== Patch: ops rewrite patch_pair_allowlist_v1.txt from gate output (v2) =
 
 echo "NOTE: This script regenerates scripts/patch_pair_allowlist_v1.txt from the patcher/wrapper pairing gate."
 echo "      Manual edits to the allowlist will be overwritten."
+echo "HINT: After fixing patcher/wrapper pairings, re-run this script to regenerate the allowlist."
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
