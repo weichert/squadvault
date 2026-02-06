@@ -8,11 +8,6 @@ This index enumerates **active, enforced CI guardrails** for the SquadVault inge
 - Sections explicitly labeled **local-only** document helpers or hygiene practices that are *not* invoked by CI.
 - If a guardrail appears here, it must correspond to a concrete enforcement mechanism.
 
-
-<!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
-- **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` detects placeholder `Selection fingerprint: test-fingerprint` and normalizes it to a **64-lower-hex** fingerprint **in a temp copy used only for NAC validation (non-mutating)** before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`). **Exports are ephemeral by default** (temp export root); set `SV_KEEP_EXPORTS=1` to persist exports under `artifacts/`.
-<!-- /SV_PATCH: nac fingerprint preflight doc (v1) -->
-
 ## Operator Safety Note (Build Mode)
 When running inspection commands from interactive shells (e.g. zsh), avoid leaking `set -u` into your session.
 Use either a subshell:
@@ -24,6 +19,11 @@ or the canonical helper:
 - `./scripts/strict_subshell_v1.sh '<command>'`
 
 ## Active Guardrails
+
+<!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
+- **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` detects placeholder `Selection fingerprint: test-fingerprint` and normalizes it to a **64-lower-hex** fingerprint **in a temp copy used only for NAC validation (non-mutating)** before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`). **Exports are ephemeral by default** (temp export root); set `SV_KEEP_EXPORTS=1` to persist exports under `artifacts/`.
+<!-- /SV_PATCH: nac fingerprint preflight doc (v1) -->
+
 ### Docs Integrity Guardrail
 - **Status:** ACTIVE (enforced)
 - **Entrypoint:** `scripts/prove_ci.sh`
@@ -92,6 +92,8 @@ ordering guarantees for tracked source files.
 - `docs/80_indices/ops/Docs_Integrity_Gate_Invariant_v1.0.md`  <!-- ci_guardrails_index_add_docs_integrity_link_v1 -->
 
 ## Local-only helpers (not invoked by CI)
+_CI never invokes anything in this section._
+
 - `scripts/prove_local_shell_hygiene_v1.sh` — local-only helper: validates bash nounset startup/teardown safety (SV_NOUNSET_GUARDS_V1)
 
 - `scripts/prove_local_clean_then_ci_v3.sh` — local-only helper: cleans *only* untracked scratch files named `scripts/_patch__*.py` and `scripts/patch__*.sh` (dry-run by default; requires `SV_LOCAL_CLEAN=1` to delete), then runs `bash scripts/prove_ci.sh`
@@ -102,7 +104,6 @@ ordering guarantees for tracked source files.
 
 ## CWD Independence
 - [CI CWD Independence Gate (Shims) (v1.0)](CI_CWD_Independence_Shims_Gate_v1.0.md)
-
 
 ## Guardrails Development
 - [CI Guardrails Extension Playbook (v1.0)](CI_Guardrails_Extension_Playbook_v1.0.md)
