@@ -106,6 +106,15 @@ if [ "$missing_pairs" -ne 0 ]; then
 fi
 
 if [ "$allowlisted_count" -ne 0 ] && [ "${SV_PATCH_PAIR_VERBOSE}" != "1" ]; then
+if [ "${rc}" -ne 0 ]; then
+  echo
+  echo "=== NEXT: Fix patcher/wrapper pairing failures ==="
+  echo "1) Add the missing pair(s): scripts/patch_*.sh <-> scripts/_patch_*.py"
+  echo "2) Then regenerate the allowlist (if still needed):"
+  echo "   bash scripts/patch_ops_rewrite_patch_pair_allowlist_v2.sh"
+  echo "NOTE: scripts/patch_pair_allowlist_v1.txt is auto-generated; manual edits will be overwritten."
+  echo
+fi
   echo "OK: patcher/wrapper pairing gate passed. (allowlisted missing pairs: ${allowlisted_count}; suppressed; set SV_PATCH_PAIR_VERBOSE=1)"
 else
   echo "OK: patcher/wrapper pairing gate passed."
