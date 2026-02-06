@@ -152,6 +152,9 @@ trap 'sv_ci_on_exit' EXIT
 echo "== CI Proof Suite =="
 
 echo "==> No-bare-chevron markers gate"
+
+echo "==> No-xtrace guardrail gate"
+./scripts/gate_no_xtrace_v1.sh
 bash scripts/gate_no_bare_chevron_markers_v1.sh
 
 echo "==> Ops: patcher/wrapper pairing gate"
