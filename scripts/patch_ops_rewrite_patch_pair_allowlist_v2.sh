@@ -3,6 +3,9 @@ set -euo pipefail
 
 echo "=== Patch: ops rewrite patch_pair_allowlist_v1.txt from gate output (v2) ==="
 
+echo "NOTE: This script regenerates scripts/patch_pair_allowlist_v1.txt from the patcher/wrapper pairing gate."
+echo "      Manual edits to the allowlist will be overwritten."
+
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
