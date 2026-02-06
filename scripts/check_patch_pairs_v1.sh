@@ -43,7 +43,6 @@ note_missing() {
   echo "       expected: $expected"
   missing_pairs=1
 }
-}
 
 # Wrapper -> patcher (avoid pipe subshell; bash 3.2 safe)
 if [ -n "$wrappers" ]; then
