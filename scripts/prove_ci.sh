@@ -162,7 +162,7 @@ echo "==> No-xtrace guardrail gate"
 bash scripts/gate_no_bare_chevron_markers_v1.sh
 
 
-==> Gate: no pasted terminal banners in scripts/
+echo "==> Gate: no pasted terminal banners in scripts/"
 bash scripts/gate_no_terminal_banner_paste_v1.sh
 # prove_ci_wire_patch_wrapper_idempotence_gate_v1
 echo "==> Gate: patch wrapper idempotence (allowlist) v1"
