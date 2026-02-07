@@ -131,3 +131,5 @@ _CI never invokes anything in this section._
 - [Process Discipline Index (v1.0)](Process_Discipline_Index_v1.0.md)
 
 - [Recovery Workflows Index (v1.0)](Recovery_Workflows_Index_v1.0.md)
+
+- [Canonical Indices Map (v1.0)](Canonical_Indices_Map_v1.0.md)
