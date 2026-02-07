@@ -199,6 +199,12 @@ bash scripts/check_no_memory_reads.sh
 
 bash scripts/check_no_pytest_directory_invocation.sh
 # === SV_ANCHOR: docs_gates (v1) ===
+
+# SV_GATE: docs_mutation_guardrail (v1) begin
+echo "==> Docs mutation guardrail gate"
+bash scripts/gate_docs_mutation_guardrail_v1.sh
+# SV_GATE: docs_mutation_guardrail (v1) end
+
 # Patch insertion point for doc/index gates.
 # Patcher rule: insert additional doc/index gates immediately BELOW this block.
 # === /SV_ANCHOR: docs_gates (v1) ===

@@ -150,3 +150,6 @@ _CI never invokes anything in this section._
 - [Recovery Workflows Index (v1.0)](Recovery_Workflows_Index_v1.0.md)
 
 - [Canonical Indices Map (v1.0)](Canonical_Indices_Map_v1.0.md)
+
+<!-- SV_DOCS_MUTATION_DISCOVERABILITY: rules_of_engagement (v1) -->
+- docs/process/rules_of_engagement.md — Docs + CI Mutation Policy (Enforced)
