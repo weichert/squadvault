@@ -1,4 +1,12 @@
-#!/usr/bin/env bash
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+GATE = REPO_ROOT / "scripts" / "gate_idempotence_allowlist_wrappers_no_prove_ci_v1.sh"
+
+GATE_TEXT_BASH32_SAFE = """#!/usr/bin/env bash
 set -euo pipefail
 
 # Gate: idempotence allowlist wrappers must not recurse into prove_ci (v1)
@@ -37,7 +45,7 @@ if [[ "${#wrappers[@]}" -eq 0 ]]; then
 fi
 
 fail=0
-prove_pat='\bbash[[:space:]]+(\./)?scripts/prove_ci\.sh\b'
+prove_pat='\\bbash[[:space:]]+(\\./)?scripts/prove_ci\\.sh\\b'
 
 for rel in "${wrappers[@]}"; do
   p="${REPO_ROOT}/${rel}"
@@ -84,3 +92,28 @@ if [[ "${fail}" -ne 0 ]]; then
 fi
 
 echo "OK: idempotence allowlist wrappers do not recurse into prove_ci (guarded)"
+"""
+
+def main() -> int:
+    GATE.parent.mkdir(parents=True, exist_ok=True)
+
+    if GATE.exists():
+        current = GATE.read_text(encoding="utf-8")
+        if current == GATE_TEXT_BASH32_SAFE:
+            return 0
+
+        # Strict safety: only overwrite if it looks like the intended gate.
+        if "idempotence allowlist wrappers must not recurse into prove_ci" not in current:
+            raise SystemExit(f"REFUSE: {GATE} exists but does not look like expected gate; won't overwrite")
+
+    GATE.write_text(GATE_TEXT_BASH32_SAFE, encoding="utf-8")
+    return 0
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        raise SystemExit(1)
