@@ -161,6 +161,11 @@ echo "==> No-xtrace guardrail gate"
 ./scripts/gate_no_xtrace_v1.sh
 bash scripts/gate_no_bare_chevron_markers_v1.sh
 
+# prove_ci_wire_patch_wrapper_idempotence_gate_v1
+echo "==> Gate: patch wrapper idempotence (allowlist) v1"
+bash scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh
+
+
 echo "==> Ops: patcher/wrapper pairing gate"
 bash scripts/check_patch_pairs_v1.sh
 

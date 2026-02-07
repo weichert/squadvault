@@ -1,0 +1,5 @@
+# Patch wrapper idempotence allowlist (v1)
+# Each entry is a wrapper path, relative to repo root.
+# Lines starting with # and blank lines are ignored.
+
+scripts/patch_index_ci_proof_surface_registry_discoverability_v1.sh
