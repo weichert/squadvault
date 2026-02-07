@@ -5,7 +5,7 @@ import sys
 
 TARGET = Path("scripts/prove_ci.sh")
 MARK = "gate_no_terminal_banner_paste_v1.sh"
-SNIP = "\n==> Gate: no pasted terminal banners in scripts/\nbash scripts/gate_no_terminal_banner_paste_v1.sh\n"
+SNIP = '\necho \"==> Gate: no pasted terminal banners in scripts/\"\nbash scripts/gate_no_terminal_banner_paste_v1.sh\n'
 
 ANCHORS = [
     # Prefer inserting near other early “text/static” gates:
