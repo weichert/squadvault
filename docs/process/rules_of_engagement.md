@@ -105,3 +105,13 @@ All changes that modify `docs/` or CI guardrails must be implemented via:
 
 Manual edits are permitted only for emergency repair and must be followed by a patcher+wrapper retrofit.
 
+
+<!-- PATCHER_WRAPPER_LINKS_v1_BEGIN -->
+## Canonical Patcher / Wrapper Pattern (Required)
+
+All operational, CI, and documentation mutations must follow the canonical patcher/wrapper workflow.
+
+- `docs/process/Canonical_Patcher_Wrapper_Pattern_v1.0.md`
+
+<!-- PATCHER_WRAPPER_LINKS_v1_END -->
+

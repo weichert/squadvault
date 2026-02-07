@@ -117,3 +117,13 @@ _CI never invokes anything in this section._
 
 ## Local Workstation Hygiene
 - [Local Bash Nounset Guards (v1.0)](Local_Bash_Nounset_Guards_v1.0.md)
+
+<!-- PATCHER_WRAPPER_LINKS_v1_BEGIN -->
+## Related Process Docs
+
+- **Canonical Patcher / Wrapper Pattern (v1.0):** `docs/process/Canonical_Patcher_Wrapper_Pattern_v1.0.md`  
+  Required for operational, CI, and documentation mutations. Prefer the reference implementation:
+  `scripts/_patch_example_noop_v1.py` + `scripts/patch_example_noop_v1.sh`.
+
+<!-- PATCHER_WRAPPER_LINKS_v1_END -->
+
