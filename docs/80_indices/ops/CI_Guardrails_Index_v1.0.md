@@ -29,6 +29,19 @@ or the canonical helper:
 - [Local-only helpers (not invoked by CI)](#local-only-helpers-not-invoked-by-ci)
 - [Local Workstation Hygiene](#local-workstation-hygiene)
 
+<!-- SV_BEGIN: ops_entrypoints_hub (v1) -->
+## Ops Entrypoints (Canonical)
+
+If you are unsure where to start, use this section.
+
+- [Ops Entrypoints Hub (v1.0)](Ops_Entrypoints_Hub_v1.0.md)
+- [Canonical Indices Map (v1.0)](Canonical_Indices_Map_v1.0.md)
+- [Process Discipline Index (v1.0)](Process_Discipline_Index_v1.0.md)
+- [Recovery Workflows Index (v1.0)](Recovery_Workflows_Index_v1.0.md)
+- [Ops Rules — One Page (v1.0)](Ops_Rules_One_Page_v1.0.md)
+- [New Contributor Orientation (10 min) (v1.0)](New_Contributor_Orientation_10min_v1.0.md)
+<!-- SV_END: ops_entrypoints_hub (v1) -->
+
 ## Active Guardrails
 <!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
 - **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` detects placeholder `Selection fingerprint: test-fingerprint` and normalizes it to a **64-lower-hex** fingerprint **in a temp copy used only for NAC validation (non-mutating)** before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`). **Exports are ephemeral by default** (temp export root); set `SV_KEEP_EXPORTS=1` to persist exports under `artifacts/`.
