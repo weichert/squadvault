@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# gate_patch_wrapper_idempotence_set_env_v1
+
 echo "=== Gate: patch wrapper idempotence (allowlist) v1 ==="
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,7 +39,7 @@ run_wrapper_once() {
   fi
 
   echo "==> wrapper: ${wrapper}"
-  bash "${wrapper}"
+  SV_IDEMPOTENCE_MODE=1 bash "${wrapper}"
 
   if [[ -n "$(git status --porcelain=v1)" ]]; then
     echo "ERROR: wrapper left repo DIRTY (must be idempotent/no-op from clean): ${wrapper}" >&2
