@@ -201,7 +201,6 @@ bash scripts/check_no_pytest_directory_invocation.sh
 # === SV_ANCHOR: docs_gates (v1) ===
 
 # SV_GATE: docs_integrity (v2) begin
-echo "==> Docs integrity gate (v2)"
 bash scripts/gate_docs_integrity_v2.sh
 # SV_GATE: docs_integrity (v2) end
 
