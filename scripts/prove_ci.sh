@@ -202,8 +202,8 @@ bash scripts/check_no_pytest_directory_invocation.sh
 # Patch insertion point for doc/index gates.
 # Patcher rule: insert additional doc/index gates immediately BELOW this block.
 # === /SV_ANCHOR: docs_gates (v1) ===
-echo "==> Gate: no double scripts prefix (v1)"
-bash scripts/gate_no_double_scripts_prefix_v1.sh
+echo "==> Gate: no double scripts prefix (v2)"
+bash scripts/gate_no_double_scripts_prefix_v2.sh
 
 echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
 bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh
