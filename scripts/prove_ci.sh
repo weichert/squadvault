@@ -205,8 +205,7 @@ echo "==> Docs integrity gate (v2)"
 bash scripts/gate_docs_integrity_v2.sh
 # SV_GATE: docs_integrity (v2) end
 
-
-
+bash scripts/prove_docs_integrity_v1.sh
 
 # SV_GATE: docs_mutation_guardrail (v2) begin
 echo "==> Docs mutation guardrail gate"

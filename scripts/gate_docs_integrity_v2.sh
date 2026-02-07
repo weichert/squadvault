@@ -38,9 +38,6 @@ count_fixed() {
 
 echo "==> Docs integrity gate (v2)"
 
-# 1) Baseline docs integrity proof
-bash "scripts/prove_docs_integrity_v1.sh"
-
 # 2) Marker exact-once enforcement (folded from docs_integrity_markers gate v2)
 CI_INDEX="docs/80_indices/ops/CI_Guardrails_Index_v1.0.md"
 need_file_tracked_or_present "$CI_INDEX"
