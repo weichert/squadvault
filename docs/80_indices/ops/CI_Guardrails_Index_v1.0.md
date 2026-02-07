@@ -158,5 +158,5 @@ _CI never invokes anything in this section._
 <!-- SV_DOCS_MUTATION_GUARDRAIL_GATE: v2 (v1) -->
 - scripts/gate_docs_mutation_guardrail_v2.sh — Docs Mutation Guardrail Gate (canonical)
 <!-- SV_CI_PROOF_SURFACE_REGISTRY: v1 -->
-- scripts/gate_ci_proof_surface_registry_v1.sh — CI Proof Surface Registry Gate (canonical)
+- scripts/check_ci_proof_surface_matches_registry_v1.sh — CI Proof Surface Registry Gate (canonical)
 

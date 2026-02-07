@@ -6,12 +6,12 @@ import sys
 TARGET = Path("scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh")
 
 OLD = """MARKER='<!-- SV_CI_PROOF_SURFACE_REGISTRY: v1 -->'
-BULLET='- scripts/gate_ci_proof_surface_registry_v1.sh — CI Proof Surface Registry Gate (canonical)'
+BULLET='- scripts/check_ci_proof_surface_matches_registry_v1.sh — CI Proof Surface Registry Gate (canonical)'
 """
 
 NEW = """MARKER='<!-- SV_CI_PROOF_SURFACE_REGISTRY: v1 -->'
 # NOTE: avoid Unicode dash matching issues in macOS grep; match the stable ASCII path instead.
-BULLET_PATH='scripts/gate_ci_proof_surface_registry_v1.sh'
+BULLET_PATH='scripts/check_ci_proof_surface_matches_registry_v1.sh'
 """
 
 OLD_COUNTS = """marker_count="$(grep -nF "${MARKER}" "${INDEX}" | wc -l | tr -d ' ')"

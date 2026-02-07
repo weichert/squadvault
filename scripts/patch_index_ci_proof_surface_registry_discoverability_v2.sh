@@ -28,7 +28,7 @@ bash -n "scripts/patch_index_ci_proof_surface_registry_discoverability_v2.sh"
 
 echo "==> grep: marker + gate path present in index"
 grep -nF '<!-- SV_CI_PROOF_SURFACE_REGISTRY: v1 -->' "${INDEX}"
-grep -nF 'scripts/gate_ci_proof_surface_registry_v1.sh' "${INDEX}"
+grep -nF 'scripts/check_ci_proof_surface_matches_registry_v1.sh' "${INDEX}"
 
 if [[ "${SV_IDEMPOTENCE_MODE:-0}" != "1" ]]; then
   echo "==> prove_ci (expected DIRTY pre-commit)"

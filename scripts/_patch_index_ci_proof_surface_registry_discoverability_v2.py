@@ -6,7 +6,7 @@ import sys
 INDEX = Path("docs/80_indices/ops/CI_Guardrails_Index_v1.0.md")
 
 MARKER = "<!-- SV_CI_PROOF_SURFACE_REGISTRY: v1 -->"
-BULLET = "- scripts/gate_ci_proof_surface_registry_v1.sh — CI Proof Surface Registry Gate (canonical)"
+BULLET = "- scripts/check_ci_proof_surface_matches_registry_v1.sh — CI Proof Surface Registry Gate (canonical)"
 
 BLOCK = MARKER + "\n" + BULLET + "\n\n"
 

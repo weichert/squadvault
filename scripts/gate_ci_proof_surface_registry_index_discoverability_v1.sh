@@ -13,7 +13,7 @@ INDEX="docs/80_indices/ops/CI_Guardrails_Index_v1.0.md"
 
 MARKER='<!-- SV_CI_PROOF_SURFACE_REGISTRY: v1 -->'
 # NOTE: avoid Unicode dash matching issues in macOS grep; match the stable ASCII path instead.
-BULLET_PATH='scripts/gate_ci_proof_surface_registry_v1.sh'
+BULLET_PATH='scripts/check_ci_proof_surface_matches_registry_v1.sh'
 
 if [[ ! -f "${INDEX}" ]]; then
   echo "ERROR: missing index file: ${INDEX}" >&2
