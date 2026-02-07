@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== Gate: no double scripts prefix (v1) ==="
+echo "=== Gate: no double scripts prefix (v1) — RETIRED (shim to v2) ==="
 
-# Primary target: prove_ci (most likely place to regress)
-TARGETS=(
-  "scripts/prove_ci.sh"
-)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
 
-for t in "${TARGETS[@]}"; do
-  test -f "${t}"
-  if DOUBLE="scripts/""scripts/"; grep -nF "${DOUBLE}" "${t}" >/dev/null; then
-    echo "ERROR: detected forbidden double scripts prefix in ${t}"
-    DOUBLE="scripts/""scripts/"; grep -nF "${DOUBLE}" "${t}" || true
-    exit 1
-  fi
-done
-
-echo "OK: no 'scripts/scripts/' found in gate targets."
+# Delegate to canonical v2 gate.
+bash scripts/gate_no_double_scripts_prefix_v2.sh
