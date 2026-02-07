@@ -31,3 +31,14 @@ Historical scripts may be exempted only via the tracked allowlist:
 - `scripts/patch_pair_allowlist_v1.txt`
 
 This allowlist is explicit, reviewable, and should not grow without clear rationale.
+
+<!-- EXAMPLE_VS_TEMPLATE_CLARITY_v1_BEGIN -->
+## Reference implementation
+
+For the canonical patcher/wrapper workflow and the reference implementation, see:
+
+- `docs/process/Canonical_Patcher_Wrapper_Pattern_v1.0.md`
+- `scripts/_patch_example_noop_v1.py` + `scripts/patch_example_noop_v1.sh`
+
+<!-- EXAMPLE_VS_TEMPLATE_CLARITY_v1_END -->
+

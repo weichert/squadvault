@@ -58,3 +58,22 @@ If it matters, it gets a patcher.
 ## Bash Compatibility
 
 Wrappers must work under **Bash 3.2**.
+
+<!-- EXAMPLE_VS_TEMPLATE_CLARITY_v1_BEGIN -->
+## Reference Implementation and Starting Point
+
+**Start by copying the canonical example pair**:
+
+- `scripts/_patch_example_noop_v1.py`
+- `scripts/patch_example_noop_v1.sh`
+
+This pair is the repository’s “golden” reference implementation for the patcher/wrapper workflow.
+
+### About the TEMPLATE files
+
+- `scripts/_patch_TEMPLATE_v0.py` and `scripts/patch_TEMPLATE_v0.sh` are **scaffolding only**.
+- Use them only as a convenience to create a new versioned pair, then rename/version appropriately.
+- Do not treat TEMPLATE files as “canonical examples” of a real repo mutation.
+
+<!-- EXAMPLE_VS_TEMPLATE_CLARITY_v1_END -->
+
