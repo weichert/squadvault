@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# NOTE (v1 deprecation):
+#   This gate is superseded by:
+#     scripts/gate_docs_mutation_guardrail_v2.sh
+#   Kept for historical reference only. prove_ci wires v2.
+#
 # SquadVault — Docs Mutation Guardrail Gate (v1)
 #
 # Enforces:

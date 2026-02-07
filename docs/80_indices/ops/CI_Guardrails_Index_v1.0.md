@@ -154,3 +154,6 @@ _CI never invokes anything in this section._
 
 <!-- SV_DOCS_MUTATION_DISCOVERABILITY: rules_of_engagement (v1) -->
 - docs/process/rules_of_engagement.md — Docs + CI Mutation Policy (Enforced)
+
+<!-- SV_DOCS_MUTATION_GUARDRAIL_GATE: v2 (v1) -->
+- scripts/gate_docs_mutation_guardrail_v2.sh — Docs Mutation Guardrail Gate (canonical)
