@@ -17,3 +17,5 @@ This is an index only. Authority remains in the linked canonical documents.
 - Prefer versioned patchers + wrappers over manual edits.
 - Patchers must be idempotent and refuse-on-drift.
 - This index is documentation-only and must not introduce new mechanics.
+
+- [Ops Rules — One Page (v1.0)](Ops_Rules_One_Page_v1.0.md)
