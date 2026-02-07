@@ -186,6 +186,11 @@ fi
 # === End Gate: retire semantics (v2) ===
 
 # ==> Gate: CI proof surface registry (v1)
+
+# prove_ci_wire_ci_proof_surface_registry_index_discoverability_gate_v3
+echo "==> Gate: CI proof surface registry discoverability in Ops index (v1)"
+bash scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh
+
 bash scripts/check_ci_proof_surface_matches_registry_v1.sh
 echo "==> Filesystem ordering determinism gate"
 ./scripts/check_filesystem_ordering_determinism.sh
