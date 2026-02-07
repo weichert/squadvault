@@ -15,3 +15,5 @@ This is an index only. Authority remains in the linked canonical documents.
 
 - [CI Patcher/Wrapper Pairing Gate](<CI_Patcher_Wrapper_Pairing_Gate_v1.0.md>)
 - [CI Cleanliness Invariant](<CI_Cleanliness_Invariant_v1.0.md>)
+
+- [New Contributor Orientation (10 min) (v1.0)](New_Contributor_Orientation_10min_v1.0.md)
