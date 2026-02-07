@@ -10,9 +10,9 @@ TARGETS=(
 
 for t in "${TARGETS[@]}"; do
   test -f "${t}"
-  if grep -nF "scripts/scripts/" "${t}" >/dev/null; then
-    echo "ERROR: detected forbidden 'scripts/scripts/' in ${t}"
-    grep -nF "scripts/scripts/" "${t}" || true
+  if DOUBLE="scripts/""scripts/"; grep -nF "${DOUBLE}" "${t}" >/dev/null; then
+    echo "ERROR: detected forbidden double scripts prefix in ${t}"
+    DOUBLE="scripts/""scripts/"; grep -nF "${DOUBLE}" "${t}" || true
     exit 1
   fi
 done

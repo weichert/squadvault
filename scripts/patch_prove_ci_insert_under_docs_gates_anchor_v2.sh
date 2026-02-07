@@ -22,7 +22,7 @@ gate_base="$(basename "${SV_DOCS_GATES_INSERT_PATH}")"
 grep -nF "${gate_base}" scripts/prove_ci.sh >/dev/null
 
 echo "==> Verify: reject accidental double 'scripts/scripts/'"
-if grep -nF "bash scripts/scripts/" scripts/prove_ci.sh >/dev/null; then
+BAD="bash scripts/""scripts/"; if grep -nF "${BAD}" scripts/prove_ci.sh >/dev/null; then
   echo "ERROR: detected forbidden double scripts prefix in scripts/prove_ci.sh"
   exit 1
 fi
