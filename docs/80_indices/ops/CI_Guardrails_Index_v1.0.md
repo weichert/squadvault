@@ -20,6 +20,10 @@ or the canonical helper:
 
 ## Contents
 - [Operator Safety Note (Build Mode)](#operator-safety-note-build-mode)
+<!-- SV_BEGIN: ops_entrypoints_toc (v1) -->
+- [Ops Entrypoints (Canonical)](#ops-entrypoints-canonical)
+<!-- SV_END: ops_entrypoints_toc (v1) -->
+
 - [Active Guardrails](#active-guardrails)
 - [Proof Surface](#proof-surface)
 - [Notes](#notes)
