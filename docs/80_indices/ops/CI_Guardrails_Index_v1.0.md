@@ -8,6 +8,18 @@ This index enumerates **active, enforced CI guardrails** for the SquadVault inge
 - Sections explicitly labeled **local-only** document helpers or hygiene practices that are *not* invoked by CI.
 - If a guardrail appears here, it must correspond to a concrete enforcement mechanism.
 
+## Contents
+
+- [Operator Safety Note (Build Mode)](#operator-safety-note-build-mode)
+- [Active Guardrails](#active-guardrails)
+- [Proof Surface](#proof-surface)
+- [Notes](#notes)
+- [Ops Bundles](#ops-bundles)
+- [Guardrails Development](#guardrails-development)
+- [CWD Independence](#cwd-independence)
+- [Local-only helpers (not invoked by CI)](#local-only-helpers-not-invoked-by-ci)
+- [Local Workstation Hygiene](#local-workstation-hygiene)
+
 ## Operator Safety Note (Build Mode)
 When running inspection commands from interactive shells (e.g. zsh), avoid leaking `set -u` into your session.
 Use either a subshell:
@@ -19,7 +31,6 @@ or the canonical helper:
 - `./scripts/strict_subshell_v1.sh '<command>'`
 
 ## Active Guardrails
-
 <!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
 - **NAC fingerprint preflight normalization (Golden Path):** `scripts/prove_golden_path.sh` detects placeholder `Selection fingerprint: test-fingerprint` and normalizes it to a **64-lower-hex** fingerprint **in a temp copy used only for NAC validation (non-mutating)** before running the NAC harness (required by `Tests/_nac_check_assembly_plain_v1.py`). **Exports are ephemeral by default** (temp export root); set `SV_KEEP_EXPORTS=1` to persist exports under `artifacts/`.
 <!-- /SV_PATCH: nac fingerprint preflight doc (v1) -->
@@ -91,6 +102,12 @@ ordering guarantees for tracked source files.
 
 - `docs/80_indices/ops/Docs_Integrity_Gate_Invariant_v1.0.md`  <!-- ci_guardrails_index_add_docs_integrity_link_v1 -->
 
+## Guardrails Development
+- [CI Guardrails Extension Playbook (v1.0)](CI_Guardrails_Extension_Playbook_v1.0.md)
+
+## CWD Independence
+- [CI CWD Independence Gate (Shims) (v1.0)](CI_CWD_Independence_Shims_Gate_v1.0.md)
+
 ## Local-only helpers (not invoked by CI)
 _CI never invokes anything in this section._
 
@@ -101,9 +118,3 @@ _CI never invokes anything in this section._
 
 ## Local Workstation Hygiene
 - [Local Bash Nounset Guards (v1.0)](Local_Bash_Nounset_Guards_v1.0.md)
-
-## CWD Independence
-- [CI CWD Independence Gate (Shims) (v1.0)](CI_CWD_Independence_Shims_Gate_v1.0.md)
-
-## Guardrails Development
-- [CI Guardrails Extension Playbook (v1.0)](CI_Guardrails_Extension_Playbook_v1.0.md)
