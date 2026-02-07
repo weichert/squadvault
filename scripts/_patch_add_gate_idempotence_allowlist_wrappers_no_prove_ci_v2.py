@@ -99,13 +99,22 @@ def main() -> int:
 
     if GATE.exists():
         current = GATE.read_text(encoding="utf-8")
-        if current == GATE_TEXT_BASH32_SAFE:
+
+        # MICRO-TIDY RULE:
+        # If the gate already looks like ours and is bash3-safe (no 'mapfile'),
+        # do NOT rewrite it (avoid surprise diffs from harmless normalization).
+        if "idempotence allowlist wrappers must not recurse into prove_ci" in current and "mapfile" not in current:
             return 0
 
-        # Strict safety: only overwrite if it looks like the intended gate.
-        if "idempotence allowlist wrappers must not recurse into prove_ci" not in current:
-            raise SystemExit(f"REFUSE: {GATE} exists but does not look like expected gate; won't overwrite")
+        # If it's our gate but contains mapfile (bash3.2-incompatible), repair it.
+        if "idempotence allowlist wrappers must not recurse into prove_ci" in current and "mapfile" in current:
+            GATE.write_text(GATE_TEXT_BASH32_SAFE, encoding="utf-8")
+            return 0
 
+        # Otherwise, refuse to overwrite unknown content.
+        raise SystemExit(f"REFUSE: {GATE} exists but does not look like expected gate; won't overwrite")
+
+    # Missing gate: create canonical bash3-safe version.
     GATE.write_text(GATE_TEXT_BASH32_SAFE, encoding="utf-8")
     return 0
 
