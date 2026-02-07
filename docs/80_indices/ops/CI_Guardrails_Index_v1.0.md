@@ -151,5 +151,6 @@ _CI never invokes anything in this section._
 
 - [Canonical Indices Map (v1.0)](Canonical_Indices_Map_v1.0.md)
 
+
 <!-- SV_DOCS_MUTATION_DISCOVERABILITY: rules_of_engagement (v1) -->
 - docs/process/rules_of_engagement.md — Docs + CI Mutation Policy (Enforced)
