@@ -23,6 +23,10 @@ if [[ ! -f "${ALLOWLIST}" ]]; then
   exit 2
 fi
 
+# gate_patch_idempotence_allowlist_canonical_v1
+echo "==> Gate: idempotence allowlist canonical"
+bash scripts/gate_patch_idempotence_allowlist_canonical_v1.sh
+
 tmpdir="$(mktemp -d 2>/dev/null || mktemp -d -t sv_idempotence)"
 cleanup() { rm -rf "${tmpdir}"; }
 trap cleanup EXIT
