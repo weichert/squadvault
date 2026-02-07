@@ -17,3 +17,5 @@ This is an index only. Authority remains in the linked canonical documents.
 - [CI Cleanliness Invariant](<CI_Cleanliness_Invariant_v1.0.md>)
 
 - [New Contributor Orientation (10 min) (v1.0)](New_Contributor_Orientation_10min_v1.0.md)
+
+- [Ops Entrypoints Hub (v1.0)](Ops_Entrypoints_Hub_v1.0.md)
