@@ -8,18 +8,6 @@ This index enumerates **active, enforced CI guardrails** for the SquadVault inge
 - Sections explicitly labeled **local-only** document helpers or hygiene practices that are *not* invoked by CI.
 - If a guardrail appears here, it must correspond to a concrete enforcement mechanism.
 
-## Contents
-
-- [Operator Safety Note (Build Mode)](#operator-safety-note-build-mode)
-- [Active Guardrails](#active-guardrails)
-- [Proof Surface](#proof-surface)
-- [Notes](#notes)
-- [Ops Bundles](#ops-bundles)
-- [Guardrails Development](#guardrails-development)
-- [CWD Independence](#cwd-independence)
-- [Local-only helpers (not invoked by CI)](#local-only-helpers-not-invoked-by-ci)
-- [Local Workstation Hygiene](#local-workstation-hygiene)
-
 ## Operator Safety Note (Build Mode)
 When running inspection commands from interactive shells (e.g. zsh), avoid leaking `set -u` into your session.
 Use either a subshell:
@@ -29,6 +17,17 @@ Use either a subshell:
 or the canonical helper:
 
 - `./scripts/strict_subshell_v1.sh '<command>'`
+
+## Contents
+- [Operator Safety Note (Build Mode)](#operator-safety-note-build-mode)
+- [Active Guardrails](#active-guardrails)
+- [Proof Surface](#proof-surface)
+- [Notes](#notes)
+- [Ops Bundles](#ops-bundles)
+- [Guardrails Development](#guardrails-development)
+- [CWD Independence](#cwd-independence)
+- [Local-only helpers (not invoked by CI)](#local-only-helpers-not-invoked-by-ci)
+- [Local Workstation Hygiene](#local-workstation-hygiene)
 
 ## Active Guardrails
 <!-- SV_PATCH: nac fingerprint preflight doc (v1) -->
