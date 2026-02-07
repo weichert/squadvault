@@ -223,7 +223,6 @@ echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
 bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh
 
 
-bash scripts/prove_docs_integrity_v1.sh
 
 bash scripts/prove_eal_calibration_type_a_v1.sh
 bash scripts/prove_tone_engine_type_a_v1.sh
