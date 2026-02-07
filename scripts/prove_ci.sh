@@ -198,6 +198,11 @@ bash scripts/check_shims_compliance.sh
 bash scripts/check_no_memory_reads.sh
 
 bash scripts/check_no_pytest_directory_invocation.sh
+# === SV_ANCHOR: docs_gates (v1) ===
+# Patch insertion point for doc/index gates.
+# Patcher rule: insert additional doc/index gates immediately BELOW this block.
+# === /SV_ANCHOR: docs_gates (v1) ===
+
 bash scripts/prove_docs_integrity_v1.sh
 
 bash scripts/prove_eal_calibration_type_a_v1.sh
