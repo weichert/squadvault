@@ -1,4 +1,10 @@
-#!/usr/bin/env bash
+from __future__ import annotations
+
+from pathlib import Path
+
+TARGET = Path("scripts/gate_no_terminal_banner_paste_v1.sh")
+
+NEW_TEXT = """#!/usr/bin/env bash
 # SquadVault — gate: no pasted terminal banners (v1)
 #
 # Purpose:
@@ -37,7 +43,7 @@ PATHSPECS=(
 
 # High-signal banner patterns (keep these tight and explicit).
 # NOTE: Use ERE. Escape dots in URLs.
-PATTERN='(Last login:|The default interactive shell is now zsh\.|To update your account to use zsh, please run `chsh -s|For more details, please visit https://support\.apple\.com/kb/HT208050\.|Changing shell for|Password for|wtmp begins)'
+PATTERN='(Last login:|The default interactive shell is now zsh\\.|To update your account to use zsh, please run `chsh -s|For more details, please visit https://support\\.apple\\.com/kb/HT208050\\.|Changing shell for|Password for|wtmp begins)'
 
 echo "==> No terminal banner paste gate"
 
@@ -68,3 +74,26 @@ if [[ $rc -eq 0 ]]; then
 fi
 
 echo "OK: no pasted terminal banner content detected."
+"""
+
+def main() -> None:
+    if not TARGET.exists():
+        raise SystemExit(f"ERROR: expected gate not found: {TARGET}")
+
+    old = TARGET.read_text(encoding="utf-8")
+
+    # Sanity check: refuse if the target doesn't look like the intended gate.
+    if "gate_no_terminal_banner_paste_v1.sh" not in old and "terminal banner" not in old and "Last login" not in old:
+        raise SystemExit(
+            "ERROR: target file does not appear to be the terminal banner paste gate; refusing to patch."
+        )
+
+    if old == NEW_TEXT:
+        print("OK: gate already hardened (v2 patch is idempotent).")
+        return
+
+    TARGET.write_text(NEW_TEXT, encoding="utf-8")
+    print("OK: wrote hardened gate content to scripts/gate_no_terminal_banner_paste_v1.sh")
+
+if __name__ == "__main__":
+    main()
