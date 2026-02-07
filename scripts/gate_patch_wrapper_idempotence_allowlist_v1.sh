@@ -14,6 +14,10 @@ export LANG=C
 
 ALLOWLIST="scripts/patch_idempotence_allowlist_v1.txt"
 
+echo "==> Guard: allowlist wrappers must not recurse into prove_ci"
+bash scripts/gate_idempotence_allowlist_wrappers_no_prove_ci_v1.sh
+
+
 if [[ ! -f "${ALLOWLIST}" ]]; then
   echo "ERROR: missing allowlist: ${ALLOWLIST}" >&2
   exit 2
