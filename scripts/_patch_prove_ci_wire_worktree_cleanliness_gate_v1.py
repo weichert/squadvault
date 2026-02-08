@@ -142,7 +142,10 @@ def main() -> None:
             final.append(end_call)
         out = final
 
-    PROVE.write_text("".join(out), encoding="utf-8")
+    new_text = "".join(out)
+    if new_text == original:
+        return
+    PROVE.write_text(new_text, encoding="utf-8")
 
 if __name__ == "__main__":
     main()
