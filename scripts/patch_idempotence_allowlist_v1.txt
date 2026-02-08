@@ -1,3 +1,9 @@
 # One wrapper path per line. Comments (#) and blank lines ignored.
 # SquadVault — idempotence allowlist (v1)
+
+scripts/patch_fix_ci_registry_execution_alignment_fail_v1.sh
+scripts/patch_gate_ci_registry_execution_alignment_exclude_prove_ci_v1.sh
+scripts/patch_gate_ci_registry_execution_alignment_v1.sh
 scripts/patch_index_ci_proof_surface_registry_discoverability_v3.sh
+scripts/patch_index_ci_registry_execution_alignment_discoverability_v1.sh
+scripts/patch_registry_add_ci_execution_exempt_locals_v1.sh
