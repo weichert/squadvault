@@ -105,6 +105,9 @@ if command -v git >/dev/null 2>&1; then
   if [[ "${sv_branch}" == "HEAD" ]]; then sv_branch="DETACHED"; fi
   sv_clean="DIRTY"
   if [[ -z "$(git status --porcelain=v1 2>/dev/null)" ]]; then sv_clean="CLEAN"; fi
+if [[ "${sv_clean}" != "CLEAN" ]]; then
+  echo "NOTE: If you just created new patcher/wrapper files, commit them before running prove_ci."
+fi
 else
   sv_commit="NO_GIT"
   sv_branch="NO_GIT"
@@ -164,6 +167,8 @@ bash scripts/gate_no_bare_chevron_markers_v1.sh
 
 echo "==> Gate: no pasted terminal banners in scripts/"
 bash scripts/gate_no_terminal_banner_paste_v1.sh
+echo "==> Proof: terminal banner paste gate behavior (v1)"
+bash scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
 # prove_ci_wire_patch_wrapper_idempotence_gate_v1
 echo "==> Gate: patch wrapper idempotence (allowlist) v1"
 bash scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh
