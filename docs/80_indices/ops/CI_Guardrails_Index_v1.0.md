@@ -214,6 +214,8 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 
 # NOTE:
 # - This section is enforced by scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
+<!-- SV_CI_WORKTREE_CLEANLINESS: v1 -->
+- scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness: proofs must not mutate repo state (per-proof + end-of-run) (v1)
 - scripts/gate_ops_indices_no_autofill_placeholders_v1.sh — Enforce Ops indices contain no autofill placeholders (v1)
 # - Only list gate/check entrypoints you intend to be validated as discoverable.
 # - Format: `- scripts/<path> — description`
