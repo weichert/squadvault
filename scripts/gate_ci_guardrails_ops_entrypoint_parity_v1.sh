@@ -24,6 +24,15 @@
 
 set -euo pipefail
 
+# SV_PATCH: executed gate detection accepts direct invocations (v1)
+executed_gates="$(
+  grep -vE '^\s*#' scripts/prove_ci.sh \
+    | grep -oE 'scripts/gate_[A-Za-z0-9_]+\.sh' \
+    | sort -u
+)"
+# SV_PATCH: executed gate detection accepts direct invocations (v1)
+
+
 echo "==> Gate: CI Guardrails ops entrypoints parity (v1)"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
