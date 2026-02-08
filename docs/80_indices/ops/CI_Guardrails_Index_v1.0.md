@@ -194,3 +194,16 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
 
 <!-- SV_TERMINAL_BANNER_GATE_ENTRY_v1_END -->
+
+<!-- PROOF_SUITE_COMPLETENESS_GATE_v1_BEGIN -->
+### Proof suite completeness gate (v1)
+
+**Invariant (fail-closed):** every `scripts/prove_*.sh` proof runner **must** be referenced in the canonical Proof Surface Registry, and the registry list must match the filesystem list **exactly**.
+
+- Gate: `scripts/gate_proof_suite_completeness_v1.sh`
+- Wired by: `scripts/prove_ci.sh` (inserted under `SV_ANCHOR: docs_gates (v1)`)
+- Registry: `docs/80_indices/ops/CI_Proof_Surface_Registry_v1.0.md`
+- Purpose: prevents proof coverage drift (new/removed proof runner scripts that CI would otherwise miss)
+
+<!-- PROOF_SUITE_COMPLETENESS_GATE_v1_END -->
+

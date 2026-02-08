@@ -240,6 +240,11 @@ bash scripts/gate_docs_mutation_guardrail_v2.sh
 # Patch insertion point for doc/index gates.
 # Patcher rule: insert additional doc/index gates immediately BELOW this block.
 # === /SV_ANCHOR: docs_gates (v1) ===
+# SV_GATE: proof_suite_completeness (v1) begin
+echo "==> Proof suite completeness gate (v1)"
+bash scripts/gate_proof_suite_completeness_v1.sh
+# SV_GATE: proof_suite_completeness (v1) end
+
 echo "==> Gate: no double scripts prefix (v2)"
 bash scripts/gate_no_double_scripts_prefix_v2.sh
 

@@ -53,3 +53,13 @@ This registry is intentionally boring and auditable.
 
 - **No globbing. No discovery. No heuristics.**
 - The enforcement gate compares this registry against **exact proof invocations in `scripts/prove_ci.sh`**.
+
+<!-- PROOF_SURFACE_REGISTRY_LOCAL_PROOFS_v1_BEGIN -->
+
+### Local hygiene proofs (registered)
+
+- `scripts/prove_local_clean_then_ci_v3.sh`
+- `scripts/prove_local_shell_hygiene_v1.sh`
+
+<!-- PROOF_SURFACE_REGISTRY_LOCAL_PROOFS_v1_END -->
+
