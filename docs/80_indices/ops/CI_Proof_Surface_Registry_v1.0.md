@@ -68,3 +68,14 @@ scripts/prove_local_clean_then_ci_v3.sh # local-only: developer workflow proof (
 scripts/prove_local_shell_hygiene_v1.sh # local-only: interactive shell hygiene proof (not executed in CI)
 
 <!-- SV_CI_EXECUTION_EXEMPT_v1_END -->
+
+<!-- SV_RULE_GATE_VS_PROOF_BOUNDARY_v1_BEGIN -->
+## Gate vs Proof Boundary (Canonical)
+
+**Rule:** CI **gates** (`scripts/gate_*.sh`) are **not proofs** and must **never** appear in this registry.
+
+- This file lists **proof surfaces** only (typically `scripts/prove_*.sh`).
+- Enforcement scripts belong in the **Ops Guardrails Index** instead.
+
+This boundary is CI-enforced by: `scripts/gate_proof_surface_registry_excludes_gates_v1.sh`.
+<!-- SV_RULE_GATE_VS_PROOF_BOUNDARY_v1_END -->

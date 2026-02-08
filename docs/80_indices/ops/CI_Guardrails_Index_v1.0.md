@@ -233,3 +233,10 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_proof_suite_completeness_v1.sh — Enforce proof runners match registry exactly (v1)
 - scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh — Reject obsolete allowlist rewrite recovery artifacts (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
+
+<!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
+- **gate_proof_surface_registry_excludes_gates_v1**  
+  **Script:** `scripts/gate_proof_surface_registry_excludes_gates_v1.sh`  
+  **Purpose:** Fails CI if `docs/80_indices/ops/CI_Proof_Surface_Registry_v1.0.md` contains any `scripts/gate_*.sh` entries.  
+  **Why:** Gates are enforcement; proofs are demonstrations. Mixing them makes drift easy and weakens the registry’s meaning.
+<!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_END -->

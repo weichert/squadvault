@@ -77,6 +77,10 @@ repo_root_for_gate="$(
   pwd
 )"
 gate_path="${repo_root_for_gate}/scripts/gate_cwd_independence_shims_v1.sh"
+
+# SV_GATE: proof_registry_excludes_gates (v1) begin
+bash scripts/gate_proof_surface_registry_excludes_gates_v1.sh
+# SV_GATE: proof_registry_excludes_gates (v1) end
 echo "    repo_root_for_gate=${repo_root_for_gate}"
 echo "    gate_path=${gate_path}"
 if [[ ! -f "${gate_path}" ]]; then
