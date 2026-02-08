@@ -218,15 +218,15 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 # - Format: `- scripts/<path> — description`
 
 - scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops index ↔ prove_ci gate execution parity (v1)
-- scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — (autofill) describe gate purpose
-- scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh — (autofill) describe gate purpose
-- scripts/gate_ci_registry_execution_alignment_v1.sh — (autofill) describe gate purpose
-- scripts/gate_docs_integrity_v2.sh — (autofill) describe gate purpose
-- scripts/gate_docs_mutation_guardrail_v2.sh — (autofill) describe gate purpose
-- scripts/gate_enforce_test_db_routing_v1.sh — (autofill) describe gate purpose
-- scripts/gate_no_bare_chevron_markers_v1.sh — (autofill) describe gate purpose
-- scripts/gate_no_double_scripts_prefix_v2.sh — (autofill) describe gate purpose
-- scripts/gate_no_terminal_banner_paste_v1.sh — (autofill) describe gate purpose
-- scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — (autofill) describe gate purpose
-- scripts/gate_proof_suite_completeness_v1.sh — (autofill) describe gate purpose
+- scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — Enforce bounded Ops guardrails entrypoints section + TOC completeness (v2)
+- scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh — Prove Ops index contains proof-surface registry discoverability marker + bullet (v1)
+- scripts/gate_ci_registry_execution_alignment_v1.sh — Enforce CI proof registry ↔ prove_ci execution alignment (v1)
+- scripts/gate_docs_integrity_v2.sh — Docs integrity gate: enforce canonical docs invariants (v2)
+- scripts/gate_docs_mutation_guardrail_v2.sh — Guardrail: proofs must not mutate docs unexpectedly (v2)
+- scripts/gate_enforce_test_db_routing_v1.sh — Enforce CI uses temp working DB copy (fixture immutable) (v1)
+- scripts/gate_no_bare_chevron_markers_v1.sh — Disallow bare '==>' marker lines in scripts/*.sh (v1)
+- scripts/gate_no_double_scripts_prefix_v2.sh — Disallow 'scripts/scripts/' path invocations (v2)
+- scripts/gate_no_terminal_banner_paste_v1.sh — Detect pasted terminal banner content in scripts/ (v1)
+- scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — Enforce patch-wrapper allowlist is canonical + safe (v1)
+- scripts/gate_proof_suite_completeness_v1.sh — Enforce proof runners match registry exactly (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->

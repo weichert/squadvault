@@ -118,3 +118,6 @@ echo "OK: allowlisted patch wrappers are idempotent from clean."
 # SV_ALLOWLIST: sync_add_gate_patcher_ci_guardrails_ops_entrypoint_parity (v3)
   "scripts/patch_sync_add_gate_patcher_ci_guardrails_ops_entrypoint_parity_v3.sh"
 
+# SV_ALLOWLIST: docs_fill_ci_guardrails_autofill_descriptions (v1)
+  "scripts/patch_docs_fill_ci_guardrails_autofill_descriptions_v1.sh"
+
