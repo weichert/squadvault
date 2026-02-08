@@ -22,9 +22,9 @@ expected="$(git ls-files 'scripts/prove_*.sh' | sort)"
 
 # Extract actual block
 block="$(awk -v b="${BEGIN}" -v e="${END}" '
-  $0==b {in=1; next}
-  $0==e {in=0; exit}
-  in==1 {print}
+  $0==b {inside=1; next}
+  $0==e {inside=0; exit}
+  inside==1 {print}
 ' "${DOC}")"
 
 if ! grep -Fqx "${BEGIN}" "${DOC}" || ! grep -Fqx "${END}" "${DOC}"; then
