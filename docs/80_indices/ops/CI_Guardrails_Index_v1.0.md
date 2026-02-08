@@ -232,6 +232,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Enforce allowlist patchers insert wrappers in sorted order (v1)
 - scripts/gate_proof_suite_completeness_v1.sh — Enforce proof runners match registry exactly (v1)
 - scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh — Reject obsolete allowlist rewrite recovery artifacts (v1)
+- scripts/gate_proof_surface_registry_excludes_gates_v1.sh — (autofill) describe gate purpose
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->

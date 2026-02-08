@@ -23,7 +23,7 @@ DOC_RULE_BLOCK = f"""\
 - This file lists **proof surfaces** only (typically `scripts/prove_*.sh`).
 - Enforcement scripts belong in the **Ops Guardrails Index** instead.
 
-This boundary is CI-enforced by: `scripts/gate_proof_surface_registry_excludes_gates_v1.sh`.
+This boundary is CI-enforced by: **gate_proof_surface_registry_excludes_gates_v1**.
 {DOC_RULE_END}
 """
 
