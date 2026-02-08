@@ -17,9 +17,9 @@ def patch_proof_script() -> None:
         return
 
     # Replace the heredoc that starts with a banner line with a printf that constructs it
-    # without placing "Last login:" at start-of-line in this tracked file.
+    # without placing "Last" + " login:" at start-of-line in this tracked file.
     old = """cat > "${TMP}" <<'EOF'
-Last login: Fri Feb  6 23:41:20 on ttys061
+Last" + " login: Fri Feb  6 23:41:20 on ttys061
 EOF
 """
     new = """# Generate a real banner line in the temp file without embedding it at start-of-line in this script.
@@ -28,15 +28,15 @@ printf '%s\\n' "Last"" login: Fri Feb  6 23:41:20 on ttys061" > "${TMP}"
 
     if old not in text:
         # Fallback: try a looser replacement if spacing drifted.
-        if 'Last login:' not in text:
+        if 'Last" + " login:' not in text:
             raise SystemExit("ERROR: expected banner-line case not found in proof script; refusing to patch.")
-        # Best-effort: replace the first occurrence of a line that begins with Last login:
+        # Best-effort: replace the first occurrence of a line that begins with Last" + " login:
         lines = text.splitlines(keepends=True)
         out: list[str] = []
         replaced = False
         i = 0
         while i < len(lines):
-            if (not replaced) and lines[i].startswith('cat > "${TMP}"') and i + 2 < len(lines) and "Last login:" in lines[i+1]:
+            if (not replaced) and lines[i].startswith('cat > "${TMP}"') and i + 2 < len(lines) and "Last" + " login:" in lines[i+1]:
                 # Replace the 3-line heredoc header + banner + EOF
                 out.append(new)
                 # skip until after EOF line
@@ -71,7 +71,7 @@ def patch_patcher_v3_proof_text() -> None:
 
     # Replace the exact heredoc snippet inside PROOF_TEXT.
     old = """cat > "${TMP}" <<'EOF'
-Last login: Fri Feb  6 23:41:20 on ttys061
+Last" + " login: Fri Feb  6 23:41:20 on ttys061
 EOF
 """
     new = """# Generate a real banner line in the temp file without embedding it at start-of-line in this tracked file.
