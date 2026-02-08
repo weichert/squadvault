@@ -301,3 +301,9 @@ fi
 
 echo "OK: CI proof suite passed"
 echo "OK: CI working tree remained clean (guardrail enforced)."
+
+# SV_GATE: ops_indices_no_autofill_placeholders (v1) begin
+echo "==> Gate: Ops indices must not contain autofill placeholders (v1)"
+bash scripts/gate_ops_indices_no_autofill_placeholders_v1.sh
+# SV_GATE: ops_indices_no_autofill_placeholders (v1) end
+
