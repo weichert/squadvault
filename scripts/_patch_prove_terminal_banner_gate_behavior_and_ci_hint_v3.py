@@ -50,9 +50,8 @@ cleanup() {
 trap cleanup EXIT
 
 # --- Case 1: strict mode should FAIL on a tracked banner line ---
-cat > "${TMP}" <<'EOF'
-Last login: Fri Feb  6 23:41:20 on ttys061
-EOF
+# Generate a real banner line in the temp file without embedding it at start-of-line in this tracked file.
+printf '%s\n' "Last"" login: Fri Feb  6 23:41:20 on ttys061" > "${TMP}"
 
 git add "${TMP}"
 
