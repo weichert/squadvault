@@ -10,7 +10,8 @@ END = "<!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->"
 PLACEHOLDER = "— (autofill) describe gate purpose"
 
 # Canonical, stable, short descriptions (Ops-friendly).
-DESC: dict[str, str] = {
+DESC: dict[str, str] = {    "scripts/gate_proof_surface_registry_excludes_gates_v1.sh": "Gate vs proof boundary: enforce Proof Surface Registry excludes scripts/gate_*.sh (v1)",
+
     "scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh": "Enforce bounded Ops guardrails entrypoints section + TOC completeness (v2)",
     "scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh": "Prove Ops index contains proof-surface registry discoverability marker + bullet (v1)",
     "scripts/gate_ci_registry_execution_alignment_v1.sh": "Enforce CI proof registry ↔ prove_ci execution alignment (v1)",
