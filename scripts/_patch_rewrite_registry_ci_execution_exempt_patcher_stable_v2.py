@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+TARGET = Path("scripts/_patch_registry_add_ci_execution_exempt_locals_v1.py")
+
+NEW = """from __future__ import annotations
+
+from pathlib import Path
+
 REG = Path("docs/80_indices/ops/CI_Proof_Surface_Registry_v1.0.md")
 
 BEGIN = "<!-- SV_CI_EXECUTION_EXEMPT_v1_BEGIN -->"
@@ -43,7 +49,7 @@ def desired_block(existing_mid_lines: list[str]) -> str:
     out.extend(sorted_lines)
     out.append("")  # blank line before END (canonical)
     out.append(END)
-    return "\n".join(out)
+    return "\\n".join(out)
 
 
 def main() -> None:
@@ -65,7 +71,7 @@ def main() -> None:
         want = desired_block(existing_mid_lines)
 
         # No-op if already byte-identical (format-stable)
-        if current_block.strip("\n") == want:
+        if current_block.strip("\\n") == want:
             return
 
         # Replace bounded region with desired formatting, preserve post EXACTLY (no lstrip).
@@ -77,10 +83,26 @@ def main() -> None:
         return
 
     # Block absent: append with a single separating newline.
-    if not text.endswith("\n"):
-        text += "\n"
+    if not text.endswith("\\n"):
+        text += "\\n"
     want = desired_block([])
-    REG.write_text(text + "\n" + want + "\n", encoding="utf-8")
+    REG.write_text(text + "\\n" + want + "\\n", encoding="utf-8")
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+
+def main() -> None:
+    if not TARGET.exists():
+        raise SystemExit(f"ERROR: missing target patcher: {TARGET}")
+
+    current = TARGET.read_text(encoding="utf-8")
+    if current == NEW:
+        return  # idempotent
+
+    TARGET.write_text(NEW, encoding="utf-8")
 
 
 if __name__ == "__main__":
