@@ -189,5 +189,6 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 
 - Example: `scripts/patch_*_v4.sh` supersedes `*_v3.sh`, etc.
 - Older versions remain for auditability and historical provenance.
+- scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
 
 <!-- SV_TERMINAL_BANNER_GATE_ENTRY_v1_END -->
