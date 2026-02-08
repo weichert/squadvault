@@ -121,3 +121,6 @@ echo "OK: allowlisted patch wrappers are idempotent from clean."
 # SV_ALLOWLIST: docs_fill_ci_guardrails_autofill_descriptions (v1)
   "scripts/patch_docs_fill_ci_guardrails_autofill_descriptions_v1.sh"
 
+# SV_ALLOWLIST: add_gate_ops_indices_no_autofill_placeholders (v1)
+  "scripts/patch_add_gate_ops_indices_no_autofill_placeholders_v1.sh"
+
