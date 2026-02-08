@@ -242,6 +242,11 @@ bash scripts/check_no_pytest_directory_invocation.sh
 bash scripts/gate_docs_integrity_v2.sh
 # SV_GATE: docs_integrity (v2) end
 
+# SV_GATE: proof_registry_exactness (v1) begin
+bash scripts/gate_ci_proof_surface_registry_exactness_v1.sh
+# SV_GATE: proof_registry_exactness (v1) end
+
+
 bash scripts/prove_docs_integrity_v1.sh
 
 # SV_GATE: docs_mutation_guardrail (v2) begin
