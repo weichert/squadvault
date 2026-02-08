@@ -161,6 +161,8 @@ _CI never invokes anything in this section._
 - scripts/gate_docs_mutation_guardrail_v2.sh — Docs Mutation Guardrail Gate (canonical)
 <!-- SV_CI_PROOF_SURFACE_REGISTRY: v1 -->
 - scripts/check_ci_proof_surface_matches_registry_v1.sh — CI Proof Surface Registry Gate (canonical)
+<!-- SV_CI_REGISTRY_EXECUTION_ALIGNMENT: v1 -->
+- scripts/gate_ci_registry_execution_alignment_v1.sh — CI Registry → Execution Alignment Gate (v1)
 
 <!-- SV_TERMINAL_BANNER_GATE_ENTRY_v1_BEGIN -->
 ## Terminal Banner Paste Gate (canonical)
