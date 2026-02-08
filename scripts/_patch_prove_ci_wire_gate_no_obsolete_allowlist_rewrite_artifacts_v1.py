@@ -9,8 +9,8 @@ END   = "# SV_GATE: no_obsolete_allowlist_rewrite_artifacts (v1) end\n"
 
 BLOCK = (
     BEGIN
-    "bash scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh\n"
-    END
+    + "bash scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh\n"
+    + END
 )
 
 def main() -> None:
