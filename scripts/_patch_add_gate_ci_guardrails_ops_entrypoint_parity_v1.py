@@ -4,7 +4,7 @@ from pathlib import Path
 
 GATE = Path("scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh")
 
-GATE_TEXT = """#!/usr/bin/env bash
+GATE_TEXT = r"""#!/usr/bin/env bash
 # SquadVault — CI Guardrails Ops Entrypoint Parity Gate (v1)
 #
 # Fail-closed.
@@ -69,16 +69,22 @@ executed_tmp="${tmp_dir}/sv_ci_guardrails_executed.$$"
 #   - scripts/<path> - ...
 #   - scripts/<path>
 awk -v b="${BEGIN}" -v e="${END}" '
-  $0 ~ b {in=1; next}
-  $0 ~ e {in=0}
-  in {print}
-' "${INDEX}" \
-| awk '
-  # match lines starting with "-" and containing scripts/...
-  match($0, /^[[:space:]]*-[[:space:]]*(scripts\/[^[:space:]]+)/, m) { print m[1] }
-' \
-| sed -e 's/[[:space:]]*$//' \
-| sort -u > "${indexed_tmp}"
+  $0 ~ b {inside=1; next}
+  $0 ~ e {inside=0}
+  inside {print}
+' "${INDEX}" | awk '
+  # Extract the first token starting with scripts/ from bullet lines.
+  # Supports:
+  #   - scripts/<path> — ...
+  #   - scripts/<path> - ...
+  #   - scripts/<path>
+  /^[[:space:]]*-[[:space:]]*scripts\// {
+    line=$0
+    sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+    sub(/[[:space:]].*$/, "", line)
+    print line
+  }
+' | sed -e 's/[[:space:]]*$//' | sort -u > "${indexed_tmp}"
 
 # --- Extract executed entrypoints from prove_ci ---
 # 1) Always count: bash scripts/gate_*.sh
@@ -90,22 +96,17 @@ python_check_lines="$(grep -nE '^[[:space:]]*python[[:space:]]+scripts/check_[^[
 
 # Extract just the path tokens
 # shellcheck disable=SC2001
-echo "${bash_gate_lines}" \
-| sed -nE 's/.*bash[[:space:]]+(scripts\/gate_[^[:space:]]+\.sh).*/\\1/p' \
-| sort -u > "${executed_tmp}.bash"
+echo "${bash_gate_lines}" | sed -nE 's/.*bash[[:space:]]+(scripts\/gate_[^[:space:]]+\.sh).*/\1/p' | sort -u > "${executed_tmp}.bash"
 
 # For python checks: include only if path is already indexed in bounded section
 # shellcheck disable=SC2001
-echo "${python_check_lines}" \
-| sed -nE 's/.*python[[:space:]]+(scripts\/check_[^[:space:]]+\.py).*/\\1/p' \
-| sort -u > "${executed_tmp}.py_all"
+echo "${python_check_lines}" | sed -nE 's/.*python[[:space:]]+(scripts\/check_[^[:space:]]+\.py).*/\1/p' | sort -u > "${executed_tmp}.py_all"
 
 # Filter python checks by indexed list
 # (comm requires sorted inputs)
 comm -12 "${indexed_tmp}" "${executed_tmp}.py_all" > "${executed_tmp}.py_indexed" || true
 
-cat "${executed_tmp}.bash" "${executed_tmp}.py_indexed" \
-| sort -u > "${executed_tmp}"
+cat "${executed_tmp}.bash" "${executed_tmp}.py_indexed" | sort -u > "${executed_tmp}"
 
 # --- Compare sets ---
 executed_not_indexed="${tmp_dir}/sv_ci_guardrails_executed_not_indexed.$$"
@@ -130,14 +131,7 @@ if [[ -s "${indexed_not_executed}" ]]; then
   cat "${indexed_not_executed}"
 fi
 
-rm -f \
-  "${indexed_tmp}" \
-  "${executed_tmp}" \
-  "${executed_tmp}.bash" \
-  "${executed_tmp}.py_all" \
-  "${executed_tmp}.py_indexed" \
-  "${executed_not_indexed}" \
-  "${indexed_not_executed}"
+rm -f   "${indexed_tmp}"   "${executed_tmp}"   "${executed_tmp}.bash"   "${executed_tmp}.py_all"   "${executed_tmp}.py_indexed"   "${executed_not_indexed}"   "${indexed_not_executed}"
 
 if [[ "${fail}" -ne 0 ]]; then
   echo
