@@ -24,6 +24,7 @@ DESC: dict[str, str] = {    "scripts/gate_proof_surface_registry_excludes_gates_
     "scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh": "Enforce patch-wrapper allowlist is canonical + safe (v1)",
     "scripts/gate_proof_suite_completeness_v1.sh": "Enforce proof runners match registry exactly (v1)",
     "scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh": "Reject obsolete allowlist rewrite recovery artifacts (v1)",
+    "scripts/gate_ci_proof_surface_registry_exactness_v1.sh": "CI Proof Surface Registry exactness: enforce machine-managed list matches tracked scripts/prove_*.sh (v1)",
 }
 
 def main() -> None:
