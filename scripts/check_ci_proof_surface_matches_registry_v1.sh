@@ -30,10 +30,35 @@ if [[ ! -f "${prove_ci}" ]]; then
 fi
 
 # --- Parse registry: only the Proof Runners section ---
+# Prefer bounded marker block in registry to avoid heading drift.
+# Backward compatible: if markers absent, fall back to legacy heading parse.
+in_marker_block=0
+if grep -q "CI_PROOF_RUNNERS_BEGIN" "${registry}" && grep -q "CI_PROOF_RUNNERS_END" "${registry}"; then
+  in_marker_block=1
+fi
+
+registry_section=""
+
 in_section=0
 registry_list=""
 while IFS= read -r line; do
-  if [[ "${line}" == "## Proof Runners (invoked by scripts/prove_ci.sh)" ]]; then
+    # Marker mode: capture lines strictly between markers
+  if [[ "${in_marker_block}" == "1" ]]; then
+    if [[ "${line}" == *"CI_PROOF_RUNNERS_BEGIN"* ]]; then
+      in_section=1
+      continue
+    fi
+    if [[ "${line}" == *"CI_PROOF_RUNNERS_END"* ]]; then
+      in_section=0
+      break
+    fi
+    if [[ "${in_section}" == "1" ]]; then
+      registry_section+="${line}"$'\n'
+    fi
+    continue
+  fi
+
+if [[ "${line}" == "## Proof Runners (invoked by scripts/prove_ci.sh)" ]]; then
     in_section=1
     continue
   fi
@@ -54,6 +79,21 @@ while IFS= read -r line; do
     fi
   fi
 done < "${registry}"
+
+# Marker mode: parse the bounded section using the same strict registry entry grammar.
+if [[ "${in_marker_block}" == "1" ]]; then
+  while IFS= read -r mline; do
+    # required format: "- scripts/prove_...sh — purpose"
+    if [[ "${mline}" =~ ^-\ (scripts/prove_[A-Za-z0-9_]+\.sh)\ —\  ]]; then
+      path="${BASH_REMATCH[1]}"
+      registry_list+="${path}"$'\n'
+    elif [[ "${mline}" =~ ^-\  ]]; then
+      echo "ERROR: registry entry malformed (expected '- scripts/prove_*.sh — ...'):" >&2
+      echo "  ${mline}" >&2
+      exit 1
+    fi
+  done <<< "${registry_section}"
+fi
 
 if [[ -z "${registry_list}" ]]; then
   echo "ERROR: registry Proof Runners section is empty or missing." >&2

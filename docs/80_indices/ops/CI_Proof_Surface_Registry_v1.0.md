@@ -34,6 +34,8 @@ This registry is intentionally boring and auditable.
 - scripts/prove_ci.sh — Single blessed CI entrypoint; runs gates + invokes all proof runners below.
 
 ## Proof Runners (invoked by scripts/prove_ci.sh)
+
+<!-- CI_PROOF_RUNNERS_BEGIN -->
 - scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
 
@@ -43,6 +45,9 @@ This registry is intentionally boring and auditable.
 - scripts/prove_signal_scout_tier1_type_a_v1.sh — Proves Signal Scout Tier-1 Type A derivation + determinism.
 - scripts/prove_tone_engine_type_a_v1.sh — Proves Tone Engine Type A contract/invariants.
 - scripts/prove_version_presentation_navigation_type_a_v1.sh — Proves version presentation + navigation invariants.
+
+- scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh — Proof: allowlisted patch wrappers are no-op under `SV_IDEMPOTENCE_MODE=1`.
+<!-- CI_PROOF_RUNNERS_END -->
 
 ## Notes
 

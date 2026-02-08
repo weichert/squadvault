@@ -104,6 +104,11 @@ if command -v git >/dev/null 2>&1; then
   sv_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo UNKNOWN)"
   if [[ "${sv_branch}" == "HEAD" ]]; then sv_branch="DETACHED"; fi
   sv_clean="DIRTY"
+  echo "TIP: A prior step dirtied the working tree. To see exactly what changed:"
+  echo "TIP:   git status --porcelain=v1"
+  echo "TIP:   git diff --name-only"
+  echo "TIP: If this came from a patch wrapper, run the wrapper twice from clean to confirm idempotence."
+  echo "TIP: Patchers must no-op when already canonical (avoid reordering blocks each run)."
   if [[ -z "$(git status --porcelain=v1 2>/dev/null)" ]]; then sv_clean="CLEAN"; fi
 if [[ "${sv_clean}" != "CLEAN" ]]; then
   echo "NOTE: If you just created new patcher/wrapper files, commit them before running prove_ci."
@@ -172,6 +177,9 @@ bash scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
 # prove_ci_wire_patch_wrapper_idempotence_gate_v1
 echo "==> Gate: patch wrapper idempotence (allowlist) v1"
 bash scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh
+
+echo "==> Proof: allowlisted patch wrappers are no-op under SV_IDEMPOTENCE_MODE=1"
+bash scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh
 
 
 echo "==> Ops: patcher/wrapper pairing gate"

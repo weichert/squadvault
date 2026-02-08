@@ -98,6 +98,8 @@ ordering guarantees for tracked source files.
 - **Notes:** `SV_TIME_OK` is the inline escape hatch for deliberate exceptions.
 
 ## Proof Surface
+
+- `scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh` — Allowlisted patch wrappers are no-op under `SV_IDEMPOTENCE_MODE=1`.
 - **CI Proof Surface Registry (v1.0)**  
   Canonical, frozen list of all proof runners invoked by CI.  
   → docs/80_indices/ops/CI_Proof_Surface_Registry_v1.0.md
