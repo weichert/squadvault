@@ -62,4 +62,9 @@ This registry is intentionally boring and auditable.
 - `scripts/prove_local_shell_hygiene_v1.sh`
 
 <!-- PROOF_SURFACE_REGISTRY_LOCAL_PROOFS_v1_END -->
+<!-- SV_CI_EXECUTION_EXEMPT_v1_BEGIN -->
 
+scripts/prove_local_clean_then_ci_v3.sh # local-only: developer workflow proof (not executed in CI)
+scripts/prove_local_shell_hygiene_v1.sh # local-only: interactive shell hygiene proof (not executed in CI)
+
+<!-- SV_CI_EXECUTION_EXEMPT_v1_END -->
