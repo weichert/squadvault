@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+WIRE = Path("scripts/_patch_prove_ci_wire_worktree_cleanliness_gate_v1.py")
+
+CANON = r'''from __future__ import annotations
+
 import re
 from pathlib import Path
 
@@ -143,6 +149,15 @@ def main() -> None:
         out = final
 
     PROVE.write_text("".join(out), encoding="utf-8")
+
+if __name__ == "__main__":
+    main()
+'''
+
+def main() -> None:
+    if WIRE.exists() and WIRE.read_text(encoding="utf-8") == CANON:
+        return
+    WIRE.write_text(CANON, encoding="utf-8")
 
 if __name__ == "__main__":
     main()
