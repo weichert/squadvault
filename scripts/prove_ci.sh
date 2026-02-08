@@ -253,6 +253,9 @@ echo "==> Gate: no double scripts prefix (v2)"
 bash scripts/gate_no_double_scripts_prefix_v2.sh
 
 echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
+# SV_GATE: ci_guardrails_ops_entrypoint_parity (v1) begin
+bash scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
+# SV_GATE: ci_guardrails_ops_entrypoint_parity (v1) end
 bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh
 
 

@@ -103,3 +103,15 @@ if [[ -s "${status0}" ]]; then
 fi
 
 echo "OK: allowlisted patch wrappers are idempotent from clean."
+
+# SV_ALLOWLIST: ci_guardrails_ops_entrypoint_parity (v1)
+  "scripts/patch_add_gate_ci_guardrails_ops_entrypoint_parity_v1.sh"
+  "scripts/patch_wire_ci_guardrails_ops_entrypoint_parity_gate_into_prove_ci_v1.sh"
+  "scripts/patch_index_ci_guardrails_ops_entrypoint_parity_gate_discoverability_v1.sh"
+
+# SV_ALLOWLIST: bulk_index_ci_guardrails_entrypoints (v1)
+  "scripts/patch_bulk_index_missing_ci_guardrails_entrypoints_from_prove_ci_v1.sh"
+
+# SV_ALLOWLIST: cleanup_ci_guardrails_ops_entrypoint_parity_iterations (v1)
+  "scripts/patch_cleanup_obsolete_ci_guardrails_ops_entrypoint_parity_iterations_v1.sh"
+

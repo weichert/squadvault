@@ -209,3 +209,24 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 
 <!-- PROOF_SUITE_COMPLETENESS_GATE_v1_END -->
 
+<!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN -->
+## CI guardrails entrypoints (bounded)
+
+# NOTE:
+# - This section is enforced by scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
+# - Only list gate/check entrypoints you intend to be validated as discoverable.
+# - Format: `- scripts/<path> — description`
+
+- scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops index ↔ prove_ci gate execution parity (v1)
+- scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — (autofill) describe gate purpose
+- scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh — (autofill) describe gate purpose
+- scripts/gate_ci_registry_execution_alignment_v1.sh — (autofill) describe gate purpose
+- scripts/gate_docs_integrity_v2.sh — (autofill) describe gate purpose
+- scripts/gate_docs_mutation_guardrail_v2.sh — (autofill) describe gate purpose
+- scripts/gate_enforce_test_db_routing_v1.sh — (autofill) describe gate purpose
+- scripts/gate_no_bare_chevron_markers_v1.sh — (autofill) describe gate purpose
+- scripts/gate_no_double_scripts_prefix_v2.sh — (autofill) describe gate purpose
+- scripts/gate_no_terminal_banner_paste_v1.sh — (autofill) describe gate purpose
+- scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — (autofill) describe gate purpose
+- scripts/gate_proof_suite_completeness_v1.sh — (autofill) describe gate purpose
+<!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
