@@ -34,6 +34,7 @@ This registry is intentionally boring and auditable.
 - scripts/prove_ci.sh — Single blessed CI entrypoint; runs gates + invokes all proof runners below.
 
 ## Proof Runners (invoked by scripts/prove_ci.sh)
+- scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
 
 - scripts/prove_eal_calibration_type_a_v1.sh — Proves EAL calibration Type A invariants end-to-end.
