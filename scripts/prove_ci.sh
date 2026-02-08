@@ -176,6 +176,11 @@ echo "==> Proof: terminal banner paste gate behavior (v1)"
 bash scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
 # prove_ci_wire_patch_wrapper_idempotence_gate_v1
 echo "==> Gate: patch wrapper idempotence (allowlist) v1"
+# SV_GATE: allowlist_patchers_insert_sorted (v1) begin
+echo "==> Gate: allowlist patchers must insert-sorted (v1)"
+bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
+# SV_GATE: allowlist_patchers_insert_sorted (v1) end
+
 bash scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh
 
 echo "==> Proof: allowlisted patch wrappers are no-op under SV_IDEMPOTENCE_MODE=1"
