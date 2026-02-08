@@ -1,4 +1,3 @@
-# SquadVault — idempotence allowlist (v1)
 # One wrapper path per line. Comments (#) and blank lines ignored.
-
-scripts/patch_index_ci_proof_surface_registry_discoverability_v2.sh
+# SquadVault — idempotence allowlist (v1)
+scripts/patch_index_ci_proof_surface_registry_discoverability_v3.sh
