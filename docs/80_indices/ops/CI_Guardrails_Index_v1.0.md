@@ -231,4 +231,5 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — Enforce patch-wrapper allowlist is canonical + safe (v1)
 - scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Enforce allowlist patchers insert wrappers in sorted order (v1)
 - scripts/gate_proof_suite_completeness_v1.sh — Enforce proof runners match registry exactly (v1)
+- scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh — Reject obsolete allowlist rewrite recovery artifacts (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
