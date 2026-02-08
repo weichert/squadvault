@@ -8,66 +8,55 @@ ALLOW = Path("scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh")
 WRAPPER = "scripts/patch_sync_add_gate_patcher_ci_guardrails_ops_entrypoint_parity_v3.sh"
 MARKER = "# SV_ALLOWLIST: sync_add_gate_patcher_ci_guardrails_ops_entrypoint_parity (v3)"
 
-def _extract_entries(head_lines: list[str]) -> list[tuple[str, str]]:
+def _extract_entries(lines: list[str]) -> list[tuple[str, str]]:
     entries: list[tuple[str, str]] = []
     i = 0
-    while i < len(head_lines):
-        line = head_lines[i]
+    while i < len(lines):
+        line = lines[i]
         if line.startswith("# SV_ALLOWLIST:"):
-            m = line.rstrip("\n")
-            # wrapper line expected next (skipping blanks)
+            marker_line = line.rstrip("\n")
             j = i + 1
-            while j < len(head_lines) and head_lines[j].strip() == "":
+            while j < len(lines) and lines[j].strip() == "":
                 j += 1
-            w = None
-            if j < len(head_lines):
-                m2 = re.search(r'"([^"]+)"', head_lines[j])
+            wrapper_path = None
+            if j < len(lines):
+                m2 = re.search(r'"([^"]+)"', lines[j])
                 if m2:
-                    w = m2.group(1)
-            if w:
-                entries.append((m, w))
-                # consume wrapper + trailing blanks
+                    wrapper_path = m2.group(1)
+            if wrapper_path:
+                entries.append((marker_line, wrapper_path))
                 k = j + 1
-                while k < len(head_lines) and head_lines[k].strip() == "":
+                while k < len(lines) and lines[k].strip() == "":
                     k += 1
                 i = k
                 continue
         i += 1
     return entries
 
-def _prefix_before_first_marker(head_lines: list[str]) -> list[str]:
+def _prefix_before_first_marker(lines: list[str]) -> list[str]:
     prefix: list[str] = []
-    for line in head_lines:
+    for line in lines:
         if line.startswith("# SV_ALLOWLIST:"):
             break
         prefix.append(line)
     return prefix
 
-def _split_head_tail(text: str) -> tuple[list[str], list[str]]:
-    # Preserve EOF + anything after it as tail (so we don't disturb the here-doc close).
-    if "EOF" in text:
-        idx = text.rfind("EOF")
-        head_text = text[:idx]
-        tail_text = text[idx:]
-        return head_text.splitlines(True), tail_text.splitlines(True)
-    return text.splitlines(True), []
-
 def _upsert_sorted(text: str, marker: str, wrapper: str) -> str:
-    # If marker exists, wrapper must also exist (refuse ambiguity).
     if marker in text:
         if wrapper in text:
             return text
         raise SystemExit("ERROR: marker exists but wrapper missing; refuse ambiguous state")
 
-    head_lines, tail_lines = _split_head_tail(text)
+    lines = text.splitlines(True)
 
-    entries = _extract_entries(head_lines)
+    entries = _extract_entries(lines)
     entries.append((marker.rstrip("\n"), wrapper))
 
-    # Sort by wrapper path (stable/deterministic)
+    # Sort by wrapper path (deterministic), de-dupe
     entries_sorted = sorted({(m, w) for (m, w) in entries}, key=lambda t: t[1])
 
-    prefix = _prefix_before_first_marker(head_lines)
+    prefix = _prefix_before_first_marker(lines)
+
     out: list[str] = []
     out.extend(prefix)
 
@@ -80,7 +69,7 @@ def _upsert_sorted(text: str, marker: str, wrapper: str) -> str:
         out.append(f"{m}\n")
         out.append(f'  "{w}"\n\n')
 
-    return "".join(out) + "".join(tail_lines)
+    return "".join(out)
 
 def main() -> None:
     if not ALLOW.exists():
