@@ -250,3 +250,6 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- GOLDEN_PATH_OUTPUT_CONTRACT_V1_REFS -->
 - Golden Path Output Contract (v1): docs/contracts/golden_path_output_contract_v1.md
 - Gate: scripts/gate_golden_path_output_contract_v1.sh
+<!-- SV_CONTRACTS_INDEX_DISCOVERABILITY_V1 -->
+- docs/contracts/README.md — Contracts Index (canonical)
+- scripts/gate_contracts_index_discoverability_v1.sh — Enforce docs/contracts/README.md indexes all versioned contracts (v1)

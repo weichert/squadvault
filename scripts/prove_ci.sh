@@ -367,3 +367,9 @@ bash scripts/gate_worktree_cleanliness_v1.sh end "${SV_WORKTREE_SNAP0}"
 echo "==> Prove: creative determinism (v1)"
 bash scripts/prove_creative_determinism_v1.sh
 # SV_GATE: prove_creative_determinism (v1) end
+
+# SV_GATE: contracts_index_discoverability (v1) begin
+echo "==> Gate: contracts index discoverability (v1)"
+bash scripts/gate_contracts_index_discoverability_v1.sh
+# SV_GATE: contracts_index_discoverability (v1) end
+
