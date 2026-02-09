@@ -24,12 +24,18 @@
 
 set -euo pipefail
 
-# SV_PATCH: executed gate detection accepts direct invocations (v1)
+# SV_PATCH: executed gate detection accepts direct invocations (v2)
 executed_gates="$(
   grep -vE '^\s*#' scripts/prove_ci.sh \
     | grep -oE 'scripts/gate_[A-Za-z0-9_]+\.sh' \
     | sort -u
 )"
+# Back-compat: older versions used $executed in comparisons
+executed="${executed_gates}"
+# SV_PATCH: executed gate detection accepts direct invocations (v2)
+
+
+# SV_PATCH: executed gate detection accepts direct invocations (v1)
 # SV_PATCH: executed gate detection accepts direct invocations (v1)
 
 
