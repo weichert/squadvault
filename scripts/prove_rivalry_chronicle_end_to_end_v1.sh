@@ -244,7 +244,28 @@ txt = str(row['txt'] or '')
 out_dir = Path(export_dir)
 out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / 'rivalry_chronicle_v1__approved_latest.md'
-out_path.write_text(txt, encoding='utf-8')
+
+
+# Enforce Rivalry Chronicle output contract header (v1): first line must be exact.
+hdr = "# Rivalry Chronicle (v1)"
+lines = str(txt).splitlines()
+
+# Drop leading blank lines
+while lines and lines[0].strip() == "":
+    lines.pop(0)
+
+if not lines:
+    lines = [hdr]
+else:
+    if lines[0] != hdr:
+        # Preserve whatever was first as body content.
+        lines = [hdr, ""] + lines
+
+txt = "
+".join(lines).rstrip() + "
+"
+out_path.write_text(txt, encoding="utf-8")
+
 print(str(out_path))
 PY
 
