@@ -159,6 +159,10 @@ if [[ -z "${ASSEMBLY:-}" || ! -f "$ASSEMBLY" ]]; then
   exit 0
 fi
 echo "Selected assembly: $ASSEMBLY"
+# SV_GATE: golden_path_output_contract (v1) begin
+echo "== Output contract gate (v1) ==" 
+bash scripts/gate_golden_path_output_contract_v1.sh --selected-assembly "${ASSEMBLY}"
+# SV_GATE: golden_path_output_contract (v1) end
 
 \
 # SV_PATCH: NAC preflight fingerprint normalization (v3)
