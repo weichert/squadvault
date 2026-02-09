@@ -5,6 +5,7 @@ Do not edit manually.
 <!-- SV_PROOF_SURFACE_LIST_v1_BEGIN -->
 
 - scripts/prove_ci.sh
+- scripts/prove_creative_determinism_v1.sh
 - scripts/prove_docs_integrity_v1.sh
 - scripts/prove_eal_calibration_type_a_v1.sh
 - scripts/prove_golden_path.sh
