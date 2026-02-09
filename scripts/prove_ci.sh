@@ -383,4 +383,9 @@ bash scripts/gate_rivalry_chronicle_contract_linkage_v1.sh
 # SV_GATE: contracts_index_discoverability (v1) begin
 echo "==> Gate: contracts index discoverability (v1)"
 bash scripts/gate_contracts_index_discoverability_v1.sh
+
+# SV_GATE: contract_surface_completeness (v1) begin
+bash scripts/prove_contract_surface_completeness_v1.sh
+# SV_GATE: contract_surface_completeness (v1) end
+
 # SV_GATE: contracts_index_discoverability (v1) end

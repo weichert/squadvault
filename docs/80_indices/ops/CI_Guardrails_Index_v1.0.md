@@ -263,5 +263,9 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 
 <!-- SV_CONTRACT_LINKAGE_GATES_v1_BEGIN -->
 - scripts/gate_contract_linkage_v1.sh — Enforce SV_CONTRACT_* linkage to contract doc paths (v1)
+<!-- SV_CONTRACT_SURFACE_COMPLETENESS_INDEX_v1_BEGIN -->
+- scripts/gate_contract_surface_completeness_v1.sh — Enforce contract surface completeness (v1)
+- scripts/prove_contract_surface_completeness_v1.sh — Proof: contract surface completeness gate (v1)
+<!-- SV_CONTRACT_SURFACE_COMPLETENESS_INDEX_v1_END -->
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Compatibility wrapper (RC linkage) delegating to gate_contract_linkage_v1.sh (v1)
 <!-- SV_CONTRACT_LINKAGE_GATES_v1_END -->
