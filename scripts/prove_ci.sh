@@ -362,3 +362,8 @@ bash scripts/gate_ops_indices_no_autofill_placeholders_v1.sh
 
 
 bash scripts/gate_worktree_cleanliness_v1.sh end "${SV_WORKTREE_SNAP0}"
+
+# SV_GATE: prove_creative_determinism (v1) begin
+echo "==> Prove: creative determinism (v1)"
+bash scripts/prove_creative_determinism_v1.sh
+# SV_GATE: prove_creative_determinism (v1) end
