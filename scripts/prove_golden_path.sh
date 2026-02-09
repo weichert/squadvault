@@ -12,7 +12,6 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 : "${HISTTIMEFORMAT:=}"
 : "${size:=}"
 
-cd "$ROOT"
 
 LEAGUE_ID="${LEAGUE_ID:-70985}"
 SEASON="${SEASON:-2024}"
