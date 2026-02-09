@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
