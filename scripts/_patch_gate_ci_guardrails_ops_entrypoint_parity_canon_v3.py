@@ -1,4 +1,10 @@
-#!/usr/bin/env bash
+from __future__ import annotations
+
+from pathlib import Path
+
+GATE = Path("scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh")
+
+CANON = """#!/usr/bin/env bash
 set -euo pipefail
 
 echo "==> Gate: CI Guardrails ops entrypoints parity (v1)"
@@ -23,7 +29,9 @@ indexed="$(
     /SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN/ { in=1; next }
     /SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END/   { in=0; exit }
     in { print }
-  ' "${DOC}"   | grep -oE 'scripts/gate_[A-Za-z0-9_]+\.sh'   | sort -u
+  ' "${DOC}" \
+  | grep -oE 'scripts/gate_[A-Za-z0-9_]+\\.sh' \
+  | sort -u
 )"
 
 # Extract executed gate scripts from prove_ci.
@@ -33,15 +41,17 @@ indexed="$(
 #   - VAR="$(scripts/gate_x.sh begin)"
 # but ignores commented lines.
 executed="$(
-  grep -vE '^\s*#' "${PROVE}"     | grep -oE 'scripts/gate_[A-Za-z0-9_]+\.sh'     | sort -u
+  grep -vE '^\\s*#' "${PROVE}" \
+    | grep -oE 'scripts/gate_[A-Za-z0-9_]+\\.sh' \
+    | sort -u
 )"
 
 # Compare sets (comm requires sorted input).
 missing="$(
-  comm -23 <(printf "%s\n" "${indexed}") <(printf "%s\n" "${executed}") || true
+  comm -23 <(printf "%s\\n" "${indexed}") <(printf "%s\\n" "${executed}") || true
 )"
 extra="$(
-  comm -13 <(printf "%s\n" "${indexed}") <(printf "%s\n" "${executed}") || true
+  comm -13 <(printf "%s\\n" "${indexed}") <(printf "%s\\n" "${executed}") || true
 )"
 
 rc=0
@@ -68,3 +78,19 @@ fi
 
 echo
 echo "OK: ops index ↔ prove_ci gate entrypoints parity (v1)."
+"""
+
+def die(msg: str) -> None:
+    raise SystemExit(f"ERROR: {msg}")
+
+def main() -> None:
+    if not GATE.exists():
+        die(f"missing {GATE}")
+
+    cur = GATE.read_text(encoding="utf-8")
+    if cur == CANON:
+        return
+    GATE.write_text(CANON, encoding="utf-8")
+
+if __name__ == "__main__":
+    main()
