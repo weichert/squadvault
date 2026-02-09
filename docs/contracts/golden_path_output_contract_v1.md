@@ -1,5 +1,10 @@
 # Golden Path Output Contract (v1)
 
+## Enforced By
+
+- `scripts/prove_golden_path.sh`
+- `scripts/gate_golden_path_output_contract_v1.sh`
+
 Status: CANONICAL (contract)
 Applies To: Golden Path export assemblies produced by `scripts/run_golden_path_v1.sh`
 Version: v1

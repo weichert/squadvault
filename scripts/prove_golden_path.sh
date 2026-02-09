@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SV_CONTRACT_NAME: GOLDEN_PATH_OUTPUT
+# SV_CONTRACT_NAME: GOLDEN_PATH_OUTPUT_CONTRACT_V1
 # SV_CONTRACT_DOC_PATH: docs/contracts/golden_path_output_contract_v1.md
 
 set -euo pipefail
