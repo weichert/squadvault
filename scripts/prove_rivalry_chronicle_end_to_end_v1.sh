@@ -252,6 +252,7 @@ league_val = "70985"
 season_val = "2024"
 week_val = "6"
 state_val = "APPROVED"
+artifact_type_val = "RIVALRY_CHRONICLE_V1"
 
 lines = str(txt).splitlines()
 
@@ -304,6 +305,7 @@ meta = upsert(meta, "League ID", league_val)
 meta = upsert(meta, "Season", season_val)
 meta = upsert(meta, "Week", week_val)
 meta = upsert(meta, "State", state_val)
+meta = upsert(meta, "Artifact Type", artifact_type_val)
 
 new_lines = lines[:meta_start] + meta + lines[meta_end:]
 txt = "\n".join(new_lines).rstrip() + "\n"
