@@ -215,27 +215,29 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 # NOTE:
 # - This section is enforced by scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
 <!-- SV_CI_WORKTREE_CLEANLINESS: v1 -->
-- scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness: proofs must not mutate repo state (per-proof + end-of-run) (v1)
-- scripts/gate_ops_indices_no_autofill_placeholders_v1.sh — Enforce Ops indices contain no autofill placeholders (v1)
 # - Only list gate/check entrypoints you intend to be validated as discoverable.
 # - Format: `- scripts/<path> — description`
 
+- scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Enforce allowlist patchers insert wrappers in sorted order (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops index ↔ prove_ci gate execution parity (v1)
 - scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — Enforce bounded Ops guardrails entrypoints section + TOC completeness (v2)
+- scripts/gate_ci_proof_surface_registry_exactness_v1.sh — CI Proof Surface Registry exactness: enforce machine-managed list matches tracked scripts/prove_*.sh (v1)
 - scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh — Prove Ops index contains proof-surface registry discoverability marker + bullet (v1)
 - scripts/gate_ci_registry_execution_alignment_v1.sh — Enforce CI proof registry ↔ prove_ci execution alignment (v1)
+- scripts/gate_cwd_independence_shims_v1.sh — CWD independence (shims) gate (v1)
 - scripts/gate_docs_integrity_v2.sh — Docs integrity gate: enforce canonical docs invariants (v2)
 - scripts/gate_docs_mutation_guardrail_v2.sh — Guardrail: proofs must not mutate docs unexpectedly (v2)
 - scripts/gate_enforce_test_db_routing_v1.sh — Enforce CI uses temp working DB copy (fixture immutable) (v1)
 - scripts/gate_no_bare_chevron_markers_v1.sh — Disallow bare '==>' marker lines in scripts/*.sh (v1)
 - scripts/gate_no_double_scripts_prefix_v2.sh — Disallow 'scripts/scripts/' path invocations (v2)
-- scripts/gate_no_terminal_banner_paste_v1.sh — Detect pasted terminal banner content in scripts/ (v1)
-- scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — Enforce patch-wrapper allowlist is canonical + safe (v1)
-- scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Enforce allowlist patchers insert wrappers in sorted order (v1)
-- scripts/gate_proof_suite_completeness_v1.sh — Enforce proof runners match registry exactly (v1)
 - scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh — Reject obsolete allowlist rewrite recovery artifacts (v1)
+- scripts/gate_no_terminal_banner_paste_v1.sh — Detect pasted terminal banner content in scripts/ (v1)
+- scripts/gate_no_xtrace_v1.sh — No-xtrace guardrail gate (v1)
+- scripts/gate_ops_indices_no_autofill_placeholders_v1.sh — Enforce Ops indices contain no autofill placeholders (v1)
+- scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — Enforce patch-wrapper allowlist is canonical + safe (v1)
+- scripts/gate_proof_suite_completeness_v1.sh — Enforce proof runners match registry exactly (v1)
 - scripts/gate_proof_surface_registry_excludes_gates_v1.sh — Gate vs proof boundary: enforce Proof Surface Registry excludes scripts/gate_*.sh (v1)
-- scripts/gate_ci_proof_surface_registry_exactness_v1.sh — CI Proof Surface Registry exactness: enforce machine-managed list matches tracked scripts/prove_*.sh (v1)
+- scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness: proofs must not mutate repo state (per-proof + end-of-run) (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
