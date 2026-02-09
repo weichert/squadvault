@@ -59,6 +59,7 @@ This registry is intentionally boring and auditable.
 
 <!-- CI_PROOF_RUNNERS_BEGIN -->
 - scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
+- scripts/prove_creative_determinism_v1.sh — Prove: creative determinism drift guard (v1)
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
 
 - scripts/prove_eal_calibration_type_a_v1.sh — Proves EAL calibration Type A invariants end-to-end.
