@@ -260,3 +260,8 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- SV_RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1 -->
 - docs/contracts/rivalry_chronicle_output_contract_v1.md — Rivalry Chronicle Output Contract (v1)
 - scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce Rivalry Chronicle export conforms to output contract (v1)
+
+<!-- SV_CONTRACT_LINKAGE_GATES_v1_BEGIN -->
+- scripts/gate_contract_linkage_v1.sh — Enforce SV_CONTRACT_* linkage to contract doc paths (v1)
+- scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Compatibility wrapper (RC linkage) delegating to gate_contract_linkage_v1.sh (v1)
+<!-- SV_CONTRACT_LINKAGE_GATES_v1_END -->
