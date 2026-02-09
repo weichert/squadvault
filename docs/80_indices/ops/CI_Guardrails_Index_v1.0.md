@@ -247,3 +247,6 @@ For a given patch family, treat the **highest version wrapper** as the canonical
   **Purpose:** Fails CI if `docs/80_indices/ops/CI_Proof_Surface_Registry_v1.0.md` contains any `scripts/gate_*.sh` entries.  
   **Why:** Gates are enforcement; proofs are demonstrations. Mixing them makes drift easy and weakens the registry’s meaning.
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_END -->
+<!-- GOLDEN_PATH_OUTPUT_CONTRACT_V1_REFS -->
+- Golden Path Output Contract (v1): docs/contracts/golden_path_output_contract_v1.md
+- Gate: scripts/gate_golden_path_output_contract_v1.sh

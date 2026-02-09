@@ -102,6 +102,3 @@ scripts/prove_local_shell_hygiene_v1.sh # local-only: interactive shell hygiene 
 
 This boundary is CI-enforced by: **gate_proof_surface_registry_excludes_gates_v1**.
 <!-- SV_RULE_GATE_VS_PROOF_BOUNDARY_v1_END -->
-<!-- GOLDEN_PATH_OUTPUT_CONTRACT_V1_REFS -->
-- Golden Path Output Contract (v1): docs/contracts/golden_path_output_contract_v1.md
-- Gate: scripts/gate_golden_path_output_contract_v1.sh
