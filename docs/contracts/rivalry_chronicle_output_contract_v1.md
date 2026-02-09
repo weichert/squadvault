@@ -1,5 +1,11 @@
 # Rivalry Chronicle (v1)
 
+## Enforced By
+
+- `src/squadvault/consumers/rivalry_chronicle_generate_v1.py`
+- `src/squadvault/consumers/rivalry_chronicle_approve_v1.py`
+- `src/squadvault/chronicle/generate_rivalry_chronicle_v1.py`
+
 League ID: <LEAGUE_ID>
 Season: <SEASON>
 Week: <WEEK>

@@ -1,3 +1,6 @@
+# SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1
+# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md
+
 from __future__ import annotations
 
 from dataclasses import dataclass
