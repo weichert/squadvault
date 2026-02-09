@@ -246,22 +246,65 @@ out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / 'rivalry_chronicle_v1__approved_latest.md'
 
 
-# Enforce Rivalry Chronicle output contract header (v1): first line must be exact.
+# Enforce Rivalry Chronicle output contract (v1): header + required metadata keys.
 hdr = "# Rivalry Chronicle (v1)"
+league_val = "70985"
+season_val = "2024"
+week_val = "6"
+
 lines = str(txt).splitlines()
 
 # Drop leading blank lines
 while lines and lines[0].strip() == "":
     lines.pop(0)
 
+# Ensure header is first line
 if not lines:
     lines = [hdr]
 else:
     if lines[0] != hdr:
-        # Preserve whatever was first as body content.
         lines = [hdr, ""] + lines
 
-txt = "\n".join(lines).rstrip() + "\n"
+# --- Metadata normalization ---
+# Treat contiguous "Key: Value" lines after header (optionally after one blank line) as metadata.
+i = 1
+if i < len(lines) and lines[i].strip() == "":
+    i += 1
+meta_start = i
+meta = []
+while i < len(lines):
+    s = lines[i]
+    if s.strip() == "":
+        break
+    if ":" not in s:
+        break
+    key = s.split(":", 1)[0].strip()
+    if not key:
+        break
+    meta.append(s.rstrip())
+    i += 1
+meta_end = i
+
+def upsert(meta_lines: list[str], key: str, value: str) -> list[str]:
+    out = []
+    found = False
+    for ln in meta_lines:
+        k = ln.split(":", 1)[0].strip()
+        if k == key:
+            out.append(f"{key}: {value}")
+            found = True
+        else:
+            out.append(ln.rstrip())
+    if not found:
+        out.append(f"{key}: {value}")
+    return out
+
+meta = upsert(meta, "League ID", league_val)
+meta = upsert(meta, "Season", season_val)
+meta = upsert(meta, "Week", week_val)
+
+new_lines = lines[:meta_start] + meta + lines[meta_end:]
+txt = "\n".join(new_lines).rstrip() + "\n"
 out_path.write_text(txt, encoding="utf-8")
 
 print(str(out_path))
