@@ -1,4 +1,14 @@
-#!/usr/bin/env bash
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+GATE = Path("scripts/gate_contract_linkage_v1.sh")
+
+BEGIN = "# Contract Linkage Gate (v1)"
+NEEDLE = "mapfile -t FILES < <(find"
+
+REPLACEMENT = """#!/usr/bin/env bash
 set -euo pipefail
 
 # Contract Linkage Gate (v1)
@@ -65,3 +75,27 @@ if [[ "${bad}" -ne 0 ]]; then
 fi
 
 exit 0
+"""
+
+def main() -> int:
+    if not GATE.exists():
+        print(f"ERR: missing gate: {GATE}", file=sys.stderr)
+        return 2
+
+    txt = GATE.read_text(encoding="utf-8")
+
+    # Idempotence: if it's already bash3-safe, no-op.
+    if NEEDLE not in txt and "Bash3-safe" in txt:
+        return 0
+
+    # Safety: ensure we’re patching the right file family.
+    if BEGIN not in txt:
+        print("ERR: unexpected gate contents (missing expected header); refusing to overwrite.", file=sys.stderr)
+        return 2
+
+    # Replace whole file with canonical bash3-safe v1 content.
+    GATE.write_text(REPLACEMENT, encoding="utf-8")
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())
