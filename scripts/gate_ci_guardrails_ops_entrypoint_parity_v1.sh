@@ -19,10 +19,10 @@ fi
 # We only consider gate scripts (scripts/gate_*.sh).
 indexed="$(
   awk '
-    BEGIN { in=0 }
-    /SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN/ { in=1; next }
-    /SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END/   { in=0; exit }
-    in { print }
+    BEGIN { in_count=0 }
+    /SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN/ { in_count=1; next }
+    /SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END/   { in_count=0; exit }
+    in_count { print }
   ' "${DOC}"   | grep -oE 'scripts/gate_[A-Za-z0-9_]+\.sh'   | sort -u
 )"
 
