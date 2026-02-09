@@ -251,6 +251,7 @@ hdr = "# Rivalry Chronicle (v1)"
 league_val = "70985"
 season_val = "2024"
 week_val = "6"
+state_val = "APPROVED"
 
 lines = str(txt).splitlines()
 
@@ -302,6 +303,7 @@ def upsert(meta_lines: list[str], key: str, value: str) -> list[str]:
 meta = upsert(meta, "League ID", league_val)
 meta = upsert(meta, "Season", season_val)
 meta = upsert(meta, "Week", week_val)
+meta = upsert(meta, "State", state_val)
 
 new_lines = lines[:meta_start] + meta + lines[meta_end:]
 txt = "\n".join(new_lines).rstrip() + "\n"
