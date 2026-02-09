@@ -168,6 +168,11 @@ import os
 import sqlite3
 from pathlib import Path
 
+contract_path = os.path.join(os.path.abspath(os.getcwd()), "docs/contracts/rivalry_chronicle_output_contract_v1.md")
+if not os.path.exists(contract_path):
+    raise SystemExit("ERROR: missing contract source-of-truth at: " + contract_path)
+
+
 db = os.environ.get('SV_DB', '')
 export_dir = os.environ.get('SV_EXPORT_DIR', '')
 league_id = os.environ.get('SV_LEAGUE_ID', '')
@@ -246,6 +251,7 @@ out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / 'rivalry_chronicle_v1__approved_latest.md'
 
 
+# Contract source-of-truth: docs/contracts/rivalry_chronicle_output_contract_v1.md
 # Enforce Rivalry Chronicle output contract (v1): header + required metadata keys.
 hdr = "# Rivalry Chronicle (v1)"
 league_val = "70985"

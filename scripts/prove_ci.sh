@@ -375,6 +375,11 @@ echo "==> Prove: creative determinism (v1)"
 bash scripts/prove_creative_determinism_v1.sh
 # SV_GATE: prove_creative_determinism (v1) end
 
+# SV_GATE: rivalry_chronicle_contract_linkage (v1) begin
+echo "==> Gate: Rivalry Chronicle contract linkage (v1)"
+bash scripts/gate_rivalry_chronicle_contract_linkage_v1.sh
+# SV_GATE: rivalry_chronicle_contract_linkage (v1) end
+
 # SV_GATE: contracts_index_discoverability (v1) begin
 echo "==> Gate: contracts index discoverability (v1)"
 bash scripts/gate_contracts_index_discoverability_v1.sh

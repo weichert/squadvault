@@ -1,51 +1,35 @@
-# Rivalry Chronicle Output Contract (v1)
+# Rivalry Chronicle (v1)
 
-Status: CANONICAL (contract)
+League ID: <LEAGUE_ID>
+Season: <SEASON>
+Week: <WEEK>
+State: <STATE>
+Artifact Type: RIVALRY_CHRONICLE_V1
 
-This contract locks the **exported** output structure for Rivalry Chronicle artifacts so downstream creative tooling can rely on stable fields.
+## Matchup Summary
 
-## Scope
+## Key Moments
 
-Applies to the exported Markdown file produced by the Rivalry Chronicle export step, e.g.:
+## Stats & Nuggets
 
-- `artifacts/exports/<league_id>/<season>/week_<WEEK>/rivalry_chronicle_v1__approved_latest.md`
+## Closing
 
-(Exact root dir may vary by environment; the **filename + content structure** is what is contractual.)
+## Metadata rules
 
-## Invariants
+Metadata is a contiguous block of `Key: Value` lines immediately after header (optionally after one blank line).
 
-### File must be Markdown text
-- UTF-8 text
-- Unix newlines preferred (`\n`)
-- No binary content
+Required keys:
+- League ID
+- Season
+- Week
+- State
+- Artifact Type
 
-### Required top-of-file header block
-The file must begin with a stable metadata header block using this exact marker format:
+Artifact Type must be `RIVALRY_CHRONICLE_V1`.
 
-- Line 1: `# Rivalry Chronicle (v1)`
-- Within the first ~40 lines, there must exist a metadata section that includes:
-  - `League:` (string)
-  - `Season:` (int)
-  - `Week:` (int)
-  - `State:` must be `APPROVED`
-  - `Artifact Type:` must be `RIVALRY_CHRONICLE_V1`
+## Normalization rules
 
-(Exact spacing may vary, but keys must be present exactly once.)
-
-### Required sections
-The document must contain these headings in order (additional subheadings allowed):
-
-1. `## Matchup Summary`
-2. `## Key Moments`
-3. `## Stats & Nuggets`
-4. `## Closing`
-
-### Disallowed patterns
-- Must not include `(autofill)` placeholder text
-- Must not include raw debug dumps (e.g., `{'id': ...}` python dict repr blocks)
-- Must not include absolute local filesystem paths
-
-## Versioning rules
-- Future changes require a new versioned contract file (v2, v3...)
-- Silent drift is forbidden.
-
+- Leading blank lines dropped.
+- Header must be first line.
+- Metadata upsert semantics: key uniqueness; last-write wins / overwrite.
+- If required headings are missing, exporter may append a minimal scaffold (blank line separated).

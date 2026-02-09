@@ -241,6 +241,8 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness: proofs must not mutate repo state (per-proof + end-of-run) (v1)
 - scripts/gate_contracts_index_discoverability_v1.sh — Enforce docs/contracts/README.md indexes all versioned contracts (v1)
 - scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce Rivalry Chronicle export conforms to output contract (v1)
+<!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
+- scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Rivalry Chronicle contract doc linkage gate (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
