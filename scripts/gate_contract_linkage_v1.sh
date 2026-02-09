@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Contract Linkage Gate (v1)
+# Policy: docs/contracts/Contract_Markers_v1.0.md
 # Enforces that any script declaring a contract declares BOTH markers in comment form:
 #   # SV_CONTRACT_NAME: <name>
 #   # SV_CONTRACT_DOC_PATH: <repo-relative path>
