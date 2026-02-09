@@ -261,9 +261,7 @@ else:
         # Preserve whatever was first as body content.
         lines = [hdr, ""] + lines
 
-txt = "
-".join(lines).rstrip() + "
-"
+txt = "\n".join(lines).rstrip() + "\n"
 out_path.write_text(txt, encoding="utf-8")
 
 print(str(out_path))
