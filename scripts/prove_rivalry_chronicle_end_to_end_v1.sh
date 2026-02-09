@@ -306,6 +306,7 @@ meta = upsert(meta, "Season", season_val)
 meta = upsert(meta, "Week", week_val)
 meta = upsert(meta, "State", state_val)
 meta = upsert(meta, "Artifact Type", artifact_type_val)
+new_lines = lines[:meta_start] + meta + lines[meta_end:]
 # --- REQUIRED_SECTION_HEADINGS_V10 ---
 required = [
     "## Matchup Summary",
@@ -325,7 +326,6 @@ if missing:
         new_lines.append("")
 
 
-new_lines = lines[:meta_start] + meta + lines[meta_end:]
 txt = "\n".join(new_lines).rstrip() + "\n"
 out_path.write_text(txt, encoding="utf-8")
 
