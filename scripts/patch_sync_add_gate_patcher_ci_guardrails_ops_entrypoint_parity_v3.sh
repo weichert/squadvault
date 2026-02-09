@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== Patch: sync add-gate patcher to canonical gate using raw string (v3) ==="
+echo "=== Patch: sync add-gate patcher canonical parity gate text (v3) ==="
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -12,12 +12,13 @@ if [[ ! -x "${PY}" ]]; then
   PY="${PYTHON:-python}"
 fi
 
-${PY} scripts/_patch_sync_add_gate_patcher_ci_guardrails_ops_entrypoint_parity_v3.py
+"${PY}" scripts/_patch_sync_add_gate_patcher_ci_guardrails_ops_entrypoint_parity_v3.py
 
-echo "==> py_compile patched add-gate patcher"
-${PY} -m py_compile scripts/_patch_add_gate_ci_guardrails_ops_entrypoint_parity_v1.py
+echo "==> py_compile"
+"${PY}" -m py_compile scripts/_patch_sync_add_gate_patcher_ci_guardrails_ops_entrypoint_parity_v3.py
+"${PY}" -m py_compile scripts/_patch_add_gate_ci_guardrails_ops_entrypoint_parity_v1.py
 
-echo "==> smoke: run add-gate wrapper (must no-op cleanly now)"
+echo "==> smoke: add-gate wrapper must no longer refuse"
 bash scripts/patch_add_gate_ci_guardrails_ops_entrypoint_parity_v1.sh
 
 echo "OK"
