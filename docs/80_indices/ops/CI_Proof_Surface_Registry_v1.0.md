@@ -1,10 +1,10 @@
 ## Canonical Proof Surface List (Machine-Managed)
 This block is updated by `scripts/patch_ci_proof_surface_registry_machine_block_v1.sh`.
 Do not edit manually.
-
 <!-- SV_PROOF_SURFACE_LIST_v1_BEGIN -->
 
 - scripts/prove_ci.sh
+- scripts/prove_contract_surface_completeness_v1.sh
 - scripts/prove_creative_determinism_v1.sh
 - scripts/prove_docs_integrity_v1.sh
 - scripts/prove_eal_calibration_type_a_v1.sh
@@ -19,7 +19,6 @@ Do not edit manually.
 - scripts/prove_version_presentation_navigation_type_a_v1.sh
 
 <!-- SV_PROOF_SURFACE_LIST_v1_END -->
-
 [SV_CANONICAL_HEADER_V1]
 Contract Name: CI Proof Surface Registry
 Version: v1.0
