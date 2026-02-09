@@ -373,3 +373,10 @@ echo "==> Gate: contracts index discoverability (v1)"
 bash scripts/gate_contracts_index_discoverability_v1.sh
 # SV_GATE: contracts_index_discoverability (v1) end
 
+# SV_GATE: rivalry_chronicle_output_contract (v1) begin
+echo "==> Gate: Rivalry Chronicle output contract (v1)"
+# Prefer the canonical export path used by the proof if present; fallback to search in gate itself.
+bash scripts/gate_rivalry_chronicle_output_contract_v1.sh artifacts/exports/70985/2024/week_06/rivalry_chronicle_v1__approved_latest.md || \
+  bash scripts/gate_rivalry_chronicle_output_contract_v1.sh
+# SV_GATE: rivalry_chronicle_output_contract (v1) end
+
