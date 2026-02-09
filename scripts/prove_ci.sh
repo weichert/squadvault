@@ -333,17 +333,18 @@ echo
 echo "=== CI: Rivalry Chronicle end-to-end (fixture) ==="
 SV_PROVE_TS_UTC="2026-01-01T00:00:00Z" bash scripts/prove_rivalry_chronicle_end_to_end_v1.sh \
 
+--db "${WORK_DB}" \
+  --league-id 70985 \
+  --season 2024 \
+  --week-index 6 \
+  --approved-by "ci"
+
 # SV_GATE: rivalry_chronicle_output_contract (v1) begin
 echo "==> Gate: Rivalry Chronicle output contract (v1)"
 # Must run AFTER Rivalry Chronicle export exists; pass canonical export path (fixture league/week).
 bash scripts/gate_rivalry_chronicle_output_contract_v1.sh artifacts/exports/70985/2024/week_06/rivalry_chronicle_v1__approved_latest.md
 # SV_GATE: rivalry_chronicle_output_contract (v1) end
 
-  --db "${WORK_DB}" \
-  --league-id 70985 \
-  --season 2024 \
-  --week-index 6 \
-  --approved-by "ci"
 
 # --- Fixture immutability guard (CI) ---
 ./scripts/check_fixture_immutability_ci.sh verify "${STATEFILE}" "${fixture_files[@]}"
