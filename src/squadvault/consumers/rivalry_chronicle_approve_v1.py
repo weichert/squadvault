@@ -8,7 +8,7 @@ Hard constraints:
 - Deterministic + minimal: no narrative generation; rendered_text stays as-is.
 """
 # SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1
-# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md
+# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md
 
 
 from __future__ import annotations

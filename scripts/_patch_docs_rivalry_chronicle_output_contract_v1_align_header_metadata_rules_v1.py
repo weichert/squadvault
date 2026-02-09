@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-DOC = Path("docs/contracts/rivalry_chronicle_output_contract_v1.md")
+DOC = Path("docs/contracts/rivalry_chronicle_contract_output_v1.md")
 README = Path("docs/contracts/README.md")
 
 HEADER = "# Rivalry Chronicle (v1)"
-README_LINE = "- `docs/contracts/rivalry_chronicle_output_contract_v1.md`"
+README_LINE = "- `docs/contracts/rivalry_chronicle_contract_output_v1.md`"
 
 DOC_CANON = """# Rivalry Chronicle (v1)
 
@@ -63,7 +63,7 @@ def main() -> None:
 
     # README: ensure line exists exactly once (keep existing formatting)
     r = README.read_text(encoding="utf-8")
-    count = r.count("`docs/contracts/rivalry_chronicle_output_contract_v1.md`")
+    count = r.count("`docs/contracts/rivalry_chronicle_contract_output_v1.md`")
     if count > 1:
         raise SystemExit("REFUSE: docs/contracts/README.md references Rivalry Chronicle contract more than once")
     if count == 1:
@@ -71,7 +71,7 @@ def main() -> None:
         lines = r.splitlines()
         normed = False
         for i, ln in enumerate(lines):
-            if "docs/contracts/rivalry_chronicle_output_contract_v1.md" in ln and ln.strip() != README_LINE:
+            if "docs/contracts/rivalry_chronicle_contract_output_v1.md" in ln and ln.strip() != README_LINE:
                 lines[i] = README_LINE
                 normed = True
         if normed:

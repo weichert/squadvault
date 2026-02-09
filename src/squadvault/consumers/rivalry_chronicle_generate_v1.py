@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1
-# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md
+# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md
 
 from __future__ import annotations
 # SV_PATCH_RC_GENERATE_PASS_BOTH_WEEK_SELECTORS_V4: restore-from-HEAD then pass both week_indices+week_range safely

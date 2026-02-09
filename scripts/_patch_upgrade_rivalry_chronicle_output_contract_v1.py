@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-DOC = Path("docs/contracts/rivalry_chronicle_output_contract_v1.md")
+DOC = Path("docs/contracts/rivalry_chronicle_contract_output_v1.md")
 
 INSERT = """\
 # Rivalry Chronicle Output Contract v1

@@ -15,5 +15,5 @@ fi
 "${PY}" scripts/_patch_upgrade_rivalry_chronicle_output_contract_v1.py
 
 echo "==> Confirm file exists"
-test -f docs/contracts/rivalry_chronicle_output_contract_v1.md
+test -f docs/contracts/rivalry_chronicle_contract_output_v1.md
 echo "OK"

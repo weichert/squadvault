@@ -7,7 +7,7 @@ import sys
 TARGET = Path("src/squadvault/consumers/rivalry_chronicle_approve_v1.py")
 
 NAME_LINE = "# SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1"
-DOC_LINE = "# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md"
+DOC_LINE = "# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md"
 
 
 def die(msg: str) -> None:

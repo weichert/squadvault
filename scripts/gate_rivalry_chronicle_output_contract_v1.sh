@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT
-# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md
+# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md
 
 set -euo pipefail
 
@@ -12,7 +12,7 @@ fail() { echo "RIVALRY_CHRONICLE_CONTRACT_V1_FAIL: $*" >&2; exit 1; }
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}"
 
-CONTRACT="docs/contracts/rivalry_chronicle_output_contract_v1.md"
+CONTRACT="docs/contracts/rivalry_chronicle_contract_output_v1.md"
 [[ -f "${CONTRACT}" ]] || fail "missing contract doc: ${CONTRACT}"
 
 # Allow caller to point at a specific export file (e.g. from prove script).

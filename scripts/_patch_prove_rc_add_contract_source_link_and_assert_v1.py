@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 PROVE = Path("scripts/prove_rivalry_chronicle_end_to_end_v1.sh")
-CONTRACT = "docs/contracts/rivalry_chronicle_output_contract_v1.md"
+CONTRACT = "docs/contracts/rivalry_chronicle_contract_output_v1.md"
 
 COMMENT = f"# Contract source-of-truth: {CONTRACT}"
 ENFORCE_ANCHOR = "# Enforce Rivalry Chronicle output contract (v1): header + required metadata keys."

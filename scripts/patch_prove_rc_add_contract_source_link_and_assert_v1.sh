@@ -24,5 +24,5 @@ echo "==> bash syntax check (prove script)"
 bash -n scripts/prove_rivalry_chronicle_end_to_end_v1.sh
 
 echo "==> show insertion windows"
-grep -n "Contract source-of-truth: docs/contracts/rivalry_chronicle_output_contract_v1.md" -n -C 2 scripts/prove_rivalry_chronicle_end_to_end_v1.sh || true
+grep -n "Contract source-of-truth: docs/contracts/rivalry_chronicle_contract_output_v1.md" -n -C 2 scripts/prove_rivalry_chronicle_end_to_end_v1.sh || true
 grep -n "missing contract source-of-truth" -n -C 2 scripts/prove_rivalry_chronicle_end_to_end_v1.sh || true

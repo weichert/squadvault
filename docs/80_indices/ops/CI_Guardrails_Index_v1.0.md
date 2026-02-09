@@ -258,7 +258,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - docs/contracts/README.md — Contracts Index (canonical)
 - scripts/gate_contracts_index_discoverability_v1.sh — Enforce docs/contracts/README.md indexes all versioned contracts (v1)
 <!-- SV_RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1 -->
-- docs/contracts/rivalry_chronicle_output_contract_v1.md — Rivalry Chronicle Output Contract (v1)
+- docs/contracts/rivalry_chronicle_contract_output_v1.md — Rivalry Chronicle Output Contract (v1)
 - scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce Rivalry Chronicle export conforms to output contract (v1)
 
 <!-- SV_CONTRACT_LINKAGE_GATES_v1_BEGIN -->

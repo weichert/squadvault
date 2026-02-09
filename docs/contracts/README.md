@@ -8,7 +8,7 @@ Contracts protect downstream creative tooling by making outputs predictable and 
 ## Contract Documents
 
 - `docs/contracts/golden_path_output_contract_v1.md`
-- `docs/contracts/rivalry_chronicle_output_contract_v1.md`
+- `docs/contracts/rivalry_chronicle_contract_output_v1.md`
 
 ## Indexing Rules (enforced)
 

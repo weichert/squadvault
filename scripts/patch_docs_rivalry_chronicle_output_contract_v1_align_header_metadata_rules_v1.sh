@@ -24,7 +24,7 @@ echo "==> bash syntax check (wrapper)"
 bash -n scripts/patch_docs_rivalry_chronicle_output_contract_v1_align_header_metadata_rules_v1.sh
 
 echo "==> show contract header + metadata window"
-sed -n '1,40p' docs/contracts/rivalry_chronicle_output_contract_v1.md
+sed -n '1,40p' docs/contracts/rivalry_chronicle_contract_output_v1.md
 
 echo "==> verify README indexes exactly once"
-grep -n "docs/contracts/rivalry_chronicle_output_contract_v1.md" -n docs/contracts/README.md || true
+grep -n "docs/contracts/rivalry_chronicle_contract_output_v1.md" -n docs/contracts/README.md || true

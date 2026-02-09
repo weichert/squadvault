@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-DOC = Path("docs/contracts/rivalry_chronicle_output_contract_v1.md")
+DOC = Path("docs/contracts/rivalry_chronicle_contract_output_v1.md")
 
 HEADER = "## Enforced By"
 EXPECTED_BULLETS = [

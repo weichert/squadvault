@@ -6,7 +6,7 @@ GATE = Path("scripts/gate_rivalry_chronicle_contract_linkage_v1.sh")
 PROVE_CI = Path("scripts/prove_ci.sh")
 
 PROVE_RC = "scripts/prove_rivalry_chronicle_end_to_end_v1.sh"
-CONTRACT = "docs/contracts/rivalry_chronicle_output_contract_v1.md"
+CONTRACT = "docs/contracts/rivalry_chronicle_contract_output_v1.md"
 
 GATE_TEXT = f"""#!/usr/bin/env bash
 set -euo pipefail

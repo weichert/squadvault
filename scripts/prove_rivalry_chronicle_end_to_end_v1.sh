@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT
-# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md
+# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md
 
 set -euo pipefail
 # SV_PATCH_PROVE_RC_USE_WEEKS_V1: generator requires week_indices; call consumer with --weeks
@@ -171,7 +171,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-contract_path = os.path.join(os.path.abspath(os.getcwd()), "docs/contracts/rivalry_chronicle_output_contract_v1.md")
+contract_path = os.path.join(os.path.abspath(os.getcwd()), "docs/contracts/rivalry_chronicle_contract_output_v1.md")
 if not os.path.exists(contract_path):
     raise SystemExit("ERROR: missing contract source-of-truth at: " + contract_path)
 
@@ -254,7 +254,7 @@ out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / 'rivalry_chronicle_v1__approved_latest.md'
 
 
-# Contract source-of-truth: docs/contracts/rivalry_chronicle_output_contract_v1.md
+# Contract source-of-truth: docs/contracts/rivalry_chronicle_contract_output_v1.md
 # Enforce Rivalry Chronicle output contract (v1): header + required metadata keys.
 hdr = "# Rivalry Chronicle (v1)"
 league_val = "70985"

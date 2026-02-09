@@ -26,31 +26,31 @@ TARGETS: dict[str, tuple[str, str]] = {
     # RIVALRY_CHRONICLE_OUTPUT
     "scripts/gate_rivalry_chronicle_output_contract_v1.sh": (
         "RIVALRY_CHRONICLE_OUTPUT",
-        "docs/contracts/rivalry_chronicle_output_contract_v1.md",
+        "docs/contracts/rivalry_chronicle_contract_output_v1.md",
     ),
     "scripts/prove_rivalry_chronicle_end_to_end_v1.sh": (
         "RIVALRY_CHRONICLE_OUTPUT",
-        "docs/contracts/rivalry_chronicle_output_contract_v1.md",
+        "docs/contracts/rivalry_chronicle_contract_output_v1.md",
     ),
     "scripts/generate_rivalry_chronicle_v1.sh": (
         "RIVALRY_CHRONICLE_OUTPUT",
-        "docs/contracts/rivalry_chronicle_output_contract_v1.md",
+        "docs/contracts/rivalry_chronicle_contract_output_v1.md",
     ),
     "scripts/rivalry_chronicle_generate_v1.sh": (
         "RIVALRY_CHRONICLE_OUTPUT",
-        "docs/contracts/rivalry_chronicle_output_contract_v1.md",
+        "docs/contracts/rivalry_chronicle_contract_output_v1.md",
     ),
     "scripts/persist_rivalry_chronicle_v1.sh": (
         "RIVALRY_CHRONICLE_OUTPUT",
-        "docs/contracts/rivalry_chronicle_output_contract_v1.md",
+        "docs/contracts/rivalry_chronicle_contract_output_v1.md",
     ),
     "scripts/recap_week_fetch_approved.py": (
         "RIVALRY_CHRONICLE_OUTPUT",
-        "docs/contracts/rivalry_chronicle_output_contract_v1.md",
+        "docs/contracts/rivalry_chronicle_contract_output_v1.md",
     ),
     "scripts/recap_week_approve.py": (
         "RIVALRY_CHRONICLE_OUTPUT",
-        "docs/contracts/rivalry_chronicle_output_contract_v1.md",
+        "docs/contracts/rivalry_chronicle_contract_output_v1.md",
     ),
 }
 
