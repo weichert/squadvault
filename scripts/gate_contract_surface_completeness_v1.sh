@@ -89,11 +89,24 @@ extract_enforced_by_list() {
 
   local after="$((start + 1))"
 
+  # SV_PATCH: extract_enforced_by_list_fn_v1_BEGIN
+  # Extract bullet entries from the Enforced By section until the next "## " header.
+  # Accept either:
+  #   - `scripts/.../foo.sh`
+  #   - scripts/.../foo.sh
+  # Emit only the captured scripts/... path (no full-line replacement), and drop blanks.
   awk -v start="$after" 'NR>=start {
     if ($0 ~ /^##[[:space:]]+/) exit 0
     print
-  }' "$doc"     | sed -n -E 's/^[[:space:]]*-[[:space:]]*`(scripts\/[^`]+\.sh)`[[:space:]]*$//p; s/^[[:space:]]*-[[:space:]]*(scripts\/[^[:space:]]+\.sh)[[:space:]]*$//p'     | LC_ALL=C sort -u
+  }' "$doc" \
+    | sed -n -E \
+        -e 's/^[[:space:]]*-[[:space:]]*`(scripts\/[^`]+\.sh)`[[:space:]]*$/\1/p' \
+        -e 's/^[[:space:]]*-[[:space:]]*(scripts\/[^[:space:]]+\.sh)[[:space:]]*$/\1/p' \
+    | sed -e '/^[[:space:]]*$/d' \
+    | LC_ALL=C sort -u
+  # SV_PATCH: extract_enforced_by_list_fn_v1_END
 }
+
 
 file_contains_exact_marker() {
   local file="$1"
@@ -157,7 +170,7 @@ main() {
 
   local tmpdir
   tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' EXIT
+  trap '[[ -n "${tmpdir:-}" ]] && rm -rf "$tmpdir"' EXIT
 
   local doc
   while IFS= read -r doc; do

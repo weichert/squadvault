@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT
-# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md
 
 set -euo pipefail
 
