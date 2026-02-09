@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT
+# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

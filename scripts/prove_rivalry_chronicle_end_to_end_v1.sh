@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT
+# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md
+
 set -euo pipefail
 # SV_PATCH_PROVE_RC_USE_WEEKS_V1: generator requires week_indices; call consumer with --weeks
 # SV_PATCH_PROVE_RIVALRY_CHRONICLE_E2E_POLISH_V1: fix broken echo quote + finish export block

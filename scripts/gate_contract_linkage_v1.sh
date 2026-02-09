@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
+# SV_CONTRACT_NAME: CONTRACT_MARKERS
+# SV_CONTRACT_DOC_PATH: docs/contracts/Contract_Markers_v1.0.md
+
 set -euo pipefail
 
 # Contract Linkage Gate (v1)
 # Policy: docs/contracts/Contract_Markers_v1.0.md
 # Enforces that any script declaring a contract declares BOTH markers in comment form:
-#   # SV_CONTRACT_NAME: <name>
-#   # SV_CONTRACT_DOC_PATH: <repo-relative path>
+#   # Example marker fields (do not copy verbatim tokens):
+#   #   SV_CONTRACT_NAME = <name>
+#   #   SV_CONTRACT_DOC_PATH = <repo-relative path>
 #
 # Scope: scripts/*.{sh,py}
 #

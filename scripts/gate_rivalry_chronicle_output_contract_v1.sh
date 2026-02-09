@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT
+# SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_output_contract_v1.md
+
 set -euo pipefail
 
 # SquadVault — Rivalry Chronicle Output Contract Gate (v1)
