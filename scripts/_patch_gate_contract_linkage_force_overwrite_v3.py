@@ -1,4 +1,11 @@
-#!/usr/bin/env bash
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+GATE = Path("scripts/gate_contract_linkage_v1.sh")
+
+REPLACEMENT = """#!/usr/bin/env bash
 set -euo pipefail
 
 # Contract Linkage Gate (v1)
@@ -61,10 +68,23 @@ while IFS= read -r f; do
       continue
     fi
   fi
-done < <(find "${TARGET_DIR}" -type f \( -name "*.sh" -o -name "*.py" \) -print | LC_ALL=C sort)
+done < <(find "${TARGET_DIR}" -type f \\( -name "*.sh" -o -name "*.py" \\) -print | LC_ALL=C sort)
 
 if [[ "${bad}" -ne 0 ]]; then
   fail "contract linkage violations found"
 fi
 
 exit 0
+"""
+
+def main() -> int:
+    if not GATE.exists():
+        print(f"ERR: missing gate: {GATE}", file=sys.stderr)
+        return 2
+
+    # Force overwrite (gate file may currently be unparsable bash).
+    GATE.write_text(REPLACEMENT, encoding="utf-8")
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())
