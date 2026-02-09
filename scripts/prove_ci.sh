@@ -332,6 +332,13 @@ fi
 echo
 echo "=== CI: Rivalry Chronicle end-to-end (fixture) ==="
 SV_PROVE_TS_UTC="2026-01-01T00:00:00Z" bash scripts/prove_rivalry_chronicle_end_to_end_v1.sh \
+
+# SV_GATE: rivalry_chronicle_output_contract (v1) begin
+echo "==> Gate: Rivalry Chronicle output contract (v1)"
+# Must run AFTER Rivalry Chronicle export exists; pass canonical export path (fixture league/week).
+bash scripts/gate_rivalry_chronicle_output_contract_v1.sh artifacts/exports/70985/2024/week_06/rivalry_chronicle_v1__approved_latest.md
+# SV_GATE: rivalry_chronicle_output_contract (v1) end
+
   --db "${WORK_DB}" \
   --league-id 70985 \
   --season 2024 \
@@ -372,11 +379,3 @@ bash scripts/prove_creative_determinism_v1.sh
 echo "==> Gate: contracts index discoverability (v1)"
 bash scripts/gate_contracts_index_discoverability_v1.sh
 # SV_GATE: contracts_index_discoverability (v1) end
-
-# SV_GATE: rivalry_chronicle_output_contract (v1) begin
-echo "==> Gate: Rivalry Chronicle output contract (v1)"
-# Prefer the canonical export path used by the proof if present; fallback to search in gate itself.
-bash scripts/gate_rivalry_chronicle_output_contract_v1.sh artifacts/exports/70985/2024/week_06/rivalry_chronicle_v1__approved_latest.md || \
-  bash scripts/gate_rivalry_chronicle_output_contract_v1.sh
-# SV_GATE: rivalry_chronicle_output_contract (v1) end
-
