@@ -58,6 +58,7 @@ This registry is intentionally boring and auditable.
 ## Proof Runners (invoked by scripts/prove_ci.sh)
 
 <!-- CI_PROOF_RUNNERS_BEGIN -->
+- scripts/prove_contract_surface_completeness_v1.sh — Proof: contract surface completeness gate (v1)
 - scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
 - scripts/prove_creative_determinism_v1.sh — Prove: creative determinism drift guard (v1)
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
@@ -102,8 +103,3 @@ scripts/prove_local_shell_hygiene_v1.sh # local-only: interactive shell hygiene 
 
 This boundary is CI-enforced by: **gate_proof_surface_registry_excludes_gates_v1**.
 <!-- SV_RULE_GATE_VS_PROOF_BOUNDARY_v1_END -->
-
-<!-- SV_CONTRACT_SURFACE_COMPLETENESS_v1_BEGIN -->
-- scripts/prove_contract_surface_completeness_v1.sh — Proof: contract surface completeness gate (v1)
-<!-- SV_CONTRACT_SURFACE_COMPLETENESS_v1_END -->
-
