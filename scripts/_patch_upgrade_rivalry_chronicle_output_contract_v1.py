@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+DOC = Path("docs/contracts/rivalry_chronicle_output_contract_v1.md")
+
+INSERT = """\
 # Rivalry Chronicle Output Contract v1
 
 ## Purpose
@@ -53,47 +60,28 @@ This contract is **enforced** by the contract surface completeness gate through:
 - Registry alignment checks (existing contract surface proofs/gates)
 
 Runtime enforcement (artifact validation) is permitted only when backed by this contract.
+"""
 
----
+def normalize(s: str) -> str:
+    return s.replace("\r\n", "\n").rstrip() + "\n"
 
-# Rivalry Chronicle (v1)
+def main() -> None:
+    if not DOC.exists():
+        raise SystemExit(f"ERROR: expected {DOC} to exist (it does in your repo).")
 
-## Enforced By
+    cur = normalize(DOC.read_text(encoding="utf-8"))
 
-- `src/squadvault/consumers/rivalry_chronicle_generate_v1.py`
-- `src/squadvault/consumers/rivalry_chronicle_approve_v1.py`
-- `src/squadvault/chronicle/generate_rivalry_chronicle_v1.py`
+    # Strategy: if the doc already has our header, treat as idempotent.
+    if "## Contractual vs Non-Contractual" in cur and "## Required Output Fields (minimum)" in cur:
+        print("OK: Rivalry Chronicle contract already contains substantive sections.")
+        return
 
-League ID: <LEAGUE_ID>
-Season: <SEASON>
-Week: <WEEK>
-State: <STATE>
-Artifact Type: RIVALRY_CHRONICLE_V1
+    # If file is short or placeholder, prepend our substantive contract block.
+    # If file already has content, we prepend but keep original below for auditability.
+    new = normalize(INSERT) + "\n---\n\n" + cur
 
-## Matchup Summary
+    DOC.write_text(new, encoding="utf-8")
+    print(f"OK: upgraded {DOC} with substantive contract sections.")
 
-## Key Moments
-
-## Stats & Nuggets
-
-## Closing
-
-## Metadata rules
-
-Metadata is a contiguous block of `Key: Value` lines immediately after header (optionally after one blank line).
-
-Required keys:
-- League ID
-- Season
-- Week
-- State
-- Artifact Type
-
-Artifact Type must be `RIVALRY_CHRONICLE_V1`.
-
-## Normalization rules
-
-- Leading blank lines dropped.
-- Header must be first line.
-- Metadata upsert semantics: key uniqueness; last-write wins / overwrite.
-- If required headings are missing, exporter may append a minimal scaffold (blank line separated).
+if __name__ == "__main__":
+    main()
