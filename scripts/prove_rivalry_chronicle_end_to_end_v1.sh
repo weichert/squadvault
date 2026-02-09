@@ -306,6 +306,24 @@ meta = upsert(meta, "Season", season_val)
 meta = upsert(meta, "Week", week_val)
 meta = upsert(meta, "State", state_val)
 meta = upsert(meta, "Artifact Type", artifact_type_val)
+# --- REQUIRED_SECTION_HEADINGS_V10 ---
+required = [
+    "## Matchup Summary",
+    "## Key Moments",
+    "## Stats & Nuggets",
+    "## Closing",
+]
+present = {ln.strip() for ln in new_lines}
+missing = [h for h in required if h not in present]
+if missing:
+    # Append a minimal scaffold for any missing headings (keep existing content intact).
+    # Ensure at least one blank line before the scaffold.
+    if new_lines and new_lines[-1].strip() != "":
+        new_lines.append("")
+    for h in missing:
+        new_lines.append(h)
+        new_lines.append("")
+
 
 new_lines = lines[:meta_start] + meta + lines[meta_end:]
 txt = "\n".join(new_lines).rstrip() + "\n"
