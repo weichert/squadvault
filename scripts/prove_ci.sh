@@ -109,6 +109,10 @@ if command -v git >/dev/null 2>&1; then
   if [[ "${sv_branch}" == "HEAD" ]]; then sv_branch="DETACHED"; fi
   sv_clean="DIRTY"
   echo "TIP: A prior step dirtied the working tree. To see exactly what changed:"
+# SV_GATE: no_untracked_patch_artifacts (v1) begin
+bash scripts/gate_no_untracked_patch_artifacts_v1.sh
+# SV_GATE: no_untracked_patch_artifacts (v1) end
+
   echo "TIP:   git status --porcelain=v1"
   echo "TIP:   git diff --name-only"
   echo "TIP: If this came from a patch wrapper, run the wrapper twice from clean to confirm idempotence."

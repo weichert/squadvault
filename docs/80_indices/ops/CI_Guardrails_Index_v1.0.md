@@ -232,6 +232,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_no_double_scripts_prefix_v2.sh — Disallow 'scripts/scripts/' path invocations (v2)
 - scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh — Reject obsolete allowlist rewrite recovery artifacts (v1)
 - scripts/gate_no_terminal_banner_paste_v1.sh — Detect pasted terminal banner content in scripts/ (v1)
+- scripts/gate_no_untracked_patch_artifacts_v1.sh — Guardrail: fail if untracked patch artifacts exist (v1)
 - scripts/gate_no_xtrace_v1.sh — No-xtrace guardrail gate (v1)
 - scripts/gate_ops_indices_no_autofill_placeholders_v1.sh — Enforce Ops indices contain no autofill placeholders (v1)
 - scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — Enforce patch-wrapper allowlist is canonical + safe (v1)
