@@ -9,7 +9,7 @@ FILES = [
     Path("scripts/gate_contract_linkage_v1.sh"),
 ]
 
-PLACEHOLDER_DOC = "SV_CONTRACT_DOC_PATH: <repo-relative path>"
+PLACEHOLDER_DOC = "SV_CONTRACT_DOC_PATH: "
 PLACEHOLDER_NAME = "SV_CONTRACT_NAME: <NAME>"
 # Also handle any generic placeholder name variants if present
 NAME_PREFIX = "SV_CONTRACT_NAME:"
@@ -25,8 +25,8 @@ def strip_placeholders(txt: str) -> str:
             continue
         if s == PLACEHOLDER_NAME:
             continue
-        # If someone wrote: SV_CONTRACT_DOC_PATH: <repo-relative path> (with extra spaces)
-        if s.startswith(DOC_PREFIX) and "<repo-relative path>" in s:
+        # If someone wrote: SV_CONTRACT_DOC_PATH:  (with extra spaces)
+        if s.startswith(DOC_PREFIX) and "" in s:
             continue
         # If someone wrote a placeholder name like: SV_CONTRACT_NAME: <...>
         if s.startswith(NAME_PREFIX) and "<" in s and ">" in s and "SV_CONTRACT_NAME:" in s:

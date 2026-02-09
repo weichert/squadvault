@@ -4,7 +4,7 @@ set -euo pipefail
 # Contract Linkage Gate (v1)
 # Enforces that any script claiming a contract includes:
 #   SV_CONTRACT_NAME: <name>
-#   SV_CONTRACT_DOC_PATH: <repo-relative path>
+#   SV_CONTRACT_DOC_PATH: 
 #
 # Scope: scripts/*.{sh,py}
 #
