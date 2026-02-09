@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# SV_CONTRACT_NAME: GOLDEN_PATH_OUTPUT
-# SV_CONTRACT_DOC_PATH: docs/contracts/golden_path_output_contract_v1.md
+# Contract doc (reference): docs/contracts/golden_path_output_contract_v1.md
+# NOTE: This script is NOT a contract enforcement surface.
+#       Enforcement happens in scripts/gate_golden_path_output_contract_v1.sh (and via scripts/prove_golden_path.sh).
+
 
 set -euo pipefail
 
