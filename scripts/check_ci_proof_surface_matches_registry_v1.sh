@@ -135,7 +135,7 @@ while IFS= read -r line; do
   fi
 
   # If the line contains a prove script token, it must match our explicit allowed invocation grammar.
-  if [[ "${line}" == *scripts/prove_*\.sh* ]]; then
+  if [[ "${line}" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]]+)*((bash)[[:space:]]+)?(\./)?(scripts/prove_[A-Za-z0-9_]+\.sh)([[:space:]]|$|\\) ]]; then
     # optional ENV assignments, optional 'bash', optional './', then scripts/prove_*.sh, then anything (args), optional trailing backslash
     if [[ "${line}" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]]+)*((bash)[[:space:]]+)?(\./)?(scripts/prove_[A-Za-z0-9_]+\.sh)([[:space:]].*)?$ ]]; then
       ci_list+="${BASH_REMATCH[5]}"$'\n'
