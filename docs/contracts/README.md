@@ -14,3 +14,7 @@ Contracts protect downstream creative tooling by making outputs predictable and 
 
 - Every file matching `docs/contracts/*_contract_v*.md` must be listed above exactly once.
 - New contract versions must be added as new files (v2, v3...) — silent drift is forbidden.
+
+## Versioned Contracts
+
+- Contract_Markers_v1.0.md — Contract markers policy (comment-only; linkage rules) (v1.0)
