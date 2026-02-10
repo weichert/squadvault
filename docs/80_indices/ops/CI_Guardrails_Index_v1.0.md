@@ -160,6 +160,12 @@ _CI never invokes anything in this section._
 <!-- SV_DOCS_MUTATION_GUARDRAIL_GATE: v2 (v1) -->
 - scripts/gate_docs_mutation_guardrail_v2.sh — Docs Mutation Guardrail Gate (canonical)
 <!-- SV_CI_PROOF_SURFACE_REGISTRY: v1 -->
+<!-- SV_CI_PROOF_SURFACE_REGISTRY_TOOLING_v1_BEGIN -->
+# - Helpers: CI Proof Surface Registry
+- scripts/patch_ci_proof_surface_registry_register_ci_proof_runner_v1.sh — Register a CI proof runner into the registry blocks (strict, sorted, fail-closed).
+- scripts/doctor_ci_proof_surface_registry_v1.sh — Diagnose CI Proof Surface Registry structural invariants (check/fix modes) (v1).
+<!-- SV_CI_PROOF_SURFACE_REGISTRY_TOOLING_v1_END -->
+
 - scripts/check_ci_proof_surface_matches_registry_v1.sh — CI Proof Surface Registry Gate (canonical)
 <!-- SV_CI_REGISTRY_EXECUTION_ALIGNMENT: v1 -->
 - scripts/gate_ci_registry_execution_alignment_v1.sh — CI Registry → Execution Alignment Gate (v1)
