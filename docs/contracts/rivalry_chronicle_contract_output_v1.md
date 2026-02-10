@@ -60,8 +60,8 @@ Runtime enforcement (artifact validation) is permitted only when backed by this 
 
 ## Enforced By
 
-- `scripts/gate_rivalry_chronicle_output_contract_v1.sh`
-- `scripts/prove_rivalry_chronicle_end_to_end_v1.sh`
+- scripts/gate_rivalry_chronicle_output_contract_v1.sh
+- scripts/prove_rivalry_chronicle_end_to_end_v1.sh
 
 ## Matchup Summary
 
