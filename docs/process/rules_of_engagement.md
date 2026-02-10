@@ -1,5 +1,20 @@
 # SquadVault — Rules of Engagement (Repo Process)
 
+<!-- SV_PASTE_SAFE_FILE_WRITES_v1_BEGIN -->
+## Paste-Safe File Writes
+
+When creating or modifying scripts, patchers, wrappers, or structured docs,
+you **must** use paste-safe writes.
+
+Canonical tool:
+- `scripts/clipwrite.sh` (wraps `scripts/clipwrite.py`)
+
+Reference:
+- `docs/process/Paste_Safe_File_Writes_v1.0.md`
+
+<!-- SV_PASTE_SAFE_FILE_WRITES_v1_END -->
+
+
 **Status:** Canonical operating practice  
 **Purpose:** Reduce mistakes, increase speed, preserve auditability
 
