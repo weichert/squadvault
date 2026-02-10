@@ -20,23 +20,26 @@ if [[ "${MODE}" != "check" && "${MODE}" != "fix" ]]; then
   exit 2
 fi
 
-test -f "${REG}" || { echo "FAIL: missing ${REG}" >&2; exit 1; }
+if [[ ! -f "${REG}" ]]; then
+  echo "FAIL: missing ${REG}" >&2
+  exit 1
+fi
 
 echo "==> [1] Locate bounded blocks"
-grep -n "SV_PROOF_SURFACE_LIST_v1_BEGIN\|SV_PROOF_SURFACE_LIST_v1_END\|CI_PROOF_RUNNERS_BEGIN\|CI_PROOF_RUNNERS_END" "${REG}" >/dev/null \
-  || { echo "FAIL: missing required markers in registry" >&2; exit 1; }
+if ! grep -n "SV_PROOF_SURFACE_LIST_v1_BEGIN\|SV_PROOF_SURFACE_LIST_v1_END\|CI_PROOF_RUNNERS_BEGIN\|CI_PROOF_RUNNERS_END" "${REG}" >/dev/null; then
+  echo "FAIL: missing required markers in registry" >&2
+  exit 1
+fi
 echo "OK: markers present"
 
 echo "==> [2] Check CI_PROOF_RUNNERS strict bullet grammar"
 bad_runner_lines="$(
   awk '
-    $0 ~ /CI_PROOF_RUNNERS_BEGIN/ {inside=1; next}
-    $0 ~ /CI_PROOF_RUNNERS_END/   {inside=0}
-    inside==1 {print}
-  ' "${REG}" \
-  | sed '/^[[:space:]]*$/d' \
-  | sed '/^[[:space:]]*<!--.*-->[[:space:]]*$/d' \
-  | awk '
+    $0 ~ /CI_PROOF_RUNNERS_BEGIN/ {flag=1; next}
+    $0 ~ /CI_PROOF_RUNNERS_END/   {flag=0}
+    flag==1 {print}
+  ' "${REG}"   | sed '/^[[:space:]]*$/d'   | sed '/^[[:space:]]*<!--.*-->[[:space:]]*$/d'   | awk '
+      # strict bullet: - scripts/prove_...sh — description
       $0 ~ /^-[[:space:]]+scripts\/prove_[A-Za-z0-9_]+\.sh[[:space:]]+—[[:space:]]+/ {next}
       {print}
     '
@@ -46,8 +49,8 @@ if [[ -n "${bad_runner_lines}" ]]; then
   echo "ERROR: CI_PROOF_RUNNERS contains nonconforming line(s):" >&2
   printf "%s\n" "${bad_runner_lines}" | sed 's/^/  - /' >&2
   if [[ "${MODE}" == "fix" ]]; then
-    echo "==> Fix mode: ambiguous lines left untouched (fail-closed)."
-    echo "    Use the register wrapper to add proper descriptions."
+    echo "==> Fix mode: fail-closed. Ambiguous lines left untouched." >&2
+    echo "    Use the register wrapper to add proper descriptions." >&2
   else
     exit 1
   fi
@@ -58,9 +61,9 @@ fi
 echo "==> [3] Check Surface List is sorted + unique"
 surface_paths="$(
   awk '
-    $0 ~ /SV_PROOF_SURFACE_LIST_v1_BEGIN/ {inside=1; next}
-    $0 ~ /SV_PROOF_SURFACE_LIST_v1_END/   {inside=0}
-    inside==1 {print}
+    $0 ~ /SV_PROOF_SURFACE_LIST_v1_BEGIN/ {flag=1; next}
+    $0 ~ /SV_PROOF_SURFACE_LIST_v1_END/   {flag=0}
+    flag==1 {print}
   ' "${REG}" | sed '/^[[:space:]]*$/d'
 )"
 
@@ -76,7 +79,7 @@ if [[ "${sorted}" != "${surface_paths}" ]]; then
   echo "ERROR: Surface List is not sorted (LC_ALL=C)." >&2
   [[ "${MODE}" == "fix" ]] || exit 1
   echo "==> Fix: re-sort Surface List block (safe)"
-  python - <<'PY'
+  python - <<'PYS'
 from pathlib import Path
 REG=Path("docs/80_indices/ops/CI_Proof_Surface_Registry_v1.0.md")
 BEGIN="<!-- SV_PROOF_SURFACE_LIST_v1_BEGIN -->"
@@ -88,7 +91,7 @@ lines=[ln.strip() for ln in mid.splitlines() if ln.strip()]
 out="\n"+"\n".join(sorted(set(lines)))+"\n"
 REG.write_text(pre+BEGIN+out+END+post, encoding="utf-8")
 print("OK: Surface List re-sorted + uniqued.")
-PY
+PYS
 else
   echo "OK: Surface List sorted + unique"
 fi
