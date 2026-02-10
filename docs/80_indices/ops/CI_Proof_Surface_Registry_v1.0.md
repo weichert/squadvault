@@ -56,6 +56,7 @@ This registry is intentionally boring and auditable.
 ## Proof Runners (invoked by scripts/prove_ci.sh)
 
 <!-- CI_PROOF_RUNNERS_BEGIN -->
+- scripts/prove_contract_surface_autosync_noop_v1.sh — Proof: contract surface autosync no-op on canonical repo (v1)
 - scripts/prove_contract_surface_completeness_v1.sh — Proof: contract surface completeness gate (v1)
 - scripts/prove_creative_determinism_v1.sh — Prove: creative determinism drift guard (v1)
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
@@ -67,7 +68,6 @@ This registry is intentionally boring and auditable.
 - scripts/prove_signal_scout_tier1_type_a_v1.sh — Proves Signal Scout Tier-1 Type A derivation + determinism.
 - scripts/prove_tone_engine_type_a_v1.sh — Proves Tone Engine Type A contract/invariants.
 - scripts/prove_version_presentation_navigation_type_a_v1.sh — Proves version presentation + navigation invariants.
-scripts/prove_contract_surface_autosync_noop_v1.sh
 <!-- CI_PROOF_RUNNERS_END -->
 
 ## Notes
