@@ -269,3 +269,9 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- SV_CONTRACT_SURFACE_COMPLETENESS_INDEX_v1_END -->
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Compatibility wrapper (RC linkage) delegating to gate_contract_linkage_v1.sh (v1)
 <!-- SV_CONTRACT_LINKAGE_GATES_v1_END -->
+
+## Contract Surface Proofs
+
+<!-- SV_CONTRACT_SURFACE_PROOFS_v1_BEGIN -->
+- scripts/prove_contract_surface_autosync_noop_v1.sh — Proof: Contract surface autosync is a no-op on canonical repo (v1)
+<!-- SV_CONTRACT_SURFACE_PROOFS_v1_END -->

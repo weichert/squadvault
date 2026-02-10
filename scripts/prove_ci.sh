@@ -386,6 +386,7 @@ bash scripts/gate_contracts_index_discoverability_v1.sh
 
 # SV_GATE: contract_surface_completeness (v1) begin
 bash scripts/prove_contract_surface_completeness_v1.sh
+bash scripts/prove_contract_surface_autosync_noop_v1.sh
 # SV_GATE: contract_surface_completeness (v1) end
 
 # SV_GATE: contracts_index_discoverability (v1) end

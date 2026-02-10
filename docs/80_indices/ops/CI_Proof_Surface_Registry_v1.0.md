@@ -102,3 +102,9 @@ scripts/prove_local_shell_hygiene_v1.sh # local-only: interactive shell hygiene 
 
 This boundary is CI-enforced by: **gate_proof_surface_registry_excludes_gates_v1**.
 <!-- SV_RULE_GATE_VS_PROOF_BOUNDARY_v1_END -->
+
+## Contract Surface Proofs
+
+<!-- SV_CONTRACT_SURFACE_PROOFS_v1_BEGIN -->
+- scripts/prove_contract_surface_autosync_noop_v1.sh — Proof: Contract surface autosync is a no-op on canonical repo (v1)
+<!-- SV_CONTRACT_SURFACE_PROOFS_v1_END -->
