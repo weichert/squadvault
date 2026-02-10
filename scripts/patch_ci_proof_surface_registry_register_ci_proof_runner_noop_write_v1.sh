@@ -12,4 +12,4 @@ if [[ ! -x "${PY}" ]]; then
   PY="${PYTHON:-python}"
 fi
 
-"${PY}" scripts/_patch_ci_proof_surface_registry_register_ci_proof_runner_v1_1_noop_write_v1.py
+"${PY}" scripts/_patch_ci_proof_surface_registry_register_ci_proof_runner_noop_write_v1.py

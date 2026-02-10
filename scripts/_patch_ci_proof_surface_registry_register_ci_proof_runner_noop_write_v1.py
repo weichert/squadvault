@@ -4,7 +4,6 @@ from pathlib import Path
 
 PATCHER = Path("scripts/_patch_ci_proof_surface_registry_register_ci_proof_runner_v1.py")
 
-BEGIN = "def main() -> int:"
 NEEDLE = 'REG.write_text(out, encoding="utf-8")'
 REPLACE_BLOCK = """\
     if out == s:
@@ -38,7 +37,7 @@ def main() -> int:
         raise SystemExit("FAIL: patch produced no change unexpectedly (refusing).")
 
     PATCHER.write_text(s2, encoding="utf-8")
-    print("OK: register patcher now no-ops without rewriting file (v1.1).")
+    print("OK: register patcher now no-ops without rewriting file (v1).")
     return 0
 
 if __name__ == "__main__":
