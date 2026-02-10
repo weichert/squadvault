@@ -1,5 +1,9 @@
 # Rivalry Chronicle Output Contract v1
 
+## Enforced By
+- scripts/gate_rivalry_chronicle_output_contract_v1.sh
+- scripts/prove_rivalry_chronicle_end_to_end_v1.sh
+
 ## Purpose
 Produce a rivalry-focused narrative artifact that is fun, readable, and *strictly derived* from canonical, verified facts within an approved scope/window. This contract governs **what the artifact is allowed to claim** and **how it proves lineage**.
 
@@ -57,11 +61,6 @@ Runtime enforcement (artifact validation) is permitted only when backed by this 
 ---
 
 # Rivalry Chronicle (v1)
-
-## Enforced By
-
-- scripts/gate_rivalry_chronicle_output_contract_v1.sh
-- scripts/prove_rivalry_chronicle_end_to_end_v1.sh
 
 ## Matchup Summary
 
