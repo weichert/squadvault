@@ -57,18 +57,17 @@ This registry is intentionally boring and auditable.
 
 <!-- CI_PROOF_RUNNERS_BEGIN -->
 - scripts/prove_contract_surface_completeness_v1.sh — Proof: contract surface completeness gate (v1)
-- scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
 - scripts/prove_creative_determinism_v1.sh — Prove: creative determinism drift guard (v1)
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
-
 - scripts/prove_eal_calibration_type_a_v1.sh — Proves EAL calibration Type A invariants end-to-end.
 - scripts/prove_golden_path.sh — Proves canonical operator golden path via shims and gates (exports ephemeral by default; set `SV_KEEP_EXPORTS=1` to persist; NAC normalization is non-mutating).
+- scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh — Proof: allowlisted patch wrappers are no-op under `SV_IDEMPOTENCE_MODE=1`.
+- scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
 - scripts/prove_rivalry_chronicle_end_to_end_v1.sh — Proves Rivalry Chronicle generate → approve → export flow.
 - scripts/prove_signal_scout_tier1_type_a_v1.sh — Proves Signal Scout Tier-1 Type A derivation + determinism.
 - scripts/prove_tone_engine_type_a_v1.sh — Proves Tone Engine Type A contract/invariants.
 - scripts/prove_version_presentation_navigation_type_a_v1.sh — Proves version presentation + navigation invariants.
-
-- scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh — Proof: allowlisted patch wrappers are no-op under `SV_IDEMPOTENCE_MODE=1`.
+scripts/prove_contract_surface_autosync_noop_v1.sh
 <!-- CI_PROOF_RUNNERS_END -->
 
 ## Notes
