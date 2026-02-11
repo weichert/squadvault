@@ -291,6 +291,10 @@ bash scripts/gate_no_double_scripts_prefix_v2.sh
 
 echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
 # SV_GATE: ci_guardrails_ops_entrypoint_parity (v1) begin
+
+## Indexed guardrails: execute to maintain ops index ↔ prove_ci parity
+bash scripts/gate_no_test_dir_case_drift_v1.sh
+bash scripts/gate_standard_show_input_need_coverage_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
 # SV_GATE: ci_guardrails_ops_entrypoint_parity (v1) end
 bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh

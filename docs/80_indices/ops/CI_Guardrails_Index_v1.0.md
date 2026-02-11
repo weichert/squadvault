@@ -250,7 +250,6 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Rivalry Chronicle contract doc linkage gate (v1)
 - scripts/gate_standard_show_input_need_coverage_v1.sh — Enforce deterministic InputNeed coverage baseline for STANDARD_SHOW_V1 (v1)
-- scripts/prove_pytest_does_not_dirty_fixture_db_v1.sh — Proof: pytest does not mutate fixtures/ci_squadvault.sqlite (v1)
 - scripts/gate_no_test_dir_case_drift_v1.sh — Enforce no test dir case drift (Tests/ vs tests/) (v1)
 - scripts/prove_pytest_does_not_dirty_fixture_db_v1.sh — Proof: CI run does not mutate fixtures/ci_squadvault.sqlite (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
