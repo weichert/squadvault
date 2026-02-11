@@ -249,6 +249,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce Rivalry Chronicle export conforms to output contract (v1)
 <!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Rivalry Chronicle contract doc linkage gate (v1)
+- scripts/gate_standard_show_input_need_coverage_v1.sh — Enforce deterministic InputNeed coverage baseline for STANDARD_SHOW_V1 (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
