@@ -1,25 +1,38 @@
-"""Pytest bootstrap for local imports.
-
-Goal:
-- Allow `pytest` to run without requiring callers to export PYTHONPATH.
-- Ensure repo-root imports (e.g., `import scripts.recap`) and src-layout imports
-  (e.g., `from squadvault...`) work deterministically.
-
-This is test-only. It does not affect runtime packaging.
-"""
-
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "src"
 
-# Ensure repo root is first (for `import scripts.*`)
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+def _ensure_repo_import_paths() -> None:
+    """
+    Deterministic test bootstrap:
+    - Add repo root for `scripts.*` imports used by some tests
+    - Add src/ for src-layout packages (`squadvault`, `pfl`)
+    """
+    repo_root = Path(__file__).resolve().parents[1]
+    src_root = repo_root / "src"
 
-# Ensure src layout is available (for `import squadvault.*`)
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+    # Prepend so local code wins over anything installed in site-packages.
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    if str(src_root) not in sys.path:
+        sys.path.insert(0, str(src_root))
+
+
+def _ensure_default_test_db_env() -> None:
+    # Respect explicit caller configuration (CI or local overrides).
+    if os.environ.get("SQUADVAULT_TEST_DB"):
+        return
+
+    repo_root = Path(__file__).resolve().parents[1]
+    fixture_db = repo_root / "fixtures" / "ci_squadvault.sqlite"
+    if fixture_db.exists():
+        os.environ["SQUADVAULT_TEST_DB"] = str(fixture_db)
+
+
+def pytest_configure() -> None:
+    _ensure_repo_import_paths()
+    _ensure_default_test_db_env()
+
