@@ -6,6 +6,18 @@ import subprocess
 from pathlib import Path
 
 
+TARGET = Path("scripts/gen_creative_surface_fingerprint_v1.py")
+
+
+CANONICAL = """\
+from __future__ import annotations
+
+import hashlib
+import json
+import subprocess
+from pathlib import Path
+
+
 OUT = Path("artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json")
 ROOTS = [
     "artifacts/exports",
@@ -78,8 +90,27 @@ def main() -> None:
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    OUT.write_text(json.dumps(payload, indent=2) + "\\n", encoding="utf-8")
     print(f"OK: wrote {OUT} (files={len(files)})")
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+
+def main() -> None:
+    if not TARGET.exists():
+        raise SystemExit(f"ERROR: missing target: {TARGET}")
+
+    cur = TARGET.read_text(encoding="utf-8")
+    if cur == CANONICAL:
+        print("OK: gen_creative_surface_fingerprint_v1.py already canonical (noop)")
+        return
+
+    # NOTE: newline must be a real newline value (e.g. "\n"), not "\\n".
+    TARGET.write_text(CANONICAL, encoding="utf-8", newline="\n")
+    print("OK: updated gen_creative_surface_fingerprint_v1.py (git ls-files mode)")
 
 
 if __name__ == "__main__":
