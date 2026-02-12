@@ -1,5 +1,32 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+
+TARGET = Path("scripts/gen_creative_surface_fingerprint_v1.py")
+
+
+def die(msg: str) -> None:
+    print(f"ERROR: {msg}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def main() -> None:
+    if not TARGET.exists():
+        die(f"missing target: {TARGET}")
+
+    old = TARGET.read_text(encoding="utf-8")
+    if "CREATIVE_SURFACE_FINGERPRINT_v1.json" not in old:
+        die("unexpected generator shape: missing fingerprint filename token")
+
+    # Canonical generator rewrite:
+    # - Preserve schema keys by starting from existing artifact JSON (if present).
+    # - Only update keys that already exist (no new schema keys introduced).
+    # - Deterministic: git ls-files sorted, json indent=2 sort_keys=True trailing newline.
+    canonical = """\
+from __future__ import annotations
+
 import json
 import subprocess
 from pathlib import Path
@@ -45,7 +72,7 @@ def main() -> None:
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
 
-    out_text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    out_text = json.dumps(payload, indent=2, sort_keys=True) + "\\n"
     if OUT.exists():
         cur = OUT.read_text(encoding="utf-8")
         if cur == out_text:
@@ -54,6 +81,14 @@ def main() -> None:
 
     OUT.write_text(out_text, encoding="utf-8")
     print(f"OK: wrote {OUT} (files={files_n})")
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+    TARGET.write_text(canonical, encoding="utf-8")
+    print("OK: rewrote generator canonically (schema keys preserved from existing artifact)")
 
 
 if __name__ == "__main__":
