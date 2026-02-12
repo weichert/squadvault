@@ -74,7 +74,7 @@ def _discover_approved_sources(exports_root: Path) -> list[Path]:
     ]
     found: list[Path] = []
     for pat in patterns:
-        for p in exports_root.glob(pat):
+        for p in sorted(exports_root.glob(pat)):
             if p.is_file():
                 found.append(p)
     # De-dup, stable sort by POSIX path.
