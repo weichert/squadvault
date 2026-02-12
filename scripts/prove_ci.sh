@@ -153,6 +153,11 @@ sv_require_kv "LANG" "C"
 sv_require_kv "TZ" "UTC"
 sv_require_kv "PYTHONHASHSEED" "0"
 echo "OK: deterministic env envelope"
+# --- SV_CI_RUNTIME_MEASUREMENT_v1_BEGIN ---
+sv_rt_start="$(./scripts/py -c 'import time; print(int(time.time()))')"
+export SV_CI_RUNTIME_START_EPOCH_SECONDS="$sv_rt_start"
+# SV_CI_PROOF_COUNT_EXPECTED may be set externally if desired.
+# --- SV_CI_RUNTIME_MEASUREMENT_v1_END ---
 # === /DETERMINISTIC EXECUTION ENVELOPE GATE (v1) ===
 
 # === CI CLEANLINESS GUARDRAIL (v1) ===
@@ -295,6 +300,17 @@ echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
 ## Indexed guardrails: execute to maintain ops index ↔ prove_ci parity
 bash scripts/gate_no_test_dir_case_drift_v1.sh
 bash scripts/gate_standard_show_input_need_coverage_v1.sh
+
+## Best-in-class tightening: explicit execution surfaces (v1)
+## (B) Contract boundary formalization
+bash scripts/gate_contract_surface_manifest_hash_v1.sh
+
+## (C) Creative surface certification
+bash scripts/gate_creative_surface_fingerprint_v1.sh
+
+## (D) Meta surface parity
+bash scripts/gate_meta_surface_parity_v1.sh
+
 bash scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
 # SV_GATE: ci_guardrails_ops_entrypoint_parity (v1) end
 bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh
@@ -394,3 +410,8 @@ bash scripts/prove_contract_surface_autosync_noop_v1.sh
 # SV_GATE: contract_surface_completeness (v1) end
 
 # SV_GATE: contracts_index_discoverability (v1) end
+
+# SV_CI runtime envelope enforcement (best-effort; v1)
+sv_rt_end="$(./scripts/py -c 'import time; print(int(time.time()))')"
+export SV_CI_RUNTIME_SECONDS="$(( sv_rt_end - sv_rt_start ))"
+bash scripts/gate_ci_runtime_envelope_v1.sh
