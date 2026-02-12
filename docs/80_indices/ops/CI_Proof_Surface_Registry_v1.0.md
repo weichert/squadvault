@@ -4,9 +4,11 @@ Do not edit manually.
 <!-- SV_PROOF_SURFACE_LIST_v1_BEGIN -->
 
 - scripts/prove_ci.sh
+- scripts/prove_ci_creative_sharepack_if_available_v1.sh
 - scripts/prove_contract_surface_autosync_noop_v1.sh
 - scripts/prove_contract_surface_completeness_v1.sh
 - scripts/prove_creative_determinism_v1.sh
+- scripts/prove_creative_sharepack_determinism_v1.sh
 - scripts/prove_docs_integrity_v1.sh
 - scripts/prove_eal_calibration_type_a_v1.sh
 - scripts/prove_golden_path.sh
