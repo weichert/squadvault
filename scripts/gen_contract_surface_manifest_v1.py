@@ -36,6 +36,12 @@ def main() -> None:
             }
         )
 
+
+    # Defensive invariant: manifest must not be self-referential.
+    out_rel = OUT.relative_to(REPO_ROOT).as_posix()
+    if any(f["path"] == out_rel for f in files):
+        raise SystemExit(f"ERROR: manifest illegally includes itself: {out_rel}")
+
     manifest = {
         "version": 1,
         "root": "docs/contracts",
