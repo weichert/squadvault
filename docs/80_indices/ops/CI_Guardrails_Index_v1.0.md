@@ -294,3 +294,4 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/prove_creative_sharepack_determinism_v1.sh — Proof: creative sharepack determinism (v1)
 <!-- SV_CREATIVE_SHAREPACK_GUARDRAILS_v1_END -->
 
+
