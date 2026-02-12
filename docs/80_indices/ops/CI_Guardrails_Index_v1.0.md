@@ -288,3 +288,9 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- SV_CONTRACT_SURFACE_PROOFS_v1_BEGIN -->
 - scripts/prove_contract_surface_autosync_noop_v1.sh — Proof: Contract surface autosync is a no-op on canonical repo (v1)
 <!-- SV_CONTRACT_SURFACE_PROOFS_v1_END -->
+
+<!-- SV_CREATIVE_SHAREPACK_GUARDRAILS_v1_BEGIN -->
+- scripts/gate_creative_sharepack_output_contract_v1.sh — Gate: creative sharepack output contract (v1)
+- scripts/prove_creative_sharepack_determinism_v1.sh — Proof: creative sharepack determinism (v1)
+<!-- SV_CREATIVE_SHAREPACK_GUARDRAILS_v1_END -->
+
