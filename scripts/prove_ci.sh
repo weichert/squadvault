@@ -380,6 +380,8 @@ fi
 # --- /CI debug ---
 
 echo "OK: CI proof suite passed"
+
+echo "== Creative sharepack determinism (conditional) =="\nbash scripts/prove_ci_creative_sharepack_if_available_v1.sh\n
 echo "OK: CI working tree remained clean (guardrail enforced)."
 
 # SV_GATE: ops_indices_no_autofill_placeholders (v1) begin
