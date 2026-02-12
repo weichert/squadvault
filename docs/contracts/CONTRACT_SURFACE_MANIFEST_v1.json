@@ -1,0 +1,32 @@
+{
+  "file_count": 5,
+  "files": [
+    {
+      "bytes": 787,
+      "path": "docs/contracts/CONTRACT_SURFACE_MANIFEST_v1.json",
+      "sha256": "8f179f640d294056909050c545655887a7ed449ed1b447cee20083516f1629ba"
+    },
+    {
+      "bytes": 1285,
+      "path": "docs/contracts/Contract_Markers_v1.0.md",
+      "sha256": "374e2d886a2767d67393131b32d2fc9d031fbd8c565eb85bce705678649836cf"
+    },
+    {
+      "bytes": 698,
+      "path": "docs/contracts/README.md",
+      "sha256": "8b8e454780ac201e32b7676c590b3e884ae85030dba9d1dfe1a88be6b2be08b2"
+    },
+    {
+      "bytes": 2803,
+      "path": "docs/contracts/golden_path_output_contract_v1.md",
+      "sha256": "96efcf997b94600eb9c5ca184729c34a8ad178dfeef7ba973cf0afe0215f1186"
+    },
+    {
+      "bytes": 3618,
+      "path": "docs/contracts/rivalry_chronicle_contract_output_v1.md",
+      "sha256": "eea630428a1dcefd2a29f9deaca73769b003b3325db67cab238274fcf6cf48e9"
+    }
+  ],
+  "root": "docs/contracts",
+  "version": 1
+}
