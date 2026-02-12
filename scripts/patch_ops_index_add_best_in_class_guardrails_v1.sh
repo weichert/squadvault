@@ -6,7 +6,7 @@ echo "=== Patch: ops index add best-in-class guardrails (v1) ==="
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-python -m py_compile scripts/_patch_ops_index_add_best_in_class_guardrails_v1.py
-python scripts/_patch_ops_index_add_best_in_class_guardrails_v1.py
+./scripts/py -m py_compile scripts/_patch_ops_index_add_best_in_class_guardrails_v1.py
+./scripts/py scripts/_patch_ops_index_add_best_in_class_guardrails_v1.py
 
 echo "OK"
