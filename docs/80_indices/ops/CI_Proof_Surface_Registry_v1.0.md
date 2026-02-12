@@ -89,10 +89,12 @@ This registry is intentionally boring and auditable.
 
 <!-- PROOF_SURFACE_REGISTRY_LOCAL_PROOFS_v1_END -->
 <!-- SV_CI_EXECUTION_EXEMPT_v1_BEGIN -->
+
 - scripts/prove_creative_sharepack_determinism_v1.sh
 scripts/prove_local_clean_then_ci_v3.sh # local-only: developer workflow proof (not executed in CI)
 scripts/prove_local_shell_hygiene_v1.sh # local-only: interactive shell hygiene proof (not executed in CI)
 scripts/prove_pytest_does_not_dirty_fixture_db_v1.sh
+
 <!-- SV_CI_EXECUTION_EXEMPT_v1_END -->
 
 <!-- SV_RULE_GATE_VS_PROOF_BOUNDARY_v1_BEGIN -->
