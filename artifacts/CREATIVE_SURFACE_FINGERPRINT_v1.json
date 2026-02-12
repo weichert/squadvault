@@ -1,8 +1,45 @@
 {
-  "file_count": 0,
-  "files": [],
+  "file_count": 7,
+  "files": [
+    {
+      "bytes": 1265,
+      "path": "artifacts/exports/70985/2024/week_06/assembly_plain_v1__approved_v01.md",
+      "sha256": "68b41b90a2ad387e21dc7d761b6d3cac160a63c7a4f7fea353de7e37a8e0e547"
+    },
+    {
+      "bytes": 1400,
+      "path": "artifacts/exports/70985/2024/week_06/assembly_sharepack_v1__approved_v01.md",
+      "sha256": "a4a127d8b95d333cf18e119eb830b11587621f1ad54ff052f1176c13122ad92c"
+    },
+    {
+      "bytes": 355,
+      "path": "artifacts/creative/70985/2024/week_06/sharepack_v1/README.md",
+      "sha256": "2cf94e48f32e1a55c70538378a05b2e44b08cb064bd30f6960de9fb116a5df37"
+    },
+    {
+      "bytes": 1004,
+      "path": "artifacts/creative/70985/2024/week_06/sharepack_v1/commentary_short_v1.md",
+      "sha256": "4bd11334f9c7639ec3d82ed7808135384600eeb77bf6c984bb7a1ef0e9b707bd"
+    },
+    {
+      "bytes": 763,
+      "path": "artifacts/creative/70985/2024/week_06/sharepack_v1/manifest_v1.json",
+      "sha256": "6f3810924c1aa0b7cebdef2261d3fdd2b8355ba514c507715dd8e554a4ff544e"
+    },
+    {
+      "bytes": 1327,
+      "path": "artifacts/creative/70985/2024/week_06/sharepack_v1/memes_caption_set_v1.md",
+      "sha256": "19968437cfec2e2a325c3b4595b1d120c0104c989da9115f6a5b5b1a8c037888"
+    },
+    {
+      "bytes": 701,
+      "path": "artifacts/creative/70985/2024/week_06/sharepack_v1/stats_fun_facts_v1.md",
+      "sha256": "ad4c06612a83fc0542c41d34353c1c5dbe9755234664c416479eabe535ec9705"
+    }
+  ],
   "roots": [
-    "artifacts/exports"
+    "artifacts/exports",
+    "artifacts/creative"
   ],
   "version": 1
 }
