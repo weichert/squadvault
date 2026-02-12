@@ -1,5 +1,5 @@
 {
-  "file_count": 4,
+  "file_count": 5,
   "files": [
     {
       "bytes": 1285,
@@ -10,6 +10,11 @@
       "bytes": 758,
       "path": "docs/contracts/README.md",
       "sha256": "edf9d7b33262dbf491a61c088bf3e74d65ff4106ec40179b3eaf2fc81695af89"
+    },
+    {
+      "bytes": 1765,
+      "path": "docs/contracts/creative_sharepack_output_contract_v1.md",
+      "sha256": "045a34d532fcf985af048943337f0376b0e8bd74464b05bad97598fcdf40d50c"
     },
     {
       "bytes": 2803,
