@@ -241,3 +241,10 @@ PATCHER=scripts/_patch_docs_rewrite_moved_contract_card_refs_v1.py{PATCHER}
 
 # local-only CI helpers
 scripts/ci_watch_and_diagnose_run_v*.sh
+
+# --- SV_CANONICAL_ARTIFACTS_ALLOWLIST_v1_BEGIN ---
+# Keep artifacts ignored by default, but track the canonical creative fingerprint.
+!artifacts/
+artifacts/**
+!artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json
+# --- SV_CANONICAL_ARTIFACTS_ALLOWLIST_v1_END ---
