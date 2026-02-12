@@ -99,7 +99,19 @@ clean_outputs() {
   # IMPORTANT: Only delete inside known output roots, never elsewhere.
   for root in "${existing[@]}"; do
     # Keep directories, remove files.
-    find "${REPO_ROOT}/${root}" -type f -print0 | xargs -0 rm -f
+# --- SV_PRESERVE_CREATIVE_FINGERPRINT_ON_CLEAN_OUTPUTS_v1_BEGIN ---
+    fingerprint_rel="artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json"
+    fingerprint_abs="${REPO_ROOT}/${fingerprint_rel}"
+
+    # Keep directories, remove files — but preserve the tracked canonical fingerprint.
+    if [[ "${root}" == "artifacts" ]]; then
+      find "${REPO_ROOT}/${root}" -type f \
+        ! -path "${fingerprint_abs}" \
+        -print0 | xargs -0 rm -f
+    else
+      find "${REPO_ROOT}/${root}" -type f -print0 | xargs -0 rm -f
+    fi
+# --- SV_PRESERVE_CREATIVE_FINGERPRINT_ON_CLEAN_OUTPUTS_v1_END ---
   done
 }
 
