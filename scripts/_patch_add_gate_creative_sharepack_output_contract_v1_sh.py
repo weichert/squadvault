@@ -3,46 +3,7 @@ from pathlib import Path
 
 TARGET = Path("scripts/gate_creative_sharepack_output_contract_v1.sh")
 
-GATE_TEXT = """#!/usr/bin/env bash
-set -euo pipefail
-cd "$(git rev-parse --show-toplevel)"
-
-echo "=== Gate: creative sharepack output contract (v1) ==="
-
-league_id="${SV_LEAGUE_ID:-${LEAGUE_ID:-${SQUADVAULT_LEAGUE_ID:-}}}"
-season="${SV_SEASON:-${SEASON:-${SQUADVAULT_SEASON:-}}}"
-week_index="${SV_WEEK_INDEX:-${WEEK_INDEX:-${SQUADVAULT_WEEK_INDEX:-}}}"
-
-if [[ -z "${league_id}" || -z "${season}" || -z "${week_index}" ]]; then
-  echo "ERROR: missing required env inputs for gate."
-  exit 1
-fi
-
-week_dir="week_$(printf '%02d' "${week_index}")"
-root="artifacts/creative/${league_id}/${season}/${week_dir}/sharepack_v1"
-
-if [[ ! -d "${root}" ]]; then
-  echo "ERROR: sharepack root missing: ${root}"
-  exit 1
-fi
-
-required_files=(
-  "README.md"
-  "memes_caption_set_v1.md"
-  "commentary_short_v1.md"
-  "stats_fun_facts_v1.md"
-  "manifest_v1.json"
-)
-
-for f in "${required_files[@]}"; do
-  if [[ ! -f "${root}/${f}" ]]; then
-    echo "ERROR: missing required file: ${root}/${f}"
-    exit 1
-  fi
-done
-
-echo "OK"
-"""
+GATE_TEXT = '#!/usr/bin/env bash\nset -euo pipefail\n\n# CWD independence: anchor repo root from this script\'s location (no git required).\nscript_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\nrepo_root="$(cd "${script_dir}/.." && pwd)"\ncd "${repo_root}"\n\necho "=== Gate: creative sharepack output contract (v1) ==="\n\nleague_id="${SV_LEAGUE_ID:-${LEAGUE_ID:-${SQUADVAULT_LEAGUE_ID:-}}}"\nseason="${SV_SEASON:-${SEASON:-${SQUADVAULT_SEASON:-}}}"\nweek_index="${SV_WEEK_INDEX:-${WEEK_INDEX:-${SQUADVAULT_WEEK_INDEX:-}}}"\n\nif [[ -z "${league_id}" || -z "${season}" || -z "${week_index}" ]]; then\n  echo "ERROR: missing required env inputs for gate."\n  echo "Set SV_LEAGUE_ID (or LEAGUE_ID), SV_SEASON (or SEASON), SV_WEEK_INDEX (or WEEK_INDEX)."\n  exit 1\nfi\n\nif ! [[ "${season}" =~ ^[0-9]+$ ]]; then\n  echo "ERROR: season must be an integer, got: ${season}"\n  exit 1\nfi\n\nif ! [[ "${week_index}" =~ ^[0-9]+$ ]]; then\n  echo "ERROR: week_index must be an integer, got: ${week_index}"\n  exit 1\nfi\n\nif (( week_index < 0 || week_index > 99 )); then\n  echo "ERROR: week_index out of range 0..99: ${week_index}"\n  exit 1\nfi\n\nweek_dir="week_$(printf \'%02d\' "${week_index}")"\nroot="artifacts/creative/${league_id}/${season}/${week_dir}/sharepack_v1"\n\nif [[ ! -d "${root}" ]]; then\n  echo "ERROR: sharepack root missing: ${root}"\n  echo "Hint: run generator first:"\n  echo "  ./scripts/py scripts/gen_creative_sharepack_v1.py --league-id \\"${league_id}\\" --season \\"${season}\\" --week-index \\"${week_index}\\""\n  exit 1\nfi\n\nrequired_files=(\n  "README.md"\n  "memes_caption_set_v1.md"\n  "commentary_short_v1.md"\n  "stats_fun_facts_v1.md"\n  "manifest_v1.json"\n)\n\necho "==> [1] Required files present"\nfor f in "${required_files[@]}"; do\n  if [[ ! -f "${root}/${f}" ]]; then\n    echo "ERROR: missing required file: ${root}/${f}"\n    exit 1\n  fi\ndone\n\necho "==> [2] No extra files (only required files allowed)"\n\ntmp_a="$(mktemp)"\ntmp_e="$(mktemp)"\ntrap \'rm -f "$tmp_a" "$tmp_e"\' EXIT\n\n(cd "${root}" && find . -type f -print | sed -E \'s|^\\./||\' | LC_ALL=C sort) >"$tmp_a"\n(printf "%s\\n" "${required_files[@]}" | LC_ALL=C sort) >"$tmp_e"\n\nif ! diff -u "$tmp_e" "$tmp_a" >/dev/null; then\n  echo "ERROR: unexpected files under sharepack root (or missing files)."\n  echo "Diff expected vs actual:"\n  diff -u "$tmp_e" "$tmp_a" || true\n  exit 1\nfi\n\necho "==> [3] Validate manifest matches bytes + sha256"\nROOT_PATH="${root}" python - <<\'PY\'\nfrom __future__ import annotations\n\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\n\nroot = os.environ.get("ROOT_PATH")\nif not root:\n    raise SystemExit("ERROR: ROOT_PATH env not set")\nrootp = Path(root)\n\nmanifest_path = rootp / "manifest_v1.json"\ndata = json.loads(manifest_path.read_text(encoding="utf-8"))\n\nif data.get("version") != "v1":\n    raise SystemExit("ERROR: manifest version must be \'v1\'")\nif data.get("root") != "sharepack_v1":\n    raise SystemExit("ERROR: manifest root must be \'sharepack_v1\'")\n\nfiles = data.get("files")\nif not isinstance(files, list):\n    raise SystemExit("ERROR: manifest files must be a list")\n\nseen_paths: list[str] = []\nfor entry in files:\n    if not isinstance(entry, dict):\n        raise SystemExit("ERROR: manifest file entries must be objects")\n    path = entry.get("path")\n    sha256 = entry.get("sha256")\n    bsz = entry.get("bytes")\n    if not isinstance(path, str) or not path:\n        raise SystemExit("ERROR: manifest entry missing path")\n    if not isinstance(sha256, str) or len(sha256) != 64:\n        raise SystemExit(f"ERROR: manifest entry sha256 invalid for {path}")\n    if not isinstance(bsz, int) or bsz < 0:\n        raise SystemExit(f"ERROR: manifest entry bytes invalid for {path}")\n    seen_paths.append(path)\n\nrequired = {"README.md", "memes_caption_set_v1.md", "commentary_short_v1.md", "stats_fun_facts_v1.md"}\nif set(seen_paths) != required:\n    raise SystemExit(f"ERROR: manifest files set mismatch. expected={sorted(required)} actual={sorted(set(seen_paths))}")\n\nif seen_paths != sorted(seen_paths):\n    raise SystemExit("ERROR: manifest files not sorted lexicographically by path")\n\nfor path in seen_paths:\n    p = rootp / path\n    b = p.read_bytes()\n    h = hashlib.sha256(b).hexdigest()\n    size = len(b)\n    ent = next(e for e in files if e["path"] == path)\n    if ent["sha256"] != h:\n        raise SystemExit(f"ERROR: sha256 mismatch for {path}")\n    if ent["bytes"] != size:\n        raise SystemExit(f"ERROR: bytes mismatch for {path}")\n\nprint("OK: manifest validated")\nPY\n\necho "OK"\n'
 
 def main() -> None:
     TARGET.parent.mkdir(parents=True, exist_ok=True)
