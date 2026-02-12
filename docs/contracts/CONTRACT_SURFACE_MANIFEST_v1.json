@@ -1,11 +1,6 @@
 {
-  "file_count": 5,
+  "file_count": 4,
   "files": [
-    {
-      "bytes": 969,
-      "path": "docs/contracts/CONTRACT_SURFACE_MANIFEST_v1.json",
-      "sha256": "ea03224fce151f610029d4352b8bec4d1a3ac67ad7e8a21a363055d1d2177ca8"
-    },
     {
       "bytes": 1285,
       "path": "docs/contracts/Contract_Markers_v1.0.md",

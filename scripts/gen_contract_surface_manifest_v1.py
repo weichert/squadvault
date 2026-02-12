@@ -24,8 +24,10 @@ def main() -> None:
     for p in sorted(CONTRACT_DIR.rglob("*")):
         if p.is_dir():
             continue
+        # IMPORTANT: exclude the manifest itself to avoid self-referential drift
+        if p.resolve() == OUT.resolve():
+            continue
         rel = p.relative_to(REPO_ROOT).as_posix()
-        # include everything under docs/contracts (manifest should be explicit)
         files.append(
             {
                 "path": rel,
