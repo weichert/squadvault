@@ -29,6 +29,7 @@ DESC: dict[str, str] = {    "scripts/gate_creative_surface_registry_parity_v1.sh
     "scripts/gate_proof_suite_completeness_v1.sh": "Enforce proof runners match registry exactly (v1)",
     "scripts/gate_rivalry_chronicle_output_contract_v1.sh": "Enforce Rivalry Chronicle export conforms to output contract (v1)",
 
+    "scripts/gate_creative_surface_registry_usage_v1.sh": "CI guardrails gate: enforce Creative Surface registry usage (v1)",
 }
 
 def main() -> None:
