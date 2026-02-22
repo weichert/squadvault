@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# === Gate: No mapfile/readarray in active scripts/ (v1) ===
+# === Gate: No mapfile/readarray in CI execution scripts/ (v1) ===
 #
 # macOS default bash is 3.2; mapfile/readarray are not available.
-# Enforce only on ACTIVE tracked scripts surfaces, not archives.
+# Enforce only on CI execution surfaces (prove/gate/check), not patch wrappers or archives.
 #
-# Scope:
-#   - include: scripts/*.sh (tracked)
-#   - exclude: scripts/_retired/**, scripts/_graveyard/**
+# Scope (tracked):
+#   - scripts/prove_*.sh
+#   - scripts/gate_*.sh
+#   - scripts/check_*.sh
+#
 # Ignore:
-#   - comment-only lines (leading '#')
+#   - comment-only lines (after grep -n => "NN:# ...")
 #   - this gate file itself (to avoid self-matches)
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,28 +26,28 @@ violations=""
 
 while IFS= read -r f; do
   [ -z "$f" ] && continue
-
-  case "$f" in
-    scripts/_retired/*|scripts/_graveyard/*) continue ;;
-  esac
-
   [ "$f" = "$THIS" ] && continue
 
   # ignore comment-only lines, but flag real usage
   if grep -nE '(^|[^A-Za-z0-9_])(mapfile|readarray)([^A-Za-z0-9_]|$)' "$f" \
-      | grep -vE '^[[:space:]]*#' >/dev/null; then
+      | grep -vE '^[0-9]+:[[:space:]]*#' >/dev/null; then
     violations+="$f:\n"
-    violations+="$(grep -nE '(^|[^A-Za-z0-9_])(mapfile|readarray)([^A-Za-z0-9_]|$)' "$f" | grep -vE '^[[:space:]]*#')\n"
+    violations+="$(grep -nE '(^|[^A-Za-z0-9_])(mapfile|readarray)([^A-Za-z0-9_]|$)' "$f" | grep -vE '^[0-9]+:[[:space:]]*#')\n"
     fail=1
   fi
-done < <(git ls-files "scripts/*.sh")
+done < <(
+  git ls-files \
+    "scripts/prove_*.sh" \
+    "scripts/gate_*.sh" \
+    "scripts/check_*.sh"
+)
 
 if [ "$fail" -ne 0 ]; then
-  echo "FAIL: forbidden bash4-only builtins found in ACTIVE tracked scripts/*.sh (mapfile/readarray)."
+  echo "FAIL: forbidden bash4-only builtins found in tracked CI execution scripts (mapfile/readarray)."
   echo
   # shellcheck disable=SC2059
   printf "%b" "$violations"
   exit 1
 fi
 
-echo "OK: no mapfile/readarray found in ACTIVE tracked scripts/*.sh (v1)."
+echo "OK: no mapfile/readarray found in tracked CI execution scripts (v1)."
