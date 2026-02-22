@@ -21,7 +21,10 @@ cd "$REPO_ROOT"
 fail=0
 violations=""
 
-mapfile -t TARGETS < <(
+TARGETS=()
+while IFS= read -r f; do
+  [ -n "$f" ] && TARGETS+=("$f")
+done < <(
   git ls-files \
     "scripts/prove_*.sh" \
     "scripts/gate_*.sh" \
