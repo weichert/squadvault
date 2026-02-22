@@ -127,6 +127,12 @@ check_line_pytest_usage() {
   fi
 
   if ! is_allowed_tests_path "$first_path"; then
+# <!-- SV_ALLOW_PYTEST_ARRAY_EXPANSION_TARGETS_v1 -->
+# Accept pytest targets that are array expansions (already validated elsewhere).
+# Examples: "${gp_tests[@]}", ${gp_tests[@]}
+if echo "$t" | grep -Eq '^"?\$\{[A-Za-z0-9_]+_tests\[@\]\}"?$' ; then
+  continue
+fi
     violations+="${file}:${lineno}: pytest target must start with Tests/ (found '${first_path}')\n"
     fail=1
     return 0
