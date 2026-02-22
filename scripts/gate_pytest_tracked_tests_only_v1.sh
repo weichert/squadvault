@@ -131,7 +131,7 @@ check_line_pytest_usage() {
 # Accept pytest targets that are array expansions (already validated elsewhere).
 # Examples: "${gp_tests[@]}", ${gp_tests[@]}
 sv_tok="${t-${tok-${arg-${target-${raw-}}}}}"
-if [ -n "${sv_tok-}" ] && echo "${sv_tok-}" | grep -Eq '^['"'"']*\$\{[A-Za-z0-9_]+_tests\[@\]\}['"'"']*$' ; then
+if [ -n "${sv_tok-}" ] && echo "${sv_tok-}" | grep -Eq "^[\"\']*\$\{[A-Za-z0-9_]+_tests\[@\]\}[\"\']*$" ; then
   continue
 fi
     violations+="${file}:${lineno}: pytest target must start with Tests/ (found '${first_path}')\n"
