@@ -5,6 +5,61 @@ import subprocess
 from pathlib import Path
 
 
+
+# SV_CREATIVE_SURFACE_SCOPE_V1
+#
+# Creative Surface Fingerprint Scope (v1)
+#
+# Purpose:
+# - Make the Creative Surface explicitly scope-controlled (NOT "all git ls-files").
+# - Prevent unrelated tracked files (e.g., ops indices, tests, caches) from influencing the fingerprint.
+#
+# Include (allowlist):
+# - scripts/gen_*
+# - scripts/gate_creative_*
+# - docs/contracts/creative_*
+# - artifacts/exports/** (ONLY if git-tracked; runtime subpaths defensively excluded)
+#
+# Exclude (denylist, defensive):
+# - docs/80_indices/**
+# - **/__pycache__/** and *.pyc
+# - tests/**, test/**, Testing/**
+# - artifacts/exports/**/runtime/**, artifacts/exports/**/_runtime/**, artifacts/exports/**/tmp/**
+#
+# Determinism:
+# - Normalize to POSIX-style strings.
+# - Filter by allowlist/denylist.
+# - Sort lexicographically.
+#
+# NOTE:
+# - We still source from git-tracked inputs (`git ls-files`) but the allowlist is the authority.
+
+def _sv_is_allowed_creative_surface_path_v1(p: str) -> bool:
+    p = p.replace("\\", "/")
+
+    # defensive excludes
+    if "/__pycache__/" in p or p.endswith(".pyc"):
+        return False
+    if p.startswith("docs/80_indices/"):
+        return False
+    if p.startswith("tests/") or p.startswith("test/") or p.startswith("Testing/"):
+        return False
+
+    if p.startswith("artifacts/exports/"):
+        if "/runtime/" in p or "/_runtime/" in p or "/tmp/" in p:
+            return False
+        return True
+
+    # allowlist
+    if p.startswith("scripts/gen_"):
+        return True
+    if p.startswith("scripts/gate_creative_"):
+        return True
+    if p.startswith("docs/contracts/creative_"):
+        return True
+
+    return False
+
 OUT = Path("artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json")
 
 
@@ -32,7 +87,7 @@ def _read_prev_payload() -> dict:
 
 
 def main() -> None:
-    files = _git_ls_files()
+    files = sorted(p for p in _git_ls_files() if _sv_is_allowed_creative_surface_path_v1(p))
     files_n = len(files)
 
     payload = _read_prev_payload()
