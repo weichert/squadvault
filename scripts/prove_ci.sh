@@ -257,6 +257,8 @@ bash scripts/check_shell_syntax.sh
 bash scripts/check_shims_compliance.sh
 bash scripts/check_no_memory_reads.sh
 
+echo "=== Gate: Pytest must only target tracked Tests/ (v1) ==="
+bash scripts/gate_pytest_tracked_tests_only_v1.sh
 bash scripts/check_no_pytest_directory_invocation.sh
 # === SV_ANCHOR: docs_gates (v1) ===
 
