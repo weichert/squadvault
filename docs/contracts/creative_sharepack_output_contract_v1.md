@@ -45,6 +45,9 @@ Notes:
 - Non-breaking additions are allowed if existing required files remain unchanged in name/location.
 
 ## Enforced By
+<!-- SV_ENFORCED_BY_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_GATE_v1_BEGIN -->
+- `scripts/gate_creative_surface_fingerprint_canonical_v1.sh` — Enforce creative surface fingerprint artifact canonical (v1)
+<!-- SV_ENFORCED_BY_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_GATE_v1_END -->
 
 (If/when wired)
 - A gate script should validate presence + basic invariants for required files.

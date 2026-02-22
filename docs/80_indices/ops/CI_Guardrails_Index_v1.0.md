@@ -255,6 +255,9 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_ci_runtime_envelope_v1.sh — CI runtime envelope: budget + proof-count drift guard (v1)
 - scripts/gate_contract_surface_manifest_hash_v1.sh — Contracts: manifest hash exactness gate (v1)
 - scripts/gate_creative_surface_fingerprint_v1.sh — Creative surface fingerprint canonical gate (v1)
+<!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_BEGIN -->
+- scripts/gate_creative_surface_fingerprint_canonical_v1.sh — Enforce creative surface fingerprint artifact canonical (v1)
+<!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_END -->
 - scripts/gate_meta_surface_parity_v1.sh — Meta: surface parity aggregator gate (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
