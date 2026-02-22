@@ -295,6 +295,10 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- SV_CREATIVE_SHAREPACK_GUARDRAILS_v1_BEGIN -->
 - scripts/gate_creative_sharepack_output_contract_v1.sh — Gate: creative sharepack output contract (v1)
 - scripts/prove_creative_sharepack_determinism_v1.sh — Proof: creative sharepack determinism (v1)
+<!-- SV_CREATIVE_SURFACE_REGISTRY_DOC_ENTRY_v1 -->
+- **Creative Surface Registry**  
+  `docs/80_indices/ops/Creative_Surface_Registry_v1.0.md`
+
 <!-- SV_CREATIVE_SHAREPACK_GUARDRAILS_v1_END -->
 
 

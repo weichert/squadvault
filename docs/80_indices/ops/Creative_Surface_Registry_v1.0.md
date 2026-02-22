@@ -1,22 +1,19 @@
-# Creative Surface Registry (v1.0)
+# Creative Surface Registry v1.0
 
-Status: CANONICAL (registry)
+This document is a **machine-indexed registry surface** for the Creative Surface.
 
-This registry lists canonical Creative Surface runners, gates, and proofs.
-It exists to make creative generation **discoverable** and CI-enforceable.
+<!-- SV_CREATIVE_SURFACE_REGISTRY_V1_BEGIN -->
+## Canonical Surfaces
 
-## How to run (local)
+- **Fingerprint generator**: `scripts/gen_creative_surface_fingerprint_v1.py`
+- **Canonical fingerprint artifact**: `artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json`
+- **Canonical gate**: `scripts/gate_creative_surface_fingerprint_canonical_v1.sh`
+- **Related contract**: `docs/contracts/creative_sharepack_output_contract_v1.md`
 
-This phase is wired later into CI; for now, planned entrypoints:
+## Scope (authoritative)
 
-- Generator: `scripts/gen_creative_sharepack_v1.py`
-- Gate: `scripts/gate_creative_sharepack_output_contract_v1.sh`
-- Proof: `scripts/prove_creative_sharepack_determinism_v1.sh`
+The Creative Surface Fingerprint is computed from git-tracked paths, then restricted by an explicit scope allowlist/denylist in:
 
-## Registry Entries
+- `scripts/gen_creative_surface_fingerprint_v1.py` (`SV_CREATIVE_SURFACE_SCOPE_V1`)
 
-<!-- SV_CREATIVE_SURFACE_REGISTRY_ENTRIES_v1_BEGIN -->
-- `scripts/gen_creative_sharepack_v1.py` — Generate creative sharepack bundle (v1)
-- `scripts/gate_creative_sharepack_output_contract_v1.sh` — Gate: creative sharepack output contract (v1)
-- `scripts/prove_creative_sharepack_determinism_v1.sh` — Proof: creative sharepack determinism (v1)
-<!-- SV_CREATIVE_SURFACE_REGISTRY_ENTRIES_v1_END -->
+<!-- SV_CREATIVE_SURFACE_REGISTRY_V1_END -->
