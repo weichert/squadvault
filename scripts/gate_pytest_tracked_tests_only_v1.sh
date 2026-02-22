@@ -130,7 +130,7 @@ check_line_pytest_usage() {
 # <!-- SV_ALLOW_PYTEST_ARRAY_EXPANSION_TARGETS_v1 -->
 # Accept pytest targets that are array expansions (already validated elsewhere).
 # Examples: "${gp_tests[@]}", ${gp_tests[@]}
-sv_tok="${t-${tok-${arg-${target-${raw-}}}}}"
+sv_tok="${first_path-${t-${tok-${arg-${target-${raw-}}}}}}"
 if [ -n "${sv_tok-}" ] && echo "${sv_tok-}" | grep -Eq "^[\"\']*\$\{[A-Za-z0-9_]+_tests\[@\]\}[\"\']*$" ; then
   continue
 fi
