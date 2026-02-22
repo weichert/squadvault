@@ -260,6 +260,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_END -->
 - scripts/gate_meta_surface_parity_v1.sh — Meta: surface parity aggregator gate (v1)
 - scripts/gate_creative_surface_registry_parity_v1.sh — Creative Surface Registry parity gate (v1)
+- scripts/gate_creative_surface_registry_discoverability_v1.sh
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
@@ -298,9 +299,13 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/prove_creative_sharepack_determinism_v1.sh — Proof: creative sharepack determinism (v1)
 <!-- SV_CREATIVE_SURFACE_REGISTRY_DOC_ENTRY_v1 -->
 - **Creative Surface Registry**  
-  `docs/80_indices/ops/Creative_Surface_Registry_v1.0.md`
+
+<!-- SV_CREATIVE_SURFACE_REGISTRY_DISCOVERABILITY_v1_BEGIN -->
+<!-- SV_CREATIVE_SURFACE_REGISTRY: v1 -->
+- docs/80_indices/ops/Creative_Surface_Registry_v1.0.md — Creative Surface Registry (canonical pointers) (v1)
+<!-- SV_CREATIVE_SURFACE_REGISTRY_DISCOVERABILITY_v1_END -->
+
 <!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_REGISTRY_PARITY_v1 -->
-- scripts/gate_creative_surface_registry_parity_v1.sh — Creative Surface Registry parity gate (v1)
 
 <!-- SV_CREATIVE_SHAREPACK_GUARDRAILS_v1_END -->
 
