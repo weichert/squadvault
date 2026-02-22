@@ -259,6 +259,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_creative_surface_fingerprint_canonical_v1.sh — Enforce creative surface fingerprint artifact canonical (v1)
 <!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_END -->
 - scripts/gate_meta_surface_parity_v1.sh — Meta: surface parity aggregator gate (v1)
+- scripts/gate_creative_surface_registry_parity_v1.sh — Creative Surface Registry parity gate (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
