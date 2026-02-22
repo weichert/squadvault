@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# SV_IDEMPOTENCE_MODE guard: allowlisted wrappers must be NOOP
+if [ "${SV_IDEMPOTENCE_MODE:-0}" = "1" ]; then
+  echo "OK: idempotence mode: skipping CI guardrails autofill descriptions patch (v1)"
+  exit 0
+fi
+
 echo "=== Patch: fill CI Guardrails ops index autofill descriptions (v1) ==="
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
