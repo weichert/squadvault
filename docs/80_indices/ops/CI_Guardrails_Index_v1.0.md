@@ -232,7 +232,6 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_contracts_index_discoverability_v1.sh — Enforce docs/contracts/README.md indexes all versioned contracts (v1)
 - scripts/gate_creative_surface_fingerprint_canonical_v1.sh — Enforce creative surface fingerprint artifact canonical (v1)
 - scripts/gate_creative_surface_fingerprint_v1.sh — Creative surface fingerprint canonical gate (v1)
-- scripts/gate_creative_surface_registry_discoverability_v1.sh
 - scripts/gate_creative_surface_registry_parity_v1.sh — Creative Surface Registry parity gate (v1)
 - scripts/gate_creative_surface_registry_usage_v1.sh — CI guardrails gate: enforce Creative Surface registry usage (v1)
 - scripts/gate_cwd_independence_shims_v1.sh — CWD independence (shims) gate (v1)
@@ -252,16 +251,17 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — Enforce patch-wrapper allowlist is canonical + safe (v1)
 - scripts/gate_proof_suite_completeness_v1.sh — Enforce proof runners match registry exactly (v1)
 - scripts/gate_proof_surface_registry_excludes_gates_v1.sh — Gate vs proof boundary: enforce Proof Surface Registry excludes scripts/gate_*.sh (v1)
+- scripts/gate_pytest_tracked_tests_only_v1.sh — Pytest must only target tracked Tests/ paths (v1)
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Rivalry Chronicle contract doc linkage gate (v1)
 - scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce Rivalry Chronicle export conforms to output contract (v1)
 - scripts/gate_standard_show_input_need_coverage_v1.sh — Enforce deterministic InputNeed coverage baseline for STANDARD_SHOW_V1 (v1)
 - scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness: proofs must not mutate repo state (per-proof + end-of-run) (v1)
 - scripts/prove_pytest_does_not_dirty_fixture_db_v1.sh — Proof: CI run does not mutate fixtures/ci_squadvault.sqlite (v1)
+- scripts/gate_creative_surface_registry_discoverability_v1.sh
 <!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_BEGIN -->
 <!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_END -->
 <!-- SV_CI_WORKTREE_CLEANLINESS: v1 -->
 <!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
-- **Pytest must only target tracked `Tests/` paths (v1)** → `scripts/gate_pytest_tracked_tests_only_v1.sh`
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
