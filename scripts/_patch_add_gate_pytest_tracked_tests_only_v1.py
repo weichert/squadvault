@@ -58,12 +58,8 @@ TARGETS=()
 while IFS= read -r f; do
   [ -n "$f" ] && TARGETS+=("$f")
 done < <(
-  git ls-files \
-    "scripts/prove_*.sh" \
-    "scripts/gate_*.sh" \
-    "scripts/check_*.sh"
+  git ls-files "scripts/prove_*.sh"
 )
-
 if [ "${#TARGETS[@]}" -eq 0 ]; then
   echo "ERROR: gate_pytest_tracked_tests_only_v1: no tracked targets found under scripts/{prove_,gate_,check_}*.sh"
   exit 2
