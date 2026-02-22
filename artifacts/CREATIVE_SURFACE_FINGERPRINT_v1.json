@@ -7,6 +7,7 @@
     "scripts/gate_creative_surface_fingerprint_v1.sh",
     "scripts/gate_creative_surface_registry_discoverability_v1.sh",
     "scripts/gate_creative_surface_registry_parity_v1.sh",
+    "scripts/gate_creative_surface_registry_usage_v1.sh",
     "scripts/gen_contract_surface_manifest_v1.py",
     "scripts/gen_creative_sharepack_v1.py",
     "scripts/gen_creative_surface_fingerprint_v1.py"
