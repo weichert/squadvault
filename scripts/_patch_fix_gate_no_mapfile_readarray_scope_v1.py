@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import stat
 import subprocess
 
@@ -84,82 +85,54 @@ echo "OK: no mapfile/readarray found in ACTIVE tracked scripts/*.sh (v1)."
 """
 
 
-def _ensure_gate() -> None:
+def _patch_gate_file() -> None:
     root = _repo_root()
     rel = "scripts/gate_no_mapfile_readarray_in_scripts_v1.sh"
     p = root / rel
+    if not p.exists():
+        raise SystemExit(f"ERROR: missing {rel}")
+
     desired = _GATE.rstrip() + "\n"
-    if p.exists() and _read(p) == desired:
+    if _read(p) == desired:
         _chmod_x(p)
+        print("OK: gate already canonical (noop).")
         return
+
     _clipwrite(rel, desired)
     _chmod_x(p)
+    print("OK: updated gate scope/ignore rules (v1).")
 
 
-def _wire_prove_ci() -> None:
+def _patch_add_gate_patcher() -> None:
     root = _repo_root()
-    prove = root / "scripts" / "prove_ci.sh"
-    if not prove.exists():
-        raise SystemExit("ERROR: scripts/prove_ci.sh not found")
+    rel = "scripts/_patch_add_gate_no_mapfile_readarray_in_scripts_v1.py"
+    p = root / rel
+    if not p.exists():
+        raise SystemExit(f"ERROR: missing {rel}")
 
-    s = _read(prove)
-    if "scripts/gate_no_mapfile_readarray_in_scripts_v1.sh" in s:
+    s = _read(p)
+    if "Gate: No mapfile/readarray in active scripts/" in s:
+        print("OK: add-gate patcher already contains updated gate text (noop).")
         return
 
-    block = (
-        'echo "=== Gate: No mapfile/readarray in scripts/ (v1) ==="\n'
-        "bash scripts/gate_no_mapfile_readarray_in_scripts_v1.sh\n"
-    )
+    # Replace the raw gate string assignment block conservatively.
+    # We anchor on `_GATE = r"""` and the closing triple-quote.
+    m = re.search(r'(?s)(_GATE\s*=\s*r""")(.+?)(""")', s)
+    if not m:
+        raise SystemExit("ERROR: could not find _GATE raw string in add-gate patcher (unexpected format).")
 
-    lines = s.splitlines(keepends=True)
+    new_gate = "_GATE = r\"\"\"" + _GATE + "\"\"\""
+    s2 = s[: m.start(1)] + new_gate + s[m.end(3) :]
+    if s2 == s:
+        raise SystemExit("ERROR: failed to update add-gate patcher gate text (no change).")
 
-    for i, ln in enumerate(lines):
-        if "gate_no_xtrace_guardrail_v1.sh" in ln:
-            lines.insert(i + 1, block)
-            _clipwrite("scripts/prove_ci.sh", "".join(lines))
-            return
-
-    for i, ln in enumerate(lines):
-        if "== CI Proof Suite ==" in ln:
-            lines.insert(i + 1, block)
-            _clipwrite("scripts/prove_ci.sh", "".join(lines))
-            return
-
-    raise SystemExit("ERROR: no safe insertion point found in prove_ci.sh (refusing).")
-
-
-def _index_ops_guardrails() -> None:
-    root = _repo_root()
-    idx_rel = "docs/80_indices/ops/CI_Guardrails_Index_v1.0.md"
-    idx = root / idx_rel
-    if not idx.exists():
-        raise SystemExit(f"ERROR: missing {idx_rel}")
-
-    begin = "<!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN -->"
-    end = "<!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->"
-
-    s = _read(idx)
-    if begin not in s or end not in s:
-        raise SystemExit("ERROR: bounded entrypoints markers not found (refusing).")
-
-    entry = "- scripts/gate_no_mapfile_readarray_in_scripts_v1.sh — Bash 3.2 compatibility: forbid mapfile/readarray in scripts/ (v1)\n"
-    if entry in s:
-        return
-
-    pre, rest = s.split(begin, 1)
-    mid, post = rest.split(end, 1)
-    if not mid.endswith("\n"):
-        mid += "\n"
-    mid += entry
-    out = pre + begin + mid + end + post
-    _clipwrite(idx_rel, out)
+    _clipwrite(rel, s2)
+    print("OK: updated add-gate patcher gate text to match new scope/ignore rules.")
 
 
 def main() -> int:
-    _ensure_gate()
-    _wire_prove_ci()
-    _index_ops_guardrails()
-    print("OK: added no-mapfile/readarray gate + wiring + index entry (idempotent).")
+    _patch_gate_file()
+    _patch_add_gate_patcher()
     return 0
 
 
