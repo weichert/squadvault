@@ -261,6 +261,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_meta_surface_parity_v1.sh — Meta: surface parity aggregator gate (v1)
 - scripts/gate_creative_surface_registry_parity_v1.sh — Creative Surface Registry parity gate (v1)
 - scripts/gate_creative_surface_registry_discoverability_v1.sh
+- scripts/gate_creative_surface_registry_usage_v1.sh — CI guardrails gate: enforce Creative Surface registry usage (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
