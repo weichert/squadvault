@@ -310,6 +310,7 @@ bash scripts/gate_creative_surface_fingerprint_v1.sh
 
 # Creative surface fingerprint canonical drift gate (v1)
 bash scripts/gate_creative_surface_fingerprint_canonical_v1.sh
+bash scripts/gate_creative_surface_registry_parity_v1.sh
 
 ## (D) Meta surface parity
 bash scripts/gate_meta_surface_parity_v1.sh
