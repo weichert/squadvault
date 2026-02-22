@@ -309,4 +309,8 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 
 <!-- SV_CREATIVE_SHAREPACK_GUARDRAILS_v1_END -->
 
-
+<!-- SV_INDEX_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_BEGIN -->
+- **Gate: Creative Surface Registry Usage (v1)**  
+  Ensures referenced Creative Surface IDs are present in `docs/80_indices/ops/Creative_Surface_Registry_v1.0.md` (canonical registry).  
+  Run: `bash scripts/gate_creative_surface_registry_usage_v1.sh`
+<!-- SV_INDEX_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_END -->

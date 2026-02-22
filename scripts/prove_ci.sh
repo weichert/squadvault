@@ -423,3 +423,8 @@ bash scripts/prove_contract_surface_autosync_noop_v1.sh
 sv_rt_end="$(./scripts/py -c 'import time; print(int(time.time()))')"
 export SV_CI_RUNTIME_SECONDS="$(( sv_rt_end - sv_rt_start ))"
 bash scripts/gate_ci_runtime_envelope_v1.sh
+
+<!-- SV_PROVE_CI_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_BEGIN -->
+echo "=== Gate: Creative Surface registry usage (v1) ==="
+bash scripts/gate_creative_surface_registry_usage_v1.sh
+<!-- SV_PROVE_CI_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_END -->
