@@ -175,7 +175,7 @@ trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
 
 echo "== CI Proof Suite =="
-echo "=== Gate: No mapfile/readarray in scripts/ (v1) ==="
+echo "=== Gate: Bash 3.2 builtin compatibility (v1) ==="
 bash scripts/gate_no_mapfile_readarray_in_scripts_v1.sh
 
 echo "==> Python shim compliance gate"

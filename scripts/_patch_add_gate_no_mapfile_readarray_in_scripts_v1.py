@@ -109,7 +109,7 @@ def _wire_prove_ci() -> None:
         return
 
     block = (
-        'echo "=== Gate: No mapfile/readarray in scripts/ (v1) ==="\n'
+        'echo "=== Gate: Bash 3.2 builtin compatibility (v1) ==="\n'
         "bash scripts/gate_no_mapfile_readarray_in_scripts_v1.sh\n"
     )
 
