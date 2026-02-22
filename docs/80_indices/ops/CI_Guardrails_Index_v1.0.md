@@ -216,52 +216,51 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- PROOF_SUITE_COMPLETENESS_GATE_v1_END -->
 
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN -->
-## CI guardrails entrypoints (bounded)
-
-# NOTE:
-# - This section is enforced by scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
-<!-- SV_CI_WORKTREE_CLEANLINESS: v1 -->
-# - Only list gate/check entrypoints you intend to be validated as discoverable.
 # - Format: `- scripts/<path> — description`
-
+# - Only list gate/check entrypoints you intend to be validated as discoverable.
+# - This section is enforced by scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
+# NOTE:
+## CI guardrails entrypoints (bounded)
 - scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Enforce allowlist patchers insert wrappers in sorted order (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops index ↔ prove_ci gate execution parity (v1)
 - scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — Enforce bounded Ops guardrails entrypoints section + TOC completeness (v2)
 - scripts/gate_ci_proof_surface_registry_exactness_v1.sh — CI Proof Surface Registry exactness: enforce machine-managed list matches tracked scripts/prove_*.sh (v1)
 - scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh — Prove Ops index contains proof-surface registry discoverability marker + bullet (v1)
 - scripts/gate_ci_registry_execution_alignment_v1.sh — Enforce CI proof registry ↔ prove_ci execution alignment (v1)
+- scripts/gate_ci_runtime_envelope_v1.sh — CI runtime envelope: budget + proof-count drift guard (v1)
+- scripts/gate_contract_surface_manifest_hash_v1.sh — Contracts: manifest hash exactness gate (v1)
+- scripts/gate_contracts_index_discoverability_v1.sh — Enforce docs/contracts/README.md indexes all versioned contracts (v1)
+- scripts/gate_creative_surface_fingerprint_canonical_v1.sh — Enforce creative surface fingerprint artifact canonical (v1)
+- scripts/gate_creative_surface_fingerprint_v1.sh — Creative surface fingerprint canonical gate (v1)
+- scripts/gate_creative_surface_registry_discoverability_v1.sh
+- scripts/gate_creative_surface_registry_parity_v1.sh — Creative Surface Registry parity gate (v1)
+- scripts/gate_creative_surface_registry_usage_v1.sh — CI guardrails gate: enforce Creative Surface registry usage (v1)
 - scripts/gate_cwd_independence_shims_v1.sh — CWD independence (shims) gate (v1)
 - scripts/gate_docs_integrity_v2.sh — Docs integrity gate: enforce canonical docs invariants (v2)
 - scripts/gate_docs_mutation_guardrail_v2.sh — Guardrail: proofs must not mutate docs unexpectedly (v2)
 - scripts/gate_enforce_test_db_routing_v1.sh — Enforce CI uses temp working DB copy (fixture immutable) (v1)
+- scripts/gate_meta_surface_parity_v1.sh — Meta: surface parity aggregator gate (v1)
 - scripts/gate_no_bare_chevron_markers_v1.sh — Disallow bare '==>' marker lines in scripts/*.sh (v1)
 - scripts/gate_no_double_scripts_prefix_v2.sh — Disallow 'scripts/scripts/' path invocations (v2)
+- scripts/gate_no_network_in_ci_proofs_v1.sh — Forbid network/package-manager actions in CI proof surfaces (v1)
 - scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh — Reject obsolete allowlist rewrite recovery artifacts (v1)
 - scripts/gate_no_terminal_banner_paste_v1.sh — Detect pasted terminal banner content in scripts/ (v1)
+- scripts/gate_no_test_dir_case_drift_v1.sh — Enforce no test dir case drift (Tests/ vs tests/) (v1)
 - scripts/gate_no_untracked_patch_artifacts_v1.sh — Guardrail: fail if untracked patch artifacts exist (v1)
 - scripts/gate_no_xtrace_v1.sh — No-xtrace guardrail gate (v1)
 - scripts/gate_ops_indices_no_autofill_placeholders_v1.sh — Enforce Ops indices contain no autofill placeholders (v1)
 - scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — Enforce patch-wrapper allowlist is canonical + safe (v1)
 - scripts/gate_proof_suite_completeness_v1.sh — Enforce proof runners match registry exactly (v1)
 - scripts/gate_proof_surface_registry_excludes_gates_v1.sh — Gate vs proof boundary: enforce Proof Surface Registry excludes scripts/gate_*.sh (v1)
-- scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness: proofs must not mutate repo state (per-proof + end-of-run) (v1)
-- scripts/gate_contracts_index_discoverability_v1.sh — Enforce docs/contracts/README.md indexes all versioned contracts (v1)
-- scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce Rivalry Chronicle export conforms to output contract (v1)
-<!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Rivalry Chronicle contract doc linkage gate (v1)
+- scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce Rivalry Chronicle export conforms to output contract (v1)
 - scripts/gate_standard_show_input_need_coverage_v1.sh — Enforce deterministic InputNeed coverage baseline for STANDARD_SHOW_V1 (v1)
-- scripts/gate_no_test_dir_case_drift_v1.sh — Enforce no test dir case drift (Tests/ vs tests/) (v1)
+- scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness: proofs must not mutate repo state (per-proof + end-of-run) (v1)
 - scripts/prove_pytest_does_not_dirty_fixture_db_v1.sh — Proof: CI run does not mutate fixtures/ci_squadvault.sqlite (v1)
-- scripts/gate_ci_runtime_envelope_v1.sh — CI runtime envelope: budget + proof-count drift guard (v1)
-- scripts/gate_contract_surface_manifest_hash_v1.sh — Contracts: manifest hash exactness gate (v1)
-- scripts/gate_creative_surface_fingerprint_v1.sh — Creative surface fingerprint canonical gate (v1)
 <!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_BEGIN -->
-- scripts/gate_creative_surface_fingerprint_canonical_v1.sh — Enforce creative surface fingerprint artifact canonical (v1)
 <!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_END -->
-- scripts/gate_meta_surface_parity_v1.sh — Meta: surface parity aggregator gate (v1)
-- scripts/gate_creative_surface_registry_parity_v1.sh — Creative Surface Registry parity gate (v1)
-- scripts/gate_creative_surface_registry_discoverability_v1.sh
-- scripts/gate_creative_surface_registry_usage_v1.sh — CI guardrails gate: enforce Creative Surface registry usage (v1)
+<!-- SV_CI_WORKTREE_CLEANLINESS: v1 -->
+<!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->

@@ -251,6 +251,7 @@ echo "==> Filesystem ordering determinism gate"
 
 echo "==> Time & timestamp determinism gate"
 ./scripts/check_time_timestamp_determinism.sh
+bash scripts/gate_no_network_in_ci_proofs_v1.sh
 
 bash scripts/check_shell_syntax.sh
 bash scripts/check_shims_compliance.sh
