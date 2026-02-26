@@ -1,4 +1,8 @@
 # CI Milestones
+<!-- SV_CI_MILESTONE_LATEST_v1_BEGIN -->
+**Latest:** 2026-02-26T22:50:02Z — CI: prove_ci clean on main @8669b95 — Ops: add CI milestone log entry (v1)
+<!-- SV_CI_MILESTONE_LATEST_v1_END -->
+
 
 <!-- SV_CI_MILESTONE_LOG_v1_BEGIN -->
 - 2026-02-26T22:50:02Z — CI: prove_ci clean on main @8669b95 — Ops: add CI milestone log entry (v1)
