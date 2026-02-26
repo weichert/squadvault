@@ -266,6 +266,9 @@ bash scripts/check_no_pytest_directory_invocation.sh
 
 # SV_GATE: docs_integrity (v2) begin
 bash scripts/gate_docs_integrity_v2.sh
+
+echo "=== Gate: CI Milestones Latest bounded block (v1) ==="
+bash "$REPO_ROOT/scripts/gate_ci_milestones_latest_block_v1.sh"
 # SV_GATE: docs_integrity (v2) end
 
 # SV_GATE: proof_registry_exactness (v1) begin

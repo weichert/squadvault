@@ -317,3 +317,6 @@ For a given patch family, treat the **highest version wrapper** as the canonical
   Ensures referenced Creative Surface IDs are present in `docs/80_indices/ops/Creative_Surface_Registry_v1.0.md` (canonical registry).  
   Run: `bash scripts/gate_creative_surface_registry_usage_v1.sh`
 <!-- SV_INDEX_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_END -->
+
+## CI Gates
+- CI Milestones Latest bounded block gate (v1) — scripts/gate_ci_milestones_latest_block_v1.sh
