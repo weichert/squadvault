@@ -129,21 +129,21 @@ check_line_pytest_usage() {
   if ! is_allowed_tests_path "$first_path"; then
 # <!-- SV_ALLOW_PYTEST_ARRAY_EXPANSION_TARGETS_v1 -->
 # Allow array-expansion targets like "${gp_tests[@]}" to bypass Tests/ prefix check.
-# Also tolerate optional surrounding quotes: "${...}", '${...}', \"${...}\", \'${...}\'.
+# Tolerate optional surrounding quotes: "${...}", '${...}', \"${...}\", \'${...}\'.
 sv_tok="${first_path-${t-${tok-${arg-${target-${raw-}}}}}}"
 sv_norm="${sv_tok-}"
 for _sv_i in 1 2 3 4; do
   case "$sv_norm" in
     \\\"*\\\") sv_norm="${sv_norm#\\\"}"; sv_norm="${sv_norm%\\\"}";;
     \\\'*\\\') sv_norm="${sv_norm#\\\'}"; sv_norm="${sv_norm%\\\'}";;
-    \"*\")       sv_norm="${sv_norm#\"}";   sv_norm="${sv_norm%\"}";;
-    \'*\')       sv_norm="${sv_norm#\'}";   sv_norm="${sv_norm%\'}";;
+    "*")         sv_norm="${sv_norm#"}";   sv_norm="${sv_norm%"}";;
+    '*')         sv_norm="${sv_norm#\'}";   sv_norm="${sv_norm%\'}";;
     *) break;;
   esac
 done
-if [ -n "${sv_norm-}" ] && echo "${sv_norm-}" | grep -Eq "^\$\{[A-Za-z0-9_]+_tests\[@\]\}$" ; then
-  return 0
-fi
+case "$sv_norm" in
+  \$\{[A-Za-z0-9_]*_tests\[@\]\}) return 0;;
+esac
     violations+="${file}:${lineno}: pytest target must start with Tests/ (found '${first_path}')\n"
     fail=1
     return 0
