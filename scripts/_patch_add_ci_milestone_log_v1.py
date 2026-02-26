@@ -15,13 +15,10 @@ def _git(cmd: list[str]) -> str:
 def main() -> int:
     commit = _git(["git", "rev-parse", "--short", "HEAD"])
     branch = _git(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    subject = _git(["git", "log", "-1", "--pretty=%s"])
     ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    entry = (
-        f"- {ts} — CI: prove_ci clean on {branch} @{commit}; "
-        "removed obsolete pytest gate patch iterations (v9–v14 + scope/no-mapfile); "
-        "all gates/proofs pass; repo clean before/after.\n"
-    )
+    entry = f"- {ts} — CI: prove_ci clean on {branch} @{commit} — {subject}\n"
 
     LOG.parent.mkdir(parents=True, exist_ok=True)
 
@@ -45,13 +42,7 @@ def main() -> int:
     if BEGIN not in s or END not in s:
         raise SystemExit("ERROR: bounded markers missing in CI_MILESTONES.md")
 
-    updated = s.replace(
-        BEGIN,
-        f"{BEGIN}\n{entry}",
-        1,
-    )
-
-    LOG.write_text(updated, encoding="utf-8")
+    LOG.write_text(s.replace(BEGIN, f"{BEGIN}\n{entry}", 1), encoding="utf-8")
     print("OK: appended CI milestone entry.")
     return 0
 
