@@ -131,7 +131,7 @@ check_line_pytest_usage() {
 # Allow array-expansion targets like "${gp_tests[@]}" (optionally quoted) to bypass Tests/ prefix check.
 sv_tok="${first_path-${t-${tok-${arg-${target-${raw-}}}}}}"
 if [ -n "${sv_tok-}" ] && echo "${sv_tok-}" | grep -Eq "^[\"\']*\$\{[A-Za-z0-9_]+_tests\[@\]\}[\"\']*$" ; then
-  continue
+  return 0
 fi
     violations+="${file}:${lineno}: pytest target must start with Tests/ (found '${first_path}')\n"
     fail=1
