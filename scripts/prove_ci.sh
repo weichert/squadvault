@@ -300,6 +300,9 @@ bash scripts/gate_ci_registry_execution_alignment_v1.sh
 # SV_GATE: ci_registry_execution_alignment (v1) end
 
 echo "==> Gate: no double scripts prefix (v2)"
+
+echo "=== Gate: prove_ci uses relative scripts invocations (v1) ==="
+bash scripts/gate_ci_prove_ci_relative_script_invocations_v1.sh
 bash scripts/gate_no_double_scripts_prefix_v2.sh
 
 echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
