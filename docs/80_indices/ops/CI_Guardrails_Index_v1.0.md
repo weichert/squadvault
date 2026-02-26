@@ -264,6 +264,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
 - **Pytest must only target tracked `Tests/` paths (v1)** → `scripts/gate_pytest_tracked_tests_only_v1.sh`
 - scripts/gate_no_mapfile_readarray_in_scripts_v1.sh — Bash 3.2 compatibility: forbid mapfile/readarray in scripts/ (v1)
+- scripts/gate_ci_milestones_latest_block_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
