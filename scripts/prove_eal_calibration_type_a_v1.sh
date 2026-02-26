@@ -71,20 +71,22 @@ fi
 # SV_PATCH: tracked-only pytest list (no tests/ lowercase pass)
 echo "Running tracked EAL tests only (git ls-files)"
 # Filter to canonical Tests/ only (avoid lowercase tests/ duplicates/collisions)
-eal_tests_canon=()
+eal_canon_tests=()
 for p in "${eal_tests[@]}"; do
   case "$p" in
-    Tests/*) eal_tests_canon+=("$p");;
+    Tests/*) eal_canon_tests+=("$p");;
   esac
 done
-if [ "${#eal_tests_canon[@]}" -eq 0 ]; then
+if [ "${#eal_canon_tests[@]}" -eq 0 ]; then
   echo "ERROR: none of the expected EAL test files are tracked under Tests/." >&2
   exit 2
 fi
 # Intentional: unquoted array expansion so gate sees Tests/... as path token
 # shellcheck disable=SC2068
-./scripts/py -m pytest -q ${eal_tests_canon[@]}
+./scripts/py -m pytest -q ${eal_canon_tests[@]}
 # /SV_PATCH: tracked-only pytest list (no tests/ lowercase pass)
+
+
 
 
 
