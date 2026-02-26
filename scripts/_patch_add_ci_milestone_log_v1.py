@@ -18,6 +18,12 @@ def main() -> int:
     subject = _git(["git", "log", "-1", "--pretty=%s"])
     ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
+# <!-- SV_CI_MILESTONE_LOG_REQUIRE_CLEAN_REPO_v1_BEGIN -->
+    # Safety: refuse to write a milestone if the repo is dirty.
+    status = _git(["git", "status", "--porcelain=v1"])
+    if status:
+        raise SystemExit("ERROR: repo is dirty; refuse to write CI milestone.")
+# <!-- SV_CI_MILESTONE_LOG_REQUIRE_CLEAN_REPO_v1_END -->
     entry = f"- {ts} — CI: prove_ci clean on {branch} @{commit} — {subject}\n"
 
     LOG.parent.mkdir(parents=True, exist_ok=True)
