@@ -323,7 +323,7 @@ bash scripts/gate_creative_surface_fingerprint_v1.sh
 bash scripts/gate_creative_surface_fingerprint_canonical_v1.sh
 bash scripts/gate_creative_surface_registry_parity_v1.sh
 echo "=== Gate: Creative Surface Registry discoverability (v1) ==="
-bash "${repo_root_for_gate}/scripts/gate_creative_surface_registry_discoverability_v1.sh"
+bash scripts/gate_creative_surface_registry_discoverability_v1.sh
 
 ## (D) Meta surface parity
 bash scripts/gate_meta_surface_parity_v1.sh
@@ -398,7 +398,9 @@ fi
 
 echo "OK: CI proof suite passed"
 
-echo "== Creative sharepack determinism (conditional) =="\nbash scripts/prove_ci_creative_sharepack_if_available_v1.sh\n
+echo "== Creative sharepack determinism (conditional) =="
+bash scripts/prove_ci_creative_sharepack_if_available_v1.sh
+
 echo "OK: CI working tree remained clean (guardrail enforced)."
 
 # SV_GATE: ops_indices_no_autofill_placeholders (v1) begin
