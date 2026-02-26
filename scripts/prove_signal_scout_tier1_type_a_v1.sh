@@ -23,7 +23,9 @@ echo "    repo_root=${REPO_ROOT}"
       exit 1
     fi
 
-    "${REPO_ROOT}/scripts/py" -m pytest -q "${ss_tests[@]}"
+    # Intentional: unquoted array expansion so gate sees Tests/... as path token
+# shellcheck disable=SC2068
+"${REPO_ROOT}/scripts/py" -m pytest -q ${ss_tests[@]}
   }
 
 # /SV_PATCH: pinned, git-tracked pytest list

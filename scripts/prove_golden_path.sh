@@ -70,7 +70,9 @@ echo "== Tests =="
       exit 1
     fi
 
-    pytest -q "${gp_tests[@]}"
+    # Intentional: unquoted array expansion so gate sees Tests/... as path token
+# shellcheck disable=SC2068
+pytest -q ${gp_tests[@]}
   }
 
 # /SV_PATCH: pinned, git-tracked pytest list
