@@ -136,8 +136,8 @@ for _sv_i in 1 2 3 4; do
   case "$sv_norm" in
     \\\"*\\\") sv_norm="${sv_norm#\\\"}"; sv_norm="${sv_norm%\\\"}";;
     \\\'*\\\') sv_norm="${sv_norm#\\\'}"; sv_norm="${sv_norm%\\\'}";;
-    "*")         sv_norm="${sv_norm#"}";   sv_norm="${sv_norm%"}";;
-    '*')         sv_norm="${sv_norm#\'}";   sv_norm="${sv_norm%\'}";;
+    \"*\")       sv_norm="${sv_norm#\"}";   sv_norm="${sv_norm%\"}";;
+    \'*\')       sv_norm="${sv_norm#\'}";  sv_norm="${sv_norm%\'}";;
     *) break;;
   esac
 done
