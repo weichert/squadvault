@@ -71,6 +71,8 @@ export SQUADVAULT_TEST_DB="${WORK_DB}"
 # Gate: enforce canonical test DB routing (v1)
 bash scripts/gate_enforce_test_db_routing_v1.sh
 
+echo "=== Gate: CI proof runners block sorted (v1) ==="
+bash scripts/gate_ci_proof_runners_block_sorted_v1.sh
 echo "=== Gate: CWD independence (shims) v1 ==="
 repo_root_for_gate="$(
   cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1

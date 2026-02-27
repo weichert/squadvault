@@ -61,10 +61,10 @@ This registry is intentionally boring and auditable.
 ## Proof Runners (invoked by scripts/prove_ci.sh)
 
 <!-- CI_PROOF_RUNNERS_BEGIN -->
-- scripts/prove_contract_surface_autosync_noop_v1.sh — Proof: contract surface autosync no-op on canonical repo (v1)
-- scripts/prove_contract_surface_completeness_v1.sh — Proof: contract surface completeness gate (v1)
-- scripts/prove_creative_determinism_v1.sh — Prove: creative determinism drift guard (v1)
-- scripts/prove_ci_creative_sharepack_if_available_v1.sh — Proof runner (CI): creative sharepack determinism if inputs present (v1)
+- scripts/prove_ci_creative_sharepack_if_available_v1.sh — Proof: contract surface autosync no-op on canonical repo (v1)
+- scripts/prove_contract_surface_autosync_noop_v1.sh — Proof: contract surface completeness gate (v1)
+- scripts/prove_contract_surface_completeness_v1.sh — Prove: creative determinism drift guard (v1)
+- scripts/prove_creative_determinism_v1.sh — Proof runner (CI): creative sharepack determinism if inputs present (v1)
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
 - scripts/prove_eal_calibration_type_a_v1.sh — Proves EAL calibration Type A invariants end-to-end.
 - scripts/prove_golden_path.sh — Proves canonical operator golden path via shims and gates (exports ephemeral by default; set `SV_KEEP_EXPORTS=1` to persist; NAC normalization is non-mutating).
