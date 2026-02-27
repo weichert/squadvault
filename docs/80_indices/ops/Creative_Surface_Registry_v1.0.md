@@ -7,9 +7,10 @@ This document is a **machine-indexed registry surface** for the Creative Surface
 <!-- SV_CREATIVE_SURFACE_REGISTRY_ENTRIES_v1_BEGIN -->
 ## Registry Entries (machine-indexed)
 
-- CREATIVE_SURFACE_REGISTRY_V1
-- CREATIVE_SURFACE_SCOPE_V1
 
+- CREATIVE_SURFACE_REGISTRY_V1
+- CREATIVE_SURFACE_REGISTRY_V1_EN
+- CREATIVE_SURFACE_SCOPE_V1
 <!-- SV_CREATIVE_SURFACE_REGISTRY_ENTRIES_v1_END -->
 
 ## Canonical Surfaces
