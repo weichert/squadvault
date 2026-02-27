@@ -183,7 +183,6 @@ echo "==> Python shim compliance gate"
 echo "==> No-bare-chevron markers gate"
 
 echo "==> No-xtrace guardrail gate"
-./scripts/gate_no_xtrace_v1.sh
 bash scripts/gate_no_bare_chevron_markers_v1.sh
 
 
@@ -198,6 +197,7 @@ bash scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
 echo "==> Gate: patch wrapper idempotence (allowlist) v1"
 # SV_GATE: allowlist_patchers_insert_sorted (v1) begin
 echo "==> Gate: allowlist patchers must insert-sorted (v1)"
+./scripts/gate_no_xtrace_v1.sh
 bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
 echo "=== Gate: CI proof runners block sorted (v1) ==="
 bash scripts/gate_ci_proof_runners_block_sorted_v1.sh
