@@ -70,7 +70,7 @@ usage_ids="$(
   printf "%s\n" "$usage_raw" \
     | grep -v -E '(_BEGIN|_END)$' \
     | grep -v -E '_GATE_' \
-    | grep -v -E 'CREATIVE_SURFACE_REGISTRY$' \
+    | grep -v -E '(CREATIVE_SURFACE_REGISTRY$|CREATIVE_SURFACE_REGISTRY_ENTRIES$|CREATIVE_SURFACE_REGISTRY_ENTRY$)' \
     | grep -v -E '_$' \
     | sed '/^$/d' \
     | sort -u || true
@@ -87,7 +87,18 @@ missing="$(
 )"
 
 if [ -n "$missing" ]; then
-  echo "ERROR: Creative Surface IDs referenced but not registered in registry doc:" >&2
+  
+  # Filter out internal non-surface tokens that can be accidentally picked up by reference scans.
+  # (e.g., *_ENTRIES_* / *_ENTRY_* identifiers used for registry extraction plumbing)
+  _sv_missing_in="${missing_ids_raw-}"
+  if [ -z "${_sv_missing_in}" ]; then
+    _sv_missing_in="${missing_ids-}"
+  fi
+  _sv_missing_filtered="$(printf '%s\n' "${_sv_missing_in}" | grep -vE '^(CREATIVE_SURFACE_REGISTRY_ENTRIES|CREATIVE_SURFACE_REGISTRY_ENTRY)$' || true)"
+  missing_ids_raw="${_sv_missing_filtered}"
+  missing_ids="${_sv_missing_filtered}"
+
+echo "ERROR: Creative Surface IDs referenced but not registered in registry doc:" >&2
   printf "%s\n" "$missing" | sed 's/^/ - /' >&2
   exit 1
 fi
