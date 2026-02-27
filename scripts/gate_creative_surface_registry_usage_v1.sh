@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SV_CSRU_FILTER_PLUMBING_V26: drop plumbing tokens from extracted CREATIVE_SURFACE_* refs
 # SV_CSRU_EXTRACT_V24: extractor regex is full-token + quote-safe
 set -euo pipefail
 
@@ -60,7 +61,7 @@ printf "%s
 fi
 
 usage_raw="$(
-  git grep -h -Eo -E "CREATIVE_SURFACE_[A-Z0-9_]+" -- . \
+  git grep -h -Eo -E "CREATIVE_SURFACE_[A-Z0-9_]+" -- . \ | sed -E '/^(CREATIVE_SURFACE_REGISTRY_ENTRIES|CREATIVE_SURFACE_REGISTRY_ENTRY)(_|$)/d'
     ':!**/docs/80_indices/ops/Creative_Surface_Registry_v1.0.md' \
     ':!**/artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json' \
   | sort -u || true
