@@ -175,8 +175,6 @@ trap 'sv_ci_on_exit' EXIT
 # === /CI CLEANLINESS GUARDRAIL (v1) ===
 
 echo "== CI Proof Suite =="
-echo "=== Gate: Bash 3.2 builtin compatibility (v1) ==="
-bash scripts/gate_no_mapfile_readarray_in_scripts_v1.sh
 
 echo "==> Python shim compliance gate"
 ./scripts/check_python_shim_compliance_v2.sh
@@ -303,6 +301,8 @@ echo "==> Gate: no double scripts prefix (v2)"
 echo "=== Gate: prove_ci uses relative scripts invocations (v1) ==="
 bash scripts/gate_ci_prove_ci_relative_script_invocations_v1.sh
 bash scripts/gate_no_double_scripts_prefix_v2.sh
+echo "=== Gate: Bash 3.2 builtin compatibility (v1) ==="
+bash scripts/gate_no_mapfile_readarray_in_scripts_v1.sh
 
 echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
 # SV_GATE: ci_guardrails_ops_entrypoint_parity (v1) begin
