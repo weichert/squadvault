@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+TARGET = Path("scripts/prove_ci.sh")
+
+ECHO_LINE = 'echo "=== Gate: prove_ci structure canonical (v1) ==="\n'
+CALL_LINE = "bash scripts/gate_prove_ci_structure_canonical_v1.sh\n"
+
+ANCHOR = "bash scripts/gate_proof_surface_registry_excludes_gates_v1.sh"
+
+def main() -> int:
+    if not TARGET.exists():
+        print(f"ERROR: missing target: {TARGET}", file=sys.stderr)
+        return 2
+
+    src = TARGET.read_text(encoding="utf-8")
+    lines = src.splitlines(keepends=True)
+
+    # No-op if call is already positioned correctly: immediately after anchor.
+    for i, line in enumerate(lines):
+        if ANCHOR in line:
+            if i + 2 < len(lines) and lines[i + 1] == ECHO_LINE and lines[i + 2] == CALL_LINE:
+                return 0
+            break
+
+    # Find the invocation block anywhere.
+    block_start = None
+    for i in range(len(lines) - 1):
+        if lines[i] == ECHO_LINE and lines[i + 1] == CALL_LINE:
+            block_start = i
+            break
+
+    if block_start is None:
+        print("ERROR: refused to patch (could not find prove_ci structure gate invocation block).", file=sys.stderr)
+        print(f"Expected two lines:\n{ECHO_LINE}{CALL_LINE}", file=sys.stderr)
+        return 3
+
+    block = [lines[block_start], lines[block_start + 1]]
+
+    # Remove it.
+    new_lines = lines[:block_start] + lines[block_start + 2 :]
+
+    # Find anchor in the new_lines and insert immediately after.
+    anchor_idx = None
+    for i, line in enumerate(new_lines):
+        if ANCHOR in line:
+            anchor_idx = i
+            break
+
+    if anchor_idx is None:
+        print("ERROR: refused to patch (anchor not found).", file=sys.stderr)
+        print(f"Missing: {ANCHOR}", file=sys.stderr)
+        return 4
+
+    out = new_lines[: anchor_idx + 1] + block + new_lines[anchor_idx + 1 :]
+
+    new_src = "".join(out)
+    if new_src != src:
+        TARGET.write_text(new_src, encoding="utf-8")
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())
