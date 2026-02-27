@@ -266,6 +266,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Bash 3.2 compatibility: forbid mapfile/readarray in scripts/ (v1)
 - scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
 - scripts/gate_standard_show_input_need_coverage_v1.sh — Enforce prove_ci invokes scripts via relative paths (no $REPO_ROOT/absolute) (v1)
+- scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness gate (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->
