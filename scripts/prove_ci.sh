@@ -131,7 +131,6 @@ fi
 echo "==> prove_ci provenance: commit=${sv_commit} branch=${sv_branch} repo=${sv_clean} TZ=${TZ:-} LC_ALL=${LC_ALL:-} LANG=${LANG:-}"
 # SV_GATE: worktree_cleanliness (v1) begin
 SV_WORKTREE_SNAP0="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP0}" "prove_ci entry"
 # SV_GATE: worktree_cleanliness (v1) end
 
 
@@ -196,7 +195,6 @@ echo "==> Proof: terminal banner paste gate behavior (v1)"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 # prove_ci_wire_patch_wrapper_idempotence_gate_v1
 echo "==> Gate: patch wrapper idempotence (allowlist) v1"
@@ -216,7 +214,6 @@ echo "==> Proof: allowlisted patch wrappers are no-op under SV_IDEMPOTENCE_MODE=
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 
 
@@ -282,7 +279,6 @@ bash scripts/gate_ci_proof_surface_registry_exactness_v1.sh
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_docs_integrity_v1.sh
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_docs_integrity_v1.sh"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 
 # SV_GATE: docs_mutation_guardrail (v2) begin
@@ -315,6 +311,15 @@ echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
 bash scripts/gate_no_test_dir_case_drift_v1.sh
 bash scripts/gate_no_untracked_patch_artifacts_v1.sh
 bash scripts/gate_standard_show_input_need_coverage_v1.sh
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP0}" "prove_ci entry"
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh"
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh"
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_docs_integrity_v1.sh"
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_eal_calibration_type_a_v1.sh"
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_tone_engine_type_a_v1.sh"
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_version_presentation_navigation_type_a_v1.sh"
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_signal_scout_tier1_type_a_v1.sh"
+bash scripts/gate_worktree_cleanliness_v1.sh end "${SV_WORKTREE_SNAP0}"
 
 ## Best-in-class tightening: explicit execution surfaces (v1)
 ## (B) Contract boundary formalization
@@ -341,23 +346,19 @@ bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_eal_calibration_type_a_v1.sh
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_eal_calibration_type_a_v1.sh"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_tone_engine_type_a_v1.sh
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_tone_engine_type_a_v1.sh"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_version_presentation_navigation_type_a_v1.sh
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_version_presentation_navigation_type_a_v1.sh"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_signal_scout_tier1_type_a_v1.sh
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_signal_scout_tier1_type_a_v1.sh"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 
 # Golden path uses local db by default; point it at the fixture explicitly if supported.
@@ -413,7 +414,6 @@ bash scripts/gate_ops_indices_no_autofill_placeholders_v1.sh
 # SV_GATE: ops_indices_no_autofill_placeholders (v1) end
 
 
-bash scripts/gate_worktree_cleanliness_v1.sh end "${SV_WORKTREE_SNAP0}"
 
 # SV_GATE: prove_creative_determinism (v1) begin
 echo "==> Prove: creative determinism (v1)"
