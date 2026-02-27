@@ -380,11 +380,6 @@ SV_PROVE_TS_UTC="2026-01-01T00:00:00Z" bash scripts/prove_rivalry_chronicle_end_
   --week-index 6 \
   --approved-by "ci"
 
-# SV_GATE: rivalry_chronicle_output_contract (v1) begin
-echo "==> Gate: Rivalry Chronicle output contract (v1)"
-# Must run AFTER Rivalry Chronicle export exists; pass canonical export path (fixture league/week).
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh"
-# SV_GATE: rivalry_chronicle_output_contract (v1) end
 
 
 # --- Fixture immutability guard (CI) ---
