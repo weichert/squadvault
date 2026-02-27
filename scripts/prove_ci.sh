@@ -437,5 +437,8 @@ export SV_CI_RUNTIME_SECONDS="$(( sv_rt_end - sv_rt_start ))"
 bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_version_presentation_navigation_type_a_v1.sh"
 
 # # # <!-- SV_PROVE_CI_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_BEGIN -->
+echo "=== Gate: Enforce repo clean after proofs (v1) ==="
+bash scripts/gate_repo_clean_after_proofs_v1.sh
+
 bash scripts/gate_worktree_cleanliness_v1.sh end "${SV_WORKTREE_SNAP0}"
 # <!-- SV_PROVE_CI_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_END -->
