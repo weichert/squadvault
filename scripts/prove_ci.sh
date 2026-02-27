@@ -71,8 +71,6 @@ export SQUADVAULT_TEST_DB="${WORK_DB}"
 # Gate: enforce canonical test DB routing (v1)
 bash scripts/gate_enforce_test_db_routing_v1.sh
 
-echo "=== Gate: CI proof runners block sorted (v1) ==="
-bash scripts/gate_ci_proof_runners_block_sorted_v1.sh
 echo "=== Gate: CWD independence (shims) v1 ==="
 repo_root_for_gate="$(
   cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1
@@ -206,6 +204,8 @@ echo "==> Gate: patch wrapper idempotence (allowlist) v1"
 # SV_GATE: allowlist_patchers_insert_sorted (v1) begin
 echo "==> Gate: allowlist patchers must insert-sorted (v1)"
 bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
+echo "=== Gate: CI proof runners block sorted (v1) ==="
+bash scripts/gate_ci_proof_runners_block_sorted_v1.sh
 # SV_GATE: no_obsolete_allowlist_rewrite_artifacts (v1) begin
 bash scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh
 # SV_GATE: no_obsolete_allowlist_rewrite_artifacts (v1) end
