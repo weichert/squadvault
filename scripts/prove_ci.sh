@@ -112,7 +112,6 @@ if command -v git >/dev/null 2>&1; then
   sv_clean="DIRTY"
   echo "TIP: A prior step dirtied the working tree. To see exactly what changed:"
 # SV_GATE: no_untracked_patch_artifacts (v1) begin
-bash scripts/gate_no_untracked_patch_artifacts_v1.sh
 # SV_GATE: no_untracked_patch_artifacts (v1) end
 
   echo "TIP:   git status --porcelain=v1"
@@ -314,6 +313,7 @@ echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
 
 ## Indexed guardrails: execute to maintain ops index ↔ prove_ci parity
 bash scripts/gate_no_test_dir_case_drift_v1.sh
+bash scripts/gate_no_untracked_patch_artifacts_v1.sh
 bash scripts/gate_standard_show_input_need_coverage_v1.sh
 
 ## Best-in-class tightening: explicit execution surfaces (v1)
