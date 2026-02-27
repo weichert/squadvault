@@ -69,7 +69,7 @@ fi
 export SQUADVAULT_TEST_DB="${WORK_DB}"
 
 # Gate: enforce canonical test DB routing (v1)
-bash scripts/gate_enforce_test_db_routing_v1.sh
+./scripts/gate_no_xtrace_v1.sh
 
 echo "=== Gate: CWD independence (shims) v1 ==="
 repo_root_for_gate="$(
@@ -79,9 +79,8 @@ repo_root_for_gate="$(
 gate_path="${repo_root_for_gate}/scripts/gate_cwd_independence_shims_v1.sh"
 
 # SV_GATE: proof_registry_excludes_gates (v1) begin
-bash scripts/gate_proof_surface_registry_excludes_gates_v1.sh
-echo "=== Gate: prove_ci structure canonical (v1) ==="
-bash scripts/gate_prove_ci_structure_canonical_v1.sh
+bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
+bash scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
 # SV_GATE: proof_registry_excludes_gates (v1) end
 echo "    repo_root_for_gate=${repo_root_for_gate}"
 echo "    gate_path=${gate_path}"
@@ -183,11 +182,12 @@ echo "==> Python shim compliance gate"
 echo "==> No-bare-chevron markers gate"
 
 echo "==> No-xtrace guardrail gate"
-bash scripts/gate_no_bare_chevron_markers_v1.sh
+bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh
 
 
 echo "==> Gate: no pasted terminal banners in scripts/"
-bash scripts/gate_no_terminal_banner_paste_v1.sh
+echo "=== Gate: CI Milestones Latest bounded block (v1) ==="
+bash scripts/gate_ci_milestones_latest_block_v1.sh
 echo "==> Proof: terminal banner paste gate behavior (v1)"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
@@ -197,16 +197,17 @@ bash scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
 echo "==> Gate: patch wrapper idempotence (allowlist) v1"
 # SV_GATE: allowlist_patchers_insert_sorted (v1) begin
 echo "==> Gate: allowlist patchers must insert-sorted (v1)"
-./scripts/gate_no_xtrace_v1.sh
-bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
 echo "=== Gate: CI proof runners block sorted (v1) ==="
 bash scripts/gate_ci_proof_runners_block_sorted_v1.sh
+bash scripts/gate_ci_proof_surface_registry_exactness_v1.sh
+bash scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh
 # SV_GATE: no_obsolete_allowlist_rewrite_artifacts (v1) begin
-bash scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh
+echo "=== Gate: prove_ci uses relative scripts invocations (v1) ==="
+bash scripts/gate_ci_prove_ci_relative_script_invocations_v1.sh
 # SV_GATE: no_obsolete_allowlist_rewrite_artifacts (v1) end
 # SV_GATE: allowlist_patchers_insert_sorted (v1) end
 
-bash scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh
+bash scripts/gate_ci_registry_execution_alignment_v1.sh
 
 echo "==> Proof: allowlisted patch wrappers are no-op under SV_IDEMPOTENCE_MODE=1"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
@@ -243,7 +244,7 @@ fi
 
 # prove_ci_wire_ci_proof_surface_registry_index_discoverability_gate_v3
 echo "==> Gate: CI proof surface registry discoverability in Ops index (v1)"
-bash scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh
+bash scripts/gate_ci_runtime_envelope_v1.sh
 
 bash scripts/check_ci_proof_surface_matches_registry_v1.sh
 echo "==> Filesystem ordering determinism gate"
@@ -251,26 +252,25 @@ echo "==> Filesystem ordering determinism gate"
 
 echo "==> Time & timestamp determinism gate"
 ./scripts/check_time_timestamp_determinism.sh
-bash scripts/gate_no_network_in_ci_proofs_v1.sh
+bash scripts/gate_contract_surface_manifest_hash_v1.sh
 
 bash scripts/check_shell_syntax.sh
 bash scripts/check_shims_compliance.sh
 bash scripts/check_no_memory_reads.sh
 
-echo "=== Gate: Pytest must only target tracked Tests/ (v1) ==="
-bash scripts/gate_pytest_tracked_tests_only_v1.sh
+bash scripts/gate_contracts_index_discoverability_v1.sh
 bash scripts/check_no_pytest_directory_invocation.sh
 # === SV_ANCHOR: docs_gates (v1) ===
 
 # SV_GATE: docs_integrity (v2) begin
-bash scripts/gate_docs_integrity_v2.sh
+bash scripts/gate_creative_surface_fingerprint_canonical_v1.sh
 
-echo "=== Gate: CI Milestones Latest bounded block (v1) ==="
-bash scripts/gate_ci_milestones_latest_block_v1.sh
+bash scripts/gate_creative_surface_fingerprint_v1.sh
 # SV_GATE: docs_integrity (v2) end
 
 # SV_GATE: proof_registry_exactness (v1) begin
-bash scripts/gate_ci_proof_surface_registry_exactness_v1.sh
+echo "=== Gate: Creative Surface Registry discoverability (v1) ==="
+bash scripts/gate_creative_surface_registry_discoverability_v1.sh
 # SV_GATE: proof_registry_exactness (v1) end
 
 
@@ -281,7 +281,7 @@ bash scripts/prove_docs_integrity_v1.sh
 
 # SV_GATE: docs_mutation_guardrail (v2) begin
 echo "==> Docs mutation guardrail gate"
-bash scripts/gate_docs_mutation_guardrail_v2.sh
+bash scripts/gate_creative_surface_registry_parity_v1.sh
 # SV_GATE: docs_mutation_guardrail (v2) end
 
 # Patch insertion point for doc/index gates.
@@ -289,57 +289,58 @@ bash scripts/gate_docs_mutation_guardrail_v2.sh
 # === /SV_ANCHOR: docs_gates (v1) ===
 # SV_GATE: proof_suite_completeness (v1) begin
 echo "==> Proof suite completeness gate (v1)"
-bash scripts/gate_proof_suite_completeness_v1.sh
+echo "=== Gate: Creative Surface registry usage (v1) ==="
+bash scripts/gate_creative_surface_registry_usage_v1.sh
 # SV_GATE: proof_suite_completeness (v1) end
 # SV_GATE: ci_registry_execution_alignment (v1) begin
 echo "==> Gate: CI registry → execution alignment (v1)"
-bash scripts/gate_ci_registry_execution_alignment_v1.sh
+bash scripts/gate_docs_integrity_v2.sh
 # SV_GATE: ci_registry_execution_alignment (v1) end
 
 echo "==> Gate: no double scripts prefix (v2)"
 
-echo "=== Gate: prove_ci uses relative scripts invocations (v1) ==="
-bash scripts/gate_ci_prove_ci_relative_script_invocations_v1.sh
-bash scripts/gate_no_double_scripts_prefix_v2.sh
-echo "=== Gate: Bash 3.2 builtin compatibility (v1) ==="
-bash scripts/gate_no_mapfile_readarray_in_scripts_v1.sh
+bash scripts/gate_docs_mutation_guardrail_v2.sh
+bash scripts/gate_enforce_test_db_routing_v1.sh
+bash scripts/gate_meta_surface_parity_v1.sh
 
 echo "==> Gate: CI Guardrails ops entrypoints section + TOC (v2)"
 # SV_GATE: ci_guardrails_ops_entrypoint_parity (v1) begin
 
 ## Indexed guardrails: execute to maintain ops index ↔ prove_ci parity
+bash scripts/gate_no_bare_chevron_markers_v1.sh
+bash scripts/gate_no_double_scripts_prefix_v2.sh
+echo "=== Gate: Bash 3.2 builtin compatibility (v1) ==="
+bash scripts/gate_no_mapfile_readarray_in_scripts_v1.sh
+bash scripts/gate_no_network_in_ci_proofs_v1.sh
+bash scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh
+bash scripts/gate_no_terminal_banner_paste_v1.sh
 bash scripts/gate_no_test_dir_case_drift_v1.sh
 bash scripts/gate_no_untracked_patch_artifacts_v1.sh
-bash scripts/gate_standard_show_input_need_coverage_v1.sh
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP0}" "prove_ci entry"
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh"
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh"
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_docs_integrity_v1.sh"
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_eal_calibration_type_a_v1.sh"
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_tone_engine_type_a_v1.sh"
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_version_presentation_navigation_type_a_v1.sh"
-bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_signal_scout_tier1_type_a_v1.sh"
-bash scripts/gate_worktree_cleanliness_v1.sh end "${SV_WORKTREE_SNAP0}"
+bash scripts/gate_ops_indices_no_autofill_placeholders_v1.sh
+bash scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh
+bash scripts/gate_proof_suite_completeness_v1.sh
+bash scripts/gate_proof_surface_registry_excludes_gates_v1.sh
 
 ## Best-in-class tightening: explicit execution surfaces (v1)
 ## (B) Contract boundary formalization
-bash scripts/gate_contract_surface_manifest_hash_v1.sh
+echo "=== Gate: prove_ci structure canonical (v1) ==="
+bash scripts/gate_prove_ci_structure_canonical_v1.sh
 
 ## (C) Creative surface certification
-bash scripts/gate_creative_surface_fingerprint_v1.sh
+echo "=== Gate: Pytest must only target tracked Tests/ (v1) ==="
+bash scripts/gate_pytest_tracked_tests_only_v1.sh
 
 # Creative surface fingerprint canonical drift gate (v1)
-bash scripts/gate_creative_surface_fingerprint_canonical_v1.sh
-bash scripts/gate_creative_surface_registry_parity_v1.sh
-echo "=== Gate: Creative Surface Registry discoverability (v1) ==="
-bash scripts/gate_creative_surface_registry_discoverability_v1.sh
+bash scripts/gate_rivalry_chronicle_contract_linkage_v1.sh
+bash scripts/gate_rivalry_chronicle_output_contract_v1.sh artifacts/exports/70985/2024/week_06/rivalry_chronicle_v1__approved_latest.md
+bash scripts/gate_standard_show_input_need_coverage_v1.sh
 
 ## (D) Meta surface parity
-bash scripts/gate_meta_surface_parity_v1.sh
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP0}" "prove_ci entry"
 
-bash scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_docs_integrity_v1.sh"
 # SV_GATE: ci_guardrails_ops_entrypoint_parity (v1) end
-bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_eal_calibration_type_a_v1.sh"
 
 
 
@@ -383,7 +384,7 @@ SV_PROVE_TS_UTC="2026-01-01T00:00:00Z" bash scripts/prove_rivalry_chronicle_end_
 # SV_GATE: rivalry_chronicle_output_contract (v1) begin
 echo "==> Gate: Rivalry Chronicle output contract (v1)"
 # Must run AFTER Rivalry Chronicle export exists; pass canonical export path (fixture league/week).
-bash scripts/gate_rivalry_chronicle_output_contract_v1.sh artifacts/exports/70985/2024/week_06/rivalry_chronicle_v1__approved_latest.md
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh"
 # SV_GATE: rivalry_chronicle_output_contract (v1) end
 
 
@@ -410,7 +411,7 @@ echo "OK: CI working tree remained clean (guardrail enforced)."
 
 # SV_GATE: ops_indices_no_autofill_placeholders (v1) begin
 echo "==> Gate: Ops indices must not contain autofill placeholders (v1)"
-bash scripts/gate_ops_indices_no_autofill_placeholders_v1.sh
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh"
 # SV_GATE: ops_indices_no_autofill_placeholders (v1) end
 
 
@@ -422,12 +423,12 @@ bash scripts/prove_creative_determinism_v1.sh
 
 # SV_GATE: rivalry_chronicle_contract_linkage (v1) begin
 echo "==> Gate: Rivalry Chronicle contract linkage (v1)"
-bash scripts/gate_rivalry_chronicle_contract_linkage_v1.sh
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_signal_scout_tier1_type_a_v1.sh"
 # SV_GATE: rivalry_chronicle_contract_linkage (v1) end
 
 # SV_GATE: contracts_index_discoverability (v1) begin
 echo "==> Gate: contracts index discoverability (v1)"
-bash scripts/gate_contracts_index_discoverability_v1.sh
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_tone_engine_type_a_v1.sh"
 
 # SV_GATE: contract_surface_completeness (v1) begin
 bash scripts/prove_contract_surface_completeness_v1.sh
@@ -439,9 +440,8 @@ bash scripts/prove_contract_surface_autosync_noop_v1.sh
 # SV_CI runtime envelope enforcement (best-effort; v1)
 sv_rt_end="$(./scripts/py -c 'import time; print(int(time.time()))')"
 export SV_CI_RUNTIME_SECONDS="$(( sv_rt_end - sv_rt_start ))"
-bash scripts/gate_ci_runtime_envelope_v1.sh
+bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_version_presentation_navigation_type_a_v1.sh"
 
 # # # <!-- SV_PROVE_CI_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_BEGIN -->
-echo "=== Gate: Creative Surface registry usage (v1) ==="
-bash scripts/gate_creative_surface_registry_usage_v1.sh
+bash scripts/gate_worktree_cleanliness_v1.sh end "${SV_WORKTREE_SNAP0}"
 # <!-- SV_PROVE_CI_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_END -->
