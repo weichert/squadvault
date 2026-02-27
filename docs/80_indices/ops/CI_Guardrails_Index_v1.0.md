@@ -221,10 +221,16 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 # - This section is enforced by scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
 # NOTE:
 ## CI guardrails entrypoints (bounded)
+<!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_BEGIN -->
+<!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_END -->
+<!-- SV_CI_WORKTREE_CLEANLINESS: v1 -->
+<!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
+- **Pytest must only target tracked `Tests/` paths (v1)** → `scripts/gate_pytest_tracked_tests_only_v1.sh`
 - scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Enforce allowlist patchers insert wrappers in sorted order (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops index ↔ prove_ci gate execution parity (v1)
 - scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — Enforce bounded Ops guardrails entrypoints section + TOC completeness (v2)
 - scripts/gate_ci_milestones_latest_block_v1.sh — CI Proof Surface Registry exactness: enforce machine-managed list matches tracked scripts/prove_*.sh (v1)
+- scripts/gate_ci_milestones_latest_block_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
 - scripts/gate_ci_proof_runners_block_sorted_v1.sh — Enforce CI_Proof_Surface_Registry CI_PROOF_RUNNERS block bullet ordering (v1)
 - scripts/gate_ci_proof_surface_registry_exactness_v1.sh — Enforce CI proof registry ↔ prove_ci execution alignment (v1)
 - scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh — CI runtime envelope: budget + proof-count drift guard (v1)
@@ -258,13 +264,8 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_proof_surface_registry_excludes_gates_v1.sh — Worktree cleanliness: proofs must not mutate repo state (per-proof + end-of-run) (v1)
 - scripts/gate_prove_ci_structure_canonical_v1.sh — Enforce prove_ci gate invocation uniqueness + canonical ordering (v1)
 - scripts/gate_pytest_tracked_tests_only_v1.sh
-<!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_BEGIN -->
-<!-- SV_CI_GUARDRAIL_GATE_CREATIVE_SURFACE_FINGERPRINT_CANONICAL_v1_END -->
-<!-- SV_CI_WORKTREE_CLEANLINESS: v1 -->
-<!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
-- **Pytest must only target tracked `Tests/` paths (v1)** → `scripts/gate_pytest_tracked_tests_only_v1.sh`
+- scripts/gate_repo_clean_after_proofs_v1.sh — Enforce repo clean after proofs (v1)
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Bash 3.2 compatibility: forbid mapfile/readarray in scripts/ (v1)
-- scripts/gate_ci_milestones_latest_block_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
 - scripts/gate_standard_show_input_need_coverage_v1.sh — Enforce prove_ci invokes scripts via relative paths (no $REPO_ROOT/absolute) (v1)
 - scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness gate (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
