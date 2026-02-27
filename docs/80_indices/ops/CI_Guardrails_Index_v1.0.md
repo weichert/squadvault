@@ -225,7 +225,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops index ↔ prove_ci gate execution parity (v1)
 - scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — Enforce bounded Ops guardrails entrypoints section + TOC completeness (v2)
 - scripts/gate_ci_milestones_latest_block_v1.sh — CI Proof Surface Registry exactness: enforce machine-managed list matches tracked scripts/prove_*.sh (v1)
-- scripts/gate_ci_proof_runners_block_sorted_v1.sh — Prove Ops index contains proof-surface registry discoverability marker + bullet (v1)
+- scripts/gate_ci_proof_runners_block_sorted_v1.sh — Enforce CI_Proof_Surface_Registry CI_PROOF_RUNNERS block bullet ordering (v1)
 - scripts/gate_ci_proof_surface_registry_exactness_v1.sh — Enforce CI proof registry ↔ prove_ci execution alignment (v1)
 - scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh — CI runtime envelope: budget + proof-count drift guard (v1)
 - scripts/gate_ci_prove_ci_relative_script_invocations_v1.sh — Contracts: manifest hash exactness gate (v1)
