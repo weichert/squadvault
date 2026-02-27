@@ -7,6 +7,7 @@ This document is a **machine-indexed registry surface** for the Creative Surface
 
 - **Fingerprint generator**: `scripts/gen_creative_surface_fingerprint_v1.py`
 - **Canonical fingerprint artifact**: `artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json`
+- CREATIVE_SURFACE_REGISTRY_V1
 - **Canonical gate**: `scripts/gate_creative_surface_fingerprint_canonical_v1.sh`
 - **Related contract**: `docs/contracts/creative_sharepack_output_contract_v1.md`
 
