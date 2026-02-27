@@ -264,7 +264,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- SV_RIVALRY_CHRONICLE_CONTRACT_LINKAGE: v1 -->
 - **Pytest must only target tracked `Tests/` paths (v1)** → `scripts/gate_pytest_tracked_tests_only_v1.sh`
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Bash 3.2 compatibility: forbid mapfile/readarray in scripts/ (v1)
-- scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
+- scripts/gate_ci_milestones_latest_block_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
 - scripts/gate_standard_show_input_need_coverage_v1.sh — Enforce prove_ci invokes scripts via relative paths (no $REPO_ROOT/absolute) (v1)
 - scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness gate (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
@@ -283,7 +283,6 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_contracts_index_discoverability_v1.sh — Enforce docs/contracts/README.md indexes all versioned contracts (v1)
 <!-- SV_RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1 -->
 - docs/contracts/rivalry_chronicle_contract_output_v1.md — Rivalry Chronicle Output Contract (v1)
-- scripts/gate_rivalry_chronicle_output_contract_v1.sh — Enforce Rivalry Chronicle export conforms to output contract (v1)
 
 <!-- SV_CONTRACT_LINKAGE_GATES_v1_BEGIN -->
 - scripts/gate_contract_linkage_v1.sh — Enforce SV_CONTRACT_* linkage to contract doc paths (v1)
