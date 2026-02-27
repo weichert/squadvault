@@ -1,6 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# SV_PATCH: CREATIVE_SURFACE_REGISTRY_USAGE_PARSE_ENTRIES_ONLY_v1_BEGIN
+# Canonical: registry IDs are read ONLY from the machine-indexed ENTRIES block in:
+#   docs/80_indices/ops/Creative_Surface_Registry_v1.0.md
+# This avoids false duplicates from prose/markers elsewhere in the doc.
+_extract_registry_ids_from_entries_block() {
+  local doc="$1"
+
+  # Require the bounded entries block markers to exist.
+  grep -n --fixed-strings "SV_CREATIVE_SURFACE_REGISTRY_ENTRIES_v1_BEGIN" "$doc" >/dev/null
+  grep -n --fixed-strings "SV_CREATIVE_SURFACE_REGISTRY_ENTRIES_v1_END" "$doc" >/dev/null
+
+  # Print ONLY "- CREATIVE_SURFACE_*" bullets within the bounded block.
+  awk '
+    /SV_CREATIVE_SURFACE_REGISTRY_ENTRIES_v1_BEGIN/ {p=1; next}
+    /SV_CREATIVE_SURFACE_REGISTRY_ENTRIES_v1_END/   {p=0}
+    p {print}
+  ' "$doc" | sed -n 's/^[[:space:]]*-[[:space:]]\(CREATIVE_SURFACE_[A-Z0-9_]*\)[[:space:]]*$/\1/p'
+}
+
+# Diagnostics helper: list duplicates in a newline-delimited token stream.
+_list_dupes() {
+  sort | uniq -d
+}
+# SV_PATCH: CREATIVE_SURFACE_REGISTRY_USAGE_PARSE_ENTRIES_ONLY_v1_END
+
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
@@ -12,7 +38,7 @@ if [ ! -f "$registry_doc" ]; then
   exit 1
 fi
 
-registered_ids_raw="$(grep -h -o -E 'CREATIVE_SURFACE_[A-Z0-9_]+' "$registry_doc" || true)"
+registered_ids_raw="$(_extract_registry_ids_from_entries_block "$registry_doc" || true)"
 registered_ids="$(printf "%s\n" "$registered_ids_raw" | sed '/^$/d' | sort -u)"
 if [ -z "$registered_ids" ]; then
   echo "ERROR: no CREATIVE_SURFACE_* tokens found in registry doc" >&2
@@ -23,6 +49,9 @@ reg_total="$(printf "%s\n" "$registered_ids_raw" | sed '/^$/d' | wc -l | tr -d '
 reg_unique="$(printf "%s\n" "$registered_ids" | wc -l | tr -d ' ')"
 if [ "$reg_total" != "$reg_unique" ]; then
   echo "ERROR: duplicate CREATIVE_SURFACE_* tokens in registry doc" >&2
+echo "Duplicates:" >&2
+printf "%s
+" "$registered_ids_raw" | sed "/^$/d" | _list_dupes | sed "s/^/ - /" >&2
   exit 1
 fi
 
