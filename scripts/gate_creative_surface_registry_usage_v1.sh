@@ -64,9 +64,13 @@ printf "%s
 fi
 
 usage_raw="$(
-  git | sed -E '/^(CREATIVE_SURFACE_REGISTRY_ENTRIES|CREATIVE_SURFACE_REGISTRY_ENTRY)(_|$)/d' | grep -Eo 'CREATIVE_SURFACE_[A-Z0-9_]+' | sed -E '/^(CREATIVE_SURFACE_REGISTRY_ENTRIES|CREATIVE_SURFACE_REGISTRY_ENTRY)(_|$)/d'
-    'docs/80_indices/ops/Creative_Surface_Registry_v1.0.md' \
-    ':!**/artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json' \
+  git grep -h -I -n -E 'CREATIVE_SURFACE_[A-Z0-9_]+' -- \
+    . \
+    ':(exclude)docs/80_indices/ops/Creative_Surface_Registry_v1.0.md' \
+    ':(exclude)**/artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json' \
+  | sed -E '/^(CREATIVE_SURFACE_REGISTRY_ENTRIES|CREATIVE_SURFACE_REGISTRY_ENTRY)(_|$)/d' \
+  | grep -Eo 'CREATIVE_SURFACE_[A-Z0-9_]+' \
+  | sed -E '/^(CREATIVE_SURFACE_REGISTRY_ENTRIES|CREATIVE_SURFACE_REGISTRY_ENTRY)(_|$)/d' \
   | sort -u || true
 )"
 
