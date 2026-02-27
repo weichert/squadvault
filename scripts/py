@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Minimal, deterministic python runner for this repo.
-# No env bootstrap. No interactivity. CWD-independent.
-#
-# Usage:
-#   ./scripts/py path/to/script.py [args...]
-#   ./scripts/py -c 'print("ok")'
+# scripts/py — canonical python shim (v1)
+# Goals:
+# - CWD-independent (safe under any working directory)
+# - Deterministic tool selection (prefer python3, fallback to python)
+# - Exec passthrough (propagate exit code)
+repo_root="$(
+  cd "$(dirname "$0")/.." >/dev/null 2>&1
+  pwd
+)"
+cd "${repo_root}"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-cd "${REPO_ROOT}"
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "$@"
+fi
 
-PYTHON="${PYTHON:-python3}"
-export PYTHONPATH="src${PYTHONPATH:+:${PYTHONPATH}}"
+if command -v python >/dev/null 2>&1; then
+  exec python "$@"
+fi
 
-exec "${PYTHON}" "$@"
+echo "ERROR: python3/python not found on PATH" >&2
+exit 127
