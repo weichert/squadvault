@@ -106,3 +106,9 @@ if [ "${violations}" -ne 0 ]; then
 fi
 
 echo "OK: Python shim compliance gate (v2) passed."
+
+# SV_PY_SHIM_COMPLIANCE_EXCEPTIONS_v1_BEGIN
+# Bootstrap exceptions (narrow; explicit)
+# - This wrapper exists to restore scripts/py when missing/empty.
+  "scripts/patch_restore_scripts_py_shim_v1.sh" \
+# SV_PY_SHIM_COMPLIANCE_EXCEPTIONS_v1_END
