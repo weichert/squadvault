@@ -332,7 +332,7 @@ bash scripts/gate_pytest_tracked_tests_only_v1.sh
 
 # Creative surface fingerprint canonical drift gate (v1)
 bash scripts/gate_rivalry_chronicle_contract_linkage_v1.sh
-bash scripts/gate_rivalry_chronicle_output_contract_v1.sh artifacts/exports/70985/2024/week_06/rivalry_chronicle_v1__approved_latest.md
+bash scripts/gate_rivalry_chronicle_output_contract_v1.sh
 bash scripts/gate_standard_show_input_need_coverage_v1.sh
 
 ## (D) Meta surface parity
