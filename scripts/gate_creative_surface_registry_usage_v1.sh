@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+
 # SV_PATCH: CREATIVE_SURFACE_REGISTRY_USAGE_PARSE_ENTRIES_ONLY_v1_BEGIN
 # Canonical: registry IDs are read ONLY from the machine-indexed ENTRIES block in:
 #   docs/80_indices/ops/Creative_Surface_Registry_v1.0.md
@@ -31,8 +35,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 bash scripts/gate_creative_surface_registry_discoverability_v1.sh
-
-registry_doc="docs/80_indices/ops/Creative_Surface_Registry_v1.0.md"
+registry_doc="${REPO_ROOT}/docs/80_indices/ops/Creative_Surface_Registry_v1.0.md"
 if [ ! -f "$registry_doc" ]; then
   echo "ERROR: registry doc missing: $registry_doc" >&2
   exit 1
