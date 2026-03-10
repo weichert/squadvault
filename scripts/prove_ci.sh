@@ -92,6 +92,7 @@ echo "=== Gate: CI Milestones Latest bounded block (v1) ==="
 bash scripts/gate_ci_milestones_latest_block_v1.sh
 echo "==> Proof: terminal banner paste gate behavior (v1)"
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
+SV_WORKTREE_SNAP0="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
