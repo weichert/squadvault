@@ -331,6 +331,7 @@ echo "=== Gate: Pytest must only target tracked Tests/ (v1) ==="
 bash scripts/gate_pytest_tracked_tests_only_v1.sh
 
 # Creative surface fingerprint canonical drift gate (v1)
+bash scripts/gate_repo_clean_after_proofs_v1.sh
 bash scripts/gate_rivalry_chronicle_contract_linkage_v1.sh
 bash scripts/gate_standard_show_input_need_coverage_v1.sh
 
@@ -438,7 +439,6 @@ bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" 
 
 # # # <!-- SV_PROVE_CI_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_BEGIN -->
 echo "=== Gate: Enforce repo clean after proofs (v1) ==="
-bash scripts/gate_repo_clean_after_proofs_v1.sh
 
 bash scripts/gate_worktree_cleanliness_v1.sh end "${SV_WORKTREE_SNAP0}"
 # <!-- SV_PROVE_CI_GATE_CREATIVE_SURFACE_REGISTRY_USAGE_V1_END -->
