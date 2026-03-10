@@ -215,7 +215,8 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 
 <!-- PROOF_SUITE_COMPLETENESS_GATE_v1_END -->
 
-<!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN -->
+<!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN
+ -->
 # CI Guardrails Ops Entrypoints
 
 # - This section is enforced by scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
@@ -230,6 +231,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_no_xtrace_v1.sh — No forbidden set -x in prove/gate scripts (v1)
 - scripts/gate_cwd_independence_shims_v1.sh — CWD independence shims gate (v1)
 - scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Allowlist patchers must insert sorted blocks (v1)
+- `scripts/gate_ci_guardrails_ops_label_registry_parity_v1.sh` — Ensures TSV registry ↔ Ops index ↔ gate scripts stay perfectly synchronized.
 - scripts/gate_ci_guardrails_ops_label_source_exactness_v1.sh — Ops guardrails label source exactness gate (v1)
 - scripts/gate_ci_milestones_latest_block_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
 - scripts/gate_ci_proof_runners_block_sorted_v1.sh — CI proof runners block sorted gate (v1)
@@ -267,7 +269,8 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Rivalry Chronicle contract linkage gate (v1)
 - scripts/gate_standard_show_input_need_coverage_v1.sh — Standard show input need coverage gate (v1)
 - scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness gate (v1)
-<!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
+<!-- 
+SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 
 <!-- SV_GATE_PROOF_REGISTRY_EXCLUDES_GATES_v1_BEGIN -->

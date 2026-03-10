@@ -1,5 +1,6 @@
 scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh	Allowlist patchers must insert sorted blocks (v1)
 scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh	Ops guardrails entrypoint block exactness gate (v1)
+scripts/gate_ci_guardrails_ops_label_registry_parity_v1.sh	Ensures TSV registry ↔ Ops index ↔ gate scripts stay perfectly synchronized.
 scripts/gate_ci_guardrails_ops_label_source_exactness_v1.sh	Ops guardrails label source exactness gate (v1)
 scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh	Ops guardrails entrypoint parity gate (v1)
 scripts/gate_ci_guardrails_ops_entrypoint_registry_completeness_v1.sh	CI Guardrails Ops Entrypoint Registry Completeness (v1)

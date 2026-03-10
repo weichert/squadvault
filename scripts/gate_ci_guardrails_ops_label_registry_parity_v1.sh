@@ -50,19 +50,15 @@ for raw in tsv_path.read_text(encoding="utf-8").splitlines():
     tsv_rows[script_path] = desc
 
 index_text = index_path.read_text(encoding="utf-8")
-pattern = re.compile(
-    r"(?ms)^.*?"
-    + re.escape(index_begin)
-    + r"\n(?P<body>.*?)\n.*?"
-    + re.escape(index_end)
-    + r".*$"
-)
-match = pattern.search(index_text)
-if not match:
+if index_begin not in index_text or index_end not in index_text:
     die("missing CI guardrails entrypoints bounded section in Ops index")
 
+prefix, rest = index_text.split(index_begin, 1)
+body, suffix = rest.split(index_end, 1)
+index_body = body.strip("\n")
+
 index_rows = {}
-for raw in match.group("body").splitlines():
+for raw in index_body.splitlines():
     line = raw.strip()
     if not line.startswith("- "):
         continue
