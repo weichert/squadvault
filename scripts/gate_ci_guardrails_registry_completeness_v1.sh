@@ -16,10 +16,88 @@ grep -o 'scripts/gate_[^[:space:]]*\.sh' "$REGISTRY" \
   | sed 's/[[:space:]]*$//' \
   | sort -u > "$registry"
 
-grep -o 'scripts/gate_[^[:space:]]*\.sh' "$PROVE" \
-  | sed 's/^bash //' \
-  | sed 's/[[:space:]]*$//' \
+# SV_PATCH: CI_GUARDRAIL_REGISTRY_EXECUTED_SURFACE_v3_BEGIN
+awk '
+  /^[[:space:]]*(#|$)/ { next }
+
+  {
+    line = $0
+
+    if (match(line, /^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)="[^"]*scripts\/gate_[^"]+\.sh"/)) {
+      decl = substr(line, RSTART, RLENGTH)
+      var_name = decl
+      sub(/^[[:space:]]*/, "", var_name)
+      sub(/=.*/, "", var_name)
+
+      value = decl
+      sub(/^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*="/, "", value)
+      sub(/"$/, "", value)
+      sub(/^\.\//, "", value)
+      sub(/^.*scripts\//, "scripts/", value)
+
+      vars[var_name] = value
+      next
+    }
+
+    if (match(line, /^[[:space:]]*bash[[:space:]]+\.\/scripts\/gate_[^[:space:];|&()]+\.sh([[:space:];|&()]|$)/)) {
+      path = substr(line, RSTART, RLENGTH)
+      sub(/^[[:space:]]*bash[[:space:]]+/, "", path)
+      sub(/[[:space:];|&()].*$/, "", path)
+      sub(/^\.\//, "", path)
+      print path
+      next
+    }
+
+    if (match(line, /^[[:space:]]*bash[[:space:]]+scripts\/gate_[^[:space:];|&()]+\.sh([[:space:];|&()]|$)/)) {
+      path = substr(line, RSTART, RLENGTH)
+      sub(/^[[:space:]]*bash[[:space:]]+/, "", path)
+      sub(/[[:space:];|&()].*$/, "", path)
+      print path
+      next
+    }
+
+    if (match(line, /^[[:space:]]*\.\/scripts\/gate_[^[:space:];|&()]+\.sh([[:space:];|&()]|$)/)) {
+      path = substr(line, RSTART, RLENGTH)
+      sub(/[[:space:];|&()].*$/, "", path)
+      sub(/^\.\//, "", path)
+      print path
+      next
+    }
+
+    if (match(line, /^[[:space:]]*scripts\/gate_[^[:space:];|&()]+\.sh([[:space:];|&()]|$)/)) {
+      path = substr(line, RSTART, RLENGTH)
+      sub(/[[:space:];|&()].*$/, "", path)
+      print path
+      next
+    }
+
+    if (match(line, /^[[:space:]]*bash[[:space:]]+"\$[A-Za-z_][A-Za-z0-9_]*"([[:space:];|&()]|$)/)) {
+      ref = substr(line, RSTART, RLENGTH)
+      sub(/^[[:space:]]*bash[[:space:]]+"/, "", ref)
+      sub(/".*$/, "", ref)
+      sub(/^\$/, "", ref)
+      if (ref in vars) {
+        print vars[ref]
+      }
+      next
+    }
+
+    if (match(line, /^[[:space:]]*"\$[A-Za-z_][A-Za-z0-9_]*"([[:space:];|&()]|$)/)) {
+      ref = substr(line, RSTART, RLENGTH)
+      sub(/^[[:space:]]*"/, "", ref)
+      sub(/".*$/, "", ref)
+      sub(/^\$/, "", ref)
+      if (ref in vars) {
+        print vars[ref]
+      }
+      next
+    }
+  }
+' "$PROVE" \
   | sort -u > "$executed"
+# SV_PATCH: CI_GUARDRAIL_REGISTRY_EXECUTED_SURFACE_v3_END
+
+
 
 missing="$(comm -23 "$registry" "$executed" || true)"
 
