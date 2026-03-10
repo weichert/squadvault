@@ -224,6 +224,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_no_xtrace_v1.sh — No forbidden set -x in prove/gate scripts (v1)
 - scripts/gate_cwd_independence_shims_v1.sh — CWD independence shims gate (v1)
 - scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Allowlist patchers must insert sorted blocks (v1)
+- scripts/gate_ci_guardrails_ops_cluster_canonical_v1.sh — Ops guardrails cluster canonical gate (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh — Ops guardrails entrypoint block exactness gate (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops guardrails entrypoint parity gate (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_registry_completeness_v1.sh — CI Guardrails Ops Entrypoint Registry Completeness (v1)
