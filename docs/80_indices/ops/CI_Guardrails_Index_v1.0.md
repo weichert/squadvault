@@ -234,6 +234,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_ci_guardrails_ops_label_registry_parity_v1.sh — Ensures TSV registry ↔ Ops index ↔ gate scripts stay perfectly synchronized.
 - scripts/gate_ci_guardrails_ops_label_source_exactness_v1.sh — Ops guardrails label source exactness gate (v1)
 - scripts/gate_ci_guardrails_ops_topology_uniqueness_v1.sh — Ops guardrails topology uniqueness gate (v1)
+- scripts/gate_ci_guardrails_registry_authority_v1.sh — CI guardrails registry authority gate (v1)
 - scripts/gate_ci_milestones_latest_block_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
 - scripts/gate_ci_proof_runners_block_sorted_v1.sh — CI proof runners block sorted gate (v1)
 - scripts/gate_ci_proof_surface_registry_exactness_v1.sh — CI proof surface registry exactness gate (v1)
