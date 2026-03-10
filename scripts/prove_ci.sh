@@ -81,6 +81,7 @@ gate_path="${repo_root_for_gate}/scripts/gate_cwd_independence_shims_v1.sh"
 # SV_GATE: proof_registry_excludes_gates (v1) begin
 bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh
+bash scripts/gate_ci_guardrails_ops_renderer_shape_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_registry_completeness_v1.sh
 # SV_GATE: proof_registry_excludes_gates (v1) end
