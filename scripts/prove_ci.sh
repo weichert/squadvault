@@ -92,6 +92,7 @@ bash scripts/gate_ci_guardrails_ops_renderer_shape_v1.sh
 bash scripts/gate_ci_guardrails_ops_topology_uniqueness_v1.sh
 bash scripts/gate_ci_guardrails_registry_authority_v1.sh
 bash scripts/gate_ci_guardrails_registry_completeness_v1.sh
+bash scripts/gate_ci_guardrails_surface_freeze_v1.sh
 
 
 echo "==> Gate: no pasted terminal banners in scripts/"

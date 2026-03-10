@@ -20,6 +20,7 @@
 - scripts/gate_ci_guardrails_ops_topology_uniqueness_v1.sh — Ops guardrails topology uniqueness gate (v1)
 - scripts/gate_ci_guardrails_registry_authority_v1.sh — CI guardrails registry authority gate (v1)
 - scripts/gate_ci_guardrails_registry_completeness_v1.sh — CI guardrails registry completeness gate (v1)
+- scripts/gate_ci_guardrails_surface_freeze_v1.sh — CI guardrails surface freeze gate (v1)
 - scripts/gate_ci_milestones_latest_block_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
 - scripts/gate_ci_proof_runners_block_sorted_v1.sh — CI proof runners block sorted gate (v1)
 - scripts/gate_ci_proof_surface_registry_exactness_v1.sh — CI proof surface registry exactness gate (v1)

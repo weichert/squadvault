@@ -49,3 +49,4 @@ scripts/gate_rivalry_chronicle_contract_linkage_v1.sh	Rivalry Chronicle contract
 scripts/gate_standard_show_input_need_coverage_v1.sh	Standard show input need coverage gate (v1)
 scripts/gate_worktree_cleanliness_v1.sh	Worktree cleanliness gate (v1)
 scripts/gate_ci_guardrails_registry_completeness_v1.sh	CI guardrails registry completeness gate (v1)
+scripts/gate_ci_guardrails_surface_freeze_v1.sh	CI guardrails surface freeze gate (v1)
