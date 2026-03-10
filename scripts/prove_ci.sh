@@ -82,12 +82,14 @@ gate_path="${repo_root_for_gate}/scripts/gate_cwd_independence_shims_v1.sh"
 bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
 bash scripts/gate_ci_guardrails_ops_cluster_canonical_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh
+bash scripts/gate_ci_guardrails_ops_entrypoint_order_lock_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_registry_completeness_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh
 bash scripts/gate_ci_guardrails_ops_label_registry_parity_v1.sh
 bash scripts/gate_ci_guardrails_ops_label_source_exactness_v1.sh
 bash scripts/gate_ci_guardrails_ops_renderer_shape_v1.sh
+bash scripts/gate_ci_guardrails_ops_topology_uniqueness_v1.sh
 
 
 echo "==> Gate: no pasted terminal banners in scripts/"
