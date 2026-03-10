@@ -81,6 +81,7 @@ bash "$gate_path"
 
 # SV_GATE: proof_registry_excludes_gates (v1) begin
 bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
+bash scripts/gate_ci_guardrails_execution_order_lock_v1.sh
 bash scripts/gate_ci_guardrails_ops_cluster_canonical_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_order_lock_v1.sh
