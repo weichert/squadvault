@@ -72,7 +72,23 @@ has_py_shim_launcher() {
   printf "%s" "$1" | grep -q -E '(^|[[:space:];&(:])("?((\$\{?repo_root\}?/)?(\./)?|[^"[:space:]]*/)?scripts/py"?)'
 }
 
+is_exception_wrapper() {
+  # $1 = wrapper path (e.g., scripts/patch_foo.sh)
+  local w="$1"
+  local ex
+  for ex in "${SV_PY_SHIM_COMPLIANCE_EXCEPTIONS[@]:-}"; do
+    if [[ "${w}" == "${ex}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+
 for f in ${wrappers}; do
+  if is_exception_wrapper "${f}"; then
+    continue
+  fi
   # candidate lines: any non-comment line mentioning scripts/_patch_*.py
   matches="$(grep -nH -E 'scripts/_patch_[A-Za-z0-9_]+\.py' "${f}" | grep -v -E '^[^:]+:[0-9]+:[[:space:]]*#' || true)"
   if [ -z "${matches}" ]; then
@@ -106,9 +122,11 @@ if [ "${violations}" -ne 0 ]; then
 fi
 
 echo "OK: Python shim compliance gate (v2) passed."
-
 # SV_PY_SHIM_COMPLIANCE_EXCEPTIONS_v1_BEGIN
 # Bootstrap exceptions (narrow; explicit)
-# - This wrapper exists to restore scripts/py when missing/empty.
-  "scripts/patch_restore_scripts_py_shim_v1.sh" \
+# - These wrappers may need to run when scripts/py is missing/empty.
+# - They are permitted to use python3/python ONLY as a bootstrap fallback.
+SV_PY_SHIM_COMPLIANCE_EXCEPTIONS=(
+  "scripts/patch_restore_scripts_py_shim_v1.sh"
+)
 # SV_PY_SHIM_COMPLIANCE_EXCEPTIONS_v1_END
