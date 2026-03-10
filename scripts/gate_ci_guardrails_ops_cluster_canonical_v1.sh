@@ -7,21 +7,21 @@ python3 - <<'PY_CHECK'
 from pathlib import Path
 
 prove = Path("scripts/prove_ci.sh")
-order_tsv = Path("docs/80_indices/ops/CI_Guardrails_Ops_Cluster_Order_v1.tsv")
+text = prove.read_text(encoding="utf-8")
 
-prove_text = prove.read_text(encoding="utf-8")
-prove_lines = prove_text.splitlines()
+expected_lines = [
+    "bash scripts/gate_ci_guardrails_ops_cluster_canonical_v1.sh",
+    "bash scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh",
+    "bash scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh",
+    "bash scripts/gate_ci_guardrails_ops_entrypoint_registry_completeness_v1.sh",
+    "bash scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh",
+    "bash scripts/gate_ci_guardrails_ops_label_source_exactness_v1.sh",
+    "bash scripts/gate_ci_guardrails_ops_renderer_shape_v1.sh",
+]
 
-expected_lines = []
-for raw in order_tsv.read_text(encoding="utf-8").splitlines():
-    raw = raw.strip()
-    if not raw:
-        continue
-    path, _label = raw.split("\t", 1)
-    expected_lines.append(f"bash {path}")
-
+lines = text.splitlines()
 positions = {}
-for idx, line in enumerate(prove_lines):
+for idx, line in enumerate(lines):
     stripped = line.strip()
     if stripped in expected_lines:
         if stripped in positions:
@@ -38,7 +38,7 @@ if missing:
 ordered_positions = [positions[line] for line in expected_lines]
 start = min(ordered_positions)
 end = max(ordered_positions) + 1
-actual_block = [prove_lines[i].strip() for i in range(start, end)]
+actual_block = [lines[i].strip() for i in range(start, end)]
 
 if actual_block != expected_lines:
     raise SystemExit(
