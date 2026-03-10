@@ -78,7 +78,7 @@ echo "export_dir:  ${export_dir}"
 echo
 
 echo "==> Generate (DRAFT)"
-./scripts/py -u src/squadvault/consumers/rivalry_chronicle_generate_v1.py \
+PYTHONPATH=src ./scripts/py -u -m squadvault.consumers.rivalry_chronicle_generate_v1 \
   --db "${db}" \
   --league-id "${league_id}" \
   --season "${season}" \
@@ -148,7 +148,7 @@ if [[ "${approved_by}" == --* ]]; then
   echo "ERROR: approved_by resolved to a flag token (${approved_by})." >&2
   exit 2
 fi
-./scripts/py -u src/squadvault/consumers/rivalry_chronicle_approve_v1.py \
+PYTHONPATH=src ./scripts/py -u -m squadvault.consumers.rivalry_chronicle_approve_v1 \
   --db "${db}" \
   --league-id "${league_id}" \
   --season "${season}" \
