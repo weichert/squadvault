@@ -216,22 +216,21 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 <!-- PROOF_SUITE_COMPLETENESS_GATE_v1_END -->
 
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_BEGIN -->
-# - Format: `- scripts/<path> — description`
-# - Only list gate/check entrypoints you intend to be validated as discoverable.
+# CI Guardrails Ops Entrypoints
+
 # - This section is enforced by scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh
-# NOTE:
-## CI guardrails entrypoints (bounded)
-- scripts/gate_no_xtrace_v1.sh — No forbidden set -x in prove/gate scripts (v1)
-- scripts/gate_cwd_independence_shims_v1.sh — CWD independence shims gate (v1)
-- scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Allowlist patchers must insert sorted blocks (v1)
+# - Canonical Ops cluster order source: docs/80_indices/ops/CI_Guardrails_Ops_Cluster_Order_v1.tsv
+
 - scripts/gate_ci_guardrails_ops_cluster_canonical_v1.sh — Ops guardrails cluster canonical gate (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh — Ops guardrails entrypoint block exactness gate (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops guardrails entrypoint parity gate (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_registry_completeness_v1.sh — CI Guardrails Ops Entrypoint Registry Completeness (v1)
 - scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — CI Guardrails ops entrypoints section + TOC (v2)
 - scripts/gate_ci_guardrails_ops_renderer_shape_v1.sh — Ops guardrails entrypoint renderer shape gate (v1)
+- scripts/gate_no_xtrace_v1.sh — No forbidden set -x in prove/gate scripts (v1)
+- scripts/gate_cwd_independence_shims_v1.sh — CWD independence shims gate (v1)
+- scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Allowlist patchers must insert sorted blocks (v1)
 - scripts/gate_ci_milestones_latest_block_v1.sh — Enforce CI_MILESTONES.md has exactly one bounded ## Latest block (v1)
-- scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness gate (v1)
 - scripts/gate_ci_proof_runners_block_sorted_v1.sh — CI proof runners block sorted gate (v1)
 - scripts/gate_ci_proof_surface_registry_exactness_v1.sh — CI proof surface registry exactness gate (v1)
 - scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh — CI proof surface registry discoverability in Ops index (v1)
@@ -266,6 +265,7 @@ For a given patch family, treat the **highest version wrapper** as the canonical
 - scripts/gate_repo_clean_after_proofs_v1.sh — Repo clean after proofs gate (v1)
 - scripts/gate_rivalry_chronicle_contract_linkage_v1.sh — Rivalry Chronicle contract linkage gate (v1)
 - scripts/gate_standard_show_input_need_coverage_v1.sh — Standard show input need coverage gate (v1)
+- scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness gate (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
 

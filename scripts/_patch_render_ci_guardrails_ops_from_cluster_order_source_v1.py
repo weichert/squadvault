@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import stat
+
+REPO = Path(__file__).resolve().parents[1]
+RENDER = REPO / "scripts" / "_render_ci_guardrails_ops_entrypoints_block_v1.py"
+
+RENDER_TEXT = r'''from __future__ import annotations
+
+from pathlib import Path
 import sys
 
 
@@ -143,6 +151,36 @@ def main() -> int:
     sys.stdout.write(render_block_from_prove_path(PROVE_CI))
     return 0
 
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'''
+
+def write_if_changed(path: Path, text: str) -> bool:
+    old = path.read_text(encoding="utf-8") if path.exists() else None
+    if old == text:
+        return False
+    path.write_text(text, encoding="utf-8")
+    return True
+
+def ensure_executable(path: Path) -> None:
+    mode = path.stat().st_mode
+    path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+def main() -> int:
+    changed = False
+
+    if write_if_changed(RENDER, RENDER_TEXT):
+        changed = True
+
+    ensure_executable(RENDER)
+
+    if changed:
+        print("OK: renderer now captures gate path assignments (v1)")
+    else:
+        print("OK: renderer already captures gate path assignments (noop)")
+
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())
