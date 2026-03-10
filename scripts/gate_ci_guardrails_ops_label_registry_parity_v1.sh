@@ -5,7 +5,7 @@ REPO_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 
 cd "$REPO_ROOT"
 
-"$REPO_ROOT/scripts/py" - <<'ENDPY'
+"$REPO_ROOT/scripts/py" - <<'LABEL_REGISTRY_PARITY_PY'
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,6 +25,21 @@ def die(msg: str) -> None:
     print(msg, file=sys.stderr)
     raise SystemExit(1)
 
+def parse_cluster(text: str) -> list[str]:
+    started = False
+    out = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line == cluster_start:
+            started = True
+        if started and line.startswith("bash scripts/gate_ci_guardrails_ops_"):
+            out.append(line.replace("bash ", "", 1))
+        if started and line == cluster_end:
+            break
+    if not out:
+        die("could not locate ops guardrails cluster in scripts/prove_ci.sh")
+    return out
+
 def parse_index(text: str) -> dict[str, str]:
     if index_begin not in text or index_end not in text:
         die("missing CI guardrails entrypoints bounded section in Ops index")
@@ -40,7 +55,7 @@ def parse_index(text: str) -> dict[str, str]:
         left, desc = line[2:].split(" — ", 1)
         script_path = left.strip().strip("`")
         desc = desc.strip()
-        if not script_path.startswith("scripts/gate_"):
+        if not script_path.startswith("scripts/gate_ci_guardrails_ops_"):
             continue
         if script_path in rows and rows[script_path] != desc:
             die(f"duplicate Ops index entry with conflicting description: {script_path}")
@@ -58,27 +73,12 @@ def parse_tsv(text: str) -> dict[str, str]:
             continue
         script_path = cols[0].strip()
         desc = cols[-1].strip()
-        if not script_path.startswith("scripts/gate_"):
+        if not script_path.startswith("scripts/gate_ci_guardrails_ops_"):
             continue
         if script_path in rows and rows[script_path] != desc:
             die(f"duplicate TSV entry with conflicting description: {script_path}")
         rows[script_path] = desc
     return rows
-
-def parse_cluster(text: str) -> list[str]:
-    started = False
-    out = []
-    for raw in text.splitlines():
-        line = raw.strip()
-        if line == cluster_start:
-            started = True
-        if started and line.startswith("bash scripts/gate_ci_guardrails_ops_"):
-            out.append(line.replace("bash ", "", 1))
-        if started and line == cluster_end:
-            break
-    if not out:
-        die("could not locate ops guardrails cluster in scripts/prove_ci.sh")
-    return out
 
 prove_text = prove_path.read_text(encoding="utf-8")
 index_text = index_path.read_text(encoding="utf-8")
@@ -124,4 +124,4 @@ if errors:
     raise SystemExit(1)
 
 print("OK: CI Guardrails ops label registry parity (v1)")
-ENDPY
+LABEL_REGISTRY_PARITY_PY
