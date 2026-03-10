@@ -12,11 +12,11 @@ trap 'rm -rf "$tmpdir"' EXIT
 registry="$tmpdir/registry.txt"
 executed="$tmpdir/executed.txt"
 
-grep 'scripts/gate_.*\.sh' "$REGISTRY" \
+grep -o 'scripts/gate_[^[:space:]]*\.sh' "$REGISTRY" \
   | sed 's/[[:space:]]*$//' \
   | sort -u > "$registry"
 
-grep '^bash scripts/gate_.*\.sh$' "$PROVE" \
+grep -o 'scripts/gate_[^[:space:]]*\.sh' "$PROVE" \
   | sed 's/^bash //' \
   | sed 's/[[:space:]]*$//' \
   | sort -u > "$executed"
