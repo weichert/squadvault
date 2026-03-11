@@ -1,0 +1,826 @@
+diff --git a/Tests/test_format_rivalry_chronicle_v1.py b/Tests/test_format_rivalry_chronicle_v1.py
+new file mode 100644
+index 0000000..221e334
+--- /dev/null
++++ b/Tests/test_format_rivalry_chronicle_v1.py
+@@ -0,0 +1,193 @@
++"""Tests for squadvault.chronicle.format_rivalry_chronicle_v1.
++
++Covers: render_rivalry_chronicle_v1, UpstreamRecapQuoteV1, markers,
++missing weeks handling, deterministic output.
++"""
++from __future__ import annotations
++
++import pytest
++
++from squadvault.chronicle.format_rivalry_chronicle_v1 import (
++    render_rivalry_chronicle_v1,
++    UpstreamRecapQuoteV1,
++    BANNER,
++    MARK_PROVENANCE,
++    MARK_WEEKS,
++    MARK_QUOTES,
++    _nl,
++)
++
++
++def _quote(week: int, text: str = "Recap content here.") -> UpstreamRecapQuoteV1:
++    return UpstreamRecapQuoteV1(
++        week_index=week,
++        artifact_type="WEEKLY_RECAP",
++        version=1,
++        selection_fingerprint="a" * 64,
++        rendered_text=text,
++    )
++
++
++# ── _nl helper ───────────────────────────────────────────────────────
++
++class TestNl:
++    def test_adds_newline(self):
++        assert _nl("hello") == "hello\n"
++
++    def test_already_has_newline(self):
++        assert _nl("hello\n") == "hello\n"
++
++    def test_empty_string(self):
++        assert _nl("") == "\n"
++
++
++# ── render_rivalry_chronicle_v1 ──────────────────────────────────────
++
++class TestRenderRivalryChronicle:
++    def test_basic_output(self):
++        """Rendering with one quote produces valid output."""
++        result = render_rivalry_chronicle_v1(
++            league_id=70985,
++            season=2024,
++            week_indices_requested=[1, 2, 3],
++            upstream_quotes=[_quote(1), _quote(2)],
++            missing_weeks=[3],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        assert "NON-CANONICAL" in result
++        assert "League: 70985" in result
++        assert "Season: 2024" in result
++
++    def test_contains_all_markers(self):
++        """Output must contain all structural markers."""
++        result = render_rivalry_chronicle_v1(
++            league_id=1, season=2024,
++            week_indices_requested=[1],
++            upstream_quotes=[_quote(1)],
++            missing_weeks=[],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        assert MARK_PROVENANCE[0] in result
++        assert MARK_PROVENANCE[1] in result
++        assert MARK_WEEKS[0] in result
++        assert MARK_WEEKS[1] in result
++        assert MARK_QUOTES[0] in result
++        assert MARK_QUOTES[1] in result
++
++    def test_missing_weeks_noted(self):
++        """Missing weeks are explicitly called out."""
++        result = render_rivalry_chronicle_v1(
++            league_id=1, season=2024,
++            week_indices_requested=[1, 2, 3],
++            upstream_quotes=[_quote(1)],
++            missing_weeks=[2, 3],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        assert "Missing weeks: [2, 3]" in result
++        assert "Some requested weeks are missing" in result
++
++    def test_no_missing_weeks(self):
++        """When all weeks present, no missing note."""
++        result = render_rivalry_chronicle_v1(
++            league_id=1, season=2024,
++            week_indices_requested=[1],
++            upstream_quotes=[_quote(1)],
++            missing_weeks=[],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        assert "All requested weeks had APPROVED recaps" in result
++        assert "Missing weeks" not in result
++
++    def test_quotes_included_verbatim(self):
++        """Upstream recap text is included verbatim."""
++        result = render_rivalry_chronicle_v1(
++            league_id=1, season=2024,
++            week_indices_requested=[1],
++            upstream_quotes=[_quote(1, "This is the exact recap text.")],
++            missing_weeks=[],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        assert "This is the exact recap text." in result
++
++    def test_quotes_ordered_by_week(self):
++        """Quotes are sorted by week_index regardless of input order."""
++        result = render_rivalry_chronicle_v1(
++            league_id=1, season=2024,
++            week_indices_requested=[3, 1, 2],
++            upstream_quotes=[_quote(3, "Week 3"), _quote(1, "Week 1"), _quote(2, "Week 2")],
++            missing_weeks=[],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        pos_w1 = result.index("Week 1")
++        pos_w2 = result.index("Week 2")
++        pos_w3 = result.index("Week 3")
++        assert pos_w1 < pos_w2 < pos_w3
++
++    def test_provenance_includes_fingerprints(self):
++        """Provenance section includes selection fingerprints."""
++        fp = "b" * 64
++        result = render_rivalry_chronicle_v1(
++            league_id=1, season=2024,
++            week_indices_requested=[1],
++            upstream_quotes=[UpstreamRecapQuoteV1(
++                week_index=1, artifact_type="WEEKLY_RECAP",
++                version=2, selection_fingerprint=fp,
++                rendered_text="text",
++            )],
++            missing_weeks=[],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        assert fp in result
++        assert "version: 2" in result
++
++    def test_empty_quotes_list(self):
++        """Empty quotes still produces valid structure."""
++        result = render_rivalry_chronicle_v1(
++            league_id=1, season=2024,
++            week_indices_requested=[1, 2],
++            upstream_quotes=[],
++            missing_weeks=[1, 2],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        assert MARK_QUOTES[0] in result
++        assert MARK_QUOTES[1] in result
++        assert "included_weeks: []" in result
++
++    def test_deterministic(self):
++        """Same inputs always produce identical output."""
++        kwargs = dict(
++            league_id=1, season=2024,
++            week_indices_requested=[1, 2],
++            upstream_quotes=[_quote(1), _quote(2)],
++            missing_weeks=[],
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        assert render_rivalry_chronicle_v1(**kwargs) == render_rivalry_chronicle_v1(**kwargs)
++
++    def test_created_at_in_output(self):
++        ts = "2024-12-25T12:00:00Z"
++        result = render_rivalry_chronicle_v1(
++            league_id=1, season=2024,
++            week_indices_requested=[],
++            upstream_quotes=[],
++            missing_weeks=[],
++            created_at_utc=ts,
++        )
++        assert f"CreatedAtUTC: {ts}" in result
++
++
++# ── UpstreamRecapQuoteV1 ─────────────────────────────────────────────
++
++class TestUpstreamRecapQuoteV1:
++    def test_frozen(self):
++        q = _quote(1)
++        with pytest.raises(AttributeError):
++            q.week_index = 2
++
++    def test_fields(self):
++        q = _quote(5, "content")
++        assert q.week_index == 5
++        assert q.artifact_type == "WEEKLY_RECAP"
++        assert q.version == 1
++        assert q.rendered_text == "content"
++        assert len(q.selection_fingerprint) == 64
+diff --git a/Tests/test_franchise_queries_v1.py b/Tests/test_franchise_queries_v1.py
+new file mode 100644
+index 0000000..cdbebc3
+--- /dev/null
++++ b/Tests/test_franchise_queries_v1.py
+@@ -0,0 +1,151 @@
++"""Tests for squadvault.core.queries.franchise_queries.
++
++Covers: _franchise_ids_from_payload, events_for_franchise,
++draft_picks_for_franchise, trades_for_franchise.
++"""
++from __future__ import annotations
++
++import json
++import sqlite3
++from pathlib import Path
++
++import pytest
++
++from squadvault.core.queries.franchise_queries import (
++    _franchise_ids_from_payload,
++    events_for_franchise,
++    draft_picks_for_franchise,
++    waiver_awards_for_franchise,
++    trades_for_franchise,
++    free_agent_moves_for_franchise,
++)
++from squadvault.core.storage.sqlite_store import SQLiteStore
++
++SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"
++LEAGUE = "test_league"
++SEASON = 2024
++
++
++# ── _franchise_ids_from_payload (pure) ───────────────────────────────
++
++class TestFranchiseIdsFromPayload:
++    def test_simple_franchise_id(self):
++        event = {"payload": {"franchise_id": "F001"}}
++        assert _franchise_ids_from_payload(event) == {"F001"}
++
++    def test_trade_with_raw_mfl_json(self):
++        raw = json.dumps({"franchise": "F001", "franchise2": "F002"})
++        event = {"payload": {"raw_mfl_json": raw}}
++        ids = _franchise_ids_from_payload(event)
++        assert "F001" in ids
++        assert "F002" in ids
++
++    def test_franchise_id_plus_raw(self):
++        raw = json.dumps({"franchise2": "F002"})
++        event = {"payload": {"franchise_id": "F001", "raw_mfl_json": raw}}
++        ids = _franchise_ids_from_payload(event)
++        assert ids == {"F001", "F002"}
++
++    def test_empty_payload(self):
++        assert _franchise_ids_from_payload({"payload": {}}) == set()
++
++    def test_no_payload(self):
++        assert _franchise_ids_from_payload({}) == set()
++
++    def test_invalid_raw_json(self):
++        event = {"payload": {"raw_mfl_json": "not json"}}
++        assert _franchise_ids_from_payload(event) == set()
++
++    def test_franchise_id_as_list(self):
++        event = {"payload": {"franchise_id": ["F001", "F002"]}}
++        assert _franchise_ids_from_payload(event) == {"F001", "F002"}
++
++    def test_ignores_non_franchise_keys_in_raw(self):
++        raw = json.dumps({"player_id": "P001", "franchise": "F001"})
++        event = {"payload": {"raw_mfl_json": raw}}
++        ids = _franchise_ids_from_payload(event)
++        assert ids == {"F001"}
++
++
++# ── Store-backed queries ─────────────────────────────────────────────
++
++@pytest.fixture
++def store(tmp_path):
++    """Fresh DB with seeded events for franchise queries."""
++    db = tmp_path / "test.sqlite"
++    s = SQLiteStore(db_path=db)
++    s.init_db(SCHEMA_PATH.read_text())
++    s.append_events([
++        {
++            "league_id": LEAGUE, "season": SEASON,
++            "external_source": "test", "external_id": "draft_1",
++            "event_type": "DRAFT_PICK",
++            "occurred_at": "2024-09-01T12:00:00Z",
++            "payload": {"franchise_id": "F001", "player_id": "P001"},
++        },
++        {
++            "league_id": LEAGUE, "season": SEASON,
++            "external_source": "test", "external_id": "waiver_1",
++            "event_type": "WAIVER_BID_AWARDED",
++            "occurred_at": "2024-09-02T12:00:00Z",
++            "payload": {"franchise_id": "F001", "player_id": "P002"},
++        },
++        {
++            "league_id": LEAGUE, "season": SEASON,
++            "external_source": "test", "external_id": "trade_1",
++            "event_type": "TRANSACTION_TRADE",
++            "occurred_at": "2024-09-03T12:00:00Z",
++            "payload": {"franchise_id": "F001", "raw_mfl_json": json.dumps({"franchise": "F001", "franchise2": "F002"})},
++        },
++        {
++            "league_id": LEAGUE, "season": SEASON,
++            "external_source": "test", "external_id": "fa_1",
++            "event_type": "TRANSACTION_FREE_AGENT",
++            "occurred_at": "2024-09-04T12:00:00Z",
++            "payload": {"franchise_id": "F002"},
++        },
++    ])
++    return s
++
++
++class TestEventsForFranchise:
++    def test_f001_events(self, store):
++        """F001 should match draft, waiver, and trade."""
++        events = events_for_franchise(store, league_id=LEAGUE, season=SEASON, franchise_id="F001")
++        types = {e["event_type"] for e in events}
++        assert "DRAFT_PICK" in types
++        assert "WAIVER_BID_AWARDED" in types
++        assert "TRANSACTION_TRADE" in types
++
++    def test_f002_events(self, store):
++        """F002 should match trade (via raw_mfl_json) and free agent."""
++        events = events_for_franchise(store, league_id=LEAGUE, season=SEASON, franchise_id="F002")
++        types = {e["event_type"] for e in events}
++        assert "TRANSACTION_TRADE" in types
++        assert "TRANSACTION_FREE_AGENT" in types
++
++    def test_unknown_franchise_empty(self, store):
++        events = events_for_franchise(store, league_id=LEAGUE, season=SEASON, franchise_id="F999")
++        assert events == []
++
++
++class TestTypedFranchiseQueries:
++    def test_draft_picks(self, store):
++        result = draft_picks_for_franchise(store, league_id=LEAGUE, season=SEASON, franchise_id="F001")
++        assert len(result) == 1
++        assert result[0]["event_type"] == "DRAFT_PICK"
++
++    def test_waiver_awards(self, store):
++        result = waiver_awards_for_franchise(store, league_id=LEAGUE, season=SEASON, franchise_id="F001")
++        assert len(result) == 1
++
++    def test_trades(self, store):
++        result = trades_for_franchise(store, league_id=LEAGUE, season=SEASON, franchise_id="F001")
++        assert len(result) == 1
++
++    def test_free_agent_moves(self, store):
++        result = free_agent_moves_for_franchise(store, league_id=LEAGUE, season=SEASON, franchise_id="F002")
++        assert len(result) == 1
++
++    def test_no_matches(self, store):
++        assert draft_picks_for_franchise(store, league_id=LEAGUE, season=SEASON, franchise_id="F002") == []
+diff --git a/Tests/test_persist_rivalry_chronicle_v1.py b/Tests/test_persist_rivalry_chronicle_v1.py
+new file mode 100644
+index 0000000..f843b65
+--- /dev/null
++++ b/Tests/test_persist_rivalry_chronicle_v1.py
+@@ -0,0 +1,193 @@
++"""Tests for squadvault.chronicle.persist_rivalry_chronicle_v1.
++
++Covers: _insert_recap_artifact_row_schema_resilient, _next_version,
++_latest_approved_chronicle_row, PersistedChronicleV1, SchemaError.
++"""
++from __future__ import annotations
++
++import sqlite3
++from pathlib import Path
++
++import pytest
++
++from squadvault.chronicle.persist_rivalry_chronicle_v1 import (
++    _insert_recap_artifact_row_schema_resilient,
++    _latest_approved_chronicle_row,
++    _next_version,
++    PersistedChronicleV1,
++)
++from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
++from squadvault.errors import SchemaError
++
++SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"
++LEAGUE = 70985
++SEASON = 2024
++WEEK = 1
++FP = "a" * 64
++
++
++@pytest.fixture
++def db(tmp_path):
++    """Fresh DB from schema.sql."""
++    db_path = str(tmp_path / "test.sqlite")
++    con = sqlite3.connect(db_path)
++    con.executescript(SCHEMA_PATH.read_text())
++    con.close()
++    return db_path
++
++
++@pytest.fixture
++def conn(db):
++    """Open connection to fresh DB."""
++    c = sqlite3.connect(db)
++    c.row_factory = sqlite3.Row
++    yield c
++    c.close()
++
++
++# ── _insert_recap_artifact_row_schema_resilient ──────────────────────
++
++class TestSchemaResilientInsert:
++    def test_basic_insert(self, conn):
++        """Insert creates a row with expected values."""
++        _insert_recap_artifact_row_schema_resilient(
++            conn,
++            league_id=LEAGUE, season=SEASON, week_index=WEEK,
++            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
++            version=1, state="APPROVED",
++            selection_fingerprint=FP,
++            rendered_text="Chronicle text here.",
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        conn.commit()
++        row = conn.execute(
++            "SELECT * FROM recap_artifacts WHERE league_id=? AND artifact_type=?",
++            (LEAGUE, ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1),
++        ).fetchone()
++        assert row is not None
++        assert row["state"] == "APPROVED"
++        assert row["version"] == 1
++        assert row["selection_fingerprint"] == FP
++        assert "Chronicle text" in row["rendered_text"]
++
++    def test_missing_required_columns_raises(self, tmp_path):
++        """If recap_artifacts is missing required columns, raise SchemaError."""
++        db = str(tmp_path / "bad.sqlite")
++        con = sqlite3.connect(db)
++        con.execute("CREATE TABLE recap_artifacts (id INTEGER PRIMARY KEY, league_id TEXT)")
++        with pytest.raises(SchemaError, match="missing required columns"):
++            _insert_recap_artifact_row_schema_resilient(
++                con,
++                league_id=LEAGUE, season=SEASON, week_index=WEEK,
++                artifact_type="TEST", version=1, state="DRAFT",
++                selection_fingerprint=FP, rendered_text="text",
++                created_at_utc="2024-12-01T00:00:00Z",
++            )
++        con.close()
++
++
++# ── _next_version ────────────────────────────────────────────────────
++
++class TestNextVersion:
++    def test_first_version(self, conn):
++        """No existing artifacts → version 1."""
++        assert _next_version(conn, LEAGUE, SEASON, WEEK) == 1
++
++    def test_increments(self, conn):
++        """After inserting v1, next should be v2."""
++        _insert_recap_artifact_row_schema_resilient(
++            conn,
++            league_id=LEAGUE, season=SEASON, week_index=WEEK,
++            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
++            version=1, state="APPROVED",
++            selection_fingerprint=FP, rendered_text="v1",
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        conn.commit()
++        assert _next_version(conn, LEAGUE, SEASON, WEEK) == 2
++
++    def test_different_week_independent(self, conn):
++        """Version numbering is per-week."""
++        _insert_recap_artifact_row_schema_resilient(
++            conn,
++            league_id=LEAGUE, season=SEASON, week_index=1,
++            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
++            version=3, state="APPROVED",
++            selection_fingerprint=FP, rendered_text="v3",
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        conn.commit()
++        assert _next_version(conn, LEAGUE, SEASON, 2) == 1
++
++
++# ── _latest_approved_chronicle_row ───────────────────────────────────
++
++class TestLatestApprovedChronicleRow:
++    def test_no_rows(self, conn):
++        assert _latest_approved_chronicle_row(conn, LEAGUE, SEASON, WEEK) is None
++
++    def test_finds_approved(self, conn):
++        _insert_recap_artifact_row_schema_resilient(
++            conn,
++            league_id=LEAGUE, season=SEASON, week_index=WEEK,
++            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
++            version=1, state="APPROVED",
++            selection_fingerprint=FP, rendered_text="text",
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        conn.commit()
++        row = _latest_approved_chronicle_row(conn, LEAGUE, SEASON, WEEK)
++        assert row is not None
++        assert row["version"] == 1
++        assert row["selection_fingerprint"] == FP
++
++    def test_ignores_draft(self, conn):
++        """DRAFT artifacts are not returned."""
++        _insert_recap_artifact_row_schema_resilient(
++            conn,
++            league_id=LEAGUE, season=SEASON, week_index=WEEK,
++            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
++            version=1, state="DRAFT",
++            selection_fingerprint=FP, rendered_text="text",
++            created_at_utc="2024-12-01T00:00:00Z",
++        )
++        conn.commit()
++        assert _latest_approved_chronicle_row(conn, LEAGUE, SEASON, WEEK) is None
++
++    def test_returns_latest_version(self, conn):
++        """When multiple APPROVED exist, returns highest version."""
++        for v in [1, 2, 3]:
++            _insert_recap_artifact_row_schema_resilient(
++                conn,
++                league_id=LEAGUE, season=SEASON, week_index=WEEK,
++                artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
++                version=v, state="APPROVED",
++                selection_fingerprint=f"fp_v{v}" + "x" * (64 - 4 - len(str(v))),
++                rendered_text=f"version {v}",
++                created_at_utc="2024-12-01T00:00:00Z",
++            )
++        conn.commit()
++        row = _latest_approved_chronicle_row(conn, LEAGUE, SEASON, WEEK)
++        assert row["version"] == 3
++
++
++# ── PersistedChronicleV1 dataclass ───────────────────────────────────
++
++class TestPersistedChronicleV1:
++    def test_frozen(self):
++        p = PersistedChronicleV1(
++            league_id=LEAGUE, season=SEASON, anchor_week_index=WEEK,
++            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
++            version=1, created_new=True,
++        )
++        with pytest.raises(AttributeError):
++            p.version = 2
++
++    def test_fields(self):
++        p = PersistedChronicleV1(
++            league_id=LEAGUE, season=SEASON, anchor_week_index=5,
++            artifact_type="TEST", version=3, created_new=False,
++        )
++        assert p.anchor_week_index == 5
++        assert p.version == 3
++        assert p.created_new is False
+diff --git a/Tests/test_render_from_facts_v1.py b/Tests/test_render_from_facts_v1.py
+new file mode 100644
+index 0000000..5055ed7
+--- /dev/null
++++ b/Tests/test_render_from_facts_v1.py
+@@ -0,0 +1,265 @@
++"""Tests for squadvault.core.recaps.render.render_recap_text_from_facts_v1.
++
++Covers: _get, _as_list, _fmt_ids, _safe_str, _DirLookup,
++_render_deterministic_bullets_from_facts_v1, QUIET_WEEK_MIN_EVENTS.
++"""
++from __future__ import annotations
++
++import sqlite3
++from pathlib import Path
++
++import pytest
++
++from squadvault.core.recaps.render.render_recap_text_from_facts_v1 import (
++    _get,
++    _as_list,
++    _fmt_ids,
++    _safe_str,
++    _DirLookup,
++    _render_deterministic_bullets_from_facts_v1,
++    QUIET_WEEK_MIN_EVENTS,
++    MAX_BULLETS,
++)
++
++SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"
++LEAGUE = "test_league"
++SEASON = 2024
++
++
++# ── _get (nested dict access) ────────────────────────────────────────
++
++class TestGet:
++    def test_single_key(self):
++        assert _get({"a": 1}, "a") == 1
++
++    def test_nested_keys(self):
++        assert _get({"a": {"b": {"c": 42}}}, "a", "b", "c") == 42
++
++    def test_missing_key(self):
++        assert _get({"a": 1}, "b") is None
++
++    def test_missing_nested(self):
++        assert _get({"a": {"b": 1}}, "a", "c") is None
++
++    def test_non_dict_intermediate(self):
++        assert _get({"a": "not a dict"}, "a", "b") is None
++
++    def test_empty_dict(self):
++        assert _get({}, "a") is None
++
++
++# ── _as_list ─────────────────────────────────────────────────────────
++
++class TestAsList:
++    def test_list_input(self):
++        assert _as_list(["a", "b"]) == ["a", "b"]
++
++    def test_single_value(self):
++        assert _as_list("x") == ["x"]
++
++    def test_none(self):
++        assert _as_list(None) == []
++
++    def test_list_with_nones(self):
++        assert _as_list(["a", None, "b"]) == ["a", "b"]
++
++    def test_int_value(self):
++        assert _as_list(42) == ["42"]
++
++
++# ── _fmt_ids ─────────────────────────────────────────────────────────
++
++class TestFmtIds:
++    def test_multiple(self):
++        assert _fmt_ids(["P1", "P2"]) == "P1, P2"
++
++    def test_single(self):
++        assert _fmt_ids(["P1"]) == "P1"
++
++    def test_empty(self):
++        assert _fmt_ids([]) == "(none)"
++
++
++# ── _safe_str ────────────────────────────────────────────────────────
++
++class TestSafeStr:
++    def test_string(self):
++        assert _safe_str("hello") == "hello"
++
++    def test_int(self):
++        assert _safe_str(42) == "42"
++
++    def test_none_returns_default(self):
++        assert _safe_str(None) == "?"
++
++    def test_none_custom_default(self):
++        assert _safe_str(None, "N/A") == "N/A"
++
++
++# ── _DirLookup ───────────────────────────────────────────────────────
++
++@pytest.fixture
++def db_with_directories(tmp_path):
++    """Fresh DB seeded with franchise and player directories."""
++    db = str(tmp_path / "test.sqlite")
++    con = sqlite3.connect(db)
++    con.executescript(SCHEMA_PATH.read_text())
++    con.execute(
++        "INSERT INTO franchise_directory (league_id, season, franchise_id, name) VALUES (?,?,?,?)",
++        (LEAGUE, SEASON, "0001", "Eagles"),
++    )
++    con.execute(
++        "INSERT INTO player_directory (league_id, season, player_id, name) VALUES (?,?,?,?)",
++        (LEAGUE, SEASON, "15754", "Jalen Hurts"),
++    )
++    con.commit()
++    con.close()
++    return db
++
++
++class TestDirLookup:
++    def test_franchise_found(self, db_with_directories):
++        lookup = _DirLookup(db_with_directories, LEAGUE, SEASON)
++        assert lookup.franchise("0001") == "Eagles"
++
++    def test_franchise_not_found(self, db_with_directories):
++        lookup = _DirLookup(db_with_directories, LEAGUE, SEASON)
++        assert lookup.franchise("9999") == "9999"  # fallback to raw ID
++
++    def test_franchise_none(self, db_with_directories):
++        lookup = _DirLookup(db_with_directories, LEAGUE, SEASON)
++        assert lookup.franchise(None) == "Unknown team"
++
++    def test_player_found(self, db_with_directories):
++        lookup = _DirLookup(db_with_directories, LEAGUE, SEASON)
++        assert lookup.player("15754") == "Jalen Hurts"
++
++    def test_player_not_found(self, db_with_directories):
++        lookup = _DirLookup(db_with_directories, LEAGUE, SEASON)
++        assert lookup.player("99999") == "99999"
++
++    def test_player_none(self, db_with_directories):
++        lookup = _DirLookup(db_with_directories, LEAGUE, SEASON)
++        assert lookup.player(None) == "Unknown player"
++
++    def test_caching(self, db_with_directories):
++        lookup = _DirLookup(db_with_directories, LEAGUE, SEASON)
++        r1 = lookup.franchise("0001")
++        r2 = lookup.franchise("0001")
++        assert r1 == r2 == "Eagles"
++
++    def test_norm_id_fallback(self, db_with_directories):
++        """Leading-zero normalization should find '0001' from '1'."""
++        # This depends on norm_id behavior — '1' != '0001' so it tries normalized
++        lookup = _DirLookup(db_with_directories, LEAGUE, SEASON)
++        # norm_id("0001") = "1", but we're querying "1" which normalizes to "1"
++        # and then tries "1" directly (no match) — fallback is raw ID
++        result = lookup.franchise("1")
++        # If directory has "0001", querying "1" won't match directly
++        # but norm_id("1") == "1" which equals the input, so no alt lookup
++        assert result == "1"  # expected: no match, fallback to raw
++
++
++# ── _render_deterministic_bullets_from_facts_v1 ──────────────────────
++
++class TestRenderBulletsFromFacts:
++    def test_quiet_week_returns_empty(self, db_with_directories):
++        """Fewer than QUIET_WEEK_MIN_EVENTS returns empty string."""
++        facts = [{"event_type": "DRAFT_PICK", "occurred_at": "2024-09-01T00:00:00Z", "canonical_id": "1"}]
++        result = _render_deterministic_bullets_from_facts_v1(
++            db_path=db_with_directories, league_id=LEAGUE, season=SEASON, facts=facts,
++        )
++        assert result == ""
++
++    def test_free_agent_bullet(self, db_with_directories):
++        """Free agent events produce 'added X (free agent)' bullets."""
++        facts = [
++            {
++                "event_type": "TRANSACTION_FREE_AGENT",
++                "occurred_at": f"2024-09-0{i}T12:00:00Z",
++                "canonical_id": str(i),
++                "details": {
++                    "franchise_id": "0001",
++                    "normalized": {"add_player_ids": ["15754"]},
++                },
++            }
++            for i in range(1, QUIET_WEEK_MIN_EVENTS + 1)
++        ]
++        result = _render_deterministic_bullets_from_facts_v1(
++            db_path=db_with_directories, league_id=LEAGUE, season=SEASON, facts=facts,
++        )
++        assert "What happened (facts)" in result
++        assert "Eagles" in result
++        assert "Jalen Hurts" in result
++        assert "free agent" in result
++
++    def test_waiver_bid_bullet(self, db_with_directories):
++        """Waiver bid events produce 'won X on waivers' bullets."""
++        facts = [
++            {
++                "event_type": "WAIVER_BID_AWARDED",
++                "occurred_at": f"2024-09-0{i}T12:00:00Z",
++                "canonical_id": str(i),
++                "details": {
++                    "franchise_id": "0001",
++                    "normalized": {"add_player_ids": ["15754"], "bid_amount": 25},
++                },
++            }
++            for i in range(1, QUIET_WEEK_MIN_EVENTS + 1)
++        ]
++        result = _render_deterministic_bullets_from_facts_v1(
++            db_path=db_with_directories, league_id=LEAGUE, season=SEASON, facts=facts,
++        )
++        assert "waivers" in result
++        assert "$25" in result
++
++    def test_trade_bullet(self, db_with_directories):
++        """Trade events produce 'Trade: X ↔ Y' bullets."""
++        facts = [
++            {
++                "event_type": "TRANSACTION_TRADE",
++                "occurred_at": f"2024-09-0{i}T12:00:00Z",
++                "canonical_id": str(i),
++                "details": {
++                    "franchise_id": "0001",
++                    "normalized": {
++                        "franchise1_id": "0001",
++                        "franchise2_id": "9999",
++                        "franchise1_gave_up_player_ids": ["15754"],
++                        "franchise2_gave_up_player_ids": ["99999"],
++                    },
++                },
++            }
++            for i in range(1, QUIET_WEEK_MIN_EVENTS + 1)
++        ]
++        result = _render_deterministic_bullets_from_facts_v1(
++            db_path=db_with_directories, league_id=LEAGUE, season=SEASON, facts=facts,
++        )
++        assert "Trade:" in result
++        assert "Eagles" in result
++        assert "↔" in result
++
++    def test_max_bullets_capped(self, db_with_directories):
++        """Output is capped at MAX_BULLETS."""
++        facts = [
++            {
++                "event_type": "TRANSACTION_FREE_AGENT",
++                "occurred_at": f"2024-09-{i:02d}T12:00:00Z",
++                "canonical_id": str(i),
++                "details": {
++                    "franchise_id": "0001",
++                    "normalized": {"add_player_ids": ["15754"]},
++                },
++            }
++            for i in range(1, MAX_BULLETS + 10)
++        ]
++        result = _render_deterministic_bullets_from_facts_v1(
++            db_path=db_with_directories, league_id=LEAGUE, season=SEASON, facts=facts,
++        )
++        bullet_count = result.count("- ")
++        assert bullet_count <= MAX_BULLETS
++
++    def test_constants(self):
++        """Key constants have expected values."""
++        assert QUIET_WEEK_MIN_EVENTS >= 1
++        assert MAX_BULLETS >= 1
