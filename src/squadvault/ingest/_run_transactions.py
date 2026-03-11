@@ -1,3 +1,6 @@
+
+"""CLI runner for transaction event ingestion."""
+
 import json
 
 from squadvault.ingest.transactions import derive_transaction_event_envelopes

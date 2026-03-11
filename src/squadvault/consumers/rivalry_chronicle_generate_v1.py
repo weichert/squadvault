@@ -1,3 +1,5 @@
+"""Generate a rivalry chronicle from canonical events."""
+
 #!/usr/bin/env python3
 # SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1
 # SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md
@@ -15,11 +17,13 @@ from squadvault.chronicle.persist_rivalry_chronicle_v1 import persist_rivalry_ch
 
 
 def _debug(msg: str) -> None:
+    """Print debug message to stderr if SV_DEBUG=1."""
     if os.environ.get("SV_DEBUG") == "1":
         print(msg, file=sys.stderr)
 
 
 def main() -> int:
+    """CLI entrypoint: generate a rivalry chronicle."""
     ap = argparse.ArgumentParser(description="Generate + persist Rivalry Chronicle v1 (APPROVED recaps only).")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", type=int, required=True)
@@ -54,7 +58,8 @@ def main() -> int:
     # Compute BOTH and pass supported kwargs (signature-filtered).
     import inspect
 
-    def _filter_kwargs(fn, kwargs):
+    def _filter_kwargs(fn, kwargs) -> dict:
+        """Filter kwargs to only those accepted by a function's signature."""
         params = set(inspect.signature(fn).parameters.keys())
         return {k: v for k, v in kwargs.items() if k in params}
 

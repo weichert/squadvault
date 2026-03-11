@@ -1,0 +1,1 @@
+"""Deterministic recap text rendering."""

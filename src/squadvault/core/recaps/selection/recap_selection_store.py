@@ -1,3 +1,5 @@
+"""Selection persistence: store and compare weekly selection fingerprints."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,6 +8,7 @@ import sqlite3
 from datetime import datetime, timezone
 
 from squadvault.core.recaps.selection.weekly_selection_v1 import SelectionResult
+from squadvault.core.storage.session import DatabaseSession
 
 
 @dataclass(frozen=True)
@@ -23,6 +26,7 @@ class StoredSelection:
 
 
 def _now_utc_iso() -> str:
+    """Return current UTC time as ISO-8601 string."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
@@ -33,8 +37,8 @@ def get_stored_selection(
     week_index: int,
     selection_version: int = 1,
 ) -> Optional[StoredSelection]:
-    con = sqlite3.connect(db_path)
-    try:
+    """Retrieve stored selection record for a week, or None."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT league_id, season, week_index, selection_version,
@@ -45,8 +49,6 @@ def get_stored_selection(
             """,
             (league_id, season, week_index, selection_version),
         ).fetchone()
-    finally:
-        con.close()
 
     if not row:
         return None
@@ -77,8 +79,7 @@ def insert_selection_if_missing(
     - returns True if inserted
     - returns False if already existed (does not overwrite)
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         cur = con.execute(
             """
             INSERT OR IGNORE INTO recap_selections (
@@ -102,11 +103,10 @@ def insert_selection_if_missing(
         )
         con.commit()
         return cur.rowcount == 1
-    finally:
-        con.close()
 
 
 def is_stale(stored: Optional[StoredSelection], current: SelectionResult) -> bool:
+    """Return True if stored selection differs from computed selection."""
     if stored is None:
         return False
     return stored.fingerprint != current.fingerprint

@@ -1,3 +1,5 @@
+"""Display editorial log for a given recap week."""
+
 from __future__ import annotations
 
 import argparse
@@ -5,9 +7,11 @@ import sqlite3
 import sys
 
 from squadvault.consumers.editorial_actions import fetch_editorial_log
+from squadvault.core.storage.session import DatabaseSession
 
 
 def main(argv: list[str]) -> int:
+    """CLI entrypoint: display editorial log."""
     ap = argparse.ArgumentParser(description="Show editorial action log for a week")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
@@ -16,14 +20,14 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--limit", type=int, default=200)
     args = ap.parse_args(argv)
 
-    conn = sqlite3.connect(args.db)
-    rows = fetch_editorial_log(
-        conn,
-        league_id=args.league_id,
-        season=args.season,
-        week_index=args.week_index,
-        limit=args.limit,
-    )
+    with DatabaseSession(args.db) as conn:
+        rows = fetch_editorial_log(
+            conn,
+            league_id=args.league_id,
+            season=args.season,
+            week_index=args.week_index,
+            limit=args.limit,
+        )
 
     if not rows:
         print("(no editorial actions logged)")

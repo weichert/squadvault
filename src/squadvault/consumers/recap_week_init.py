@@ -31,6 +31,7 @@ WINDOW_UNSAFE_TO_COMPUTE = "WINDOW_UNSAFE_TO_COMPUTE"
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Build argument parser for recap week initialization."""
     p = argparse.ArgumentParser(description="Initialize weekly recap (v1) deterministically.")
     p.add_argument("--db", required=True, help="Path to SQLite DB")
     p.add_argument("--league-id", required=True, help="League ID")
@@ -45,10 +46,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def _is_safe_window(mode: Optional[str], start: Optional[str], end: Optional[str]) -> bool:
+    """Return True if window has valid mode, start, and end."""
     return (mode in SAFE_WINDOW_MODES) and bool(start) and bool(end)
 
 
 def main() -> None:
+    """CLI entrypoint: initialize a recap week."""
     args = build_arg_parser().parse_args()
 
     # 1) Deterministic selection (+ optional season_end cap for the last week)

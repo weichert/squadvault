@@ -1,6 +1,12 @@
+
+"""Render full recap text from enriched facts artifacts with name resolution."""
+
 import json
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
+
+from squadvault.core.storage.db_utils import norm_id as _norm_id
+from squadvault.core.storage.session import DatabaseSession
 
 
 QUIET_WEEK_MIN_EVENTS = 3
@@ -8,6 +14,7 @@ MAX_BULLETS = 20
 
 
 def _get(d: Dict[str, Any], *keys: str) -> Optional[Any]:
+    """Safely get a nested dict value or return default."""
     cur: Any = d
     for k in keys:
         if not isinstance(cur, dict) or k not in cur:
@@ -17,6 +24,7 @@ def _get(d: Dict[str, Any], *keys: str) -> Optional[Any]:
 
 
 def _as_list(v: Any) -> List[str]:
+    """Coerce value to list, or return empty list."""
     if v is None:
         return []
     if isinstance(v, list):
@@ -25,12 +33,14 @@ def _as_list(v: Any) -> List[str]:
 
 
 def _fmt_ids(ids: List[str]) -> str:
+    """Format a list of IDs as comma-separated chunks."""
     if not ids:
         return "(none)"
     return ", ".join(ids)
 
 
 def _safe_str(v: Any, default: str = "?") -> str:
+    """Return str(v).strip() or fallback if empty/None."""
     if v is None:
         return default
     try:
@@ -38,14 +48,6 @@ def _safe_str(v: Any, default: str = "?") -> str:
     except Exception:
         return default
 
-
-def _norm_id(raw: Any) -> str:
-    s = "" if raw is None else str(raw).strip()
-    if not s:
-        return ""
-    if s.isdigit():
-        return s.lstrip("0") or "0"
-    return s
 
 
 class _DirLookup:
@@ -64,6 +66,7 @@ class _DirLookup:
         self._pl_cache: Dict[str, str] = {}
 
     def franchise(self, fid_raw: Any) -> str:
+        """Resolve franchise ID to name, with caching and normalized fallback."""
         key = "" if fid_raw is None else str(fid_raw).strip()
         if not key:
             return "Unknown team"
@@ -87,6 +90,7 @@ class _DirLookup:
         return out
 
     def player(self, pid_raw: Any) -> str:
+        """Resolve player ID to name, with caching and normalized fallback."""
         key = "" if pid_raw is None else str(pid_raw).strip()
         if not key:
             return "Unknown player"
@@ -110,15 +114,11 @@ class _DirLookup:
         return out
 
     def _query_one(self, sql: str, params: Tuple[Any, ...]) -> str:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(sql, params)
-        row = cur.fetchone()
-        conn.close()
+        """Execute a single-row query and return the first column value."""
+        with DatabaseSession(self.db_path) as conn:
+            row = conn.execute(sql, params).fetchone()
         if row is None:
             return ""
-        # first column
         v = row[0]
         return "" if v is None else str(v)
 
@@ -145,6 +145,7 @@ def _render_deterministic_bullets_from_facts_v1(
 
     # Stable ordering: occurred_at, event_type, canonical_id
     def _k(f: Dict[str, Any]) -> Tuple[str, str, str]:
+        """Build a cache key from table, ID column value, and name column."""
         return (
             _safe_str(f.get("occurred_at"), "UNKNOWN_TIME"),
             _safe_str(f.get("event_type"), "UNKNOWN"),
@@ -218,6 +219,7 @@ def _render_deterministic_bullets_from_facts_v1(
 
 
 def render_recap_from_facts_v1(artifact: Dict[str, Any], *, db_path: Optional[str] = None) -> str:
+    """Render full recap text from an enriched facts artifact dict."""
     league_id = artifact.get("league_id")
     season = artifact.get("season")
     week_index = artifact.get("week_index")
@@ -343,6 +345,7 @@ def render_recap_from_facts_v1(artifact: Dict[str, Any], *, db_path: Optional[st
 
 
 def render_recap_from_enriched_path_v1(path: str, *, db_path: Optional[str] = None) -> str:
+    """Load enriched artifact JSON from path and render recap."""
     with open(path, "r", encoding="utf-8") as f:
         artifact = json.load(f)
     return render_recap_from_facts_v1(artifact, db_path=db_path)

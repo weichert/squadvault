@@ -1,3 +1,5 @@
+"""MyFantasyLeague API client for data ingestion."""
+
 from __future__ import annotations
 
 import logging
@@ -75,6 +77,7 @@ class MflClient:
     # ----------------------------
 
     def export_url(self, year: int, export_type: str) -> str:
+        """Build MFL export API URL for a league/year."""
         host = self._host()
         return (
             f"https://{host}/{year}/export"
@@ -82,6 +85,7 @@ class MflClient:
         )
 
     def _login_url(self, year: int) -> str:
+        """Build MFL login URL for a year."""
         host = self._host()
         return f"https://{host}/{year}/login"
 

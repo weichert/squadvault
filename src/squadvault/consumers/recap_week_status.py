@@ -1,6 +1,9 @@
+"""Display status of a given recap week."""
+
 import argparse
 import sqlite3
 from typing import Optional, Tuple
+from squadvault.core.storage.session import DatabaseSession
 
 
 def _get_recap_run_row(
@@ -9,8 +12,7 @@ def _get_recap_run_row(
     """
     Returns: (state, reason, selection_fingerprint, created_at, updated_at)
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT state, reason, selection_fingerprint, created_at, updated_at
@@ -20,8 +22,6 @@ def _get_recap_run_row(
             (league_id, season, week_index),
         ).fetchone()
         return tuple(row) if row else None
-    finally:
-        con.close()
 
 
 def _get_latest_recap_row(
@@ -30,8 +30,7 @@ def _get_latest_recap_row(
     """
     Returns: (recap_version, selection_fingerprint, status)
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT recap_version, selection_fingerprint, status
@@ -45,13 +44,11 @@ def _get_latest_recap_row(
         if not row:
             return None
         return (int(row[0]), str(row[1]), str(row[2]))
-    finally:
-        con.close()
 
 
 def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_index: int) -> Optional[str]:
-    con = sqlite3.connect(db_path)
-    try:
+    """Fetch ACTIVE recap artifact path, or None."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT artifact_path
@@ -62,8 +59,6 @@ def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_in
             """,
             (league_id, season, week_index),
         ).fetchone()
-    finally:
-        con.close()
 
     if not row or not row[0]:
         return None
@@ -77,6 +72,7 @@ def _suggest_next_action(
     season: int,
     week_index: int,
 ) -> str:
+    """Suggest the next operator action based on current state."""
     common = (
         f"./scripts/py -u "
         f"--db {db_path} --league-id {league_id} --season {season} --week-index {week_index}"
@@ -123,6 +119,7 @@ def _suggest_next_action(
     return f"NEXT: unknown state '{state}' (no automatic action)"
 
 def main() -> None:
+    """CLI entrypoint: display recap week status."""
     ap = argparse.ArgumentParser(description="Show weekly recap pipeline status (single pane of glass).")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)

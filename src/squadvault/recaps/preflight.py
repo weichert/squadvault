@@ -1,3 +1,5 @@
+"""Preflight gate: decide if recap generation is allowed before LLM calls."""
+
 # src/squadvault/recaps/preflight.py
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+"""Writing Room Intake: filter, validate, and group signals into a selection set."""
+
 # SquadVault — Writing Room Intake v1 (schema-aligned)
 #
 # Canonical goals:
@@ -25,15 +27,18 @@ from squadvault.recaps.writing_room.selection_set_schema_v1 import (
 )
 
 def _details_one(k: str, v: object) -> list[ReasonDetailKV]:
+    """Create a single-entry ReasonDetailKV list."""
     return [ReasonDetailKV(k=k, v=str(v))]
 
 
 
 def _now_utc_iso() -> str:
+    """Return current UTC time as ISO-8601 string."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _parse_iso_utc(s: str) -> Optional[datetime]:
+    """Parse ISO-8601 UTC string to datetime, or None."""
     if not s or not isinstance(s, str):
         return None
     try:
@@ -47,6 +52,7 @@ def _parse_iso_utc(s: str) -> Optional[datetime]:
 
 
 def _in_window(occurred_at_utc: str, window_start: str, window_end: str) -> bool:
+    """Return True if timestamp falls within window bounds."""
     t = _parse_iso_utc(occurred_at_utc)
     ws = _parse_iso_utc(window_start)
     we = _parse_iso_utc(window_end)
@@ -56,6 +62,7 @@ def _in_window(occurred_at_utc: str, window_start: str, window_end: str) -> bool
 
 
 def _boolish(x: Any) -> bool:
+    """Coerce value to bool with fallback for ambiguous inputs."""
     if isinstance(x, bool):
         return x
     if isinstance(x, (int, float)):
@@ -162,14 +169,17 @@ def _normalize_ctx_signals_args(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -
 
 
 def _signal_id(sig: Dict[str, Any]) -> str:
+    """Extract signal_id from a signal dict."""
     return str(sig.get("signal_id") or sig.get("id") or "")
 
 
 def _occurred_at(sig: Dict[str, Any]) -> str:
+    """Extract occurred_at timestamp from a signal dict."""
     return str(sig.get("occurred_at_utc") or sig.get("occurred_at") or sig.get("timestamp_utc") or "")
 
 
 def _confidence(sig: Dict[str, Any]) -> Optional[float]:
+    """Extract confidence grade from a signal dict."""
     c = sig.get("confidence")
     if c is None:
         return None
@@ -181,6 +191,7 @@ def _confidence(sig: Dict[str, Any]) -> Optional[float]:
 
 def _sensitive(sig: Dict[str, Any]) -> bool:
     # tolerate multiple field names
+    """Return True if signal is marked as sensitive."""
     if "is_sensitive" in sig:
         return _boolish(sig.get("is_sensitive"))
     if "sensitive" in sig:
@@ -192,6 +203,7 @@ def _sensitive(sig: Dict[str, Any]) -> bool:
 
 def _has_context(sig: Dict[str, Any]) -> bool:
     # tolerate multiple names
+    """Return True if signal has sufficient context fields."""
     for k in ("has_sufficient_context", "sufficient_context", "context_ok", "has_context"):
         if k in sig:
             return _boolish(sig.get(k))
@@ -200,6 +212,7 @@ def _has_context(sig: Dict[str, Any]) -> bool:
 
 
 def _redundancy_key(sig: Dict[str, Any]) -> Optional[str]:
+    """Compute a key for detecting redundant signals."""
     rk = sig.get("redundancy_key") or sig.get("redundancy_group") or sig.get("dedupe_key")
     if rk is None:
         return None
@@ -217,6 +230,7 @@ _INTENTIONALLY_SILENT_EVENT_TYPES = {
 }
 
 def _details(k: str, v: object) -> list[ReasonDetailKV]:
+    """Extract exclusion detail key-value pairs from a signal."""
     return [ReasonDetailKV(k=str(k), v=str(v))]
 
 def build_selection_set_v1(*args: Any, **kwargs: Any) -> SelectionSetV1:

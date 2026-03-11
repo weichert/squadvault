@@ -28,9 +28,11 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from squadvault.core.storage.session import DatabaseSession
 
 
 def _print_header(title: str) -> None:
+    """Print a section header."""
     print("\n" + "=" * 80)
     print(title)
     print("=" * 80)
@@ -49,6 +51,7 @@ def _clean_html(s: Any) -> str:
 
 
 def _http_get_json(url: str, timeout_s: int = 30) -> Dict[str, Any]:
+    """Fetch JSON from a URL with error handling."""
     req = urllib.request.Request(
         url,
         headers={
@@ -74,6 +77,7 @@ def _extract_franchises(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
 
     def from_container(container: Any) -> List[Dict[str, Any]]:
+        """Extract franchise records from MFL API container response."""
         if isinstance(container, dict):
             f = container.get("franchise")
             if isinstance(f, list):
@@ -106,6 +110,7 @@ class Row:
 
 
 def _normalize_row(fr: Dict[str, Any]) -> Optional[Row]:
+    """Normalize a raw franchise record to standard fields."""
     fid = fr.get("id")
     if fid is None:
         return None
@@ -122,6 +127,7 @@ def _normalize_row(fr: Dict[str, Any]) -> Optional[Row]:
 
 
 def _ensure_table(conn: sqlite3.Connection) -> None:
+    """Create franchise_directory table if it does not exist."""
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS franchise_directory (
@@ -148,6 +154,7 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
 
 
 def _upsert_rows(conn: sqlite3.Connection, league_id: str, season: int, rows: List[Row]) -> int:
+    """Upsert franchise records into the directory table."""
     sql = """
     INSERT INTO franchise_directory (
       league_id, season, franchise_id, name, owner_name, raw_json, updated_at
@@ -169,6 +176,7 @@ def _upsert_rows(conn: sqlite3.Connection, league_id: str, season: int, rows: Li
 
 
 def main() -> int:
+    """CLI entrypoint: ingest franchise directory from MFL."""
     ap = argparse.ArgumentParser(description="SquadVault franchise directory ingest (MFL TYPE=league).")
     ap.add_argument("--db", required=True, help="Path to SQLite DB (e.g. .local_squadvault.sqlite)")
     ap.add_argument("--server", required=True, help="MFL server (e.g. www44.myfantasyleague.com)")
@@ -200,8 +208,8 @@ def main() -> int:
         if r:
             rows.append(r)
 
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with DatabaseSession(str(db_path)) as conn:
+
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA synchronous=NORMAL;")
         _ensure_table(conn)
@@ -227,8 +235,6 @@ def main() -> int:
         ).fetchall():
             print(f"  {fid}  {name or ''}  |  {owner or ''}")
 
-    finally:
-        conn.close()
 
     return 0
 

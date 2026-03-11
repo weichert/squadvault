@@ -1,3 +1,6 @@
+
+"""CLI runner for event query utilities."""
+
 import os
 from pathlib import Path
 

@@ -23,12 +23,9 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 import sqlite3
+from squadvault.core.storage.db_utils import table_columns as _table_columns
+from squadvault.core.storage.session import DatabaseSession
 
-
-def _table_columns(con: sqlite3.Connection, table_name: str) -> set[str]:
-    cur = con.cursor()
-    cur.execute(f"PRAGMA table_info({table_name})")
-    return {row[1] for row in cur.fetchall()}  # row[1] = column name
 
 
 def _redundancy_key_for_row(
@@ -74,8 +71,8 @@ class CanonicalEventsSignalExtractorV1:
         window_start: str,
         window_end: str,
     ) -> List[dict]:
-        con = sqlite3.connect(db_path)
-        try:
+        """Extract canonical signals from DB for a league/season/week."""
+        with DatabaseSession(db_path) as con:
             con.row_factory = sqlite3.Row
             cols = _table_columns(con, "canonical_events")
 
@@ -137,8 +134,6 @@ class CanonicalEventsSignalExtractorV1:
                 signals.append(payload)
 
             return signals
-        finally:
-            con.close()
 
 
 __all__ = [

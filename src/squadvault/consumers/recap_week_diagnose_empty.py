@@ -24,15 +24,18 @@ import argparse
 import sqlite3
 import sys
 from typing import Any, Dict, List, Optional, Tuple
+from squadvault.core.storage.session import DatabaseSession
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    """Convert sqlite3.Row to plain dict."""
     return {k: row[k] for k in row.keys()}
 
 
 def _q(
     conn: sqlite3.Connection, sql: str, params: Tuple[Any, ...]
 ) -> List[Dict[str, Any]]:
+    """Execute a query and return all rows as dicts."""
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute(sql, params)
@@ -42,11 +45,13 @@ def _q(
 def _q_one(
     conn: sqlite3.Connection, sql: str, params: Tuple[Any, ...]
 ) -> Optional[Dict[str, Any]]:
+    """Execute a query and return a single scalar value."""
     rows = _q(conn, sql, params)
     return rows[0] if rows else None
 
 
 def _print_kv(title: str, pairs: List[Tuple[str, Any]]) -> None:
+    """Print a titled list of key-value pairs."""
     print(title)
     for k, v in pairs:
         print(f"  - {k}: {v}")
@@ -54,6 +59,7 @@ def _print_kv(title: str, pairs: List[Tuple[str, Any]]) -> None:
 
 
 def _fmt_counts(rows: List[Dict[str, Any]], key_col: str, val_col: str) -> str:
+    """Format rows as a key-count summary string."""
     if not rows:
         return "  (none)\n"
     lines = []
@@ -86,6 +92,7 @@ def _try_load_allowlist() -> Optional[set[str]]:
 
 
 def main() -> int:
+    """CLI entrypoint: diagnose empty recap weeks."""
     ap = argparse.ArgumentParser(description="Diagnose empty or unexpectedly-small weekly recap selection.")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
@@ -101,7 +108,6 @@ def main() -> int:
 
     # Authoritative selection+window
     from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-
     sel = select_weekly_recap_events_v1(
         db_path=args.db,
         league_id=args.league_id,

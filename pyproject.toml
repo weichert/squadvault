@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "squadvault"
+version = "0.1.0"
+description = "Deterministic recap engine with governed expressive output"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "hypothesis>=6.100",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["Tests"]
+pythonpath = ["src"]
+
+[tool.setuptools.package-data]
+squadvault = ["core/storage/schema.sql", "core/storage/migrations/*.sql"]

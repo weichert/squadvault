@@ -21,6 +21,7 @@ from dataclasses import dataclass
 import datetime as dt
 import sqlite3
 from typing import Optional, List
+from squadvault.core.storage.session import DatabaseSession
 
 
 LOCK_EVENT_TYPE = "TRANSACTION_LOCK_ALL_PLAYERS"
@@ -42,19 +43,15 @@ class WeeklyWindow:
     reason: Optional[str] = None
 
 
-def _db_connect(db_path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
 def _parse_iso_z(s: str) -> dt.datetime:
+    """Parse an ISO-8601 UTC timestamp string."""
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"
     return dt.datetime.fromisoformat(s)
 
 
 def _to_iso_z(t: dt.datetime) -> str:
+    """Format a datetime as ISO-8601 UTC string."""
     return (
         t.astimezone(dt.timezone.utc)
         .replace(microsecond=0)
@@ -66,6 +63,7 @@ def _to_iso_z(t: dt.datetime) -> str:
 def _fetch_lock_times(conn: sqlite3.Connection, league_id: str, season: int) -> List[str]:
     # IMPORTANT: MFL can emit multiple lock events at the same timestamp (e.g. per division).
     # Weekly windows must be computed off UNIQUE lock times or week_index will drift.
+    """Fetch distinct lock timestamps for a league/season."""
     rows = conn.execute(
         """
         SELECT DISTINCT occurred_at
@@ -112,11 +110,8 @@ def window_for_week_index(
             reason=WINDOW_UNSAFE_TO_COMPUTE,
         )
 
-    conn = _db_connect(db_path)
-    try:
+    with DatabaseSession(db_path) as conn:
         locks = _fetch_lock_times(conn, str(league_id), int(season))
-    finally:
-        conn.close()
 
     if len(locks) < week_index:
         return WeeklyWindow(
@@ -161,7 +156,7 @@ def window_for_week_index(
     if season_end:
         try:
             _parse_iso_z(season_end)
-        except Exception:
+        except (ValueError, TypeError):
             return WeeklyWindow(
                 mode="UNSAFE",
                 week_index=week_index,

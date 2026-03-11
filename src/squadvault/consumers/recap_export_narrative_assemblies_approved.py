@@ -1,11 +1,15 @@
+"""Export approved narrative assemblies to disk."""
+
 #!/usr/bin/env python3
 from __future__ import annotations
 import re
+from squadvault.core.storage.session import DatabaseSession
 
 # SV_PATCH_EXPORT_ASSEMBLIES_EMBED_REAL_SELECTION_FP_V1
 # Ensure exported narrative assemblies embed the REAL selection_fingerprint for the week.
 # This avoids downstream NAC preflight normalization of placeholder fingerprints.
 def _is_placeholder_selection_fp(fp: str) -> bool:
+    """Return True if fingerprint is a placeholder value."""
     s = (fp or "").strip()
     if not s:
         return True
@@ -61,7 +65,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
-
 # SV_PATCH_EXPORT_ASSEMBLIES_REMOVE_HEX64_RE_V4_ARTIFACT_V6
 
 BANNER = (
@@ -102,6 +105,7 @@ class ApprovedArtifact:
 
 
 def fetch_approved_weekly_recap(db: str, league_id: str, season: int, week_index: int) -> Optional[ApprovedArtifact]:
+    """Fetch approved WEEKLY_RECAP artifact from DB."""
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -137,6 +141,7 @@ def fetch_approved_weekly_recap(db: str, league_id: str, season: int, week_index
 
 
 def run_neutral_recap_render(db: str, league_id: str, season: int, week_index: int) -> str:
+    """Render neutral voice recap text for a week."""
     cmd = [
         sys.executable, "-u",
         "src/squadvault/consumers/recap_week_render.py",
@@ -157,6 +162,7 @@ def run_neutral_recap_render(db: str, league_id: str, season: int, week_index: i
 
 
 def extract_blocks_from_neutral(neutral_text: str) -> Dict[str, str]:
+    """Extract named text blocks from neutral rendered text."""
     lines = neutral_text.splitlines()
 
     w_prefix = "Window: "
@@ -204,11 +210,13 @@ def extract_blocks_from_neutral(neutral_text: str) -> Dict[str, str]:
 
 
 def wrap(marker_key: str, content: str) -> str:
+    """Wrap content in begin/end markers for a block."""
     b, e = MARKERS[marker_key]
     return f"{b}\n{content.rstrip()}\n{e}\n"
 
 
 def _extract_between(text: str, begin: str, end: str) -> str:
+    """Extract text between begin and end markers."""
     bi = text.find(begin)
     if bi < 0:
         raise RuntimeError(f"missing marker: {begin}")
@@ -226,6 +234,7 @@ def _extract_between(text: str, begin: str, end: str) -> str:
 
 
 def validate_outside_text_allowlist(full_text: str, allowed_outside_lines: Tuple[str, ...]) -> None:
+    """Validate no unexpected text exists outside marked blocks."""
     scrubbed = full_text
     for k, (b, e) in MARKERS.items():
         bi = scrubbed.find(b)
@@ -251,6 +260,7 @@ def validate_outside_text_allowlist(full_text: str, allowed_outside_lines: Tuple
 
 
 def validate_protected_blocks_byte_stable(full_text: str, sources: Dict[str, str]) -> None:
+    """Validate protected blocks are byte-identical to sources."""
     for key, (b, e) in MARKERS.items():
         extracted = _extract_between(full_text, b, e)
         src = sources[key].rstrip("\n") + "\n"
@@ -274,6 +284,7 @@ def writing_room_selection_set_v1_path(base: str, league_id: str, season: int, w
 
 
 def _safe_get_list(d: Dict[str, Any], k: str) -> list:
+    """Safely get a list value from a dict."""
     v = d.get(k, [])
     if v is None:
         return []
@@ -345,6 +356,7 @@ def load_writing_room_block_or_not_available(base: str, league_id: str, season: 
 
 
 def assemble_plain_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_room_block: str) -> str:
+    """Assemble a plain text narrative from approved artifact and blocks."""
     out = []
     out.append(BANNER.rstrip("\n"))
     out.append("")
@@ -372,6 +384,7 @@ def assemble_plain_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_room_
 
 
 def assemble_sharepack_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_room_block: str) -> str:
+    """Assemble a sharepack narrative from approved artifact and blocks."""
     out = []
     out.append(BANNER.rstrip("\n"))
     out.append("")
@@ -400,11 +413,13 @@ def assemble_sharepack_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_r
 
 
 def export_dir(base: str, league_id: str, season: int, week_index: int) -> Path:
+    """Compute export directory path for a week."""
     return Path(base) / "exports" / str(league_id) / str(season) / f"week_{int(week_index):02d}"
 
 
 def main(argv: list[str]) -> int:
     # SV_PATCH_EXPORT_ASSEMBLIES_DEFINE_HEX64_RE_IN_MAIN_V7
+    """CLI entrypoint: export approved narrative assemblies."""
     HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 
     ap = argparse.ArgumentParser(

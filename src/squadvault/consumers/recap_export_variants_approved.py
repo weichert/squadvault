@@ -1,3 +1,5 @@
+"""Export approved recap voice variants to disk."""
+
 #!/usr/bin/env python3
 from __future__ import annotations
 
@@ -11,13 +13,16 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from squadvault.core.storage.session import DatabaseSession
 
 
 def utc_now_iso() -> str:
+    """Return current UTC time as ISO-8601 string."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    """Convert sqlite3.Row to plain dict."""
     return {k: row[k] for k in row.keys()}
 
 
@@ -28,29 +33,27 @@ def _fetch_approved_weekly_recap_artifact(
     season: int,
     week_index: int,
 ) -> Optional[Dict[str, Any]]:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT *
-        FROM recap_artifacts
-        WHERE league_id = ?
-          AND season = ?
-          AND week_index = ?
-          AND artifact_type = 'WEEKLY_RECAP'
-          AND state = 'APPROVED'
-        ORDER BY version DESC
-        LIMIT 1
-        """,
-        (league_id, int(season), int(week_index)),
-    )
-    row = cur.fetchone()
-    conn.close()
+    """Fetch latest approved WEEKLY_RECAP artifact for a week."""
+    with DatabaseSession(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM recap_artifacts
+            WHERE league_id = ?
+              AND season = ?
+              AND week_index = ?
+              AND artifact_type = 'WEEKLY_RECAP'
+              AND state = 'APPROVED'
+            ORDER BY version DESC
+            LIMIT 1
+            """,
+            (league_id, int(season), int(week_index)),
+        ).fetchone()
     return None if row is None else _row_to_dict(row)
 
 
 def _safe_int(v: Any, default: int = 0) -> int:
+    """Parse value as int, returning default on failure."""
     try:
         return int(v)
     except Exception:
@@ -72,6 +75,7 @@ class ExportMetadata:
 
 
 def _export_dir(base_dir: str, league_id: str, season: int, week_index: int) -> Path:
+    """Compute export directory path for voice variants."""
     return Path(base_dir) / "exports" / str(league_id) / str(season) / f"week_{int(week_index):02d}"
 
 
@@ -113,6 +117,7 @@ def _run_renderer(
 
 
 def main(argv: List[str]) -> int:
+    """CLI entrypoint: export approved voice variants."""
     ap = argparse.ArgumentParser(description="Export APPROVED weekly recap voice variants as a shareable pack")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)

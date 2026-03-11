@@ -52,6 +52,7 @@ class EALRestraintDirectiveV1:
 
 
 def _is_nonempty_str(x: Any) -> bool:
+    """Return True if x is a non-empty, non-whitespace string."""
     return isinstance(x, str) and x.strip() != ""
 
 
@@ -67,7 +68,7 @@ def _parse_iso8601_utc(ts: Any) -> Optional[datetime]:
         s = s[:-1] + "+00:00"
     try:
         dt = datetime.fromisoformat(s)
-    except Exception:
+    except (ValueError, TypeError):
         return None
     if dt.tzinfo is None:
         return None
@@ -79,6 +80,7 @@ def _parse_iso8601_utc(ts: Any) -> Optional[datetime]:
 
 
 def _is_semver_like(v: Any) -> bool:
+    """Return True if v matches semver pattern (e.g. 1.0.0)."""
     if not isinstance(v, str):
         return False
     parts = v.strip().split(".")
@@ -87,11 +89,12 @@ def _is_semver_like(v: Any) -> bool:
     try:
         int(parts[0]); int(parts[1]); int(parts[2])
         return True
-    except Exception:
+    except (ValueError, TypeError):
         return False
 
 
 def validate_calibration_schema(cal: Dict[str, Any]) -> List[str]:
+    """Validate calibration record fields, returning list of errors."""
     errs: List[str] = []
 
     required = [
@@ -162,6 +165,7 @@ def validate_calibration_schema(cal: Dict[str, Any]) -> List[str]:
 def default_system_calibration_record() -> Dict[str, Any]:
     # We provide a deterministic default record for Type A behavior.
     # calibration_id is fixed to avoid entropy in fingerprints.
+    """Return deterministic default system calibration record."""
     return {
         "calibration_id": "default_system_calibration_v1",
         "scope": "system",
@@ -227,6 +231,7 @@ def select_effective_calibration(
 
     # Deterministic latest-by-approved_at selection (ties broken by calibration_id).
     def _key(c: Dict[str, Any]) -> Tuple[datetime, str]:
+        """Sort key: (approved_at datetime, calibration_id)."""
         dt = _parse_iso8601_utc(c["approved_at"])
         assert dt is not None
         return (dt, str(c.get("calibration_id", "")))
@@ -286,6 +291,7 @@ def derive_restraint_directive(
 
 
 def _canonical_json(obj: Dict[str, Any]) -> str:
+    """Serialize dict to canonical JSON for fingerprinting."""
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 

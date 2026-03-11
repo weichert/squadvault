@@ -32,22 +32,25 @@ from squadvault.recaps.writing_room.identity_recipes_v1 import (
 )
 from squadvault.recaps.writing_room.intake_v1 import IntakeContextV1, build_selection_set_v1
 from squadvault.recaps.writing_room.signal_adapter_v1 import DictSignalAdapter
+from squadvault.errors import RecapDataError
 
 
 def _read_dict_signals(path: str) -> List[dict]:
+    """Read and validate signal dicts from a JSON file."""
     p = Path(path)
     data = json.loads(p.read_text(encoding="utf-8"))
     if not isinstance(data, list):
-        raise SystemExit(f"signals JSON must be a list of dicts: got {type(data)}")
+        raise RecapDataError(f"signals JSON must be a list of dicts: got {type(data)}")
     out: List[dict] = []
     for i, item in enumerate(data):
         if not isinstance(item, dict):
-            raise SystemExit(f"signals[{i}] must be dict: got {type(item)}")
+            raise RecapDataError(f"signals[{i}] must be dict: got {type(item)}")
         out.append(item)
     return out
 
 
 def main(argv: List[str] | None = None) -> int:
+    """CLI entrypoint: run Writing Room intake and emit SelectionSetV1."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True, help="(reserved) sqlite path; not used yet")
     ap.add_argument("--league-id", required=True)

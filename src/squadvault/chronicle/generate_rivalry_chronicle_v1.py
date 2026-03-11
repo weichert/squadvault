@@ -1,3 +1,5 @@
+"""Generate rivalry chronicle artifacts from canonical matchup events."""
+
 # SV_CONTRACT_NAME: RIVALRY_CHRONICLE_OUTPUT_CONTRACT_V1
 # SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md
 
@@ -33,6 +35,7 @@ def chronicle_fingerprint_v1(
     missing_weeks: Sequence[int],
     approved_recaps: Sequence[Tuple[int, str, int, str]],
 ) -> str:
+    """Compute deterministic fingerprint for a rivalry chronicle."""
     payload = {
         "chronicle_version": 1,
         "league_id": int(league_id),
@@ -64,6 +67,7 @@ def generate_rivalry_chronicle_v1(
     missing_weeks_policy: MissingWeeksPolicy,
     created_at_utc: str,
 ) -> RivalryChronicleGeneratedV1:
+    """Generate a rivalry chronicle from canonical matchup events."""
     inp = RivalryChronicleInputV1(
         league_id=int(league_id),
         season=int(season),
@@ -72,7 +76,8 @@ def generate_rivalry_chronicle_v1(
         missing_weeks_policy=missing_weeks_policy,
     )
 
-    def _approved_refs_loader(lid: int, yr: int, weeks: Sequence[int]):
+    def _approved_refs_loader(lid: int, yr: int, weeks: Sequence[int]) -> list:
+        """Load approved recap references for chronicle generation."""
         return load_latest_approved_recap_refs_v1(
             db_path=db_path,
             league_id=lid,

@@ -14,6 +14,7 @@ import os
 
 
 def resolve_test_db(default: str = ".local_squadvault.sqlite") -> str:
+    """Resolve the test database path from env or default."""
     v = os.environ.get("SQUADVAULT_TEST_DB")
     if v:
         return v

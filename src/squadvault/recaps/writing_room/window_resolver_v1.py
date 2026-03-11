@@ -36,6 +36,7 @@ def _window_id_payload_v1(
     mode: str,
     version: str = "v1.0",
 ) -> Dict[str, Any]:
+    """Build a deterministic window ID hash payload."""
     return {
         "type": "writing_room_window_id",
         "version": version,
@@ -56,6 +57,7 @@ def resolve_weekly_window_v1(
     week_index: int,
 ) -> WritingRoomWindowV1:
     # Source of truth: existing weekly window logic.
+    """Resolve the weekly window boundaries for a given week."""
     from squadvault.core.recaps.selection.weekly_windows_v1 import window_for_week_index
 
     w = window_for_week_index(db_path, league_id, season, week_index)

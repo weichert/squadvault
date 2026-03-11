@@ -1,3 +1,5 @@
+"""Persist generated rivalry chronicle artifacts to the database."""
+
 from __future__ import annotations
 # SV_PATCH_FIX_PERSIST_RC_RECAP_ARTIFACTS_IMPORT_BLOCK_V2: collapse recap_artifacts import to single-line
 # SV_PATCH_FIX_PERSIST_RC_V1_V1_SYMBOL_V1: normalize ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1_V1 -> _V1 and fix import
@@ -7,17 +9,15 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
+from squadvault.errors import SchemaError
+from squadvault.core.storage.db_utils import table_columns as _table_columns
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
 from squadvault.chronicle.generate_rivalry_chronicle_v1 import (
     RivalryChronicleGeneratedV1,
     generate_rivalry_chronicle_v1,
 )
 from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
-
-def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
-    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
-    # PRAGMA columns: cid, name, type, notnull, dflt_value, pk
-    return {str(r[1]) for r in rows}
+from squadvault.core.storage.session import DatabaseSession
 
 
 def _insert_recap_artifact_row_schema_resilient(
@@ -33,13 +33,14 @@ def _insert_recap_artifact_row_schema_resilient(
     rendered_text: str,
     created_at_utc: str,
 ) -> None:
+    """Insert a recap_artifact row with dynamic column detection for schema resilience."""
     cols = _table_columns(conn, "recap_artifacts")
 
     # Required core columns (must exist or we hard fail)
     required = ["league_id", "season", "week_index", "artifact_type", "version", "state"]
     missing_required = [c for c in required if c not in cols]
     if missing_required:
-        raise SystemExit(f"ERROR: recap_artifacts missing required columns: {missing_required}")
+        raise SchemaError(f"recap_artifacts missing required columns: {missing_required}")
 
     # Build insert columns dynamically
     insert_cols = ["league_id", "season", "week_index", "artifact_type", "version", "state"]
@@ -93,6 +94,7 @@ class PersistedChronicleV1:
 def _latest_approved_chronicle_row(
     conn: sqlite3.Connection, league_id: int, season: int, anchor_week_index: int
 ) -> Optional[sqlite3.Row]:
+    """Return the latest approved rivalry chronicle artifact row, or None."""
     conn.row_factory = sqlite3.Row
     return conn.execute(
         """
@@ -111,6 +113,7 @@ def _latest_approved_chronicle_row(
 
 
 def _next_version(conn: sqlite3.Connection, league_id: int, season: int, anchor_week_index: int) -> int:
+    """Return next sequential version number for rivalry chronicle artifacts."""
     row = conn.execute(
         """
         SELECT MAX(version)
@@ -136,6 +139,7 @@ def persist_rivalry_chronicle_v1(
     missing_weeks_policy: MissingWeeksPolicy,
     created_at_utc: str,
 ) -> PersistedChronicleV1:
+    """Persist a generated rivalry chronicle as a versioned artifact."""
     gen: RivalryChronicleGeneratedV1 = generate_rivalry_chronicle_v1(
         db_path=db_path,
         league_id=league_id,
@@ -146,8 +150,7 @@ def persist_rivalry_chronicle_v1(
         created_at_utc=created_at_utc,
     )
 
-    conn = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
         latest = _latest_approved_chronicle_row(conn, league_id, season, gen.anchor_week_index)
@@ -191,5 +194,3 @@ def persist_rivalry_chronicle_v1(
             version=int(new_v),
             created_new=True,
         )
-    finally:
-        conn.close()

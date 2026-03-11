@@ -1,3 +1,5 @@
+"""Batch enrich recap artifacts with facts blocks across a week range."""
+
 #!/usr/bin/env python3
 from __future__ import annotations
 
@@ -8,11 +10,13 @@ from typing import Optional
 
 
 def _run(cmd: list[str]) -> int:
+    """Run a shell command and return its exit code."""
     p = subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
     return int(p.returncode)
 
 
 def main() -> int:
+    """CLI entrypoint: batch enrich recaps across a week range."""
     ap = argparse.ArgumentParser(description="Bulk enrich weekly recap artifacts across a range of weeks.")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)

@@ -36,6 +36,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple
+from squadvault.core.storage.session import DatabaseSession
 
 
 @dataclass(frozen=True)
@@ -48,10 +49,12 @@ class PlayerRow:
 
 
 def _now_iso_z() -> str:
+    """Return current UTC time as ISO-8601 string."""
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
 def _build_players_url(server: str, season: int, league_id: str, json_mode: bool) -> str:
+    """Build MFL players API URL for a league/season."""
     q = {"TYPE": "players", "L": league_id}
     if json_mode:
         q["JSON"] = "1"
@@ -59,6 +62,7 @@ def _build_players_url(server: str, season: int, league_id: str, json_mode: bool
 
 
 def _fetch_url(url: str, timeout_s: int = 30) -> bytes:
+    """Fetch content from a URL."""
     req = urllib.request.Request(
         url,
         headers={
@@ -72,6 +76,7 @@ def _fetch_url(url: str, timeout_s: int = 30) -> bytes:
 
 
 def _parse_players_json(payload: bytes) -> List[PlayerRow]:
+    """Parse players from MFL JSON API response."""
     data = json.loads(payload.decode("utf-8", errors="replace"))
 
     players_node = data.get("players") or data.get("Players") or data
@@ -121,6 +126,7 @@ def _parse_players_json(payload: bytes) -> List[PlayerRow]:
 
 
 def _parse_players_xml(payload: bytes) -> List[PlayerRow]:
+    """Parse players from MFL XML export."""
     root = ET.fromstring(payload.decode("utf-8", errors="replace"))
 
     out: List[PlayerRow] = []
@@ -142,6 +148,7 @@ def _parse_players_xml(payload: bytes) -> List[PlayerRow]:
 
 
 def _ensure_table_exists(conn: sqlite3.Connection) -> None:
+    """Create player_directory table if it does not exist."""
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS player_directory (
@@ -172,6 +179,7 @@ def _upsert_players(
     season: int,
     players: Iterable[PlayerRow],
 ) -> Tuple[int, int]:
+    """Upsert player records into the directory table."""
     now = _now_iso_z()
 
     sql = """
@@ -201,6 +209,7 @@ def _upsert_players(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """CLI entrypoint: ingest player directory from MFL."""
     ap = argparse.ArgumentParser(description="Ingest MFL TYPE=players into player_directory (SQLite).")
     ap.add_argument("--db", required=True, help="Path to SQLite DB (e.g. .local_squadvault.sqlite)")
     ap.add_argument("--server", required=True, help="MFL server host (e.g. www44.myfantasyleague.com)")
@@ -221,9 +230,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"Season  : {season}")
     print()
 
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    try:
+    with DatabaseSession(db_path) as conn:
         _ensure_table_exists(conn)
 
         url_json = _build_players_url(server, season, league_id, json_mode=True)
@@ -271,8 +278,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("No rows found in player_directory after ingest (unexpected).")
 
         return 0
-    finally:
-        conn.close()
 
 
 if __name__ == "__main__":

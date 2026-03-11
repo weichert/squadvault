@@ -1,3 +1,5 @@
+"""Type A signal taxonomy enforcement and validation."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,10 +26,12 @@ class TypeAResult:
 
     @property
     def accepted_ids(self) -> List[str]:
+        """Return set of accepted signal IDs."""
         return sorted([str(s.get("signal_id", "")) for s in self.accepted])
 
     @property
     def rejected_ids(self) -> List[str]:
+        """Return set of rejected signal IDs."""
         return sorted([r.signal_id for r in self.rejected])
 
 
@@ -45,6 +49,7 @@ def _repo_root_from_here() -> Path:
 
 
 def _find_unique_under(root: Path, filename: str) -> Path:
+    """Find a unique file matching a pattern under a directory."""
     matches: List[Path] = []
     for dirpath, dirs, files in os.walk(root):
         dirs.sort()
@@ -138,6 +143,7 @@ def _parse_categories_by_type(md_text: str) -> Dict[str, str]:
 
 
 def _read_text(path: Path) -> str:
+    """Read text content from a file path."""
     try:
         return path.read_text(encoding="utf-8")
     except Exception as e:
@@ -187,10 +193,12 @@ class SignalTaxonomyTypeAEnforcerV1:
         self._category_by_type = self._load_category_by_type()
 
     def _load_valid_types(self) -> List[str]:
+        """Load the set of valid signal types from taxonomy."""
         enum_text = _read_text(self._signal_type_enum_path)
         return _parse_enum_tokens(enum_text)  # empty => fail-closed later
 
     def _load_category_by_type(self) -> Dict[str, str]:
+        """Load category mapping for signal types."""
         contract_text = _read_text(self._signal_taxonomy_contract_path)
         mapping = _parse_categories_by_type(contract_text)
         if not mapping:
@@ -200,6 +208,7 @@ class SignalTaxonomyTypeAEnforcerV1:
         return mapping
 
     def enforce(self, signals: Iterable[Dict[str, Any]]) -> TypeAResult:
+        """Enforce signal taxonomy constraints on a set of signals."""
         accepted: List[Dict[str, Any]] = []
         rejected: List[Rejection] = []
 
@@ -217,6 +226,7 @@ class SignalTaxonomyTypeAEnforcerV1:
 
     def _validate_one(self, s: Dict[str, Any]) -> Optional[str]:
         # Signal vs Event boundary
+        """Validate a single signal against taxonomy rules."""
         if "event_type" in s or "memory_event_type" in s or "event_id" in s:
             return "EVENT_OBJECT_NOT_A_SIGNAL"
 

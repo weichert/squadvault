@@ -1,3 +1,6 @@
+
+"""CLI runner for waiver bid event ingestion."""
+
 import json
 
 from squadvault.ingest.waiver_bids import derive_waiver_bid_event_envelopes_from_transactions

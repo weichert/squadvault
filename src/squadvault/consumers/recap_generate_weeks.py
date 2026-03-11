@@ -18,18 +18,21 @@ import subprocess
 import sys
 import sqlite3
 from typing import Optional, List
+from squadvault.core.storage.session import DatabaseSession
 
 # Only these states are terminal for batch driving purposes.
 TERMINAL_STATES = {"APPROVED", "WITHHELD"}
 
 
 def db_connect(db_path: str) -> sqlite3.Connection:
+    """Open a connection with Row factory."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def get_run_state(conn: sqlite3.Connection, league_id: str, season: int, week_index: int) -> Optional[str]:
+    """Get recap run state for a week."""
     row = conn.execute(
         """
         SELECT state
@@ -42,6 +45,7 @@ def get_run_state(conn: sqlite3.Connection, league_id: str, season: int, week_in
 
 
 def sh(cmd: List[str], execute: bool) -> None:
+    """Run a shell command, optionally in dry-run mode."""
     prefix = "[RUN]" if execute else "[DRY-RUN]"
     print(f"{prefix} {' '.join(cmd)}")
     if execute:
@@ -58,6 +62,7 @@ def run_drive_workflow(
     base_dir: str,
     execute: bool,
 ) -> int:
+    """Run the recap workflow across a range of weeks."""
     print("=== Safe Workflow Driver (Option A) ===")
     print(f"DB       : {db_path}")
     print(f"League   : {league_id}")
@@ -242,6 +247,7 @@ def run_verdicts(
     verdict_table: str,
 ) -> int:
     # NOTE: This mode is intentionally report-only in the MVP; wiring is handled elsewhere.
+    """Run verdict generation across a range of weeks."""
     print("=== Verdicts mode ===")
     print("NOTE: verdicts mode is report-only (no generation).")
     print(f"DB          : {db_path}")
@@ -255,6 +261,7 @@ def run_verdicts(
 
 
 def main() -> int:
+    """CLI entrypoint: batch recap generation."""
     ap = argparse.ArgumentParser(
         description="Batch recap tooling: verdicts (Phase 2D) + safe workflow driver (Option A)"
     )

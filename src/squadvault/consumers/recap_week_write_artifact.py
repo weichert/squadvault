@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Write a recap artifact JSON to disk from database."""
+
 
 import argparse
 
@@ -16,10 +18,12 @@ SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
 
 
 def _is_safe_window(mode: str | None, start: str | None, end: str | None) -> bool:
+    """Return True if window has valid mode, start, and end."""
     return (mode in SAFE_WINDOW_MODES) and bool(start) and bool(end)
 
 
 def main() -> None:
+    """CLI entrypoint: write a recap artifact to disk."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
     ap.add_argument("--base-dir", default="artifacts")

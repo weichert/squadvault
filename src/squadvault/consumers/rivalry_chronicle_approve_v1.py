@@ -20,18 +20,14 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
+from squadvault.core.storage.session import DatabaseSession
 
 
 def _sv_call_with_signature_filter(fn: Callable[..., Any], **kwargs: Any) -> Any:
+    """Call a function with only the kwargs it accepts."""
     sig = inspect.signature(fn)
     filtered = {k: v for k, v in kwargs.items() if k in sig.parameters}
     return fn(**filtered)
-
-
-def _db_connect(db_path: str) -> sqlite3.Connection:
-    con = sqlite3.connect(db_path)
-    con.row_factory = sqlite3.Row
-    return con
 
 
 def _latest_version_and_state(
@@ -42,6 +38,7 @@ def _latest_version_and_state(
     week_index: int,
     artifact_type: str,
 ) -> tuple[Optional[int], Optional[str]]:
+    """Return (version, state) of latest rivalry chronicle artifact."""
     row = con.execute(
         """
         SELECT version, state
@@ -55,7 +52,6 @@ def _latest_version_and_state(
     if not row:
         return None, None
     return int(row["version"]), str(row["state"] or "")
-
 
 
 # LOCK_E_APPROVE_LATEST_DRAFT_V3
@@ -83,8 +79,10 @@ def _latest_draft_version(
     if not row:
         return None
     return int(row["version"])
+
 def _find_approve_primitive() -> Callable[..., Any]:
     # Prefer explicit names, but fall back to "any callable with approve in the name".
+    """Find the approval function to use for chronicle artifacts."""
     from squadvault.core.recaps import recap_artifacts as ra
 
     candidates = [
@@ -118,8 +116,8 @@ class ApproveRequest:
     approved_at_utc: Optional[str] = None
     require_draft: bool = False
 def approve_latest(req: ApproveRequest) -> int:
-    con = _db_connect(req.db)
-    try:
+    """Approve the latest DRAFT rivalry chronicle artifact."""
+    with DatabaseSession(req.db) as con:
         v, st = _latest_version_and_state(
             con,
             league_id=req.league_id,
@@ -261,11 +259,9 @@ def approve_latest(req: ApproveRequest) -> int:
         print(f"rivalry_chronicle_approve_v1: OK (approved v{draft_v}; artifact_type={ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1})")
         return 0
 
-    finally:
-        con.close()
-
 
 def main(argv: Optional[list[str]] = None) -> int:
+    """CLI entrypoint: approve a rivalry chronicle."""
     ap = argparse.ArgumentParser(description="Approve latest Rivalry Chronicle v1 draft (lifecycle-aligned).")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", type=int, required=True)

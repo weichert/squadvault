@@ -1,3 +1,5 @@
+"""Derive canonical waiver bid events from raw MFL transaction data."""
+
 from __future__ import annotations
 
 import hashlib
@@ -8,6 +10,7 @@ from squadvault.utils.time import unix_seconds_to_iso_z
 
 
 def _truncate_raw_json(text: str, limit: int) -> str:
+    """Truncate raw JSON string for storage efficiency."""
     if len(text) <= limit:
         return text
     return text[:limit] + "...(truncated)"
@@ -20,6 +23,7 @@ def _stable_external_id(*parts: str) -> str:
 
 
 def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
+    """Safely get a value from a dict with fallback."""
     for k in keys:
         if k in d:
             return d[k]
@@ -27,16 +31,19 @@ def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
 
 
 def _extract_type(txn: Dict[str, Any]) -> str:
+    """Extract MFL transaction type from raw data."""
     t = _safe_get(txn, "@type", "type")
     return str(t) if t is not None else ""
 
 
 def _extract_franchise_id(txn: Dict[str, Any]) -> str:
+    """Extract franchise ID from raw transaction data."""
     v = _safe_get(txn, "@franchise", "franchise", "@franchise_id", "franchise_id")
     return str(v) if v is not None else ""
 
 
 def _extract_timestamp_unix(txn: Dict[str, Any]) -> Optional[int]:
+    """Extract and validate Unix timestamp from raw data."""
     v = _safe_get(txn, "@timestamp", "timestamp", "@time", "time")
     if v is None:
         return None
@@ -71,6 +78,7 @@ def _parse_mfl_transaction_field(txn: Dict[str, Any]) -> Tuple[List[str], Option
     drop_part = parts[2] if len(parts) >= 3 else ""
 
     def split_ids(s: str) -> List[str]:
+        """Split comma-separated ID string into list of non-empty strings."""
         items = [x.strip() for x in s.split(",")]
         return [x for x in items if x]
 
@@ -209,7 +217,7 @@ def derive_waiver_bid_event_envelopes_from_transactions(
 # Backwards-compat shim for Notion ingestion codepaths
 # (transactions.py in this repo imports this symbol)
 # -------------------------------------------------------------------
-def derive_waiver_bids_from_transactions(*args, **kwargs):
+def derive_waiver_bids_from_transactions(*args, **kwargs) -> list:
     """
     Legacy/Notion-ingest shim.
 

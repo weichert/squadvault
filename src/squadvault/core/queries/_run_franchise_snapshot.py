@@ -1,3 +1,6 @@
+
+"""CLI runner for franchise snapshot queries."""
+
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -46,6 +49,7 @@ def _score_waiver_award(e: Dict[str, Any]) -> Tuple[int, str]:
 
 
 def best_waiver_award(events: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Find the highest FAAB bid awarded in the dataset."""
     if not events:
         return None
     return sorted(events, key=_score_waiver_award, reverse=True)[0]

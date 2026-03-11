@@ -1,3 +1,5 @@
+"""Remove hyphens from UUID for consistent comparison."""
+
 from __future__ import annotations
 
 import logging
@@ -10,26 +12,30 @@ logger = logging.getLogger(__name__)
 
 
 def _fail(msg: str) -> None:
+    """Append a validation error message."""
     raise RuntimeError(msg)
 
 
 def _get_prop(db_json: Dict[str, Any], prop_name: str) -> Dict[str, Any] | None:
+    """Get a property definition from a database schema."""
     props = db_json.get("properties", {})
     return props.get(prop_name)
 
 
 def _notion_type(prop_json: Dict[str, Any]) -> str:
+    """Extract the Notion property type string."""
     return prop_json.get("type", "")
 
 
 def _normalize_uuid(uuid_str: str | None) -> str:
-    """Remove hyphens from UUID for consistent comparison."""
+    """Normalize a Notion UUID by removing dashes."""
     if uuid_str is None:
         return ""
     return uuid_str.replace("-", "").lower()
 
 
 def _validate_relation_target(prop_json: Dict[str, Any], expected_target_db_id: str) -> None:
+    """Validate a relation property points to the expected database."""
     rel = prop_json.get("relation") or {}
     actual_target = rel.get("database_id")
     if _normalize_uuid(actual_target) != _normalize_uuid(expected_target_db_id):
@@ -37,6 +43,7 @@ def _validate_relation_target(prop_json: Dict[str, Any], expected_target_db_id: 
 
 
 def validate_database(notion: NotionClient, name: str, spec: DatabaseSpec) -> None:
+    """Validate a Notion database schema matches expected structure."""
     db_json = notion.get_database(spec.database_id)
 
     # Title property exists and is type title.
@@ -78,6 +85,7 @@ EXPECTED_DATABASE_NAMES = frozenset([
 
 
 def validate_all_databases(notion: NotionClient, specs: Dict[str, DatabaseSpec]) -> None:
+    """Validate all required Notion databases."""
     logger.info("Validating Notion schemas for %d databases...", len(specs))
 
     # Verify all 9 expected databases are present in specs

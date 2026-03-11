@@ -1,3 +1,5 @@
+"""Approve a recap artifact via the canonical lifecycle."""
+
 import argparse
 
 from squadvault.core.recaps.recap_runs import sync_recap_run_state_from_artifacts
@@ -9,6 +11,7 @@ from squadvault.core.recaps.recap_artifacts import (
 
 
 def main() -> None:
+    """CLI entrypoint: approve a recap artifact."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)

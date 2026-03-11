@@ -1,3 +1,5 @@
+"""Check recap selection state for a given week."""
+
 import argparse
 
 from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
@@ -6,6 +8,7 @@ from squadvault.core.recaps.recap_store import upsert_selection_if_stale
 
 
 def main() -> None:
+    """CLI entrypoint: check recap selection state for a week."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)

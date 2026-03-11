@@ -12,7 +12,6 @@ def test_pytest_bootstrap_imports_available() -> None:
 
     # Should import without ModuleNotFoundError
     import squadvault  # noqa: F401
-    import pfl  # noqa: F401
 
     repo_root = Path(__file__).resolve().parents[1]
     src_root = repo_root / "src"

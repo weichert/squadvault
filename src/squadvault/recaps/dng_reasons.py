@@ -1,3 +1,5 @@
+"""Do-Not-Generate reason codes for recap preflight gates."""
+
 # src/squadvault/recaps/dng_reasons.py
 from __future__ import annotations
 

@@ -1,17 +1,22 @@
+"""Assemble canonical events and memory payloads into a facts block."""
+
 from __future__ import annotations
 
 import json
 import sqlite3
 from typing import Any, Dict, List
 
-from squadvault.recaps.deterministic_bullets_v1 import (
+from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     QUIET_WEEK_MIN_EVENTS,
     render_deterministic_bullets_v1,
 )
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.storage.db_utils import norm_id as _norm_id
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    """Convert a sqlite3.Row to a plain dict."""
     return {k: row[k] for k in row.keys()}
 
 
@@ -21,35 +26,34 @@ def _fetch_canonical_events_by_ids(
     season: int,
     canonical_ids: List[int],
 ) -> List[Dict[str, Any]]:
+    """Fetch canonical event rows by IDs in chunked batches."""
     if not canonical_ids:
         return []
 
     CHUNK = 500
     out: List[Dict[str, Any]] = []
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+    with DatabaseSession(db_path) as conn:
+        cur = conn.cursor()
 
-    for i in range(0, len(canonical_ids), CHUNK):
-        chunk = canonical_ids[i : i + CHUNK]
-        placeholders = ",".join(["?"] * len(chunk))
-        cur.execute(
-            f"""
-            SELECT
-              id AS canonical_id,
-              occurred_at,
-              event_type,
-              best_memory_event_id
-            FROM canonical_events
-            WHERE league_id = ?
-              AND season = ?
-              AND id IN ({placeholders})
-            """,
-            [league_id, season, *chunk],
-        )
-        out.extend(_row_to_dict(r) for r in cur.fetchall())
+        for i in range(0, len(canonical_ids), CHUNK):
+            chunk = canonical_ids[i : i + CHUNK]
+            placeholders = ",".join(["?"] * len(chunk))
+            cur.execute(
+                f"""
+                SELECT
+                  id AS canonical_id,
+                  occurred_at,
+                  event_type,
+                  best_memory_event_id
+                FROM canonical_events
+                WHERE league_id = ?
+                  AND season = ?
+                  AND id IN ({placeholders})
+                """,
+                [league_id, season, *chunk],
+            )
+            out.extend(_row_to_dict(r) for r in cur.fetchall())
 
-    conn.close()
     return out
 
 
@@ -57,50 +61,40 @@ def _fetch_memory_payloads_by_ids(
     db_path: str,
     memory_event_ids: List[int],
 ) -> Dict[int, Dict[str, Any]]:
+    """Fetch and parse memory event payloads by IDs in chunks."""
     if not memory_event_ids:
         return {}
 
     CHUNK = 500
     out: Dict[int, Dict[str, Any]] = {}
 
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+    with DatabaseSession(db_path) as conn:
+        cur = conn.cursor()
 
-    for i in range(0, len(memory_event_ids), CHUNK):
-        chunk = memory_event_ids[i : i + CHUNK]
-        placeholders = ",".join(["?"] * len(chunk))
-        cur.execute(
-            f"""
-            SELECT id, payload_json
-            FROM memory_events
-            WHERE id IN ({placeholders})
-            """,
-            list(chunk),
-        )
-        for r in cur.fetchall():
-            d = _row_to_dict(r)
-            raw = d.get("payload_json") or ""
-            payload: Dict[str, Any] = {}
-            if isinstance(raw, str) and raw.strip():
-                try:
-                    val = json.loads(raw)
-                    payload = val if isinstance(val, dict) else {}
-                except Exception:
-                    payload = {}
-            out[int(d["id"])] = payload
+        for i in range(0, len(memory_event_ids), CHUNK):
+            chunk = memory_event_ids[i : i + CHUNK]
+            placeholders = ",".join(["?"] * len(chunk))
+            cur.execute(
+                f"""
+                SELECT id, payload_json
+                FROM memory_events
+                WHERE id IN ({placeholders})
+                """,
+                list(chunk),
+            )
+            for r in cur.fetchall():
+                d = _row_to_dict(r)
+                raw = d.get("payload_json") or ""
+                payload: Dict[str, Any] = {}
+                if isinstance(raw, str) and raw.strip():
+                    try:
+                        val = json.loads(raw)
+                        payload = val if isinstance(val, dict) else {}
+                    except (ValueError, TypeError):
+                        payload = {}
+                out[int(d["id"])] = payload
 
-    conn.close()
     return out
-
-
-def _norm_id(raw: Any) -> str:
-    s = "" if raw is None else str(raw).strip()
-    if not s:
-        return ""
-    if s.isdigit():
-        return s.lstrip("0") or "0"
-    return s
 
 
 class _NameLookup:
@@ -118,6 +112,7 @@ class _NameLookup:
         self._franchise_cache: Dict[str, str] = {}
 
     def franchise_name(self, fid_raw: Any) -> str:
+        """Resolve franchise ID to display name with normalized fallback."""
         key = "" if fid_raw is None else str(fid_raw).strip()
         if not key:
             return "Unknown team"
@@ -135,6 +130,7 @@ class _NameLookup:
         return out
 
     def player_name(self, pid_raw: Any) -> str:
+        """Resolve player ID to display name with normalized fallback."""
         key = "" if pid_raw is None else str(pid_raw).strip()
         if not key:
             return "Unknown player"
@@ -152,41 +148,35 @@ class _NameLookup:
         return out
 
     def _query_franchise_name(self, fid: str) -> str:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT name
-            FROM franchise_directory
-            WHERE league_id = ?
-              AND season = ?
-              AND franchise_id = ?
-            LIMIT 1
-            """,
-            (self.league_id, self.season, fid),
-        )
-        row = cur.fetchone()
-        conn.close()
+        """Query franchise_directory for a name by ID."""
+        with DatabaseSession(self.db_path) as conn:
+            row = conn.execute(
+                """
+                SELECT name
+                FROM franchise_directory
+                WHERE league_id = ?
+                  AND season = ?
+                  AND franchise_id = ?
+                LIMIT 1
+                """,
+                (self.league_id, self.season, fid),
+            ).fetchone()
         return "" if row is None else (row["name"] or "")
 
     def _query_player_name(self, pid: str) -> str:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT name
-            FROM player_directory
-            WHERE league_id = ?
-              AND season = ?
-              AND player_id = ?
-            LIMIT 1
-            """,
-            (self.league_id, self.season, pid),
-        )
-        row = cur.fetchone()
-        conn.close()
+        """Query player_directory for a name by ID."""
+        with DatabaseSession(self.db_path) as conn:
+            row = conn.execute(
+                """
+                SELECT name
+                FROM player_directory
+                WHERE league_id = ?
+                  AND season = ?
+                  AND player_id = ?
+                LIMIT 1
+                """,
+                (self.league_id, self.season, pid),
+            ).fetchone()
         return "" if row is None else (row["name"] or "")
 
 

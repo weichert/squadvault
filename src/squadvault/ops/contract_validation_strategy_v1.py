@@ -1,3 +1,5 @@
+"""Contract validation strategy for SquadVault governance invariants."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -48,6 +50,7 @@ class ValidationResult:
 
 
 def _require_nonempty(label: str, value: str) -> None:
+    """Assert a value is non-empty, raising on failure."""
     if not isinstance(value, str) or not value.strip():
         raise ContractValidationError(f"{label} is required")
 

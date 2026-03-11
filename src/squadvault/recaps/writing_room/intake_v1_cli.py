@@ -27,7 +27,8 @@ class JsonSignalAdapter:
     def __init__(self, path: Path):
         self.path = path
 
-    def iter_signals(self, ctx):
+    def iter_signals(self, ctx) -> list:
+        """Iterate signal dicts from the JSON file."""
         data = json.loads(self.path.read_text(encoding="utf-8"))
         if not isinstance(data, list):
             raise ValueError("signals JSON must be a list")
@@ -39,6 +40,7 @@ class JsonSignalAdapter:
 # ---------------------------------------------------------------------
 
 def main(argv=None) -> int:
+    """CLI entrypoint for Writing Room Intake."""
     p = argparse.ArgumentParser(description="Writing Room Intake v1.0")
 
     p.add_argument("--league-id", required=True)

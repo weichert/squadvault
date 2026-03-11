@@ -55,6 +55,7 @@ class PresentationIndexV1:
 
 
 def _parse_iso8601_utc(ts: str) -> Optional[datetime]:
+    """Parse ISO-8601 UTC timestamp, returning None on failure."""
     if not isinstance(ts, str) or not ts:
         return None
     try:
@@ -68,22 +69,25 @@ def _parse_iso8601_utc(ts: str) -> Optional[datetime]:
         if dt_utc.utcoffset() != timezone.utc.utcoffset(dt_utc):
             return None
         return dt_utc
-    except Exception:
+    except (ValueError, TypeError, OverflowError):
         return None
 
 
 def _is_sha256ish(s: str) -> bool:
+    """Return True if string looks like a SHA-256 hex digest."""
     if not isinstance(s, str) or len(s) != 64:
         return False
     return all(c in "0123456789abcdef" for c in s.lower())
 
 
 def validate_version_metadata_schema(v: Dict[str, Any]) -> List[str]:
+    """Validate a single version metadata record."""
     errs: List[str] = []
     if not isinstance(v, dict):
         return ["version metadata must be a dict"]
 
     def req(name: str, typ: Any) -> Any:
+        """Validate a required field is present and non-empty."""
         if name not in v:
             errs.append(f"missing required field: {name}")
             return None
@@ -150,6 +154,7 @@ def validate_version_metadata_schema(v: Dict[str, Any]) -> List[str]:
 
 
 def validate_version_set_schema(versions: Iterable[Dict[str, Any]]) -> List[str]:
+    """Validate a list of version metadata records."""
     if versions is None:
         return ["versions must be provided"]
     if not isinstance(versions, list):
@@ -162,6 +167,7 @@ def validate_version_set_schema(versions: Iterable[Dict[str, Any]]) -> List[str]
 
 
 def validate_canonical_constraints(versions: List[Dict[str, Any]]) -> List[str]:
+    """Validate canonical uniqueness constraints across versions."""
     errs: List[str] = []
     canonical = [v for v in versions if v.get("is_canonical") is True]
     if len(canonical) > 1:
@@ -185,6 +191,7 @@ def validate_canonical_constraints(versions: List[Dict[str, Any]]) -> List[str]:
 
 
 def validate_supersession_bidirectional(versions: List[Dict[str, Any]]) -> List[str]:
+    """Validate supersession chains are consistent."""
     errs: List[str] = []
     by_id: Dict[str, Dict[str, Any]] = {}
     for v in versions:
@@ -224,7 +231,9 @@ def validate_supersession_bidirectional(versions: List[Dict[str, Any]]) -> List[
 
 
 def order_versions_deterministically(versions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    def key(v: Dict[str, Any]):
+    """Sort version records by (version_number, created_at)."""
+    def key(v: Dict[str, Any]) -> tuple:
+        """Sort key: (version_number, created_at, version_id)."""
         vn = v.get("version_number")
         if not isinstance(vn, int):
             vn = 0
@@ -237,7 +246,8 @@ def order_versions_deterministically(versions: List[Dict[str, Any]]) -> List[Dic
     return sorted(list(versions), key=key)
 
 
-def get_prev_next_version_ids(ordered_versions: List[Dict[str, Any]], current_version_id: str):
+def get_prev_next_version_ids(ordered_versions: List[Dict[str, Any]], current_version_id: str) -> Tuple[Optional[str], Optional[str]]:
+    """Return (prev_id, next_id) for a version in an ordered list."""
     if not isinstance(current_version_id, str) or not current_version_id:
         return (None, None)
 
@@ -258,6 +268,7 @@ def get_prev_next_version_ids(ordered_versions: List[Dict[str, Any]], current_ve
 
 
 def build_presentation_index_v1(versions: List[Dict[str, Any]]) -> PresentationIndexV1:
+    """Build a presentation-ready index from version records."""
     schema_errs = validate_version_set_schema(versions)
     if schema_errs:
         return PresentationIndexV1(

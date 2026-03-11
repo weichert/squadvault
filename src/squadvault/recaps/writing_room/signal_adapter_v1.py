@@ -25,6 +25,7 @@ class SignalAdapterV1(Protocol):
     """
 
     def signal_id(self, signal: Any) -> str:
+        """Return the unique signal identifier."""
         ...
 
     def confidence(self, signal: Any) -> str:
@@ -37,6 +38,7 @@ class SignalAdapterV1(Protocol):
         ...
 
     def is_lineage_complete(self, signal: Any) -> bool:
+        """Return True if signal has complete data lineage."""
         ...
 
     def is_in_window(
@@ -49,12 +51,15 @@ class SignalAdapterV1(Protocol):
         window_start: str,
         window_end: str,
     ) -> bool:
+        """Return True if signal falls within the active window."""
         ...
 
     def is_sensitive(self, signal: Any) -> bool:
+        """Return True if signal is flagged as sensitive."""
         ...
 
     def is_ambiguous(self, signal: Any) -> bool:
+        """Return True if signal is flagged as ambiguous."""
         ...
 
     def redundancy_key(self, signal: Any) -> Optional[str]:
@@ -72,12 +77,15 @@ class DictSignalAdapter:
     """
 
     def signal_id(self, signal: dict) -> str:
+        """Return the unique signal identifier."""
         return signal["signal_id"]
 
     def confidence(self, signal: dict) -> str:
+        """Return the signal confidence grade."""
         return signal["confidence"]
 
     def is_lineage_complete(self, signal: dict) -> bool:
+        """Return True if signal has complete data lineage."""
         return bool(signal.get("lineage_complete", False))
 
     def is_in_window(
@@ -90,15 +98,19 @@ class DictSignalAdapter:
         window_start: str,
         window_end: str,
     ) -> bool:
+        """Return True if signal falls within the active window."""
         return bool(signal.get("in_window", False))
 
     def is_sensitive(self, signal: dict) -> bool:
+        """Return True if signal is flagged as sensitive."""
         return bool(signal.get("sensitive", False))
 
     def is_ambiguous(self, signal: dict) -> bool:
+        """Return True if signal is flagged as ambiguous."""
         return bool(signal.get("ambiguous", False))
 
     def redundancy_key(self, signal: dict) -> Optional[str]:
+        """Return a key for detecting redundant signals."""
         return signal.get("redundancy_key")
 
 

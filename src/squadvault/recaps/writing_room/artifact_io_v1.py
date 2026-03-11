@@ -19,6 +19,7 @@ from squadvault.recaps.writing_room.selection_set_schema_v1 import SelectionSetV
 
 
 def write_selection_set_v1(path: Union[str, Path], selection_set: SelectionSetV1) -> Path:
+    """Write a SelectionSetV1 to disk as canonical JSON."""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
 

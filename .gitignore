@@ -248,3 +248,6 @@ scripts/ci_watch_and_diagnose_run_v*.sh
 artifacts/**
 !artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json
 # --- SV_CANONICAL_ARTIFACTS_ALLOWLIST_v1_END ---
+
+# Hypothesis test cache
+.hypothesis/

@@ -1,5 +1,10 @@
+
+"""Recap artifact lifecycle: DRAFT -> APPROVED -> SUPERSEDED state machine."""
+
 import sqlite3
 from typing import Optional, Tuple
+
+from squadvault.core.storage.session import DatabaseSession
 
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
@@ -15,10 +20,12 @@ _ALLOWED_TRANSITIONS = {
 
 
 def _utc_now_sql() -> str:
+    """Return SQL expression for current UTC timestamp."""
     return "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
 
 
 def _assert_transition(old: str, new: str) -> None:
+    """Validate artifact state transition is allowed."""
     if (old, new) not in _ALLOWED_TRANSITIONS:
         raise ValueError(f"Invalid artifact transition: {old} -> {new}")
 
@@ -47,6 +54,7 @@ def _latest_artifact_row_any_state(
     league_id: str,
     season: int,
     week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[sqlite3.Row]:
+    """Return latest artifact row regardless of state, or None."""
     return con.execute(
         """
         SELECT version, state, selection_fingerprint
@@ -64,6 +72,7 @@ def _latest_artifact_version_any_state(
     league_id: str,
     season: int,
     week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[int]:
+    """Return latest artifact version regardless of state, or None."""
     row = _latest_artifact_row_any_state(con, league_id, season, week_index, artifact_type)
     return int(row[0]) if row else None
 
@@ -73,6 +82,7 @@ def _latest_artifact_fingerprint_any_state(
     league_id: str,
     season: int,
     week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[str]:
+    """Return selection fingerprint of latest artifact, or None."""
     row = _latest_artifact_row_any_state(con, league_id, season, week_index, artifact_type)
     if not row:
         return None
@@ -87,8 +97,8 @@ def latest_approved_version(
     week_index: int,
     artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> Optional[int]:
-    con = sqlite3.connect(db_path)
-    try:
+    """Return version number of latest APPROVED artifact, or None."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT version
@@ -101,8 +111,6 @@ def latest_approved_version(
             (league_id, season, week_index, artifact_type),
         ).fetchone()
         return int(row[0]) if row else None
-    finally:
-        con.close()
 
 
 def _latest_approved_fingerprint(
@@ -112,6 +120,7 @@ def _latest_approved_fingerprint(
     week_index: int,
     artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> Optional[str]:
+    """Return selection fingerprint of latest APPROVED artifact, or None."""
     row = con.execute(
         """
         SELECT selection_fingerprint
@@ -131,6 +140,7 @@ def _latest_approved_version_in_conn(
     league_id: str,
     season: int,
     week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[int]:
+    """Return latest APPROVED version using an existing connection."""
     row = con.execute(
         """
         SELECT version
@@ -177,6 +187,7 @@ def _next_version(
     league_id: str,
     season: int,
     week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> int:
+    """Return next sequential version number for this artifact type and week."""
     row = con.execute(
         """
         SELECT COALESCE(MAX(version), 0)
@@ -216,8 +227,7 @@ def create_recap_artifact_draft_idempotent(
     - If case (1) hits, we return the latest artifact version and created_new=False.
     - If case (3) hits, we return the latest approved version and created_new=False.
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         # Case (1): latest artifact (ANY state) already matches fingerprint => no-op (unless forced).
         latest_fp = _latest_artifact_fingerprint_any_state(con, league_id, season, week_index, artifact_type)
         if (not force) and (latest_fp is not None) and (latest_fp == selection_fingerprint):
@@ -269,8 +279,6 @@ def create_recap_artifact_draft_idempotent(
         )
         con.commit()
         return v, True
-    finally:
-        con.close()
 
 
 def approve_recap_artifact(
@@ -282,14 +290,13 @@ def approve_recap_artifact(
     approved_by: str,
     approved_at_utc: Optional[str] = None, artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> None:
-    # CORE_APPROVE_RECAP_ARTIFACT_APPROVED_AT_UTC_V1
+    """Transition a DRAFT artifact to APPROVED state."""
     # If approved_at_utc is provided, persist it. Otherwise preserve existing 'now' behavior.
     effective_approved_at = approved_at_utc
     if effective_approved_at is None:
         from datetime import datetime, timezone
         effective_approved_at = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT state
@@ -335,8 +342,6 @@ def approve_recap_artifact(
             ),
         )
         con.commit()
-    finally:
-        con.close()
 
 
 def withhold_recap_artifact(
@@ -348,8 +353,8 @@ def withhold_recap_artifact(
     withheld_reason: str,
     artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> None:
-    con = sqlite3.connect(db_path)
-    try:
+    """Transition a DRAFT artifact to WITHHELD state with reason."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT state
@@ -377,8 +382,6 @@ def withhold_recap_artifact(
         if cur.rowcount != 1:
             raise RuntimeError("Withhold failed (state not DRAFT or row missing).")
         con.commit()
-    finally:
-        con.close()
 
 
 def supersede_approved_recap_artifact(
@@ -387,9 +390,10 @@ def supersede_approved_recap_artifact(
     season: int,
     week_index: int,
     version: int,
+    artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> None:
-    con = sqlite3.connect(db_path)
-    try:
+    """Transition an APPROVED artifact to SUPERSEDED state."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT state
@@ -414,8 +418,6 @@ def supersede_approved_recap_artifact(
         if cur.rowcount != 1:
             raise RuntimeError("Supersede failed (state not APPROVED or row missing).")
         con.commit()
-    finally:
-        con.close()
 
 
 # PRUNE_TRAILING_MARKERS_V1

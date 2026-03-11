@@ -1,16 +1,23 @@
+"""Weekly recap lifecycle: draft generation, approval, and state management."""
+
 from __future__ import annotations
 
+import json
+import re
 import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
 from squadvault.core_engine.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
 from typing import Optional, Tuple
 from squadvault.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
+from squadvault.errors import RecapNotFoundError, RecapStateError, RecapDataError
 from squadvault.core.recaps.render.render_recap_text_v1 import render_recap_text_from_path_v1
 from squadvault.core.recaps.recap_runs import (
     get_recap_run_state,
     sync_recap_run_state_from_artifacts,
 )
 from squadvault.core.recaps.recap_artifacts import latest_approved_version
+from squadvault.core.storage.session import DatabaseSession
 
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
@@ -44,6 +51,7 @@ class ApproveResult:
 # =============================================================================
 
 def _utc_now_sql() -> str:
+    """Return SQL expression for current UTC timestamp."""
     return "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
 
 
@@ -53,8 +61,7 @@ def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_in
     and uses artifact_path to load the text to mint into recap_artifacts.
     Preserved to avoid behavior drift during hardening.
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT artifact_path
@@ -65,11 +72,9 @@ def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_in
             """,
             (league_id, season, week_index),
         ).fetchone()
-    finally:
-        con.close()
 
     if not row or not row[0]:
-        raise SystemExit("No ACTIVE recap with artifact_path found for that week.")
+        raise RecapNotFoundError("No ACTIVE recap with artifact_path found for that week.")
 
     return str(row[0])
 
@@ -91,8 +96,7 @@ def _get_recap_run_trace(
     If include_editorial=False:
       - returns (fp, window_start, window_end)
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         if include_editorial:
             cols = {str(r[1]) for r in con.execute("PRAGMA table_info(recap_runs)").fetchall()}
             has_eal = "editorial_attunement_v1" in cols
@@ -128,11 +132,9 @@ def _get_recap_run_trace(
                 """,
                 (league_id, season, week_index),
             ).fetchone()
-    finally:
-        con.close()
 
     if not row or not row[0]:
-        raise SystemExit("No recap_runs row found (missing selection_fingerprint).")
+        raise RecapNotFoundError("No recap_runs row found (missing selection_fingerprint).")
 
     fp = str(row[0])
     ws = (str(row[1]) if row[1] else None)
@@ -161,8 +163,7 @@ def _persist_editorial_attunement_v1_to_recap_runs(
     if not directive:
         return
 
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         cur = con.execute("PRAGMA table_info(recap_runs)")
         cols = {str(r[1]) for r in cur.fetchall()}  # (cid, name, type, notnull, dflt_value, pk)
         if "editorial_attunement_v1" not in cols:
@@ -173,8 +174,6 @@ def _persist_editorial_attunement_v1_to_recap_runs(
             (directive, league_id, season, week_index),
         )
         con.commit()
-    finally:
-        con.close()
 
 def _create_recap_artifact_draft_always_new(
     db_path: str,
@@ -204,8 +203,7 @@ def _create_recap_artifact_draft_always_new(
     if not fp:
         raise ValueError("selection_fingerprint must be a non-empty string")
 
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         con.execute("BEGIN IMMEDIATE")
 
         row = con.execute(
@@ -271,15 +269,6 @@ def _create_recap_artifact_draft_always_new(
         con.execute("COMMIT")
         return v, True
 
-    except Exception:
-        try:
-            con.execute("ROLLBACK")
-        except Exception:
-            pass
-        raise
-    finally:
-        con.close()
-
 
 def _latest_artifact_in_state(
     con: sqlite3.Connection,
@@ -288,6 +277,7 @@ def _latest_artifact_in_state(
     week_index: int,
     state: str,
 ) -> Optional[int]:
+    """Return latest artifact version in a given state, or None."""
     row = con.execute(
         """
         SELECT version
@@ -309,8 +299,8 @@ def _approve_version_and_supersede_previous(
     version_to_approve: int,
     approved_by: str,
 ) -> Tuple[int, Optional[int]]:
-    con = sqlite3.connect(db_path)
-    try:
+    """Approve a version and supersede prior APPROVED if any."""
+    with DatabaseSession(db_path) as con:
         con.execute("BEGIN IMMEDIATE")
 
         row = con.execute(
@@ -323,9 +313,9 @@ def _approve_version_and_supersede_previous(
         ).fetchone()
 
         if not row:
-            raise SystemExit(f"No WEEKLY_RECAP artifact found for version={version_to_approve}.")
+            raise RecapNotFoundError(f"No WEEKLY_RECAP artifact found for version={version_to_approve}.")
         if str(row[0]) not in ("DRAFT", "DRAFTED"):
-            raise SystemExit(
+            raise RecapStateError(
                 f"Refusing to approve version={version_to_approve} because state is '{row[0]}', not DRAFT."
             )
 
@@ -356,14 +346,55 @@ def _approve_version_and_supersede_previous(
         con.execute("COMMIT")
         return version_to_approve, prev_approved_version
 
-    except Exception:
-        try:
-            con.execute("ROLLBACK")
-        except Exception:
-            pass
-        raise
-    finally:
-        con.close()
+
+# =============================================================================
+# Artifact materialization helper
+# =============================================================================
+
+def _ensure_artifact_on_disk(
+    path: str,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+) -> None:
+    """Materialize ACTIVE recap JSON if missing on disk.
+
+    CI runners start from a clean checkout; artifacts/ may not exist yet.
+    Creates a minimal deterministic artifact (no event invention).
+    """
+    p = Path(path)
+    if p.exists():
+        return
+
+    p.parent.mkdir(parents=True, exist_ok=True)
+
+    m = re.search(r"recap_v(\d+)\.json$", p.name)
+    if not m:
+        raise RecapDataError(f"Active recap artifact path has unexpected filename: {path}")
+    recap_version = int(m.group(1))
+
+    selection_fingerprint, window_start, window_end = _get_recap_run_trace(
+        db_path, league_id, season, week_index
+    )
+
+    artifact = {
+        "league_id": league_id,
+        "season": season,
+        "week_index": week_index,
+        "recap_version": recap_version,
+        "window": {"start": window_start, "end": window_end},
+        "selection": {
+            "fingerprint": selection_fingerprint,
+            "event_count": 0,
+            "counts_by_type": {},
+            "canonical_ids": [],
+        },
+    }
+
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(artifact, f, sort_keys=True)
+        f.write("\n")
 
 
 # =============================================================================
@@ -392,49 +423,10 @@ def generate_weekly_recap_draft(
     """
     state = get_recap_run_state(db_path, league_id, season, week_index)
     if state is None:
-        raise SystemExit("No recap_runs row found for that week.")
+        raise RecapNotFoundError("No recap_runs row found for that week.")
 
     path = _get_active_artifact_path(db_path, league_id, season, week_index)
-    # --- Clean-room safety: materialize ACTIVE recap JSON if missing (v1) ---
-    # CI runners start from a clean checkout; artifacts/ may not exist yet.
-    # We must not assume recap_vNN.json is already present on disk.
-    from pathlib import Path
-    import json
-    import re
-
-    p = Path(path)
-    if not p.exists():
-        p.parent.mkdir(parents=True, exist_ok=True)
-
-        # Derive recap_version from filename (recap_v01.json -> 1), fail closed if unknown.
-        m = re.search(r"recap_v(\d+)\.json$", p.name)
-        if not m:
-            raise SystemExit(f"Active recap artifact path has unexpected filename: {path}")
-        recap_version = int(m.group(1))
-
-        selection_fingerprint, window_start, window_end = _get_recap_run_trace(
-            db_path, league_id, season, week_index
-        )
-
-        # Minimal deterministic recap artifact (no event invention).
-        artifact = {
-            "league_id": league_id,
-            "season": season,
-            "week_index": week_index,
-            "recap_version": recap_version,
-            "window": {"start": window_start, "end": window_end},
-            "selection": {
-                "fingerprint": selection_fingerprint,
-                "event_count": 0,
-                "counts_by_type": {},
-                "canonical_ids": [],
-            },
-        }
-
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(artifact, f, sort_keys=True)
-            f.write("\n")
-    # --- /Clean-room safety ---
+    _ensure_artifact_on_disk(path, db_path, league_id, season, week_index)
 
     # --- EAL v1 writer consumption boundary (read-only) ---
     eal_directives = load_eal_directives_v1(
@@ -453,11 +445,19 @@ def generate_weekly_recap_draft(
     # SV_EAL_V1_BEGIN: Editorial Attunement Layer v1 (restraint-only, metadata-only)
     # NOTE: This must not modify selection, ordering, or facts. It only constrains expression.
     included_count = None
-    # Prefer deterministic locals if present; otherwise remain None.
-    for _name in ('events_selected', 'selected_count', 'n_selected', 'num_selected'):
-        if _name in locals() and isinstance(locals()[_name], int):
-            included_count = int(locals()[_name])
-            break
+    # Read canonical_ids_json from recap_runs for deterministic included_count.
+    with DatabaseSession(db_path) as _eal_con:
+        _eal_row = _eal_con.execute(
+            "SELECT canonical_ids_json FROM recap_runs WHERE league_id=? AND season=? AND week_index=?",
+            (league_id, season, week_index),
+        ).fetchone()
+        if _eal_row and _eal_row[0]:
+            try:
+                _ids = json.loads(_eal_row[0])
+                if isinstance(_ids, list):
+                    included_count = len(_ids)
+            except (ValueError, TypeError):
+                pass
     meta = EALMeta(
         has_selection_set=True,
         has_window=True,
@@ -521,8 +521,7 @@ def approve_latest_weekly_recap(
     - Supersedes prior APPROVED (if any)
     - Sync recap_runs from artifact truth
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT version
@@ -533,11 +532,9 @@ def approve_latest_weekly_recap(
             """,
             (league_id, season, week_index),
         ).fetchone()
-    finally:
-        con.close()
 
     if not row:
-        raise SystemExit("No DRAFT WEEKLY_RECAP artifact found to approve for that week.")
+        raise RecapNotFoundError("No DRAFT WEEKLY_RECAP artifact found to approve for that week.")
 
     draft_version = int(row[0])
 

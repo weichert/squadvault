@@ -1,3 +1,5 @@
+"""Render deterministic recap text from artifact JSON with voice framing."""
+
 from __future__ import annotations
 from typing import Optional
 from squadvault.eal.consume_v1 import EALDirectivesV1
@@ -9,9 +11,10 @@ from squadvault.core.recaps.render.voice_variants_v1 import get_voice_spec
 
 
 def _safe_int(v: Any, default: int = 0) -> int:
+    """Parse value as int, returning default on failure."""
     try:
         return int(v)
-    except Exception:
+    except (ValueError, TypeError):
         return default
 
 
@@ -113,6 +116,7 @@ def render_recap_text_from_path_v1(
     voice_id: str = "neutral",
     eal_directives: Optional[EALDirectivesV1] = None,
 ) -> str:
+    """Load artifact JSON from path and render recap text."""
     _ = eal_directives  # EAL v1: accepted but not applied at render layer
     with open(path, "r", encoding="utf-8") as f:
         artifact = json.load(f)

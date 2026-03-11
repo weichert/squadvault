@@ -1,3 +1,6 @@
+
+"""CLI runner for narrative event count queries."""
+
 import os
 from pathlib import Path
 from collections import Counter

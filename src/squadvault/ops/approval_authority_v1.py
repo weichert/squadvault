@@ -1,3 +1,5 @@
+"""Approval Authority contract validation for artifact lifecycle actions."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,6 +24,7 @@ class BulkApprovalRequest:
 
 
 def validate_actor_role(role: str) -> ActorRole:
+    """Validate actor role is allowed for the requested action."""
     if role in ("primary", "co_commissioner", "delegate"):
         return role  # type: ignore[return-value]
     raise ApprovalAuthorityError(f"Forbidden actor_role (default deny): {role!r}")

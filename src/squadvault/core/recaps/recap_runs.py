@@ -1,7 +1,11 @@
+
+"""Recap run tracking: workflow state and selection trace persistence."""
+
 import json
 import sqlite3
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Any
+from squadvault.core.storage.session import DatabaseSession
 
 
 # Sentinel that lets callers distinguish:
@@ -32,8 +36,7 @@ def upsert_recap_run(db_path: str, r: RecapRunRecord) -> None:
     """
     Idempotently write recap workflow state + deterministic selection trace for a week.
     """
-    conn = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as conn:
         conn.execute(
             """
             INSERT INTO recap_runs (
@@ -72,13 +75,11 @@ def upsert_recap_run(db_path: str, r: RecapRunRecord) -> None:
             ),
         )
         conn.commit()
-    finally:
-        conn.close()
 
 
 def get_recap_run_state(db_path: str, league_id: str, season: int, week_index: int) -> Optional[str]:
-    conn = sqlite3.connect(db_path)
-    try:
+    """Return current recap_runs state for a week, or None if no row exists."""
+    with DatabaseSession(db_path) as conn:
         row = conn.execute(
             """
             SELECT state
@@ -88,8 +89,6 @@ def get_recap_run_state(db_path: str, league_id: str, season: int, week_index: i
             (league_id, season, week_index),
         ).fetchone()
         return row[0] if row else None
-    finally:
-        conn.close()
 
 
 def update_recap_run_state(
@@ -109,8 +108,7 @@ def update_recap_run_state(
     - reason is None: set reason=NULL (explicitly clear)
     - reason is str: set reason to that value
     """
-    conn = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as conn:
         if reason is _REASON_UNSET:
             cur = conn.execute(
                 """
@@ -136,8 +134,6 @@ def update_recap_run_state(
                 f"{league_id}/{season}/week={week_index}, got {cur.rowcount}"
             )
         conn.commit()
-    finally:
-        conn.close()
 
 
 # =============================================================================
@@ -154,8 +150,7 @@ def _latest_artifact_state_for_week(
     Returns (version, state) for the latest recap_artifacts row for this week,
     or None if no artifacts exist.
     """
-    conn = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as conn:
         row = conn.execute(
             """
             SELECT version, state
@@ -169,8 +164,6 @@ def _latest_artifact_state_for_week(
         if not row:
             return None
         return int(row[0]), str(row[1])
-    finally:
-        conn.close()
 
 
 def _has_any_approved_artifact(
@@ -179,8 +172,8 @@ def _has_any_approved_artifact(
     season: int,
     week_index: int,
 ) -> bool:
-    conn = sqlite3.connect(db_path)
-    try:
+    """Return True if any APPROVED artifact exists for this week."""
+    with DatabaseSession(db_path) as conn:
         row = conn.execute(
             """
             SELECT 1
@@ -192,8 +185,6 @@ def _has_any_approved_artifact(
             (league_id, season, week_index),
         ).fetchone()
         return bool(row)
-    finally:
-        conn.close()
 
 
 def sync_recap_run_state_from_artifacts(

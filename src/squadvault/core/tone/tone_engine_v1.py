@@ -88,6 +88,7 @@ DEFAULT_NEUTRAL_CONFIG_V1: Dict[str, Any] = {
 
 
 def _parse_iso8601_utc(ts: str) -> Optional[datetime]:
+    """Parse ISO-8601 UTC timestamp, returning None on failure."""
     if not isinstance(ts, str) or not ts.strip():
         return None
     s = ts.strip()
@@ -99,7 +100,7 @@ def _parse_iso8601_utc(ts: str) -> Optional[datetime]:
             return None
         dt_utc = dt.astimezone(timezone.utc)
         return dt_utc
-    except Exception:
+    except (ValueError, TypeError, OverflowError):
         return None
 
 
@@ -113,6 +114,7 @@ def validate_tone_config_schema_v1(cfg: Dict[str, Any]) -> List[str]:
         return ["tone config must be a dict"]
 
     def req(name: str, typ: Any) -> Any:
+        """Validate a required field is present and non-empty."""
         if name not in cfg:
             errs.append(f"missing required field: {name}")
             return None
@@ -155,6 +157,7 @@ def validate_tone_config_schema_v1(cfg: Dict[str, Any]) -> List[str]:
 
 def _map_formality(level: str) -> str:
     # deterministic mapping
+    """Map raw formality value to ToneFormality enum."""
     if level == FormalityLevel.casual.value:
         return FormalityConstraint.low.value
     if level == FormalityLevel.balanced.value:
@@ -166,15 +169,18 @@ def _map_formality(level: str) -> str:
 
 
 def _map_humor(permitted: bool) -> str:
+    """Map raw humor value to ToneHumor enum."""
     return HumorConstraint.light.value if permitted else HumorConstraint.none.value
 
 
 def _map_profanity(permitted: bool) -> str:
+    """Map raw profanity value to ToneProfanity enum."""
     return ProfanityConstraint.permitted.value if permitted else ProfanityConstraint.forbidden.value
 
 
 def _map_ceremonial(weight: str, *, artifact_class_is_ceremonial: bool) -> str:
     # hard invariant: if not ceremonial class -> "none" regardless of weight
+    """Map raw ceremonial value to ToneCeremonial enum."""
     if not artifact_class_is_ceremonial:
         return CeremonialEmphasis.none.value
 

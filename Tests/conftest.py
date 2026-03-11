@@ -9,7 +9,7 @@ def _ensure_repo_import_paths() -> None:
     """
     Deterministic test bootstrap:
     - Add repo root for `scripts.*` imports used by some tests
-    - Add src/ for src-layout packages (`squadvault`, `pfl`)
+    - Add src/ for src-layout packages (`squadvault`)
     """
     repo_root = Path(__file__).resolve().parents[1]
     src_root = repo_root / "src"

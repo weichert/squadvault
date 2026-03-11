@@ -1,3 +1,5 @@
+"""Regenerate a weekly recap draft artifact."""
+
 from __future__ import annotations
 
 import argparse
@@ -7,6 +9,7 @@ from squadvault.recaps.weekly_recap_lifecycle import generate_weekly_recap_draft
 
 
 def main() -> int:
+    """CLI entrypoint: regenerate a recap draft artifact."""
     p = argparse.ArgumentParser(
         description="Regenerate weekly recap artifact draft (canonical lifecycle)."
     )

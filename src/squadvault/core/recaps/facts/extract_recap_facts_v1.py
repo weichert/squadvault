@@ -1,9 +1,12 @@
+"""Extract structured facts from canonical events for recap rendering."""
+
 from __future__ import annotations
 
 import json
 import sqlite3
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+from squadvault.core.storage.session import DatabaseSession
 
 
 @dataclass(frozen=True)
@@ -31,21 +34,23 @@ ORDER BY me.occurred_at ASC, ce.event_type ASC, ce.id ASC;
 
 
 def _json_load(payload: str) -> Dict[str, Any]:
+    """Parse JSON string, returning None on failure."""
     try:
         obj = json.loads(payload) if payload else {}
         return obj if isinstance(obj, dict) else {"_raw": obj}
-    except Exception:
+    except (ValueError, TypeError):
         return {"_parse_error": True, "_raw": payload}
 
 
 def _parse_raw_mfl_json(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse possibly double-encoded MFL JSON payload."""
     raw = payload.get("raw_mfl_json")
     if not raw or not isinstance(raw, str):
         return {}
     try:
         obj = json.loads(raw)
         return obj if isinstance(obj, dict) else {"_raw": obj}
-    except Exception:
+    except (ValueError, TypeError):
         return {"_parse_error": True, "_raw": raw}
 
 
@@ -72,7 +77,7 @@ def _extract_bbid_waiver_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
         if len(parts) >= 2:
             try:
                 out["bid_amount"] = float(parts[1])
-            except Exception:
+            except (ValueError, TypeError):
                 out["bid_amount"] = parts[1]
         if len(parts) >= 3:
             drops = [p for p in parts[2].split(",") if p]
@@ -83,7 +88,7 @@ def _extract_bbid_waiver_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
     ts = raw.get("timestamp")
     try:
         out["mfl_timestamp"] = int(ts) if ts is not None else None
-    except Exception:
+    except (ValueError, TypeError):
         out["mfl_timestamp"] = ts
 
     return out
@@ -137,6 +142,7 @@ def extract_recap_facts_v1(
     season: int,
     canonical_ids: List[int],
 ) -> List[EventFact]:
+    """Extract structured facts from canonical events for a given week."""
     if not canonical_ids:
         return []
 
@@ -145,11 +151,8 @@ def extract_recap_facts_v1(
 
     params: List[Any] = [league_id, season, *canonical_ids]
 
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         rows = con.execute(sql, params).fetchall()
-    finally:
-        con.close()
 
     facts: List[EventFact] = []
     for canonical_id, event_type, occurred_at, payload_json in rows:
@@ -166,6 +169,7 @@ def extract_recap_facts_v1(
     return facts
 
 def _extract_waiver_bid_awarded_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract waiver bid fields from a canonical event payload."""
     out: Dict[str, Any] = {}
 
     # Prefer already-normalized payload fields if present
@@ -188,12 +192,13 @@ def _extract_waiver_bid_awarded_fields(payload: Dict[str, Any], raw: Dict[str, A
     ts = raw.get("timestamp") if isinstance(raw, dict) else None
     try:
         out["mfl_timestamp"] = int(ts) if ts is not None else None
-    except Exception:
+    except (ValueError, TypeError):
         out["mfl_timestamp"] = ts
 
     return out
 
 def _extract_free_agent_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract free agent transaction fields from a canonical event payload."""
     out: Dict[str, Any] = {}
 
     # Prefer already-normalized payload lists
@@ -217,12 +222,13 @@ def _extract_free_agent_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> 
     ts = raw.get("timestamp") if isinstance(raw, dict) else None
     try:
         out["mfl_timestamp"] = int(ts) if ts is not None else None
-    except Exception:
+    except (ValueError, TypeError):
         out["mfl_timestamp"] = ts
 
     return out
 
 def _split_csv_ids(s: Any) -> List[str]:
+    """Split a comma-separated ID string into a list of non-empty strings."""
     if s is None:
         return []
     if not isinstance(s, str):
@@ -232,6 +238,7 @@ def _split_csv_ids(s: Any) -> List[str]:
 
 
 def _extract_trade_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract trade fields from a canonical event payload."""
     out: Dict[str, Any] = {}
 
     f1 = raw.get("franchise") if isinstance(raw, dict) else None
@@ -254,14 +261,14 @@ def _extract_trade_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> Dict[
     if isinstance(raw, dict) and raw.get("expires") is not None:
         try:
             out["expires_timestamp"] = int(raw.get("expires"))
-        except Exception:
+        except (ValueError, TypeError):
             out["expires_timestamp"] = raw.get("expires")
 
     # Timestamp
     ts = raw.get("timestamp") if isinstance(raw, dict) else None
     try:
         out["mfl_timestamp"] = int(ts) if ts is not None else None
-    except Exception:
+    except (ValueError, TypeError):
         out["mfl_timestamp"] = ts
 
     return out

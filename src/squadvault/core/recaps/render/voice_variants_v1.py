@@ -1,3 +1,5 @@
+"""Voice variant specifications and non-canonical framing."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,6 +15,7 @@ class VoiceSpec:
 
 
 def get_voice_spec(voice_id: str) -> VoiceSpec:
+    """Return VoiceSpec for a voice_id. Raises ValueError if unknown."""
     v = (voice_id or "").strip().lower()
     if v not in VOICE_IDS:
         raise ValueError(f"Unknown voice_id: {voice_id}. Allowed: {', '.join(VOICE_IDS)}")
@@ -39,6 +42,7 @@ def get_voice_spec(voice_id: str) -> VoiceSpec:
 
 
 def format_variant_block(*, voice_id: str, body: str) -> str:
+    """Wrap body text in a non-canonical variant header block."""
     spec = get_voice_spec(voice_id)
     header = [
         "------------------------------------------------------------",

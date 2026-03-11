@@ -1,3 +1,5 @@
+"""Notion API client for database operations."""
+
 from __future__ import annotations
 
 import json
@@ -26,6 +28,7 @@ class NotionClient:
         )
 
     def get_database(self, database_id: str) -> Dict[str, Any]:
+        """Retrieve a Notion database by ID."""
         url = f"{self.base_url}/databases/{database_id}"
         resp = http_request_with_retries(self.session, "GET", url)
         return resp.json()
@@ -37,6 +40,7 @@ class NotionClient:
         start_cursor: Optional[str] = None,
         page_size: int = 100,
     ) -> Dict[str, Any]:
+        """Query a Notion database with optional filter."""
         url = f"{self.base_url}/databases/{database_id}/query"
         payload: Dict[str, Any] = {"page_size": page_size}
         if filter_obj:
@@ -73,12 +77,14 @@ class NotionClient:
         return self.query_database(database_id=database_id, filter_obj=filter_obj, page_size=100)
 
     def create_page(self, parent_database_id: str, properties: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a page in a Notion database."""
         url = f"{self.base_url}/pages"
         payload = {"parent": {"database_id": parent_database_id}, "properties": properties}
         resp = http_request_with_retries(self.session, "POST", url, json=payload)
         return resp.json()
 
     def update_page(self, page_id: str, properties: Dict[str, Any]) -> Dict[str, Any]:
+        """Update properties on a Notion page."""
         url = f"{self.base_url}/pages/{page_id}"
         payload = {"properties": properties}
         resp = http_request_with_retries(self.session, "PATCH", url, json=payload)

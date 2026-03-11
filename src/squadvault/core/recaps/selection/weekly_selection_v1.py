@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from squadvault.core.recaps.selection.weekly_windows_v1 import WeeklyWindow, window_for_week_index
+from squadvault.core.storage.session import DatabaseSession
 
 
 # -------------------------
@@ -37,7 +38,7 @@ def _load_allowlist_event_types() -> List[str]:
         from squadvault.config.recap_event_allowlist_v1 import ALLOWLIST_EVENT_TYPES  # type: ignore
         if isinstance(ALLOWLIST_EVENT_TYPES, (list, tuple)) and ALLOWLIST_EVENT_TYPES:
             return [str(x) for x in ALLOWLIST_EVENT_TYPES]
-    except Exception:
+    except (ImportError, AttributeError):
         pass
 
     # Conservative fallback (must match your current MVP coverage)
@@ -67,19 +68,18 @@ class SelectionResult:
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    """Convert a sqlite3.Row to a plain dict."""
     return {k: row[k] for k in row.keys()}
 
 
 def _fingerprint_from_ids(ids: List[str]) -> str:
     # sha256 of comma-joined canonical ids
+    """Compute SHA-256 fingerprint from sorted canonical IDs."""
     s = ",".join(ids).encode("utf-8")
     return hashlib.sha256(s).hexdigest()
 
 
-def _db_connect(db_path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+# _db_connect removed — use DatabaseSession instead
 
 
 def select_weekly_recap_events_v1(
@@ -118,8 +118,7 @@ def select_weekly_recap_events_v1(
     allow = allowlist_event_types if allowlist_event_types is not None else _load_allowlist_event_types()
     allow = [str(x) for x in allow if x]
 
-    conn = _db_connect(db_path)
-    try:
+    with DatabaseSession(db_path) as conn:
         cur = conn.cursor()
 
         # Allowlist filter (parameterized IN)
@@ -154,8 +153,6 @@ def select_weekly_recap_events_v1(
         )
 
         rows = [_row_to_dict(r) for r in cur.fetchall()]
-    finally:
-        conn.close()
 
     canonical_ids: List[str] = [str(r["canonical_id"]) for r in rows]
     counts: Dict[str, int] = {}

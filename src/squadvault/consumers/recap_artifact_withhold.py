@@ -1,13 +1,16 @@
+"""Withhold a recap artifact via the canonical lifecycle."""
+
 import argparse
 import sqlite3
 
 from squadvault.core.recaps.recap_runs import sync_recap_run_state_from_artifacts
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_WEEKLY_RECAP, withhold_recap_artifact
+from squadvault.core.storage.session import DatabaseSession
 
 
 def _artifact_state(db_path: str, league_id: str, season: int, week_index: int, version: int) -> str | None:
-    con = sqlite3.connect(db_path)
-    try:
+    """Fetch current state of a recap artifact version."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT state
@@ -17,11 +20,10 @@ def _artifact_state(db_path: str, league_id: str, season: int, week_index: int, 
             (league_id, season, week_index, ARTIFACT_TYPE_WEEKLY_RECAP, version),
         ).fetchone()
         return str(row[0]) if row else None
-    finally:
-        con.close()
 
 
 def main() -> None:
+    """CLI entrypoint: withhold a recap artifact."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)

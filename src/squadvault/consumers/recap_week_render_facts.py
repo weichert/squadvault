@@ -1,13 +1,17 @@
+"""Render recap text from enriched facts artifacts."""
+
 import argparse
 import os
 import sqlite3
 
 from squadvault.core.recaps.render.render_recap_text_from_facts_v1 import render_recap_from_enriched_path_v1
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.errors import RecapNotFoundError, RecapDataError
 
 
 def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_index: int) -> str:
-    con = sqlite3.connect(db_path)
-    try:
+    """Fetch the ACTIVE recap artifact path from the legacy recaps table."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT artifact_path
@@ -18,15 +22,14 @@ def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_in
             """,
             (league_id, season, week_index),
         ).fetchone()
-    finally:
-        con.close()
 
     if not row or not row[0]:
-        raise SystemExit("No ACTIVE recap with artifact_path found for that week.")
+        raise RecapNotFoundError("No ACTIVE recap with artifact_path found for that week.")
     return str(row[0])
 
 
 def main() -> None:
+    """CLI entrypoint: render recap from enriched facts."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
@@ -34,12 +37,14 @@ def main() -> None:
     ap.add_argument("--week-index", type=int, required=True)
     args = ap.parse_args()
 
-    base = _get_active_artifact_path(args.db, args.league_id, args.season, args.week_index)
-    enriched = base.replace(".json", "_enriched.json")
-    if not os.path.exists(enriched):
-        raise SystemExit(f"Missing enriched artifact: {enriched} (run recap_week_enrich_artifact.py first)")
-
-    print(render_recap_from_enriched_path_v1(enriched))
+    try:
+        base = _get_active_artifact_path(args.db, args.league_id, args.season, args.week_index)
+        enriched = base.replace(".json", "_enriched.json")
+        if not os.path.exists(enriched):
+            raise RecapDataError(f"Missing enriched artifact: {enriched} (run recap_week_enrich_artifact.py first)")
+        print(render_recap_from_enriched_path_v1(enriched))
+    except (RecapNotFoundError, RecapDataError) as e:
+        raise SystemExit(f"ERROR: {e}") from None
 
 
 if __name__ == "__main__":

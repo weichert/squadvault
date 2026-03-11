@@ -1,3 +1,5 @@
+"""Derive canonical auction draft events from raw MFL transaction data."""
+
 from __future__ import annotations
 
 import json
@@ -16,6 +18,7 @@ from squadvault.utils.time import unix_seconds_to_iso_z
 
 
 def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
+    """Safely get a value from a dict with fallback."""
     for k in keys:
         if k in d:
             return d[k]
@@ -23,11 +26,13 @@ def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
 
 
 def _extract_type(txn: Dict[str, Any]) -> str:
+    """Extract MFL transaction type from raw data."""
     t = _safe_get(txn, "@type", "type", "@transactionType", "transactionType")
     return str(t) if t is not None else ""
 
 
 def _extract_timestamp_unix(txn: Dict[str, Any]) -> Optional[int]:
+    """Extract and validate Unix timestamp from raw data."""
     val = _safe_get(txn, "@timestamp", "timestamp", "@time", "time")
     if val is None:
         return None
@@ -38,6 +43,7 @@ def _extract_timestamp_unix(txn: Dict[str, Any]) -> Optional[int]:
 
 
 def _extract_franchise_id(txn: Dict[str, Any]) -> str:
+    """Extract franchise ID from raw transaction data."""
     val = _safe_get(txn, "@franchise", "franchise", "@franchise_id", "franchise_id")
     if isinstance(val, str):
         return val.strip()
@@ -76,6 +82,7 @@ def _parse_transaction_field(txn: Dict[str, Any]) -> Tuple[str, Optional[float]]
 
 def _extract_player_id(txn: Dict[str, Any]) -> str:
     # First try explicit fields (some endpoints/leagues may provide them)
+    """Extract player ID from raw transaction data."""
     v = _safe_get(txn, "@player", "player", "@player_id", "player_id")
     if isinstance(v, str) and v.strip():
         return v.strip()
@@ -91,6 +98,7 @@ def _extract_player_id(txn: Dict[str, Any]) -> str:
 
 def _extract_bid_amount(txn: Dict[str, Any]) -> Optional[float]:
     # First try explicit fields (if present)
+    """Extract bid amount from raw transaction data."""
     for k in ("@bid", "bid", "@amount", "amount", "@price", "price"):
         v = txn.get(k)
         if v is None:
@@ -106,6 +114,7 @@ def _extract_bid_amount(txn: Dict[str, Any]) -> Optional[float]:
 
 
 def _truncate_raw_json(text: str, limit: int) -> str:
+    """Truncate raw JSON string for storage efficiency."""
     if len(text) <= limit:
         return text
     return text[:limit] + "...(truncated)"

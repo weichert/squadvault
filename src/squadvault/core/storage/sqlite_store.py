@@ -1,3 +1,6 @@
+
+"""Core SQLite storage: memory event append-only ledger."""
+
 import json
 import sqlite3
 from dataclasses import dataclass
@@ -7,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 def _now_iso_z() -> str:
+    """Return current UTC time as ISO-8601 string."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
@@ -15,11 +19,13 @@ class SQLiteStore:
     db_path: Path
 
     def connect(self) -> sqlite3.Connection:
+        """Open a sqlite3 connection to the store."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
 
     def init_db(self, schema_sql: str) -> None:
+        """Initialize the database from a schema SQL string."""
         with self.connect() as conn:
             conn.executescript(schema_sql)
             conn.commit()

@@ -71,6 +71,7 @@ class ReasonDetailKV:
     v: str
 
     def to_dict(self) -> Dict[str, str]:
+        """Convert dataclass instance to a plain dict."""
         return {"k": self.k, "v": self.v}
 
 
@@ -81,6 +82,7 @@ class ExcludedSignal:
     details: Optional[List[ReasonDetailKV]] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert dataclass instance to a plain dict."""
         d: Dict[str, Any] = {
             "signal_id": self.signal_id,
             "reason_code": self.reason_code.value,
@@ -100,6 +102,7 @@ class SignalGrouping:
     group_label: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert dataclass instance to a plain dict."""
         d: Dict[str, Any] = {
             "group_id": self.group_id,
             "group_basis": self.group_basis.value,
@@ -117,6 +120,7 @@ class SelectionNote:
     note_kv: Optional[List[ReasonDetailKV]] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert dataclass instance to a plain dict."""
         d: Dict[str, Any] = {"note_code": self.note_code.value}
         if self.note_kv:
             # Determinism: sort KVs lexicographically by (k, v)
@@ -216,10 +220,12 @@ class SelectionSetV1:
 # ----------------------------
 
 def canonical_json(obj: Any) -> str:
+    """Serialize to canonical JSON for deterministic hashing."""
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def sha256_hex(data: bytes) -> str:
+    """Compute SHA-256 hex digest of a string."""
     return sha256(data).hexdigest()
 
 
@@ -241,6 +247,7 @@ def sha256_of_canonical_json(obj: Any) -> str:
 from hashlib import sha256
 
 def _sha256_hex(s: str) -> str:
+    """Compute SHA-256 hex digest of a string."""
     return sha256(s.encode("utf-8")).hexdigest()
 
 def build_selection_fingerprint(
@@ -267,9 +274,11 @@ def build_selection_fingerprint(
 
 def build_selection_set_id(selection_fingerprint: str) -> str:
     # Simple deterministic id: sha256 of fingerprint
+    """Generate a deterministic selection set ID."""
     return _sha256_hex(selection_fingerprint)
 
 def build_group_id(*, group_basis: "GroupBasisCode", signal_ids: list[str]) -> str:
+    """Generate a deterministic signal group ID."""
     payload = group_basis.value + "|" + "|".join(sorted(signal_ids))
     return _sha256_hex(payload)
 
@@ -278,12 +287,15 @@ def build_group_id(*, group_basis: "GroupBasisCode", signal_ids: list[str]) -> s
 # ----------------------------
 
 def deterministic_sort_str(values: list[str]) -> list[str]:
+    """Return a function that sorts by a string field."""
     return sorted(values)
 
 def deterministic_sort_excluded(values: list["ExcludedSignal"]) -> list["ExcludedSignal"]:
+    """Sort excluded signals deterministically."""
     return sorted(values, key=lambda x: (x.signal_id, x.reason_code.value))
 
 def deterministic_sort_reason_kv(values: list["ReasonDetailKV"]) -> list["ReasonDetailKV"]:
+    """Sort reason detail key-value pairs deterministically."""
     return sorted(values, key=lambda x: (x.k, x.v))
 
 
@@ -328,6 +340,7 @@ class SignalGroupingExtractorV1:
     get_fact_basis_keys: Callable[[object], Iterable[str]]
 
 def _norm_keys(xs: Iterable[str] | str | None) -> list[str]:
+    """Normalize dictionary keys to sorted order."""
     if xs is None:
         return []
     if isinstance(xs, (list, tuple)):
@@ -335,10 +348,12 @@ def _norm_keys(xs: Iterable[str] | str | None) -> list[str]:
     return [str(xs)]
 
 def _sha256_hex(s: str) -> str:
+    """Compute SHA-256 hex digest of a string."""
     import hashlib
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 def _group_id_v1(group_basis: str, scope_key: str, subject_key: str, fact_basis_key: str) -> str:
+    """Generate a v1 group ID from basis code and signal IDs."""
     canonical = f"SignalGrouping|v1.0|{group_basis}|scope={scope_key}|subject={subject_key}|fact={fact_basis_key}"
     return _sha256_hex(canonical)
 

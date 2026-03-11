@@ -1,8 +1,11 @@
+"""Legacy recaps table bridge for backward-compatible recap CRUD."""
+
 from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
+from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.recaps.selection.recap_selection_store import (
     get_stored_selection,
     insert_selection_if_missing,
@@ -10,6 +13,7 @@ from squadvault.core.recaps.selection.recap_selection_store import (
 )
 
 def _now_utc_iso() -> str:
+    """Return current UTC time as ISO-8601 string."""
     return (
         datetime.now(timezone.utc)
         .replace(microsecond=0)
@@ -27,8 +31,7 @@ def get_latest_recap_version(
     """
     Returns the highest recap_version for this week, or None if no recaps exist.
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT MAX(recap_version)
@@ -37,8 +40,6 @@ def get_latest_recap_version(
             """,
             (league_id, season, week_index),
         ).fetchone()
-    finally:
-        con.close()
 
     return row[0] if row and row[0] is not None else None
 
@@ -58,8 +59,7 @@ def insert_recap(
     Inserts a recap metadata row.
     Does NOT overwrite anything.
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         con.execute(
             """
             INSERT INTO recaps (
@@ -83,8 +83,6 @@ def insert_recap(
             ),
         )
         con.commit()
-    finally:
-        con.close()
 
 def recap_exists(
     db_path: str,
@@ -92,8 +90,8 @@ def recap_exists(
     season: int,
     week_index: int,
 ) -> bool:
-    con = sqlite3.connect(db_path)
-    try:
+    """Return True if any recap row exists for this week."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT 1
@@ -103,8 +101,6 @@ def recap_exists(
             """,
             (league_id, season, week_index),
         ).fetchone()
-    finally:
-        con.close()
     return row is not None
 
 def insert_recap_v1_if_missing(
@@ -148,8 +144,7 @@ def get_latest_recap_row(
     """
     Returns (recap_version, selection_fingerprint, status) for the latest recap, or None.
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT recap_version, selection_fingerprint, status
@@ -160,8 +155,6 @@ def get_latest_recap_row(
             """,
             (league_id, season, week_index),
         ).fetchone()
-    finally:
-        con.close()
     return row
 
 def upsert_selection_if_stale(db_path: str, league_id: str, season: int, sel) -> str:
@@ -173,8 +166,6 @@ def upsert_selection_if_stale(db_path: str, league_id: str, season: int, sel) ->
 
     Returns: "INSERTED" | "UPDATED" | "NOOP"
     """
-    from datetime import datetime, timezone
-    import sqlite3
 
     stored = get_stored_selection(db_path, league_id, season, sel.week_index)
 
@@ -183,8 +174,7 @@ def upsert_selection_if_stale(db_path: str, league_id: str, season: int, sel) ->
         return "INSERTED"
 
     if is_stale(stored, sel):
-        con = sqlite3.connect(db_path)
-        try:
+        with DatabaseSession(db_path) as con:
             con.execute(
                 """
                 UPDATE recap_selections
@@ -202,8 +192,6 @@ def upsert_selection_if_stale(db_path: str, league_id: str, season: int, sel) ->
                 ),
             )
             con.commit()
-        finally:
-            con.close()
 
         return "UPDATED"
 
@@ -217,8 +205,8 @@ def update_recap_status(
     recap_version: int,
     status: str,
 ) -> None:
-    con = sqlite3.connect(db_path)
-    try:
+    """Update recap status for a specific version."""
+    with DatabaseSession(db_path) as con:
         con.execute(
             """
             UPDATE recaps
@@ -228,8 +216,6 @@ def update_recap_status(
             (status, league_id, season, week_index, recap_version),
         )
         con.commit()
-    finally:
-        con.close()
 
 
 def mark_latest_stale_if_needed(
@@ -274,8 +260,7 @@ def insert_regenerated_recap(
     new_version = 1 if latest is None else int(latest[0]) + 1
 
     # Mark *all* existing recaps for this week as SUPERSEDED (simple v1 rule)
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         con.execute(
             """
             UPDATE recaps
@@ -285,8 +270,6 @@ def insert_regenerated_recap(
             (league_id, season, week_index),
         )
         con.commit()
-    finally:
-        con.close()
 
     insert_recap(
         db_path=db_path,
@@ -310,8 +293,8 @@ def set_recap_artifact(
     artifact_path: str,
     artifact_json: str,
 ) -> None:
-    con = sqlite3.connect(db_path)
-    try:
+    """Persist artifact path and JSON for a recap version."""
+    with DatabaseSession(db_path) as con:
         con.execute(
             """
             UPDATE recaps
@@ -321,8 +304,6 @@ def set_recap_artifact(
             (artifact_path, artifact_json, league_id, season, week_index, recap_version),
         )
         con.commit()
-    finally:
-        con.close()
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 
@@ -349,8 +330,7 @@ def ensure_weekly_recap_artifact_row_if_missing(
     - Does NOT overwrite existing recap_artifacts rows.
     - Does NOT mutate lifecycle fields (approval/supersedence/etc.) on conflict.
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         cur = con.execute(
             """
             INSERT INTO recap_artifacts (
@@ -380,6 +360,4 @@ def ensure_weekly_recap_artifact_row_if_missing(
         )
         con.commit()
         return (cur.rowcount or 0) > 0
-    finally:
-        con.close()
 

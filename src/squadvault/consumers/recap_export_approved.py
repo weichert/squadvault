@@ -1,3 +1,5 @@
+"""Export approved recap artifacts to disk."""
+
 from __future__ import annotations
 
 import json
@@ -12,6 +14,7 @@ from squadvault.core.exports.approved_weekly_recap_export_v1 import (
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build argument parser for recap export."""
     p = argparse.ArgumentParser(
         description="Export latest APPROVED weekly recap artifact to a portable bundle."
     )
@@ -44,6 +47,7 @@ def _canonical_out_dir(
     week_index: int,
     version: int,
 ) -> Path:
+    """Compute canonical output directory for exported recaps."""
     return (
         out_root
         / str(league_id)
@@ -78,6 +82,7 @@ def write_latest_approved_pointer(approved_dir: Path, artifact) -> None:
     )
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entrypoint: export approved recap artifacts."""
     args = build_parser().parse_args(argv)
 
     if not args.out_dir and not args.out_root:

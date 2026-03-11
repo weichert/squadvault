@@ -1,3 +1,5 @@
+"""Export approved rivalry chronicle artifacts from the database."""
+
 from __future__ import annotations
 
 import os
@@ -6,6 +8,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Set
 
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
+from squadvault.core.storage.db_utils import table_columns as _table_columns
+from squadvault.errors import SchemaError, RecapNotFoundError
+from squadvault.core.storage.session import DatabaseSession
 
 
 @dataclass(frozen=True)
@@ -21,21 +26,15 @@ class ApprovedRivalryChronicleArtifactV1:
 
 
 def _connect_ro(db_path: str) -> sqlite3.Connection:
+    """Open a read-only sqlite3 connection."""
     uri = f"file:{db_path}?mode=ro"
     con = sqlite3.connect(uri, uri=True)
     con.row_factory = sqlite3.Row
     return con
 
 
-def _table_columns(con: sqlite3.Connection, table: str) -> Set[str]:
-    cols: Set[str] = set()
-    for r in con.execute(f"PRAGMA table_info({table})").fetchall():
-        # PRAGMA table_info columns: cid, name, type, notnull, dflt_value, pk
-        cols.add(str(r[1]))
-    return cols
-
-
 def _pick_first(existing: Set[str], candidates: List[str]) -> str | None:
+    """Return first column name from candidates that exists in cols, or None."""
     for c in candidates:
         if c in existing:
             return c
@@ -70,7 +69,7 @@ def fetch_latest_approved_rivalry_chronicle_v1(db_path: str) -> ApprovedRivalryC
         ]
         missing_required = [c for c in required if c not in cols]
         if missing_required:
-            raise SystemExit(f"ERROR: recap_artifacts missing required columns: {missing_required}")
+            raise SchemaError(f"recap_artifacts missing required columns: {missing_required}")
 
         # Optional provenance fields (use whichever naming exists; store “as-is”).
         created_col = _pick_first(cols, ["created_at_utc", "created_at"])
@@ -103,7 +102,7 @@ def fetch_latest_approved_rivalry_chronicle_v1(db_path: str) -> ApprovedRivalryC
         row = con.execute(sql, (str(ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1),)).fetchone()
 
         if row is None:
-            raise SystemExit("ERROR: No APPROVED RIVALRY_CHRONICLE_V1 artifact found.")
+            raise RecapNotFoundError("No APPROVED RIVALRY_CHRONICLE_V1 artifact found.")
 
         provenance: Dict[str, Any] = {
             "id": int(row["id"]),

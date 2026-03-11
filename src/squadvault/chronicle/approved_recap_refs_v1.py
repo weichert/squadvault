@@ -1,9 +1,12 @@
+"""Load approved recap references for rivalry chronicle generation."""
+
 from __future__ import annotations
 
 import sqlite3
 from typing import List, Sequence
 
 from squadvault.chronicle.input_contract_v1 import ApprovedRecapRefV1
+from squadvault.core.storage.session import DatabaseSession
 
 
 def load_latest_approved_recap_refs_v1(
@@ -14,6 +17,7 @@ def load_latest_approved_recap_refs_v1(
     artifact_type: str,
     week_indices: Sequence[int],
 ) -> List[ApprovedRecapRefV1]:
+    """Load latest approved recap artifact references for given weeks."""
     weeks = sorted(set(int(w) for w in week_indices))
     if not weeks:
         return []
@@ -43,11 +47,8 @@ def load_latest_approved_recap_refs_v1(
 
     args = [int(league_id), int(season), str(artifact_type), *weeks, int(league_id), int(season), str(artifact_type)]
 
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         rows = con.execute(q, args).fetchall()
-    finally:
-        con.close()
 
     out: List[ApprovedRecapRefV1] = []
     for week_index, a_type, version, fp in rows:

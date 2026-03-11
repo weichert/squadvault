@@ -1,3 +1,6 @@
+
+"""CLI runner for raw event ingestion to SQLite store."""
+
 from dotenv import load_dotenv
 load_dotenv(".env")
 
@@ -12,6 +15,7 @@ from squadvault.mfl.client import MflClient
 from squadvault.ingest.auction_draft import derive_auction_event_envelopes_from_transactions
 from squadvault.ingest.transactions import derive_transaction_event_envelopes
 from squadvault.ingest.waiver_bids import derive_waiver_bid_event_envelopes_from_transactions
+from squadvault.core.storage.session import DatabaseSession
 
 
 SCHEMA = Path("src/squadvault/core/storage/schema.sql").read_text()
@@ -29,23 +33,23 @@ RAW_JSON_TRUNCATE_CHARS = int(os.environ.get("RAW_JSON_TRUNCATE_CHARS", "2000"))
 
 
 def _sqlite_list_tables(db_path: Path) -> list[str]:
+    """List all user tables in a SQLite database."""
     if not db_path.exists():
         return []
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with DatabaseSession(str(db_path)) as conn:
+
         rows = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
         ).fetchall()
         return [r[0] for r in rows]
-    finally:
-        conn.close()
 
 
 def _sqlite_table_counts(db_path: Path, tables: list[str]) -> dict[str, int]:
+    """Return row counts for all tables."""
     if not db_path.exists():
         return {}
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with DatabaseSession(str(db_path)) as conn:
+
         out: dict[str, int] = {}
         for t in tables:
             # defensive: skip SQLite internal tables if any
@@ -57,11 +61,10 @@ def _sqlite_table_counts(db_path: Path, tables: list[str]) -> dict[str, int]:
                 # some tables/views might not be countable in the same way
                 out[t] = -1
         return out
-    finally:
-        conn.close()
 
 
 def main() -> None:
+    """CLI entrypoint: ingest events to SQLite store."""
     print("\n=== SquadVault Ingest Runner ===")
     print("DB_PATH (relative) =", DB_PATH)
     print("DB_PATH (absolute) =", DB_PATH.resolve())

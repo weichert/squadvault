@@ -1,3 +1,5 @@
+"""Derive canonical transaction events from raw MFL transaction data."""
+
 from __future__ import annotations
 
 import json
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------
 
 def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
+    """Safely get a value from a dict with fallback."""
     for k in keys:
         if k in d:
             return d[k]
@@ -22,25 +25,30 @@ def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
 
 
 def _stable_external_id(*parts: str) -> str:
+    """Generate a stable external ID for deduplication."""
     raw = "|".join([p or "" for p in parts])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
 
 
 def _truncate_raw_json(text: str, limit: int) -> str:
+    """Truncate raw JSON string for storage efficiency."""
     if len(text) <= limit:
         return text
     return text[:limit] + "...(truncated)"
 
 
 def _extract_type(txn: Dict[str, Any]) -> str:
+    """Extract MFL transaction type from raw data."""
     return str(_safe_get(txn, "@type", "type") or "").upper().strip()
 
 
 def _extract_franchise_id(txn: Dict[str, Any]) -> str:
+    """Extract franchise ID from raw transaction data."""
     return str(_safe_get(txn, "@franchise", "franchise") or "")
 
 
 def _extract_timestamp_unix(txn: Dict[str, Any]) -> Optional[int]:
+    """Extract and validate Unix timestamp from raw data."""
     v = _safe_get(txn, "@timestamp", "timestamp")
     try:
         return int(v) if v is not None else None
@@ -49,6 +57,7 @@ def _extract_timestamp_unix(txn: Dict[str, Any]) -> Optional[int]:
 
 
 def _extract_bid_amount(txn: Dict[str, Any]) -> Optional[float]:
+    """Extract bid amount from raw transaction data."""
     for k in ("@bid", "bid", "@amount", "amount", "@bbid", "bbid"):
         v = txn.get(k)
         if v is None:
@@ -75,6 +84,7 @@ def _parse_mfl_transaction_field(txn: Dict[str, Any]) -> Tuple[List[str], List[s
     parts = raw.split("|")
 
     def split_ids(s: str) -> List[str]:
+        """Split comma-separated ID string into list of non-empty strings."""
         return [x for x in s.split(",") if x]
 
     adds = split_ids(parts[0]) if len(parts) >= 1 else []

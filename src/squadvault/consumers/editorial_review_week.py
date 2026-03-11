@@ -1,3 +1,5 @@
+"""Interactive editorial review workflow for weekly recaps."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,11 +12,13 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from squadvault.consumers.editorial_actions import insert_editorial_action
+from squadvault.core.storage.session import DatabaseSession
 
 
 def latest_version_and_state(
     conn: sqlite3.Connection, league_id: str, season: int, week_index: int
 ) -> tuple[int | None, str | None]:
+    """Return (version, state) of latest WEEKLY_RECAP artifact."""
     cur = conn.execute(
         """
         SELECT version, state
@@ -32,11 +36,13 @@ def latest_version_and_state(
 
 
 def die(msg: str, code: int = 2) -> int:
+    """Print error and return exit code."""
     print(f"ERROR: {msg}", file=sys.stderr)
     return code
 
 
 def recap_dir(base_dir: str, league_id: str, season: int, week_index: int) -> Path:
+    """Compute recap directory path for a week."""
     return Path(base_dir) / "recaps" / str(league_id) / str(season) / f"week_{int(week_index):02d}"
 
 
@@ -44,6 +50,7 @@ _V_RE = re.compile(r"recap_v(\d+)\.json$")
 
 
 def find_latest_recap_json(base_dir: str, league_id: str, season: int, week_index: int) -> Optional[Path]:
+    """Find the latest recap JSON file on disk for a week."""
     d = recap_dir(base_dir, league_id, season, week_index)
     if not d.exists():
         return None
@@ -60,12 +67,14 @@ def find_latest_recap_json(base_dir: str, league_id: str, season: int, week_inde
 
 
 def parse_recap_json(path: Path) -> dict:
+    """Parse a recap JSON file into a dict."""
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def extract_version(path: Path, payload: dict) -> int:
     # Prefer explicit field if present
+    """Extract version number from recap path or payload."""
     for k in ("version", "artifact_version", "recap_version"):
         if k in payload and isinstance(payload[k], int):
             return int(payload[k])
@@ -78,6 +87,7 @@ def extract_version(path: Path, payload: dict) -> int:
 
 def extract_fingerprint(payload: dict) -> Optional[str]:
     # We’ve seen selection fingerprints in run metadata; try common keys
+    """Extract selection fingerprint from a recap payload."""
     for k in ("selection_fingerprint", "fingerprint", "selectionFingerprint"):
         v = payload.get(k)
         if isinstance(v, str) and v.strip():
@@ -143,6 +153,7 @@ def render_review_packet(
 
 
 def run_script(py_path: str, args: list[str]) -> int:
+    """Run a Python script as a subprocess."""
     cmd = [sys.executable, "-u", py_path] + args
     return subprocess.call(cmd)
 
@@ -150,6 +161,7 @@ def run_script(py_path: str, args: list[str]) -> int:
 def ensure_draft_exists(
     db: str, league_id: str, season: int, week_index: int, base_dir: str
 ) -> Tuple[Path, dict]:
+    """Ensure a draft recap JSON exists on disk."""
     latest = find_latest_recap_json(base_dir, league_id, season, week_index)
     if latest is None:
         # Create draft artifact on disk (existing consumer)
@@ -179,6 +191,7 @@ def ensure_draft_exists(
 
 
 def prompt(prompt_text: str) -> str:
+    """Prompt the user for input and return their response."""
     try:
         return input(prompt_text)
     except EOFError:
@@ -194,6 +207,7 @@ def review_loop(
     base_dir: str,
     voices: list[str],
 ) -> int:
+    """Run the interactive editorial review loop."""
     conn = sqlite3.connect(db)
 
     latest_v, state = latest_version_and_state(conn, league_id, season, week_index)
@@ -389,6 +403,7 @@ def review_loop(
 
 
 def main(argv: list[str]) -> int:
+    """CLI entrypoint: interactive editorial review."""
     ap = argparse.ArgumentParser(description="Commissioner editorial review loop (Phase 1)")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)

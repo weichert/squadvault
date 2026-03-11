@@ -1,3 +1,5 @@
+"""Franchise-scoped event query helpers."""
+
 from __future__ import annotations
 
 import json
@@ -31,7 +33,7 @@ def _franchise_ids_from_payload(event: Dict[str, Any]) -> Set[str]:
             for k, v in obj.items():
                 if isinstance(k, str) and k.startswith("franchise") and isinstance(v, str) and v:
                     out.add(v)
-        except Exception:
+        except (ValueError, TypeError):
             pass
 
     return out
@@ -46,6 +48,7 @@ def events_for_franchise(
     narrative_only: bool = True,
     limit: int = 10000,
 ) -> List[Dict[str, Any]]:
+    """Fetch all events involving a specific franchise."""
     events = fetch_all_events(store, league_id=league_id, season=season, limit=limit)
 
     if narrative_only:
@@ -55,6 +58,7 @@ def events_for_franchise(
 
 
 def _filter_type(events: Iterable[Dict[str, Any]], event_type: str) -> List[Dict[str, Any]]:
+    """Filter event list to only those matching event_type prefix."""
     return [e for e in events if e.get("event_type") == event_type]
 
 
@@ -65,6 +69,7 @@ def draft_picks_for_franchise(
     season: int,
     franchise_id: str,
 ) -> List[Dict[str, Any]]:
+    """Fetch draft pick events for a specific franchise."""
     return _filter_type(
         events_for_franchise(store, league_id=league_id, season=season, franchise_id=franchise_id),
         "DRAFT_PICK",
@@ -78,6 +83,7 @@ def waiver_awards_for_franchise(
     season: int,
     franchise_id: str,
 ) -> List[Dict[str, Any]]:
+    """Fetch waiver award events for a specific franchise."""
     return _filter_type(
         events_for_franchise(store, league_id=league_id, season=season, franchise_id=franchise_id),
         "WAIVER_BID_AWARDED",
@@ -91,6 +97,7 @@ def free_agent_moves_for_franchise(
     season: int,
     franchise_id: str,
 ) -> List[Dict[str, Any]]:
+    """Fetch free agent events for a specific franchise."""
     return _filter_type(
         events_for_franchise(store, league_id=league_id, season=season, franchise_id=franchise_id),
         "TRANSACTION_FREE_AGENT",
@@ -104,6 +111,7 @@ def trades_for_franchise(
     season: int,
     franchise_id: str,
 ) -> List[Dict[str, Any]]:
+    """Fetch trade events involving a specific franchise."""
     return _filter_type(
         events_for_franchise(store, league_id=league_id, season=season, franchise_id=franchise_id),
         "TRANSACTION_TRADE",

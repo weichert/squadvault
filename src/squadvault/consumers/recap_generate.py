@@ -1,3 +1,5 @@
+"""Generate recap artifacts for a range of weeks."""
+
 import argparse
 import hashlib
 import json
@@ -8,6 +10,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence
 
 from squadvault.core.storage.sqlite_store import SQLiteStore
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.recaps.dng_reasons import DNGReason
 
 
 # =========================
@@ -17,11 +21,6 @@ from squadvault.core.storage.sqlite_store import SQLiteStore
 class VerdictStatus(str, Enum):
     WITHHELD = "WITHHELD"
     GENERATED = "GENERATED"  # eligible; generation not implemented yet
-
-
-class DNGReason(str, Enum):
-    DNG_INCOMPLETE_WEEK = "DNG_INCOMPLETE_WEEK"
-    DNG_DATA_GAP_DETECTED = "DNG_DATA_GAP_DETECTED"
 
 
 @dataclass(frozen=True)
@@ -43,6 +42,7 @@ def _ledger_count_in_range(
     occurred_at_min: str,
     occurred_at_max: str,
 ) -> int:
+    """Count memory events in a date range."""
     row = conn.execute(
         """
         SELECT COUNT(*)
@@ -58,6 +58,7 @@ def _ledger_count_in_range(
 
 
 def _inputs_hash(payload: Dict[str, Any]) -> str:
+    """Compute deterministic hash of generation inputs."""
     raw = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
@@ -135,6 +136,7 @@ def recap_generation_verdict(
 # =========================
 
 def ensure_verdict_table(conn: sqlite3.Connection, table: str) -> None:
+    """Create verdict table if it does not exist."""
     conn.execute(
         f"""
         CREATE TABLE IF NOT EXISTS {table} (
@@ -164,6 +166,7 @@ def persist_verdict(
     end: str,
     verdict_payload: Dict[str, Any],
 ) -> None:
+    """Persist a generation verdict to the database."""
     ensure_verdict_table(conn, table)
 
     inputs_hash = _inputs_hash(
@@ -210,6 +213,7 @@ def persist_verdict(
 # =========================
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    """CLI entrypoint: generate recaps for a date range."""
     parser = argparse.ArgumentParser(description="Recap Generator (Phase 2C gated)")
     parser.add_argument("--db", required=True)
     parser.add_argument("--league-id", required=True)
@@ -231,8 +235,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         occurred_at_max=str(args.end),
     )
 
-    conn = sqlite3.connect(args.db)
-    try:
+    with DatabaseSession(args.db) as conn:
         verdict = recap_generation_verdict(
             conn=conn,
             league_id=str(args.league_id),
@@ -241,8 +244,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             end=str(args.end),
             canonical_events=canonical_events,
         )
-    finally:
-        conn.close()
 
     payload = {
         "status": verdict.status.value,
@@ -252,8 +253,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     }
 
     if args.persist_verdict:
-        conn = sqlite3.connect(args.db)
-        try:
+        with DatabaseSession(args.db) as conn:
             persist_verdict(
                 conn=conn,
                 table=args.verdict_table,
@@ -263,8 +263,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 end=str(args.end),
                 verdict_payload=payload,
             )
-        finally:
-            conn.close()
 
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True))

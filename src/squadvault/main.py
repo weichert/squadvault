@@ -1,3 +1,5 @@
+"""Print runtime environment info for debugging path issues."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,6 +17,7 @@ from squadvault.ingest.transactions import ingest_transactions_for_year
 
 
 def _parse_years(value: str) -> list[int]:
+    """Parse a comma-separated year string into a list of integers."""
     value = value.strip()
     if not value:
         return []
@@ -26,6 +29,7 @@ def _parse_years(value: str) -> list[int]:
 
 
 def _setup_logging(level: str) -> None:
+    """Configure logging level for the application."""
     numeric = getattr(logging, level.upper(), logging.INFO)
     logging.basicConfig(
         level=numeric,
@@ -34,7 +38,7 @@ def _setup_logging(level: str) -> None:
 
 
 def _preflight() -> None:
-    """Print runtime environment info for debugging path issues."""
+    """Run preflight checks before main execution."""
     cwd = Path.cwd().resolve()
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent.parent  # src/squadvault -> src -> repo_root
@@ -46,6 +50,7 @@ def _preflight() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entrypoint: SquadVault main application."""
     parser = argparse.ArgumentParser(prog="squadvault-ingest")
     parser.add_argument("--validate-only", action="store_true", help="Validate Notion schemas only; do not ingest.")
     parser.add_argument("--years", type=str, default="", help="Comma-separated years to ingest, e.g. 2024 or 2020,2021.")

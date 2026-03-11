@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+"""Load EAL directives from recap_runs for render-time consumption."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 import json
 import sqlite3
+from squadvault.core.storage.session import DatabaseSession
 
 
 # IMPORTANT:
@@ -34,8 +37,7 @@ def load_eal_directives_v1(
       - If no row exists → return None
       - Otherwise → return EALDirectivesV1
     """
-    con = sqlite3.connect(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         cur = con.cursor()
         try:
             cur.execute(
@@ -64,5 +66,3 @@ def load_eal_directives_v1(
             rivalry_heat_cap=payload.get("rivalry_heat_cap"),
             allow_humiliation=payload.get("allow_humiliation"),
         )
-    finally:
-        con.close()

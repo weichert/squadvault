@@ -1,3 +1,5 @@
+"""Canonicalization engine: deduplicate memory events into canonical events."""
+
 from __future__ import annotations
 
 from dotenv import load_dotenv
@@ -12,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from squadvault.core.storage.session import DatabaseSession
 
 
 DEFAULT_DB_PATH = Path(os.environ.get("SQUADVAULT_DB", ".local_squadvault.sqlite"))  # type: ignore[name-defined]
@@ -29,24 +32,28 @@ class MemoryEventRow:
 
 
 def now_iso_z() -> str:
+    """Return current UTC time as ISO-8601 Z-suffix string."""
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def safe_json_loads(s: str) -> dict[str, Any]:
+    """Parse JSON string, returning empty dict on failure."""
     try:
         obj = json.loads(s)
         return obj if isinstance(obj, dict) else {"_non_object_payload": obj}
-    except Exception:
+    except (ValueError, TypeError):
         return {"_payload_parse_error": True, "_raw": s}
 
 
 def norm(v: Any) -> str:
+    """Normalize a string for comparison: lowercase, strip whitespace."""
     if v is None:
         return ""
     return str(v).strip()
 
 
 def sha1_text(s: str) -> str:
+    """Compute SHA-1 hex digest of a text string."""
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
 
@@ -70,7 +77,7 @@ def raw_mfl_obj(payload: dict[str, Any]) -> dict[str, Any]:
                 parsed = json.loads(s)
                 if isinstance(parsed, dict):
                     return parsed
-            except Exception:
+            except (ValueError, TypeError):
                 return {}
 
     return {}
@@ -102,7 +109,7 @@ def _as_list_str(v: Any) -> list[str]:
                 parsed = json.loads(s)
                 if isinstance(parsed, list):
                     return _as_list_str(parsed)
-            except Exception:
+            except (ValueError, TypeError):
                 pass
         parts = [p.strip() for p in s.split(",")]
         return [p for p in parts if p]
@@ -142,6 +149,7 @@ def _parse_free_agent_add_drop_from_raw(payload: dict[str, Any]) -> tuple[list[s
     drop_part = parts[1] if len(parts) >= 2 else ""
 
     def split_ids(s: str) -> list[str]:
+        """Split a comma-separated ID string into a list of stripped strings."""
         items = [x.strip() for x in s.split(",")]
         return [x for x in items if x]
 
@@ -486,7 +494,6 @@ def canonicalize(league_id: str, season: int, db_path: str | Path | None = None)
 if __name__ == "__main__":
     import argparse
     import os
-
     p = argparse.ArgumentParser(description="Canonicalize memory events into canonical events")
     p.add_argument("--db", default=os.environ.get("SQUADVAULT_DB", ".local_squadvault.sqlite"))
     p.add_argument("--league-id", default=os.environ.get("MFL_LEAGUE_ID", "").strip())

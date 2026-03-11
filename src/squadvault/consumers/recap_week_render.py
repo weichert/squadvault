@@ -1,3 +1,5 @@
+"""Render and display weekly recap artifacts."""
+
 #!/usr/bin/env python3
 
 from __future__ import annotations
@@ -11,9 +13,12 @@ from typing import Any, Dict, Optional
 
 from squadvault.core.recaps.render.render_recap_text_v1 import render_recap_text_v1
 from squadvault.core.recaps.render.voice_variants_v1 import format_variant_block
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.errors import RecapNotFoundError, RecapDataError
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    """Convert sqlite3.Row to plain dict."""
     return {k: row[k] for k in row.keys()}
 
 
@@ -23,24 +28,21 @@ def _fetch_latest_weekly_recap_artifact(
     season: int,
     week_index: int,
 ) -> Optional[Dict[str, Any]]:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT *
-        FROM recap_artifacts
-        WHERE league_id = ?
-          AND season = ?
-          AND week_index = ?
-          AND artifact_type = 'WEEKLY_RECAP'
-        ORDER BY version DESC
-        LIMIT 1
-        """,
-        (league_id, season, week_index),
-    )
-    row = cur.fetchone()
-    conn.close()
+    """Fetch latest WEEKLY_RECAP artifact row for a week."""
+    with DatabaseSession(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM recap_artifacts
+            WHERE league_id = ?
+              AND season = ?
+              AND week_index = ?
+              AND artifact_type = 'WEEKLY_RECAP'
+            ORDER BY version DESC
+            LIMIT 1
+            """,
+            (league_id, season, week_index),
+        ).fetchone()
     return None if row is None else _row_to_dict(row)
 
 
@@ -51,24 +53,21 @@ def _fetch_weekly_recap_artifact_by_version(
     week_index: int,
     version: int,
 ) -> Optional[Dict[str, Any]]:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT *
-        FROM recap_artifacts
-        WHERE league_id = ?
-          AND season = ?
-          AND week_index = ?
-          AND artifact_type = 'WEEKLY_RECAP'
-          AND version = ?
-        LIMIT 1
-        """,
-        (league_id, season, week_index, version),
-    )
-    row = cur.fetchone()
-    conn.close()
+    """Fetch a specific WEEKLY_RECAP artifact version."""
+    with DatabaseSession(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM recap_artifacts
+            WHERE league_id = ?
+              AND season = ?
+              AND week_index = ?
+              AND artifact_type = 'WEEKLY_RECAP'
+              AND version = ?
+            LIMIT 1
+            """,
+            (league_id, season, week_index, version),
+        ).fetchone()
     return None if row is None else _row_to_dict(row)
 
 
@@ -78,29 +77,27 @@ def _fetch_approved_weekly_recap_artifact(
     season: int,
     week_index: int,
 ) -> Optional[Dict[str, Any]]:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT *
-        FROM recap_artifacts
-        WHERE league_id = ?
-          AND season = ?
-          AND week_index = ?
-          AND artifact_type = 'WEEKLY_RECAP'
-          AND state = 'APPROVED'
-        ORDER BY version DESC
-        LIMIT 1
-        """,
-        (league_id, season, week_index),
-    )
-    row = cur.fetchone()
-    conn.close()
+    """Fetch latest approved WEEKLY_RECAP artifact for a week."""
+    with DatabaseSession(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM recap_artifacts
+            WHERE league_id = ?
+              AND season = ?
+              AND week_index = ?
+              AND artifact_type = 'WEEKLY_RECAP'
+              AND state = 'APPROVED'
+            ORDER BY version DESC
+            LIMIT 1
+            """,
+            (league_id, season, week_index),
+        ).fetchone()
     return None if row is None else _row_to_dict(row)
 
 
 def _recap_dir(base_dir: str, league_id: str, season: int, week_index: int) -> Path:
+    """Compute recap directory path for a week."""
     return Path(base_dir) / "recaps" / str(league_id) / str(season) / f"week_{int(week_index):02d}"
 
 
@@ -119,9 +116,7 @@ def _load_payload_from_recaps_table_or_disk(
       - Fallback to recaps.artifact_path
       - (last resort) look for recap_v01.json on disk for the week (should usually exist for ACTIVE recap_version)
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    try:
+    with DatabaseSession(db_path) as conn:
         cur = conn.cursor()
         cur.execute(
             """
@@ -137,8 +132,6 @@ def _load_payload_from_recaps_table_or_disk(
             (league_id, int(season), int(week_index), selection_fingerprint),
         )
         row = cur.fetchone()
-    finally:
-        conn.close()
 
     if row is not None:
         # 1) artifact_json (preferred)
@@ -162,7 +155,7 @@ def _load_payload_from_recaps_table_or_disk(
     if candidate.exists():
         return json.loads(candidate.read_text(encoding="utf-8"))
 
-    raise SystemExit(
+    raise RecapNotFoundError(
         "Unable to locate recap JSON for rendering.\n"
         f"Expected recaps.artifact_json or recaps.artifact_path for fingerprint={selection_fingerprint}, "
         f"or a disk file like {candidate}."
@@ -170,6 +163,7 @@ def _load_payload_from_recaps_table_or_disk(
 
 
 def _render_variants(payload: Dict[str, Any], voices: list[str]) -> None:
+    """Render and print recap text for one or more voice variants."""
     multi = len(voices) > 1
     for v in voices:
         body = render_recap_text_v1(payload, voice_id=v)
@@ -180,13 +174,15 @@ def _render_variants(payload: Dict[str, Any], voices: list[str]) -> None:
 
 
 def _print_rendered_text_or_die(artifact: Dict[str, Any]) -> None:
+    """Print artifact rendered_text, or raise error if missing."""
     rendered = artifact.get("rendered_text")
     if not rendered:
-        raise SystemExit("Artifact missing rendered_text; cannot render.")
+        raise RecapDataError("Artifact missing rendered_text; cannot render.")
     print(rendered)
 
 
 def main() -> None:
+    """CLI entrypoint: render and display weekly recap artifacts."""
     p = argparse.ArgumentParser(description="Render (view) a weekly recap artifact")
     p.add_argument("--db", required=True)
     p.add_argument("--league-id", required=True)

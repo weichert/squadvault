@@ -1,14 +1,18 @@
+"""Approve the latest DRAFT weekly recap artifact."""
+
 from __future__ import annotations
 
 import argparse
 import sqlite3
 
 from squadvault.recaps.weekly_recap_lifecycle import approve_latest_weekly_recap
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.errors import RecapNotFoundError
 
 
 def _has_draft(db_path: str, league_id: str, season: int, week_index: int) -> bool:
-    con = sqlite3.connect(db_path)
-    try:
+    """Return True if a DRAFT artifact exists for this week."""
+    with DatabaseSession(db_path) as con:
         row = con.execute(
             """
             SELECT 1
@@ -19,8 +23,6 @@ def _has_draft(db_path: str, league_id: str, season: int, week_index: int) -> bo
             (league_id, season, week_index),
         ).fetchone()
         return row is not None
-    finally:
-        con.close()
 
 
 def approve_week(
@@ -35,7 +37,7 @@ def approve_week(
     Thin wrapper: canonical approval lives in squadvault.recaps.weekly_recap_lifecycle.
     """
     if require_draft and not _has_draft(db_path, league_id, season, week_index):
-        raise SystemExit("Refusing to approve: no DRAFT WEEKLY_RECAP artifact exists for that week.")
+        raise RecapNotFoundError("No DRAFT WEEKLY_RECAP artifact exists for that week.")
 
     # Canonical: approves latest DRAFT and supersedes prior APPROVED (if any), then syncs recap_runs.
     res = approve_latest_weekly_recap(
@@ -49,6 +51,7 @@ def approve_week(
 
 
 def main() -> None:
+    """CLI entrypoint: approve latest weekly recap."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
@@ -62,14 +65,17 @@ def main() -> None:
     )
 
     args = ap.parse_args()
-    approve_week(
-        db_path=args.db,
-        league_id=args.league_id,
-        season=args.season,
-        week_index=args.week_index,
-        approved_by=args.approved_by,
-        require_draft=args.require_draft,
-    )
+    try:
+        approve_week(
+            db_path=args.db,
+            league_id=args.league_id,
+            season=args.season,
+            week_index=args.week_index,
+            approved_by=args.approved_by,
+            require_draft=args.require_draft,
+        )
+    except RecapNotFoundError as e:
+        raise SystemExit(f"ERROR: {e}") from None
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+"""Materialize a recap version from database to disk."""
+
 from __future__ import annotations
 
 import argparse
@@ -7,6 +9,9 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
+
+from squadvault.core.storage.db_utils import table_columns as _table_columns
+from squadvault.core.storage.session import DatabaseSession
 
 
 JSON_COL_CANDIDATES = (
@@ -24,25 +29,24 @@ TABLE_CANDIDATES = ("recaps",)
 
 
 def _die(msg: str, code: int = 2) -> int:
+    """Print error to stderr and return exit code."""
     print(f"ERROR: {msg}", file=sys.stderr)
     return code
 
 
 def _recap_dir(base_dir: str, league_id: str, season: int, week_index: int) -> Path:
+    """Compute recap directory path for a week."""
     return Path(base_dir) / "recaps" / str(league_id) / str(season) / f"week_{int(week_index):02d}"
 
 
 def _recap_json_path(base_dir: str, league_id: str, season: int, week_index: int, version: int) -> Path:
+    """Compute recap JSON file path for a version."""
     return _recap_dir(base_dir, league_id, season, week_index) / f"recap_v{int(version):02d}.json"
-
-
-def _table_columns(conn: sqlite3.Connection, table: str) -> list[str]:
-    rows = conn.execute(f"PRAGMA table_info({table});").fetchall()
-    return [str(r[1]) for r in rows]  # (cid, name, type, notnull, dflt, pk)
 
 
 def _choose_json_column(cols: Sequence[str]) -> Optional[str]:
     # Prefer known names
+    """Choose the JSON column from available candidates."""
     for c in JSON_COL_CANDIDATES:
         if c in cols:
             return c
@@ -62,6 +66,7 @@ def _fetch_recap_json_from_db(
     version: int,
 ) -> Dict[str, Any]:
     # Locate table + json column
+    """Fetch recap JSON payload from the database."""
     chosen_table = None
     chosen_col = None
 
@@ -86,6 +91,7 @@ def _fetch_recap_json_from_db(
     params = []
 
     def add(col: str, val: Any) -> None:
+        """Add a WHERE clause column if it exists in the table."""
         if col in cols:
             where.append(f"{col}=?")
             params.append(val)
@@ -121,11 +127,13 @@ def _fetch_recap_json_from_db(
 
 
 def _run_script(py_path: str, args: list[str]) -> int:
+    """Run a Python script as a subprocess."""
     cmd = [sys.executable, "-u", py_path] + args
     return subprocess.call(cmd)
 
 
 def main(argv: list[str]) -> int:
+    """CLI entrypoint: materialize recap version to disk."""
     ap = argparse.ArgumentParser(description="Materialize recap_vXX.json to disk from DB (recaps table)")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
@@ -144,8 +152,7 @@ def main(argv: list[str]) -> int:
         print(f"materialize: SKIPPED (exists) {out_path}")
         return 0
 
-    conn = sqlite3.connect(args.db)
-    try:
+    with DatabaseSession(args.db) as conn:
         payload = _fetch_recap_json_from_db(
             conn,
             league_id=args.league_id,
@@ -153,8 +160,6 @@ def main(argv: list[str]) -> int:
             week_index=args.week_index,
             version=args.version,
         )
-    finally:
-        conn.close()
 
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)

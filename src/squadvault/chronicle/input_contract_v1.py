@@ -1,3 +1,5 @@
+"""Rivalry chronicle input contract: validate and normalize generation inputs."""
+
 from __future__ import annotations
 # SV_PATCH_RC_INPUT_CONTRACT_FIX_RESOLVE_V4: replace resolve() block (brace-escaped)
 # SV_PATCH_RC_INPUT_CONTRACT_DELETE_ALL_IMPORT_TIME_BAD_BLOCKS_V1: delete all import-time bad blocks (inp/resolved)
@@ -60,8 +62,9 @@ class RivalryChronicleInputV1:
     # Optional explicit refs (still validated). If None, resolver loads from DB.
     approved_recaps: Optional[Tuple[ApprovedRecapRefV1, ...]] = None
 
-    def normalized_week_indices(self):
+    def normalized_week_indices(self) -> list[int]:
         # SV_PATCH_RC_INPUT_CONTRACT_WEEK_EXCLUSIVITY_RESILIENT_V2: normalized_week_indices prefers week_indices; signature-resilient replacement
+        """Return normalized list of week indices from either explicit list or range."""
         wi = getattr(self, 'week_indices', None)
         wr = getattr(self, 'week_range', None)
 
@@ -104,6 +107,7 @@ class RivalryChronicleInputV1:
         return list(range(start, end + 1))
 
     def missing_weeks(self) -> Tuple[int, ...]:
+        """Return list of weeks in scope that lack approved recap references."""
         present = {r.week_index for r in self.approved_recaps}
         missing = [w for w in self.week_indices if w not in present]
         return tuple(missing)

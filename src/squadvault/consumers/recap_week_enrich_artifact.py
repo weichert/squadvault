@@ -26,6 +26,9 @@ import sqlite3
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from squadvault.core.storage.db_utils import norm_id as _norm_id
+from squadvault.core.storage.session import DatabaseSession
+
 
 # -------------------------
 # Small utilities
@@ -36,19 +39,12 @@ RECAP_HEADER_PREFIX = "SquadVault Weekly Recap"
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    """Convert sqlite3.Row to plain dict."""
     return {k: row[k] for k in row.keys()}
 
 
-def _norm_id(raw: Any) -> str:
-    s = "" if raw is None else str(raw).strip()
-    if not s:
-        return ""
-    if s.isdigit():
-        return s.lstrip("0") or "0"
-    return s
-
-
 def _safe_str(v: Any, default: str = "") -> str:
+    """Return str(v).strip() or fallback if None/empty."""
     if v is None:
         return default
     try:
@@ -58,11 +54,13 @@ def _safe_str(v: Any, default: str = "") -> str:
 
 
 def _has_column(cols: Sequence[str], name: str) -> bool:
+    """Return True if column name exists in the column list."""
     return name in set(cols)
 
 
 def _ascii_punct(s: str) -> str:
     # Normalize curly apostrophe and common unicode dashes for stable exports/terminals.
+    """Normalize curly quotes and unicode dashes to ASCII."""
     return s.replace("\u2019", "'").replace("\u2013", "-").replace("\u2014", "-")
 
 
@@ -119,6 +117,7 @@ class DirLookup:
         self._pl_cache: Dict[str, str] = {}
 
     def franchise(self, fid_raw: Any) -> str:
+        """Resolve franchise ID to display name with caching."""
         key = "" if fid_raw is None else str(fid_raw).strip()
         if not key:
             return "Unknown team"
@@ -142,6 +141,7 @@ class DirLookup:
         return out
 
     def player(self, pid_raw: Any) -> str:
+        """Resolve player ID to display name with caching."""
         key = "" if pid_raw is None else str(pid_raw).strip()
         if not key:
             return "Unknown player"
@@ -165,12 +165,9 @@ class DirLookup:
         return out
 
     def _query_one(self, sql: str, params: Tuple[Any, ...]) -> str:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(sql, params)
-        row = cur.fetchone()
-        conn.close()
+        """Execute a single-row query and return first column value."""
+        with DatabaseSession(self.db_path) as conn:
+            row = conn.execute(sql, params).fetchone()
         if row is None:
             return ""
         v = row[0]
@@ -187,35 +184,34 @@ def _fetch_canonical_rows_by_ids(
     season: int,
     canonical_ids: List[str],
 ) -> List[Dict[str, Any]]:
+    """Fetch canonical event rows by IDs in chunked batches."""
     if not canonical_ids:
         return []
 
     CHUNK = 500
     out: List[Dict[str, Any]] = []
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+    with DatabaseSession(db_path) as conn:
+        cur = conn.cursor()
 
-    for i in range(0, len(canonical_ids), CHUNK):
-        chunk = canonical_ids[i : i + CHUNK]
-        placeholders = ",".join(["?"] * len(chunk))
-        cur.execute(
-            f"""
-            SELECT
-              id AS canonical_id,
-              occurred_at,
-              event_type,
-              best_memory_event_id
-            FROM canonical_events
-            WHERE league_id = ?
-              AND season = ?
-              AND id IN ({placeholders})
-            """,
-            [league_id, season, *chunk],
-        )
-        out.extend(_row_to_dict(r) for r in cur.fetchall())
+        for i in range(0, len(canonical_ids), CHUNK):
+            chunk = canonical_ids[i : i + CHUNK]
+            placeholders = ",".join(["?"] * len(chunk))
+            cur.execute(
+                f"""
+                SELECT
+                  id AS canonical_id,
+                  occurred_at,
+                  event_type,
+                  best_memory_event_id
+                FROM canonical_events
+                WHERE league_id = ?
+                  AND season = ?
+                  AND id IN ({placeholders})
+                """,
+                [league_id, season, *chunk],
+            )
+            out.extend(_row_to_dict(r) for r in cur.fetchall())
 
-    conn.close()
     return out
 
 
@@ -223,39 +219,38 @@ def _fetch_memory_payloads_by_ids(
     db_path: str,
     memory_event_ids: List[int],
 ) -> Dict[int, Dict[str, Any]]:
+    """Fetch and parse memory event payloads by IDs in chunks."""
     if not memory_event_ids:
         return {}
 
     CHUNK = 500
     out: Dict[int, Dict[str, Any]] = {}
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+    with DatabaseSession(db_path) as conn:
+        cur = conn.cursor()
 
-    for i in range(0, len(memory_event_ids), CHUNK):
-        chunk = memory_event_ids[i : i + CHUNK]
-        placeholders = ",".join(["?"] * len(chunk))
-        cur.execute(
-            f"""
-            SELECT id, payload_json
-            FROM memory_events
-            WHERE id IN ({placeholders})
-            """,
-            list(chunk),
-        )
-        for r in cur.fetchall():
-            d = _row_to_dict(r)
-            raw = d.get("payload_json") or ""
-            payload: Dict[str, Any] = {}
-            if isinstance(raw, str) and raw.strip():
-                try:
-                    val = json.loads(raw)
-                    payload = val if isinstance(val, dict) else {}
-                except Exception:
-                    payload = {}
-            out[int(d["id"])] = payload
+        for i in range(0, len(memory_event_ids), CHUNK):
+            chunk = memory_event_ids[i : i + CHUNK]
+            placeholders = ",".join(["?"] * len(chunk))
+            cur.execute(
+                f"""
+                SELECT id, payload_json
+                FROM memory_events
+                WHERE id IN ({placeholders})
+                """,
+                list(chunk),
+            )
+            for r in cur.fetchall():
+                d = _row_to_dict(r)
+                raw = d.get("payload_json") or ""
+                payload: Dict[str, Any] = {}
+                if isinstance(raw, str) and raw.strip():
+                    try:
+                        val = json.loads(raw)
+                        payload = val if isinstance(val, dict) else {}
+                    except Exception:
+                        payload = {}
+                out[int(d["id"])] = payload
 
-    conn.close()
     return out
 
 
@@ -264,6 +259,7 @@ def _fetch_memory_payloads_by_ids(
 # -------------------------
 
 def _recap_artifacts_columns(conn: sqlite3.Connection) -> List[str]:
+    """Return set of column names for recap_artifacts table."""
     cur = conn.cursor()
     cur.execute("PRAGMA table_info(recap_artifacts);")
     rows = cur.fetchall()
@@ -276,6 +272,7 @@ def _fetch_latest_weekly_recap_artifact_row(
     season: int,
     week_index: int,
 ) -> Optional[Dict[str, Any]]:
+    """Fetch latest WEEKLY_RECAP artifact row for a week."""
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute(
@@ -305,6 +302,7 @@ def _update_rendered_text(
     version: int,
     new_rendered_text: str,
 ) -> None:
+    """Update rendered_text for a recap artifact version."""
     if not _has_column(cols, "rendered_text"):
         raise RuntimeError("recap_artifacts table has no 'rendered_text' column; cannot update.")
 
@@ -436,6 +434,7 @@ def _facts_from_canonical_id_strings(canonical_ids: list[str]) -> list[str]:
     return bullets
 
 def _already_has_facts_block(existing_text: str) -> bool:
+    """Return True if text already contains a facts block header."""
     prefix = "\n".join(existing_text.splitlines()[:60])
     return FACTS_HEADER in prefix
 
@@ -454,6 +453,7 @@ def _strip_facts_block(existing_text: str) -> str:
 
 
 def _prepend_block(existing: str, block: str, *, force: bool) -> str:
+    """Prepend a text block to existing rendered text."""
     if not block.strip():
         return existing
     if not existing:
@@ -468,6 +468,7 @@ def _prepend_block(existing: str, block: str, *, force: bool) -> str:
 # -------------------------
 
 def main() -> int:
+    """CLI entrypoint: enrich recap artifacts with facts blocks."""
     p = argparse.ArgumentParser(description="Enrich a weekly recap artifact by adding deterministic facts bullets.")
     p.add_argument("--db", required=True)
     p.add_argument("--league-id", required=True)
@@ -507,7 +508,6 @@ def main() -> int:
         raise SystemExit("Choose only one: --remove-facts-block OR --rewrite-facts-block")
 
     from squadvault.recaps.select_weekly_recap_events_v1 import select_weekly_recap_events_v1
-
     conn = sqlite3.connect(args.db)
     cols = _recap_artifacts_columns(conn)
 

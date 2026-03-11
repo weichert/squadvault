@@ -1,3 +1,5 @@
+"""Application configuration loading and validation."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,6 +37,7 @@ class Config:
 
 
 def _require_env(name: str) -> str:
+    """Get a required environment variable or raise."""
     val = os.getenv(name)
     if val is None or not val.strip():
         raise RuntimeError(f"Missing required env var: {name}")
@@ -42,6 +45,7 @@ def _require_env(name: str) -> str:
 
 
 def load_config() -> Config:
+    """Load application configuration from environment."""
     load_dotenv()
 
     notion_api_key = _require_env("NOTION_API_KEY")

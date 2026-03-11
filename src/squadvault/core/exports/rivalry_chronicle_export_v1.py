@@ -1,3 +1,5 @@
+"""Export rivalry chronicle artifacts to markdown and JSON files."""
+
 from __future__ import annotations
 
 import json
@@ -5,6 +7,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from squadvault.errors import ChronicleError
 
 from squadvault.core.exports.approved_rivalry_chronicle_export_v1 import (
     ApprovedRivalryChronicleArtifactV1,
@@ -24,6 +28,7 @@ class RivalryChronicleExportResultV1:
 
 def _default_out_dir(repo_root: Path, league_id: int, season: int, anchor_week_index: int) -> Path:
     # Deterministic and reproducible; matches existing exports convention.
+    """Compute default output directory for chronicle exports."""
     return (
         repo_root
         / "artifacts"
@@ -38,6 +43,7 @@ def _default_out_dir(repo_root: Path, league_id: int, season: int, anchor_week_i
 def _repo_root_from_here() -> Path:
     # CWD-independent: derive repo root by walking upward until we find repo markers.
     # Prefer pyproject.toml, else .git, else a directory containing "src".
+    """Resolve repository root from this file's location."""
     here = Path(__file__).resolve()
     for d in [here.parent, *here.parents]:
         if (d / "pyproject.toml").exists():
@@ -52,11 +58,13 @@ def _repo_root_from_here() -> Path:
 
 
 def _write_text_exact(p: Path, s: str) -> None:
+    """Write text to file, creating parent directories as needed."""
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(s, encoding="utf-8")
 
 
 def _write_json_deterministic(p: Path, obj: Dict[str, Any]) -> None:
+    """Write dict to file as deterministic sorted JSON."""
     p.parent.mkdir(parents=True, exist_ok=True)
     # Deterministic: sorted keys, stable indent, newline.
     payload = json.dumps(obj, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
@@ -82,7 +90,7 @@ def export_latest_approved_rivalry_chronicle_v1(
 
     # Guard: never export an empty approved chronicle.
     if not (artifact.rendered_text or '').strip():
-        raise SystemExit('ERROR: Approved chronicle rendered_text is empty; refusing export.')
+        raise ChronicleError('Approved chronicle rendered_text is empty; refusing export.')
     repo_root = _repo_root_from_here()
     outp = Path(out_dir).resolve() if out_dir else _default_out_dir(repo_root, artifact.league_id, artifact.season, artifact.anchor_week_index)
 

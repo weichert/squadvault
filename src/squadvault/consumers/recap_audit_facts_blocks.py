@@ -18,12 +18,14 @@ import sqlite3
 import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+from squadvault.core.storage.session import DatabaseSession
 
 
 FACTS_HEADER = "What happened (facts)"
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+    """Convert sqlite3.Row to plain dict."""
     return {k: row[k] for k in row.keys()}
 
 
@@ -33,6 +35,7 @@ def _fetch_latest_weekly_recap_artifact(
     season: int,
     week_index: int,
 ) -> Optional[Dict[str, Any]]:
+    """Fetch latest WEEKLY_RECAP artifact for a week."""
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute(
@@ -54,6 +57,7 @@ def _fetch_latest_weekly_recap_artifact(
 
 def _has_facts_block(rendered_text: str) -> bool:
     # Strong-ish: look in first ~40 lines to match enrich script semantics.
+    """Return True if rendered text contains a facts block."""
     prefix = "\n".join((rendered_text or "").splitlines()[:40])
     return FACTS_HEADER in prefix or prefix.startswith(FACTS_HEADER)
 
@@ -69,6 +73,7 @@ class WeekAudit:
 
 
 def main() -> int:
+    """CLI entrypoint: audit facts blocks across weeks."""
     ap = argparse.ArgumentParser(description="Audit facts blocks across a week range.")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", required=True)
@@ -92,7 +97,6 @@ def main() -> int:
     # Import here so PYTHONPATH=src works and we stay aligned with the live selection logic.
     from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
     from squadvault.recaps.deterministic_bullets_v1 import QUIET_WEEK_MIN_EVENTS
-
     threshold = QUIET_WEEK_MIN_EVENTS if args.min_events_for_facts is None else int(args.min_events_for_facts)
 
     conn = sqlite3.connect(args.db)
@@ -150,6 +154,7 @@ def main() -> int:
 
     # Print
     def _maybe_print(a: WeekAudit) -> None:
+        """Print audit result if it contains noteworthy information."""
         if args.show_only_mismatches and a.status == "OK":
             return
         v = "-" if a.version is None else str(a.version)

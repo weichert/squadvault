@@ -1,3 +1,6 @@
+
+"""CLI runner for auction draft event ingestion."""
+
 import json
 
 from squadvault.ingest.auction_draft import (

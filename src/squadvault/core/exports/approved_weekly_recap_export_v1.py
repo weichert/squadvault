@@ -1,3 +1,5 @@
+"""Export approved weekly recap artifacts from the database."""
+
 from __future__ import annotations
 
 import json
@@ -6,6 +8,9 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
+
+from squadvault.core.storage.db_utils import table_columns as _table_columns
+from squadvault.core.storage.session import DatabaseSession
 
 
 @dataclass(frozen=True)
@@ -35,12 +40,6 @@ class ExportManifest:
     recap_md: str
     recap_json: str
     metadata_json: str
-
-
-def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
-    cur = conn.cursor()
-    cur.execute(f"PRAGMA table_info({table_name})")
-    return {row[1] for row in cur.fetchall()}  # row[1] = column name
 
 
 def _pick_rendered_text(row: sqlite3.Row, cols: set[str]) -> str:
@@ -81,7 +80,7 @@ def _payload_from_row(row: sqlite3.Row, cols: set[str], rendered_text: str) -> d
             raw = row[c]
             try:
                 return json.loads(raw)
-            except Exception:
+            except (ValueError, TypeError):
                 return {"_raw_payload": raw, "_raw_payload_column": c}
 
     # Synthesize minimal payload from known fields
@@ -123,9 +122,7 @@ def fetch_latest_approved_weekly_recap(
 
     Schema-resilient: selects only columns that exist.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    try:
+    with DatabaseSession(db_path) as conn:
         cols = _table_columns(conn, "recap_artifacts")
 
         # Required-ish fields (if missing, we still try but may raise clearer errors)
@@ -196,6 +193,7 @@ def fetch_latest_approved_weekly_recap(
 
         # Pull fields (tolerant if columns missing)
         def g(name: str) -> Any:
+            """Safely get a column value from a Row, with fallback."""
             return row[name] if name in cols else None
 
         artifact = ApprovedRecapArtifact(
@@ -218,8 +216,6 @@ def fetch_latest_approved_weekly_recap(
             raise RuntimeError(f"Refusing to export non-approved artifact: state={artifact.state}")
 
         return artifact
-    finally:
-        conn.close()
 
 
 def write_approved_weekly_recap_export_bundle(

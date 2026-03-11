@@ -29,6 +29,8 @@ from squadvault.core.recaps.recap_runs import (
 )
 from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
 from squadvault.core.storage.sqlite_store import SQLiteStore
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.recaps.dng_reasons import DNGReason
 
 
 SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
@@ -40,10 +42,6 @@ WINDOW_UNSAFE_TO_COMPUTE = "WINDOW_UNSAFE_TO_COMPUTE"
 class VerdictStatus:
     WITHHELD = "WITHHELD"
     OK = "OK"
-
-
-class DNGReason:
-    DNG_DATA_GAP_DETECTED = "DNG_DATA_GAP_DETECTED"
 
 
 @dataclass(frozen=True)
@@ -148,6 +146,7 @@ def _canonical_count_in_range(
     start: str,
     end: str,
 ) -> int:
+    """Count canonical events in a date range."""
     canonical_events = store.fetch_events_in_range(
         league_id=str(league_id),
         season=int(season),
@@ -165,6 +164,7 @@ def generation_verdict_unique_actions(
     start: str,
     end: str,
 ) -> Verdict:
+    """Compute a generation verdict based on unique action fingerprints."""
     ledger_unique = _ledger_unique_actions_in_range(conn, league_id, season, start, end)
     canonical = _canonical_count_in_range(store, league_id, season, start, end)
 
@@ -200,10 +200,12 @@ def generation_verdict_unique_actions(
 
 
 def _is_safe_window(mode: Optional[str], start: Optional[str], end: Optional[str]) -> bool:
+    """Return True if window has valid mode, start, and end."""
     return (mode in SAFE_WINDOW_MODES) and bool(start) and bool(end)
 
 
 def main() -> None:
+    """CLI entrypoint: check gating conditions for recap generation."""
     ap = argparse.ArgumentParser(
         description="Weekly gating check: validate safe window + unique-action gap detection."
     )
@@ -248,8 +250,7 @@ def main() -> None:
         return
 
     store = SQLiteStore(args.db)
-    conn = sqlite3.connect(args.db)
-    try:
+    with DatabaseSession(args.db) as conn:
         v = generation_verdict_unique_actions(
             conn,
             store,
@@ -258,8 +259,6 @@ def main() -> None:
             sel.window.window_start,
             sel.window.window_end,
         )
-    finally:
-        conn.close()
 
     # 2) Verdict says WITHHELD => persist and stop
     if v.status == VerdictStatus.WITHHELD:

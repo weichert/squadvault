@@ -1,3 +1,5 @@
+"""Format rivalry chronicle artifacts into rendered text."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,6 +26,7 @@ class UpstreamRecapQuoteV1:
 
 
 def _nl(s: str) -> str:
+    """Join lines with newline separator."""
     return s if s.endswith("\n") else s + "\n"
 
 
@@ -36,6 +39,7 @@ def render_rivalry_chronicle_v1(
     missing_weeks: Sequence[int],
     created_at_utc: str,
 ) -> str:
+    """Render a rivalry chronicle artifact into formatted text."""
     requested = list(sorted(set(int(w) for w in week_indices_requested)))
     quotes = list(sorted(upstream_quotes, key=lambda q: int(q.week_index)))
     missing = list(sorted(set(int(w) for w in missing_weeks)))

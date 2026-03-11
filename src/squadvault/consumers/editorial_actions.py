@@ -1,3 +1,5 @@
+"""Editorial action persistence for recap review workflows."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -10,10 +12,12 @@ ACTIONS = ("OPEN", "APPROVE", "REGENERATE", "WITHHOLD", "NOTES")
 
 
 def utc_now_iso() -> str:
+    """Return current UTC time as ISO-8601 string."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def ensure_editorial_tables(conn: sqlite3.Connection) -> None:
+    """Create editorial action tables if they do not exist."""
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS editorial_actions (
@@ -53,6 +57,7 @@ def insert_editorial_action(
     actor: str,
     notes_md: Optional[str],
 ) -> None:
+    """Insert an editorial action record."""
     if action not in ACTIONS:
         raise ValueError(f"Invalid action: {action}")
 
@@ -90,6 +95,7 @@ def fetch_editorial_log(
     artifact_kind: str = "WEEKLY_RECAP",
     limit: int = 200,
 ) -> Iterable[Tuple]:
+    """Fetch editorial action log for a week."""
     ensure_editorial_tables(conn)
     cur = conn.execute(
         """

@@ -1,44 +1,20 @@
+"""Preview canonical events in a date range for recap generation."""
+
 import argparse
 import json
 import sqlite3
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from squadvault.core.storage.sqlite_store import SQLiteStore
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.recaps.dng_reasons import DNGReason
+from squadvault.recaps.preflight import PreflightVerdictType, PreflightVerdict
 
 
 FAAB_BUDGET = 100.00
-
-
-
-
-from dataclasses import dataclass
-from enum import Enum
-
-
-class PreflightVerdictType(str, Enum):
-    GENERATE_OK = "GENERATE_OK"
-    DO_NOT_GENERATE = "DO_NOT_GENERATE"
-
-
-class DNGReason(str, Enum):
-    DNG_INCOMPLETE_WEEK = "DNG_INCOMPLETE_WEEK"
-    DNG_DATA_GAP_DETECTED = "DNG_DATA_GAP_DETECTED"
-    DNG_LOW_TRUST_OUTPUT_RISK = "DNG_LOW_TRUST_OUTPUT_RISK"
-    DNG_SAFETY_CONFLICT = "DNG_SAFETY_CONFLICT"
-    DNG_OUT_OF_SCOPE_REQUEST = "DNG_OUT_OF_SCOPE_REQUEST"
-
-
-@dataclass(frozen=True)
-class PreflightVerdict:
-    verdict: PreflightVerdictType
-    reason_code: DNGReason | None = None
-    evidence: dict[str, Any] | None = None
-
-    def __post_init__(self):
-        if self.evidence is None:
-            object.__setattr__(self, "evidence", {})
 
 
 def recap_preflight_verdict(
@@ -120,7 +96,8 @@ def _parse_raw_mfl_json(raw: Any, omit_reasons: Dict[str, int]) -> Optional[dict
         omit_reasons["trade_raw_json_missing"] += 1
         return None
 
-    def _try_load(s: str):
+    def _try_load(s: str) -> Any:
+        """Attempt JSON parse, returning None on failure."""
         try:
             return json.loads(s)
         except Exception:
@@ -200,6 +177,7 @@ def _ledger_count_in_range(
 # ----------------------------
 
 def _as_float(x: Any, default: float = 0.0) -> float:
+    """Parse value as float, returning default on failure."""
     try:
         return float(x)
     except (TypeError, ValueError):
@@ -241,6 +219,7 @@ def _csv_ids(s: Any) -> List[str]:
 
 
 def _print_header(title: str) -> None:
+    """Print a section header with separator line."""
     print("\n" + "=" * 80)
     print(title)
     print("=" * 80)
@@ -257,6 +236,7 @@ def _extract_player_ids_deep(obj: Any) -> Set[str]:
     ids: Set[str] = set()
 
     def walk(x: Any) -> None:
+        """Recursively scan a nested structure for player IDs."""
         if isinstance(x, dict):
             for k, v in x.items():
                 lk = str(k).lower()
@@ -303,6 +283,7 @@ def _extract_player_ids_deep(obj: Any) -> Set[str]:
 
 
 def _collect_player_ids_from_events(events: List[Dict[str, Any]]) -> Set[str]:
+    """Collect all player IDs from event payloads via deep scan."""
     ids: Set[str] = set()
     for e in events:
         p = e.get("payload") or {}
@@ -315,6 +296,7 @@ def _collect_player_ids_from_events(events: List[Dict[str, Any]]) -> Set[str]:
 
 
 def _collect_franchise_ids_from_events(events: List[Dict[str, Any]]) -> Set[str]:
+    """Collect all franchise IDs from event payloads."""
     ids: Set[str] = set()
     for e in events:
         p = e.get("payload") or {}
@@ -359,13 +341,16 @@ class PlayerResolver:
 
     @property
     def requested(self) -> int:
+        """Return count of IDs requested for resolution."""
         return self._requested
 
     @property
     def resolved(self) -> int:
+        """Return count of IDs successfully resolved."""
         return self._resolved
 
     def load_for_ids(self, player_ids: Set[str]) -> None:
+        """Bulk-load name resolutions for a set of IDs from the database."""
         if self._loaded:
             return
 
@@ -434,12 +419,14 @@ class PlayerResolver:
                 pass
 
     def one(self, player_id: Any) -> str:
+        """Resolve a single ID to its display name."""
         pid = str(player_id).strip() if player_id is not None else ""
         if not pid:
             return "<?>"
         return self._map.get(pid, pid)
 
     def many(self, ids: Any) -> List[str]:
+        """Resolve a list of IDs to display names."""
         return [self.one(pid) for pid in _csv_ids(ids)]
 
 
@@ -465,13 +452,16 @@ class FranchiseResolver:
 
     @property
     def requested(self) -> int:
+        """Return count of franchise IDs requested for resolution."""
         return self._requested
 
     @property
     def resolved(self) -> int:
+        """Return count of franchise IDs successfully resolved."""
         return self._resolved
 
     def load_for_ids(self, franchise_ids: Set[str]) -> None:
+        """Bulk-load franchise name resolutions from franchise_directory."""
         if self._loaded:
             return
 
@@ -530,6 +520,7 @@ class FranchiseResolver:
                 pass
 
     def one(self, franchise_id: Any) -> str:
+        """Resolve a single franchise ID to its display name."""
         fid = str(franchise_id).strip() if franchise_id is not None else ""
         if not fid:
             return "?"
@@ -537,6 +528,7 @@ class FranchiseResolver:
 
 
 def _fid(franchise_resolver: Optional[FranchiseResolver], fid_raw: Any) -> str:
+    """Resolve franchise ID via resolver, or return raw string."""
     return franchise_resolver.one(fid_raw) if franchise_resolver is not None else str(fid_raw)
 
 
@@ -545,6 +537,7 @@ def _fid(franchise_resolver: Optional[FranchiseResolver], fid_raw: Any) -> str:
 # ----------------------------
 
 def _score_event(e: Dict[str, Any]) -> float:
+    """Assign a notability score to an event by type."""
     et = e.get("event_type")
     p = e.get("payload") or {}
 
@@ -571,6 +564,7 @@ def _score_event(e: Dict[str, Any]) -> float:
 
 
 def _dedupe_key(e: Dict[str, Any]) -> str:
+    """Compute a deduplication key for an event."""
     et = e.get("event_type")
     p = e.get("payload") or {}
 
@@ -582,6 +576,7 @@ def _dedupe_key(e: Dict[str, Any]) -> str:
 
 
 def _pick_notable(events: List[Dict[str, Any]], max_items: int) -> List[Dict[str, Any]]:
+    """Select top notable events by score, with deduplication."""
     TYPE_PRIORITY = {
         "TRANSACTION_TRADE": 0,
         "WAIVER_BID_AWARDED": 1,
@@ -626,12 +621,14 @@ def _pick_notable(events: List[Dict[str, Any]], max_items: int) -> List[Dict[str
 # ----------------------------
 
 def _extract_trade_fields(payload: Dict[str, Any]) -> Tuple[str, str, List[str], List[str]]:
+    """Extract franchise IDs and traded player IDs from a trade payload."""
     f1 = payload.get("franchise_id") or payload.get("franchise")
     f2 = payload.get("franchise2")
     gave1 = payload.get("franchise1_gave_up")
     gave2 = payload.get("franchise2_gave_up")
 
     def ok(v: Any) -> bool:
+        """Return True if value is non-None and non-empty."""
         return v is not None and str(v).strip() != ""
 
     if ok(f1) and ok(f2) and (gave1 is not None) and (gave2 is not None):
@@ -671,6 +668,7 @@ def format_headline(
     player_resolver: Optional[PlayerResolver] = None,
     franchise_resolver: Optional[FranchiseResolver] = None,
 ) -> str:
+    """Format a human-readable headline for a canonical event."""
     et = e.get("event_type")
     p = e.get("payload") or {}
 
@@ -678,6 +676,7 @@ def format_headline(
     fid = _fid(franchise_resolver, fid_raw)
 
     def resolve_players(ids: Any) -> List[str]:
+        """Resolve player IDs via resolver or return raw IDs."""
         if player_resolver is None:
             return _csv_ids(ids)
         return player_resolver.many(ids)
@@ -728,6 +727,7 @@ def format_headline(
 # ----------------------------
 
 def main() -> int:
+    """CLI entrypoint: preview canonical events for recap generation."""
     ap = argparse.ArgumentParser(
         description="Preview canonical events in a date range (recap candidate generator)."
     )
@@ -750,7 +750,6 @@ def main() -> int:
         action="store_true",
         help="Print the first canonical event dict (JSON) and exit (for schema mapping).",
     )
-
 
 
     ap.add_argument(
@@ -861,13 +860,13 @@ def main() -> int:
                     by_type.setdefault(et, []).append(_e)
 
                 
-
                 omit_reasons = Counter()
                 printed_by_type = Counter()
                 seen_keys: set[str] = set()
                 dedup_skipped = 0  # count of duplicate notable lines skipped (content-level)
 
                 def _summarize_minimal(_e: dict) -> str | None:
+                    """Produce a minimal one-line summary for an event."""
                     event_type = _e.get("event_type") or ""
                     occurred_at = _e.get("occurred_at") or _e.get("occurred_at_utc") or ""
                     payload = _e.get("payload") or {}
@@ -993,7 +992,6 @@ def main() -> int:
                         per_type += 1
 
                 shown = shown_total
-
 
 
                 if shown == 0:

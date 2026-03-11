@@ -1,35 +1,44 @@
+"""Notion property value builders for page creation and updates."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
 
 def prop_title(text: str) -> Dict[str, Any]:
+    """Build a Notion title property value."""
     return {"title": [{"type": "text", "text": {"content": text}}]}
 
 
 def prop_rich_text(text: str) -> Dict[str, Any]:
+    """Build a Notion rich text property value."""
     if text is None:
         text = ""
     return {"rich_text": [{"type": "text", "text": {"content": str(text)}}]}
 
 
 def prop_number(num: float | int | None) -> Dict[str, Any]:
+    """Build a Notion number property value."""
     return {"number": None if num is None else float(num)}
 
 
 def prop_select(name: str | None) -> Dict[str, Any]:
+    """Build a Notion select property value."""
     return {"select": None if not name else {"name": name}}
 
 
 def prop_url(url: str | None) -> Dict[str, Any]:
+    """Build a Notion URL property value."""
     return {"url": None if not url else str(url)}
 
 
 def prop_checkbox(value: bool) -> Dict[str, Any]:
+    """Build a Notion checkbox property value."""
     return {"checkbox": bool(value)}
 
 
 def prop_relation(page_ids: List[str] | None) -> Dict[str, Any]:
+    """Build a Notion relation property value."""
     page_ids = page_ids or []
     return {"relation": [{"id": pid} for pid in page_ids]}
 
