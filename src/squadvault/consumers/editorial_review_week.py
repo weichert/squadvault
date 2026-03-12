@@ -208,7 +208,8 @@ def review_loop(
     voices: list[str],
 ) -> int:
     """Run the interactive editorial review loop."""
-    conn = sqlite3.connect(db)
+    _db_session = DatabaseSession(db)
+    conn = _db_session.__enter__()
 
     latest_v, state = latest_version_and_state(conn, league_id, season, week_index)
 

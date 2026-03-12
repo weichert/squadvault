@@ -508,7 +508,8 @@ def main() -> int:
         raise SystemExit("Choose only one: --remove-facts-block OR --rewrite-facts-block")
 
     from squadvault.recaps.select_weekly_recap_events_v1 import select_weekly_recap_events_v1
-    conn = sqlite3.connect(args.db)
+    _db_session = DatabaseSession(args.db)
+    conn = _db_session.__enter__()
     cols = _recap_artifacts_columns(conn)
 
     art = _fetch_latest_weekly_recap_artifact_row(
@@ -518,7 +519,6 @@ def main() -> int:
         week_index=args.week_index,
     )
     if art is None:
-        conn.close()
         raise SystemExit("No WEEKLY_RECAP artifact found for this week (recap_artifacts latest is missing).")
 
     version = int(art.get("version"))
@@ -530,7 +530,6 @@ def main() -> int:
 
         if args.dry_run:
             print(updated)
-            conn.close()
             return 0
 
         _update_rendered_text(
@@ -542,7 +541,6 @@ def main() -> int:
             version=version,
             new_rendered_text=updated,
         )
-        conn.close()
         print(
             f"recap_week_enrich_artifact: OK (removed facts block) "
             f"(league={args.league_id} season={args.season} week={args.week_index} version={version})",
@@ -576,7 +574,6 @@ def main() -> int:
 
     if args.dry_run:
         print(updated)
-        conn.close()
         return 0
 
     _update_rendered_text(
@@ -588,7 +585,6 @@ def main() -> int:
         version=version,
         new_rendered_text=updated,
     )
-    conn.close()
 
     action = "rewrote facts block" if args.rewrite_facts_block else "enriched"
     print(

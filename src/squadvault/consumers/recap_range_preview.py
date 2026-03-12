@@ -363,8 +363,8 @@ class PlayerResolver:
 
         conn: Optional[sqlite3.Connection] = None
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.row_factory = sqlite3.Row
+            _session = DatabaseSession(str(self.db_path))
+            conn = _session.__enter__()
             cur = conn.cursor()
 
             tables = {
@@ -474,8 +474,8 @@ class FranchiseResolver:
 
         conn: Optional[sqlite3.Connection] = None
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.row_factory = sqlite3.Row
+            _session = DatabaseSession(str(self.db_path))
+            conn = _session.__enter__()
             cur = conn.cursor()
 
             tables = {
@@ -810,7 +810,8 @@ def main() -> int:
     # ----------------------------
     # Phase 2: Preflight gate (Do Not Generate / Minimal Preview override)
     # ----------------------------
-    conn = sqlite3.connect(str(db_path))
+    _db_session = DatabaseSession(str(db_path))
+    conn = _db_session.__enter__()
     try:
         preflight = recap_preflight_verdict(
             conn=conn,

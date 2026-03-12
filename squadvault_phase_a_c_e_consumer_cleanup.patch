@@ -1,0 +1,227 @@
+diff --git a/src/squadvault/consumers/editorial_review_week.py b/src/squadvault/consumers/editorial_review_week.py
+index b4f71db..acb6e62 100644
+--- a/src/squadvault/consumers/editorial_review_week.py
++++ b/src/squadvault/consumers/editorial_review_week.py
+@@ -208,7 +208,8 @@ def review_loop(
+     voices: list[str],
+ ) -> int:
+     """Run the interactive editorial review loop."""
+-    conn = sqlite3.connect(db)
++    _db_session = DatabaseSession(db)
++    conn = _db_session.__enter__()
+ 
+     latest_v, state = latest_version_and_state(conn, league_id, season, week_index)
+ 
+diff --git a/src/squadvault/consumers/recap_export_narrative_assemblies_approved.py b/src/squadvault/consumers/recap_export_narrative_assemblies_approved.py
+index bf11d89..90e7712 100755
+--- a/src/squadvault/consumers/recap_export_narrative_assemblies_approved.py
++++ b/src/squadvault/consumers/recap_export_narrative_assemblies_approved.py
+@@ -106,25 +106,23 @@ class ApprovedArtifact:
+ 
+ def fetch_approved_weekly_recap(db: str, league_id: str, season: int, week_index: int) -> Optional[ApprovedArtifact]:
+     """Fetch approved WEEKLY_RECAP artifact from DB."""
+-    conn = sqlite3.connect(db)
+-    conn.row_factory = sqlite3.Row
+-    cur = conn.cursor()
+-    cur.execute(
+-        """
+-        SELECT *
+-        FROM recap_artifacts
+-        WHERE league_id = ?
+-          AND season = ?
+-          AND week_index = ?
+-          AND artifact_type = 'WEEKLY_RECAP'
+-          AND state = 'APPROVED'
+-        ORDER BY version DESC
+-        LIMIT 1
+-        """,
+-        (league_id, int(season), int(week_index)),
+-    )
+-    row = cur.fetchone()
+-    conn.close()
++    with DatabaseSession(db) as conn:
++        cur = conn.cursor()
++        cur.execute(
++            """
++            SELECT *
++            FROM recap_artifacts
++            WHERE league_id = ?
++              AND season = ?
++              AND week_index = ?
++              AND artifact_type = 'WEEKLY_RECAP'
++              AND state = 'APPROVED'
++            ORDER BY version DESC
++            LIMIT 1
++            """,
++            (league_id, int(season), int(week_index)),
++        )
++        row = cur.fetchone()
+     if row is None:
+         return None
+ 
+diff --git a/src/squadvault/consumers/recap_generate_weeks.py b/src/squadvault/consumers/recap_generate_weeks.py
+index 33a8917..81fee2f 100644
+--- a/src/squadvault/consumers/recap_generate_weeks.py
++++ b/src/squadvault/consumers/recap_generate_weeks.py
+@@ -25,10 +25,9 @@ TERMINAL_STATES = {"APPROVED", "WITHHELD"}
+ 
+ 
+ def db_connect(db_path: str) -> sqlite3.Connection:
+-    """Open a connection with Row factory."""
+-    conn = sqlite3.connect(db_path)
+-    conn.row_factory = sqlite3.Row
+-    return conn
++    """Open a connection with Row factory via DatabaseSession."""
++    session = DatabaseSession(db_path)
++    return session.__enter__()
+ 
+ 
+ def get_run_state(conn: sqlite3.Connection, league_id: str, season: int, week_index: int) -> Optional[str]:
+diff --git a/src/squadvault/consumers/recap_range_preview.py b/src/squadvault/consumers/recap_range_preview.py
+index 449bb59..4cf9712 100644
+--- a/src/squadvault/consumers/recap_range_preview.py
++++ b/src/squadvault/consumers/recap_range_preview.py
+@@ -363,8 +363,8 @@ class PlayerResolver:
+ 
+         conn: Optional[sqlite3.Connection] = None
+         try:
+-            conn = sqlite3.connect(str(self.db_path))
+-            conn.row_factory = sqlite3.Row
++            _session = DatabaseSession(str(self.db_path))
++            conn = _session.__enter__()
+             cur = conn.cursor()
+ 
+             tables = {
+@@ -474,8 +474,8 @@ class FranchiseResolver:
+ 
+         conn: Optional[sqlite3.Connection] = None
+         try:
+-            conn = sqlite3.connect(str(self.db_path))
+-            conn.row_factory = sqlite3.Row
++            _session = DatabaseSession(str(self.db_path))
++            conn = _session.__enter__()
+             cur = conn.cursor()
+ 
+             tables = {
+@@ -810,7 +810,8 @@ def main() -> int:
+     # ----------------------------
+     # Phase 2: Preflight gate (Do Not Generate / Minimal Preview override)
+     # ----------------------------
+-    conn = sqlite3.connect(str(db_path))
++    _db_session = DatabaseSession(str(db_path))
++    conn = _db_session.__enter__()
+     try:
+         preflight = recap_preflight_verdict(
+             conn=conn,
+diff --git a/src/squadvault/consumers/recap_week_diagnose_empty.py b/src/squadvault/consumers/recap_week_diagnose_empty.py
+index bd2f060..64b2aea 100644
+--- a/src/squadvault/consumers/recap_week_diagnose_empty.py
++++ b/src/squadvault/consumers/recap_week_diagnose_empty.py
+@@ -157,7 +157,8 @@ def main() -> int:
+         print("This is a hard stop in v1 selection (empty selection is expected).\n")
+         return 0
+ 
+-    conn = sqlite3.connect(args.db)
++    _db_session = DatabaseSession(args.db)
++    conn = _db_session.__enter__()
+ 
+     # Memory events in window
+     mem_total = _q_one(
+@@ -304,7 +305,7 @@ def main() -> int:
+         print("=== Allowlist coverage ===")
+         print("(Could not import allowlist symbol; skipping allowlist comparison.)\n")
+ 
+-    conn.close()
++    _db_session.__exit__(None, None, None)
+ 
+     # Final deterministic diagnosis summary
+     mem_c = int(mem_total.get("c", 0) or 0)
+diff --git a/src/squadvault/consumers/recap_week_enrich_artifact.py b/src/squadvault/consumers/recap_week_enrich_artifact.py
+index 1c84e6c..382d34d 100644
+--- a/src/squadvault/consumers/recap_week_enrich_artifact.py
++++ b/src/squadvault/consumers/recap_week_enrich_artifact.py
+@@ -508,7 +508,8 @@ def main() -> int:
+         raise SystemExit("Choose only one: --remove-facts-block OR --rewrite-facts-block")
+ 
+     from squadvault.recaps.select_weekly_recap_events_v1 import select_weekly_recap_events_v1
+-    conn = sqlite3.connect(args.db)
++    _db_session = DatabaseSession(args.db)
++    conn = _db_session.__enter__()
+     cols = _recap_artifacts_columns(conn)
+ 
+     art = _fetch_latest_weekly_recap_artifact_row(
+@@ -518,7 +519,6 @@ def main() -> int:
+         week_index=args.week_index,
+     )
+     if art is None:
+-        conn.close()
+         raise SystemExit("No WEEKLY_RECAP artifact found for this week (recap_artifacts latest is missing).")
+ 
+     version = int(art.get("version"))
+@@ -530,7 +530,6 @@ def main() -> int:
+ 
+         if args.dry_run:
+             print(updated)
+-            conn.close()
+             return 0
+ 
+         _update_rendered_text(
+@@ -542,7 +541,6 @@ def main() -> int:
+             version=version,
+             new_rendered_text=updated,
+         )
+-        conn.close()
+         print(
+             f"recap_week_enrich_artifact: OK (removed facts block) "
+             f"(league={args.league_id} season={args.season} week={args.week_index} version={version})",
+@@ -576,7 +574,6 @@ def main() -> int:
+ 
+     if args.dry_run:
+         print(updated)
+-        conn.close()
+         return 0
+ 
+     _update_rendered_text(
+@@ -588,7 +585,6 @@ def main() -> int:
+         version=version,
+         new_rendered_text=updated,
+     )
+-    conn.close()
+ 
+     action = "rewrote facts block" if args.rewrite_facts_block else "enriched"
+     print(
+diff --git a/src/squadvault/consumers/recap_week_render_facts.py b/src/squadvault/consumers/recap_week_render_facts.py
+index 004f764..49125f9 100644
+--- a/src/squadvault/consumers/recap_week_render_facts.py
++++ b/src/squadvault/consumers/recap_week_render_facts.py
+@@ -5,29 +5,10 @@ import os
+ import sqlite3
+ 
+ from squadvault.core.recaps.render.render_recap_text_from_facts_v1 import render_recap_from_enriched_path_v1
+-from squadvault.core.storage.session import DatabaseSession
++from squadvault.recaps.weekly_recap_lifecycle import _get_active_artifact_path
+ from squadvault.errors import RecapNotFoundError, RecapDataError
+ 
+ 
+-def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_index: int) -> str:
+-    """Fetch the ACTIVE recap artifact path from the legacy recaps table."""
+-    with DatabaseSession(db_path) as con:
+-        row = con.execute(
+-            """
+-            SELECT artifact_path
+-            FROM recaps
+-            WHERE league_id=? AND season=? AND week_index=? AND status='ACTIVE'
+-            ORDER BY recap_version DESC
+-            LIMIT 1;
+-            """,
+-            (league_id, season, week_index),
+-        ).fetchone()
+-
+-    if not row or not row[0]:
+-        raise RecapNotFoundError("No ACTIVE recap with artifact_path found for that week.")
+-    return str(row[0])
+-
+-
+ def main() -> None:
+     """CLI entrypoint: render recap from enriched facts."""
+     ap = argparse.ArgumentParser()

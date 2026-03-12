@@ -157,7 +157,8 @@ def main() -> int:
         print("This is a hard stop in v1 selection (empty selection is expected).\n")
         return 0
 
-    conn = sqlite3.connect(args.db)
+    _db_session = DatabaseSession(args.db)
+    conn = _db_session.__enter__()
 
     # Memory events in window
     mem_total = _q_one(
@@ -304,7 +305,7 @@ def main() -> int:
         print("=== Allowlist coverage ===")
         print("(Could not import allowlist symbol; skipping allowlist comparison.)\n")
 
-    conn.close()
+    _db_session.__exit__(None, None, None)
 
     # Final deterministic diagnosis summary
     mem_c = int(mem_total.get("c", 0) or 0)

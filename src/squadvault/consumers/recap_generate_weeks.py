@@ -25,10 +25,9 @@ TERMINAL_STATES = {"APPROVED", "WITHHELD"}
 
 
 def db_connect(db_path: str) -> sqlite3.Connection:
-    """Open a connection with Row factory."""
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Open a connection with Row factory via DatabaseSession."""
+    session = DatabaseSession(db_path)
+    return session.__enter__()
 
 
 def get_run_state(conn: sqlite3.Connection, league_id: str, season: int, week_index: int) -> Optional[str]:

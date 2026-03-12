@@ -106,25 +106,23 @@ class ApprovedArtifact:
 
 def fetch_approved_weekly_recap(db: str, league_id: str, season: int, week_index: int) -> Optional[ApprovedArtifact]:
     """Fetch approved WEEKLY_RECAP artifact from DB."""
-    conn = sqlite3.connect(db)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT *
-        FROM recap_artifacts
-        WHERE league_id = ?
-          AND season = ?
-          AND week_index = ?
-          AND artifact_type = 'WEEKLY_RECAP'
-          AND state = 'APPROVED'
-        ORDER BY version DESC
-        LIMIT 1
-        """,
-        (league_id, int(season), int(week_index)),
-    )
-    row = cur.fetchone()
-    conn.close()
+    with DatabaseSession(db) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT *
+            FROM recap_artifacts
+            WHERE league_id = ?
+              AND season = ?
+              AND week_index = ?
+              AND artifact_type = 'WEEKLY_RECAP'
+              AND state = 'APPROVED'
+            ORDER BY version DESC
+            LIMIT 1
+            """,
+            (league_id, int(season), int(week_index)),
+        )
+        row = cur.fetchone()
     if row is None:
         return None
 
