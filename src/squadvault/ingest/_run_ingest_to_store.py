@@ -142,7 +142,7 @@ def main() -> None:
         print(f"{t}: {counts_after[t]}")
 
     # Your existing “ledger_total” check remains (whatever store.fetch_events reads from).
-    fetched = store.fetch_events(league_id=LEAGUE_ID, season=YEAR, limit=1000)
+    fetched = store.fetch_events(league_id=LEAGUE_ID, season=YEAR, limit=1000, use_canonical=False)
     print("\nledger_total (via store.fetch_events, limit=1000) =", len(fetched))
 
     # Helpful hint: likely ledger candidates (based on table names)

@@ -1,0 +1,543 @@
+diff --git a/Tests/test_eal_consume_v1.py b/Tests/test_eal_consume_v1.py
+index b13c0f5..a81f5bd 100644
+--- a/Tests/test_eal_consume_v1.py
++++ b/Tests/test_eal_consume_v1.py
+@@ -10,7 +10,7 @@ import sqlite3
+ 
+ import pytest
+ 
+-from squadvault.eal.consume_v1 import EALDirectivesV1, load_eal_directives_v1
++from squadvault.core.eal.consume_v1 import EALDirectivesV1, load_eal_directives_v1
+ 
+ 
+ @pytest.fixture
+diff --git a/Tests/test_editorial_attunement_v1.py b/Tests/test_editorial_attunement_v1.py
+index d56617b..7a42f9a 100644
+--- a/Tests/test_editorial_attunement_v1.py
++++ b/Tests/test_editorial_attunement_v1.py
+@@ -2,7 +2,7 @@ from __future__ import annotations
+ 
+ import unittest
+ 
+-from squadvault.core_engine.editorial_attunement_v1 import (
++from squadvault.core.eal.editorial_attunement_v1 import (
+     EALMeta,
+     evaluate_editorial_attunement_v1,
+     EAL_AMBIGUITY_PREFER_SILENCE,
+diff --git a/Tests/test_sqlite_store_and_queries_v1.py b/Tests/test_sqlite_store_and_queries_v1.py
+index 6772fcb..42d16e3 100644
+--- a/Tests/test_sqlite_store_and_queries_v1.py
++++ b/Tests/test_sqlite_store_and_queries_v1.py
+@@ -57,7 +57,7 @@ class TestSQLiteStore:
+         inserted, skipped = store.append_events([_event("DRAFT_PICK", "e1")])
+         assert inserted == 1
+         assert skipped == 0
+-        events = store.fetch_events(league_id=LEAGUE, season=SEASON)
++        events = store.fetch_events(league_id=LEAGUE, season=SEASON, use_canonical=False)
+         assert len(events) == 1
+         assert events[0]["event_type"] == "DRAFT_PICK"
+ 
+@@ -67,7 +67,7 @@ class TestSQLiteStore:
+         inserted, skipped = store.append_events([_event("DRAFT_PICK", "e1")])
+         assert inserted == 0
+         assert skipped == 1
+-        events = store.fetch_events(league_id=LEAGUE, season=SEASON)
++        events = store.fetch_events(league_id=LEAGUE, season=SEASON, use_canonical=False)
+         assert len(events) == 1
+ 
+     def test_multiple_events(self, store):
+@@ -84,17 +84,17 @@ class TestSQLiteStore:
+         """Fetch filters by league_id and season."""
+         store.append_events([_event("DRAFT_PICK", "e1")])
+         # Different league
+-        events = store.fetch_events(league_id="other_league", season=SEASON)
++        events = store.fetch_events(league_id="other_league", season=SEASON, use_canonical=False)
+         assert events == []
+         # Different season
+-        events = store.fetch_events(league_id=LEAGUE, season=2020)
++        events = store.fetch_events(league_id=LEAGUE, season=2020, use_canonical=False)
+         assert events == []
+ 
+     def test_payload_round_trips(self, store):
+         """Payload dict round-trips through JSON storage."""
+         payload = {"player_id": "P100", "round": 1, "pick": 3}
+         store.append_events([_event("DRAFT_PICK", "e1", payload)])
+-        events = store.fetch_events(league_id=LEAGUE, season=SEASON)
++        events = store.fetch_events(league_id=LEAGUE, season=SEASON, use_canonical=False)
+         assert events[0]["payload"] == payload
+ 
+ 
+diff --git a/src/squadvault/consumers/recap_audit_facts_blocks.py b/src/squadvault/consumers/recap_audit_facts_blocks.py
+index 3d7d359..9263508 100644
+--- a/src/squadvault/consumers/recap_audit_facts_blocks.py
++++ b/src/squadvault/consumers/recap_audit_facts_blocks.py
+@@ -99,58 +99,56 @@ def main() -> int:
+     from squadvault.recaps.deterministic_bullets_v1 import QUIET_WEEK_MIN_EVENTS
+     threshold = QUIET_WEEK_MIN_EVENTS if args.min_events_for_facts is None else int(args.min_events_for_facts)
+ 
+-    conn = sqlite3.connect(args.db)
+-
+-    audits: List[WeekAudit] = []
+-    mismatch_count = 0
+-    no_artifact_count = 0
+-
+-    for wk in range(args.start_week, args.end_week + 1):
+-        sel = select_weekly_recap_events_v1(
+-            db_path=args.db,
+-            league_id=args.league_id,
+-            season=args.season,
+-            week_index=wk,
+-        )
+-        selected_events = len(sel.canonical_ids)
+-        expected_has_facts = selected_events >= threshold
++    with DatabaseSession(args.db) as conn:
++
++        audits: List[WeekAudit] = []
++        mismatch_count = 0
++        no_artifact_count = 0
++
++        for wk in range(args.start_week, args.end_week + 1):
++            sel = select_weekly_recap_events_v1(
++                db_path=args.db,
++                league_id=args.league_id,
++                season=args.season,
++                week_index=wk,
++            )
++            selected_events = len(sel.canonical_ids)
++            expected_has_facts = selected_events >= threshold
++
++            art = _fetch_latest_weekly_recap_artifact(conn, args.league_id, args.season, wk)
++            if art is None:
++                status = "NO_ARTIFACT"
++                audits.append(
++                    WeekAudit(
++                        week_index=wk,
++                        version=None,
++                        selected_events=selected_events,
++                        has_facts=False,
++                        expected_has_facts=expected_has_facts,
++                        status=status,
++                    )
++                )
++                no_artifact_count += 1
++                continue
++
++            version = int(art.get("version"))
++            rendered_text = art.get("rendered_text") or ""
++            has_facts = _has_facts_block(rendered_text)
++
++            status = "OK" if has_facts == expected_has_facts else "MISMATCH"
++            if status != "OK":
++                mismatch_count += 1
+ 
+-        art = _fetch_latest_weekly_recap_artifact(conn, args.league_id, args.season, wk)
+-        if art is None:
+-            status = "NO_ARTIFACT"
+             audits.append(
+                 WeekAudit(
+                     week_index=wk,
+-                    version=None,
++                    version=version,
+                     selected_events=selected_events,
+-                    has_facts=False,
++                    has_facts=has_facts,
+                     expected_has_facts=expected_has_facts,
+                     status=status,
+                 )
+             )
+-            no_artifact_count += 1
+-            continue
+-
+-        version = int(art.get("version"))
+-        rendered_text = art.get("rendered_text") or ""
+-        has_facts = _has_facts_block(rendered_text)
+-
+-        status = "OK" if has_facts == expected_has_facts else "MISMATCH"
+-        if status != "OK":
+-            mismatch_count += 1
+-
+-        audits.append(
+-            WeekAudit(
+-                week_index=wk,
+-                version=version,
+-                selected_events=selected_events,
+-                has_facts=has_facts,
+-                expected_has_facts=expected_has_facts,
+-                status=status,
+-            )
+-        )
+-
+-    conn.close()
+ 
+     # Print
+     def _maybe_print(a: WeekAudit) -> None:
+diff --git a/src/squadvault/core/eal/consume_v1.py b/src/squadvault/core/eal/consume_v1.py
+new file mode 100644
+index 0000000..94f057a
+--- /dev/null
++++ b/src/squadvault/core/eal/consume_v1.py
+@@ -0,0 +1,68 @@
++#!/usr/bin/env python3
++"""Load EAL directives from recap_runs for render-time consumption."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import Any, Dict, Optional
++import json
++import sqlite3
++from squadvault.core.storage.session import DatabaseSession
++
++
++# IMPORTANT:
++# - Read-only consumer boundary for EAL v1.
++# - Takes a recap_run_id.
++# - Returns directives ONLY.
++# - Safe if EAL persistence table does not exist.
++
++
++@dataclass(frozen=True)
++class EALDirectivesV1:
++    tone_guard: Optional[str] = None
++    privacy_guard: Optional[str] = None
++    rivalry_heat_cap: Optional[int] = None
++    allow_humiliation: Optional[bool] = None
++
++
++def load_eal_directives_v1(
++    db_path: str,
++    recap_run_id: str,
++) -> Optional[EALDirectivesV1]:
++    """
++    Read persisted EAL directives for a given recap_run_id.
++
++    Semantics:
++      - If table does not exist → return None
++      - If no row exists → return None
++      - Otherwise → return EALDirectivesV1
++    """
++    with DatabaseSession(db_path) as con:
++        cur = con.cursor()
++        try:
++            cur.execute(
++                """
++                SELECT directives_json
++                FROM eal_directives_v1
++                WHERE recap_run_id = ?
++                ORDER BY created_at_utc DESC
++                LIMIT 1
++                """,
++                (recap_run_id,),
++            )
++        except sqlite3.OperationalError:
++            # Table does not exist → neutral
++            return None
++
++        row = cur.fetchone()
++        if not row or row[0] is None:
++            return None
++
++        payload: Dict[str, Any] = json.loads(row[0])
++
++        return EALDirectivesV1(
++            tone_guard=payload.get("tone_guard"),
++            privacy_guard=payload.get("privacy_guard"),
++            rivalry_heat_cap=payload.get("rivalry_heat_cap"),
++            allow_humiliation=payload.get("allow_humiliation"),
++        )
+diff --git a/src/squadvault/core/eal/editorial_attunement_v1.py b/src/squadvault/core/eal/editorial_attunement_v1.py
+new file mode 100644
+index 0000000..f348f4f
+--- /dev/null
++++ b/src/squadvault/core/eal/editorial_attunement_v1.py
+@@ -0,0 +1,53 @@
++"""Editorial Attunement Layer v1 (EAL)
++
++Contract:
++- Restraint-only: may constrain expression, never alters selection, ordering, or facts.
++- Metadata-only: must not inspect signal bodies or narrative content.
++- Deterministic: same inputs -> same outputs.
++- Window-scoped: no state, no accumulation.
++
++Outputs are stable directive strings intended to guide downstream drafting.
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import Optional
++
++
++# Stable directive strings (do not change without a version bump)
++EAL_HIGH_CONFIDENCE_ALLOWED = "HIGH_CONFIDENCE_ALLOWED"
++EAL_MODERATE_CONFIDENCE_ONLY = "MODERATE_CONFIDENCE_ONLY"
++EAL_LOW_CONFIDENCE_RESTRAINT = "LOW_CONFIDENCE_RESTRAINT"
++EAL_AMBIGUITY_PREFER_SILENCE = "AMBIGUITY_PREFER_SILENCE"
++
++
++@dataclass(frozen=True)
++class EALMeta:
++    """Metadata-only inputs. Do not add fields that contain content."""
++    has_selection_set: bool
++    has_window: bool
++    included_count: Optional[int] = None
++    excluded_count: Optional[int] = None
++
++
++def evaluate_editorial_attunement_v1(meta: EALMeta) -> str:
++    """Return an EAL directive based only on metadata.
++
++    This function must remain deterministic and restraint-only.
++    """
++    if not meta.has_window or not meta.has_selection_set:
++        return EAL_AMBIGUITY_PREFER_SILENCE
++
++    n = meta.included_count
++    if n is None:
++        # Unknown selection strength => prefer restraint, but not necessarily silence
++        return EAL_LOW_CONFIDENCE_RESTRAINT
++
++    if n <= 0:
++        return EAL_AMBIGUITY_PREFER_SILENCE
++    if n <= 2:
++        return EAL_LOW_CONFIDENCE_RESTRAINT
++
++    # Conservative default. Reserve HIGH_CONFIDENCE for explicit, deterministic completeness markers.
++    return EAL_MODERATE_CONFIDENCE_ONLY
+diff --git a/src/squadvault/core/queries/event_queries.py b/src/squadvault/core/queries/event_queries.py
+index 0815588..3a8f6b7 100644
+--- a/src/squadvault/core/queries/event_queries.py
++++ b/src/squadvault/core/queries/event_queries.py
+@@ -8,8 +8,8 @@ from squadvault.core.storage.sqlite_store import SQLiteStore
+ 
+ 
+ def fetch_all_events(store: SQLiteStore, *, league_id: str, season: int, limit: int = 5000) -> List[Dict[str, Any]]:
+-    """Fetch all memory events for a league/season."""
+-    return store.fetch_events(league_id=league_id, season=season, limit=limit)
++    """Fetch all memory events (ledger) for a league/season."""
++    return store.fetch_events(league_id=league_id, season=season, limit=limit, use_canonical=False)
+ 
+ 
+ def fetch_by_event_type(
+@@ -20,8 +20,8 @@ def fetch_by_event_type(
+     event_type: str,
+     limit: int = 5000,
+ ) -> List[Dict[str, Any]]:
+-    """Fetch memory events matching an exact event_type."""
+-    events = store.fetch_events(league_id=league_id, season=season, limit=limit)
++    """Fetch memory events (ledger) matching an exact event_type."""
++    events = store.fetch_events(league_id=league_id, season=season, limit=limit, use_canonical=False)
+     return [e for e in events if e["event_type"] == event_type]
+ 
+ 
+@@ -33,8 +33,8 @@ def fetch_by_event_type_prefix(
+     prefix: str,
+     limit: int = 5000,
+ ) -> List[Dict[str, Any]]:
+-    """Fetch memory events whose event_type starts with prefix."""
+-    events = store.fetch_events(league_id=league_id, season=season, limit=limit)
++    """Fetch memory events (ledger) whose event_type starts with prefix."""
++    events = store.fetch_events(league_id=league_id, season=season, limit=limit, use_canonical=False)
+     return [e for e in events if e["event_type"].startswith(prefix)]
+ 
+ 
+diff --git a/src/squadvault/core/recaps/render/render_recap_text_v1.py b/src/squadvault/core/recaps/render/render_recap_text_v1.py
+index ad4b896..a435f2a 100644
+--- a/src/squadvault/core/recaps/render/render_recap_text_v1.py
++++ b/src/squadvault/core/recaps/render/render_recap_text_v1.py
+@@ -2,7 +2,7 @@
+ 
+ from __future__ import annotations
+ from typing import Optional
+-from squadvault.eal.consume_v1 import EALDirectivesV1
++from squadvault.core.eal.consume_v1 import EALDirectivesV1
+ 
+ import json
+ from typing import Any, Dict
+diff --git a/src/squadvault/core/storage/sqlite_store.py b/src/squadvault/core/storage/sqlite_store.py
+index 0185abe..7a77af1 100644
+--- a/src/squadvault/core/storage/sqlite_store.py
++++ b/src/squadvault/core/storage/sqlite_store.py
+@@ -83,13 +83,13 @@ class SQLiteStore:
+         occurred_at_min: Optional[str] = None,
+         occurred_at_max: Optional[str] = None,
+         limit: int = 1000,
+-        use_canonical: bool = False,
++        use_canonical: bool = True,
+     ) -> List[Dict[str, Any]]:
+         """
+         Downstream consumer read surface.
+ 
+-        - use_canonical=True reads from v_canonical_best_events (preferred).
+-        - use_canonical=False reads from memory_events (ledger / audit).
++        - use_canonical=True (default) reads from v_canonical_best_events (preferred, deduplicated).
++        - use_canonical=False reads from memory_events (ledger / audit only).
+         """
+         source = "v_canonical_best_events" if use_canonical else "memory_events"
+ 
+diff --git a/src/squadvault/core_engine/editorial_attunement_v1.py b/src/squadvault/core_engine/editorial_attunement_v1.py
+index f348f4f..16834c0 100644
+--- a/src/squadvault/core_engine/editorial_attunement_v1.py
++++ b/src/squadvault/core_engine/editorial_attunement_v1.py
+@@ -1,53 +1,3 @@
+-"""Editorial Attunement Layer v1 (EAL)
+-
+-Contract:
+-- Restraint-only: may constrain expression, never alters selection, ordering, or facts.
+-- Metadata-only: must not inspect signal bodies or narrative content.
+-- Deterministic: same inputs -> same outputs.
+-- Window-scoped: no state, no accumulation.
+-
+-Outputs are stable directive strings intended to guide downstream drafting.
+-"""
+-
+-from __future__ import annotations
+-
+-from dataclasses import dataclass
+-from typing import Optional
+-
+-
+-# Stable directive strings (do not change without a version bump)
+-EAL_HIGH_CONFIDENCE_ALLOWED = "HIGH_CONFIDENCE_ALLOWED"
+-EAL_MODERATE_CONFIDENCE_ONLY = "MODERATE_CONFIDENCE_ONLY"
+-EAL_LOW_CONFIDENCE_RESTRAINT = "LOW_CONFIDENCE_RESTRAINT"
+-EAL_AMBIGUITY_PREFER_SILENCE = "AMBIGUITY_PREFER_SILENCE"
+-
+-
+-@dataclass(frozen=True)
+-class EALMeta:
+-    """Metadata-only inputs. Do not add fields that contain content."""
+-    has_selection_set: bool
+-    has_window: bool
+-    included_count: Optional[int] = None
+-    excluded_count: Optional[int] = None
+-
+-
+-def evaluate_editorial_attunement_v1(meta: EALMeta) -> str:
+-    """Return an EAL directive based only on metadata.
+-
+-    This function must remain deterministic and restraint-only.
+-    """
+-    if not meta.has_window or not meta.has_selection_set:
+-        return EAL_AMBIGUITY_PREFER_SILENCE
+-
+-    n = meta.included_count
+-    if n is None:
+-        # Unknown selection strength => prefer restraint, but not necessarily silence
+-        return EAL_LOW_CONFIDENCE_RESTRAINT
+-
+-    if n <= 0:
+-        return EAL_AMBIGUITY_PREFER_SILENCE
+-    if n <= 2:
+-        return EAL_LOW_CONFIDENCE_RESTRAINT
+-
+-    # Conservative default. Reserve HIGH_CONFIDENCE for explicit, deterministic completeness markers.
+-    return EAL_MODERATE_CONFIDENCE_ONLY
++"""Re-export shim — canonical location is squadvault.core.eal.editorial_attunement_v1."""
++from squadvault.core.eal.editorial_attunement_v1 import *  # noqa: F401,F403
++from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1  # noqa: F401
+diff --git a/src/squadvault/eal/consume_v1.py b/src/squadvault/eal/consume_v1.py
+index 94f057a..3682edf 100644
+--- a/src/squadvault/eal/consume_v1.py
++++ b/src/squadvault/eal/consume_v1.py
+@@ -1,68 +1,3 @@
+-#!/usr/bin/env python3
+-"""Load EAL directives from recap_runs for render-time consumption."""
+-
+-from __future__ import annotations
+-
+-from dataclasses import dataclass
+-from typing import Any, Dict, Optional
+-import json
+-import sqlite3
+-from squadvault.core.storage.session import DatabaseSession
+-
+-
+-# IMPORTANT:
+-# - Read-only consumer boundary for EAL v1.
+-# - Takes a recap_run_id.
+-# - Returns directives ONLY.
+-# - Safe if EAL persistence table does not exist.
+-
+-
+-@dataclass(frozen=True)
+-class EALDirectivesV1:
+-    tone_guard: Optional[str] = None
+-    privacy_guard: Optional[str] = None
+-    rivalry_heat_cap: Optional[int] = None
+-    allow_humiliation: Optional[bool] = None
+-
+-
+-def load_eal_directives_v1(
+-    db_path: str,
+-    recap_run_id: str,
+-) -> Optional[EALDirectivesV1]:
+-    """
+-    Read persisted EAL directives for a given recap_run_id.
+-
+-    Semantics:
+-      - If table does not exist → return None
+-      - If no row exists → return None
+-      - Otherwise → return EALDirectivesV1
+-    """
+-    with DatabaseSession(db_path) as con:
+-        cur = con.cursor()
+-        try:
+-            cur.execute(
+-                """
+-                SELECT directives_json
+-                FROM eal_directives_v1
+-                WHERE recap_run_id = ?
+-                ORDER BY created_at_utc DESC
+-                LIMIT 1
+-                """,
+-                (recap_run_id,),
+-            )
+-        except sqlite3.OperationalError:
+-            # Table does not exist → neutral
+-            return None
+-
+-        row = cur.fetchone()
+-        if not row or row[0] is None:
+-            return None
+-
+-        payload: Dict[str, Any] = json.loads(row[0])
+-
+-        return EALDirectivesV1(
+-            tone_guard=payload.get("tone_guard"),
+-            privacy_guard=payload.get("privacy_guard"),
+-            rivalry_heat_cap=payload.get("rivalry_heat_cap"),
+-            allow_humiliation=payload.get("allow_humiliation"),
+-        )
++"""Re-export shim — canonical location is squadvault.core.eal.consume_v1."""
++from squadvault.core.eal.consume_v1 import *  # noqa: F401,F403
++from squadvault.core.eal.consume_v1 import EALDirectivesV1, load_eal_directives_v1  # noqa: F401
+diff --git a/src/squadvault/ingest/_run_ingest_to_store.py b/src/squadvault/ingest/_run_ingest_to_store.py
+index db40d38..a16ecae 100644
+--- a/src/squadvault/ingest/_run_ingest_to_store.py
++++ b/src/squadvault/ingest/_run_ingest_to_store.py
+@@ -142,7 +142,7 @@ def main() -> None:
+         print(f"{t}: {counts_after[t]}")
+ 
+     # Your existing “ledger_total” check remains (whatever store.fetch_events reads from).
+-    fetched = store.fetch_events(league_id=LEAGUE_ID, season=YEAR, limit=1000)
++    fetched = store.fetch_events(league_id=LEAGUE_ID, season=YEAR, limit=1000, use_canonical=False)
+     print("\nledger_total (via store.fetch_events, limit=1000) =", len(fetched))
+ 
+     # Helpful hint: likely ledger candidates (based on table names)
+diff --git a/src/squadvault/recaps/weekly_recap_lifecycle.py b/src/squadvault/recaps/weekly_recap_lifecycle.py
+index f6a5d7f..925f592 100644
+--- a/src/squadvault/recaps/weekly_recap_lifecycle.py
++++ b/src/squadvault/recaps/weekly_recap_lifecycle.py
+@@ -7,9 +7,9 @@ import re
+ import sqlite3
+ from dataclasses import dataclass
+ from pathlib import Path
+-from squadvault.core_engine.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
++from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
+ from typing import Optional, Tuple
+-from squadvault.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
++from squadvault.core.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
+ from squadvault.errors import RecapNotFoundError, RecapStateError, RecapDataError
+ from squadvault.core.recaps.render.render_recap_text_v1 import render_recap_text_from_path_v1
+ from squadvault.core.recaps.recap_runs import (

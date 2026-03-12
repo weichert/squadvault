@@ -7,9 +7,9 @@ import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from squadvault.core_engine.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
+from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
 from typing import Optional, Tuple
-from squadvault.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
+from squadvault.core.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
 from squadvault.errors import RecapNotFoundError, RecapStateError, RecapDataError
 from squadvault.core.recaps.render.render_recap_text_v1 import render_recap_text_from_path_v1
 from squadvault.core.recaps.recap_runs import (

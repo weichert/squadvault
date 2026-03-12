@@ -8,8 +8,8 @@ from squadvault.core.storage.sqlite_store import SQLiteStore
 
 
 def fetch_all_events(store: SQLiteStore, *, league_id: str, season: int, limit: int = 5000) -> List[Dict[str, Any]]:
-    """Fetch all memory events for a league/season."""
-    return store.fetch_events(league_id=league_id, season=season, limit=limit)
+    """Fetch all memory events (ledger) for a league/season."""
+    return store.fetch_events(league_id=league_id, season=season, limit=limit, use_canonical=False)
 
 
 def fetch_by_event_type(
@@ -20,8 +20,8 @@ def fetch_by_event_type(
     event_type: str,
     limit: int = 5000,
 ) -> List[Dict[str, Any]]:
-    """Fetch memory events matching an exact event_type."""
-    events = store.fetch_events(league_id=league_id, season=season, limit=limit)
+    """Fetch memory events (ledger) matching an exact event_type."""
+    events = store.fetch_events(league_id=league_id, season=season, limit=limit, use_canonical=False)
     return [e for e in events if e["event_type"] == event_type]
 
 
@@ -33,8 +33,8 @@ def fetch_by_event_type_prefix(
     prefix: str,
     limit: int = 5000,
 ) -> List[Dict[str, Any]]:
-    """Fetch memory events whose event_type starts with prefix."""
-    events = store.fetch_events(league_id=league_id, season=season, limit=limit)
+    """Fetch memory events (ledger) whose event_type starts with prefix."""
+    events = store.fetch_events(league_id=league_id, season=season, limit=limit, use_canonical=False)
     return [e for e in events if e["event_type"].startswith(prefix)]
 
 

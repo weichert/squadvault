@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from typing import Optional
-from squadvault.eal.consume_v1 import EALDirectivesV1
+from squadvault.core.eal.consume_v1 import EALDirectivesV1
 
 import json
 from typing import Any, Dict

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from squadvault.core_engine.editorial_attunement_v1 import (
+from squadvault.core.eal.editorial_attunement_v1 import (
     EALMeta,
     evaluate_editorial_attunement_v1,
     EAL_AMBIGUITY_PREFER_SILENCE,

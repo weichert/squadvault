@@ -99,58 +99,56 @@ def main() -> int:
     from squadvault.recaps.deterministic_bullets_v1 import QUIET_WEEK_MIN_EVENTS
     threshold = QUIET_WEEK_MIN_EVENTS if args.min_events_for_facts is None else int(args.min_events_for_facts)
 
-    conn = sqlite3.connect(args.db)
+    with DatabaseSession(args.db) as conn:
 
-    audits: List[WeekAudit] = []
-    mismatch_count = 0
-    no_artifact_count = 0
+        audits: List[WeekAudit] = []
+        mismatch_count = 0
+        no_artifact_count = 0
 
-    for wk in range(args.start_week, args.end_week + 1):
-        sel = select_weekly_recap_events_v1(
-            db_path=args.db,
-            league_id=args.league_id,
-            season=args.season,
-            week_index=wk,
-        )
-        selected_events = len(sel.canonical_ids)
-        expected_has_facts = selected_events >= threshold
+        for wk in range(args.start_week, args.end_week + 1):
+            sel = select_weekly_recap_events_v1(
+                db_path=args.db,
+                league_id=args.league_id,
+                season=args.season,
+                week_index=wk,
+            )
+            selected_events = len(sel.canonical_ids)
+            expected_has_facts = selected_events >= threshold
 
-        art = _fetch_latest_weekly_recap_artifact(conn, args.league_id, args.season, wk)
-        if art is None:
-            status = "NO_ARTIFACT"
+            art = _fetch_latest_weekly_recap_artifact(conn, args.league_id, args.season, wk)
+            if art is None:
+                status = "NO_ARTIFACT"
+                audits.append(
+                    WeekAudit(
+                        week_index=wk,
+                        version=None,
+                        selected_events=selected_events,
+                        has_facts=False,
+                        expected_has_facts=expected_has_facts,
+                        status=status,
+                    )
+                )
+                no_artifact_count += 1
+                continue
+
+            version = int(art.get("version"))
+            rendered_text = art.get("rendered_text") or ""
+            has_facts = _has_facts_block(rendered_text)
+
+            status = "OK" if has_facts == expected_has_facts else "MISMATCH"
+            if status != "OK":
+                mismatch_count += 1
+
             audits.append(
                 WeekAudit(
                     week_index=wk,
-                    version=None,
+                    version=version,
                     selected_events=selected_events,
-                    has_facts=False,
+                    has_facts=has_facts,
                     expected_has_facts=expected_has_facts,
                     status=status,
                 )
             )
-            no_artifact_count += 1
-            continue
-
-        version = int(art.get("version"))
-        rendered_text = art.get("rendered_text") or ""
-        has_facts = _has_facts_block(rendered_text)
-
-        status = "OK" if has_facts == expected_has_facts else "MISMATCH"
-        if status != "OK":
-            mismatch_count += 1
-
-        audits.append(
-            WeekAudit(
-                week_index=wk,
-                version=version,
-                selected_events=selected_events,
-                has_facts=has_facts,
-                expected_has_facts=expected_has_facts,
-                status=status,
-            )
-        )
-
-    conn.close()
 
     # Print
     def _maybe_print(a: WeekAudit) -> None:

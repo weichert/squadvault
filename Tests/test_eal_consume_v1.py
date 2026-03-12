@@ -10,7 +10,7 @@ import sqlite3
 
 import pytest
 
-from squadvault.eal.consume_v1 import EALDirectivesV1, load_eal_directives_v1
+from squadvault.core.eal.consume_v1 import EALDirectivesV1, load_eal_directives_v1
 
 
 @pytest.fixture

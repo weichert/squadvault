@@ -57,7 +57,7 @@ class TestSQLiteStore:
         inserted, skipped = store.append_events([_event("DRAFT_PICK", "e1")])
         assert inserted == 1
         assert skipped == 0
-        events = store.fetch_events(league_id=LEAGUE, season=SEASON)
+        events = store.fetch_events(league_id=LEAGUE, season=SEASON, use_canonical=False)
         assert len(events) == 1
         assert events[0]["event_type"] == "DRAFT_PICK"
 
@@ -67,7 +67,7 @@ class TestSQLiteStore:
         inserted, skipped = store.append_events([_event("DRAFT_PICK", "e1")])
         assert inserted == 0
         assert skipped == 1
-        events = store.fetch_events(league_id=LEAGUE, season=SEASON)
+        events = store.fetch_events(league_id=LEAGUE, season=SEASON, use_canonical=False)
         assert len(events) == 1
 
     def test_multiple_events(self, store):
@@ -84,17 +84,17 @@ class TestSQLiteStore:
         """Fetch filters by league_id and season."""
         store.append_events([_event("DRAFT_PICK", "e1")])
         # Different league
-        events = store.fetch_events(league_id="other_league", season=SEASON)
+        events = store.fetch_events(league_id="other_league", season=SEASON, use_canonical=False)
         assert events == []
         # Different season
-        events = store.fetch_events(league_id=LEAGUE, season=2020)
+        events = store.fetch_events(league_id=LEAGUE, season=2020, use_canonical=False)
         assert events == []
 
     def test_payload_round_trips(self, store):
         """Payload dict round-trips through JSON storage."""
         payload = {"player_id": "P100", "round": 1, "pick": 3}
         store.append_events([_event("DRAFT_PICK", "e1", payload)])
-        events = store.fetch_events(league_id=LEAGUE, season=SEASON)
+        events = store.fetch_events(league_id=LEAGUE, season=SEASON, use_canonical=False)
         assert events[0]["payload"] == payload
 
 

@@ -83,13 +83,13 @@ class SQLiteStore:
         occurred_at_min: Optional[str] = None,
         occurred_at_max: Optional[str] = None,
         limit: int = 1000,
-        use_canonical: bool = False,
+        use_canonical: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Downstream consumer read surface.
 
-        - use_canonical=True reads from v_canonical_best_events (preferred).
-        - use_canonical=False reads from memory_events (ledger / audit).
+        - use_canonical=True (default) reads from v_canonical_best_events (preferred, deduplicated).
+        - use_canonical=False reads from memory_events (ledger / audit only).
         """
         source = "v_canonical_best_events" if use_canonical else "memory_events"
 
