@@ -26,7 +26,7 @@ import sqlite3
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from squadvault.core.storage.db_utils import norm_id as _norm_id
+from squadvault.core.storage.db_utils import norm_id as _norm_id, row_to_dict as _row_to_dict
 from squadvault.core.storage.session import DatabaseSession
 
 
@@ -38,9 +38,6 @@ FACTS_HEADER = "What happened (facts)"
 RECAP_HEADER_PREFIX = "SquadVault Weekly Recap"
 
 
-def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
-    """Convert sqlite3.Row to plain dict."""
-    return {k: row[k] for k in row.keys()}
 
 
 def _safe_str(v: Any, default: str = "") -> str:

@@ -3,24 +3,14 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
 from typing import Optional
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.storage.db_utils import now_utc_iso as _now_utc_iso
 from squadvault.core.recaps.selection.recap_selection_store import (
     get_stored_selection,
     insert_selection_if_missing,
     is_stale,
 )
-
-def _now_utc_iso() -> str:
-    """Return current UTC time as ISO-8601 string."""
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
-
 
 def get_latest_recap_version(
     db_path: str,
@@ -183,9 +173,7 @@ def upsert_selection_if_stale(db_path: str, league_id: str, season: int, sel) ->
                 """,
                 (
                     sel.fingerprint,
-                    datetime.now(timezone.utc)
-                        .isoformat()
-                        .replace("+00:00", "Z"),
+                    _now_utc_iso(),
                     league_id,
                     season,
                     sel.week_index,

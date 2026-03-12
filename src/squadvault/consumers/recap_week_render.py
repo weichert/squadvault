@@ -15,11 +15,9 @@ from squadvault.core.recaps.render.render_recap_text_v1 import render_recap_text
 from squadvault.core.recaps.render.voice_variants_v1 import format_variant_block
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.errors import RecapNotFoundError, RecapDataError
+from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
 
 
-def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
-    """Convert sqlite3.Row to plain dict."""
-    return {k: row[k] for k in row.keys()}
 
 
 def _fetch_latest_weekly_recap_artifact(

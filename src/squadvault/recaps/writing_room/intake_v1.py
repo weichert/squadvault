@@ -25,16 +25,12 @@ from squadvault.recaps.writing_room.selection_set_schema_v1 import (
     WithheldReasonCode,
     build_signal_groupings_v1,
 )
+from squadvault.core.storage.db_utils import now_utc_iso as _now_utc_iso
 
 def _details_one(k: str, v: object) -> list[ReasonDetailKV]:
     """Create a single-entry ReasonDetailKV list."""
     return [ReasonDetailKV(k=k, v=str(v))]
 
-
-
-def _now_utc_iso() -> str:
-    """Return current UTC time as ISO-8601 string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _parse_iso_utc(s: str) -> Optional[datetime]:

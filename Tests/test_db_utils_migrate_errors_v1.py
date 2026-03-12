@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from squadvault.core.storage.db_utils import table_columns, norm_id
+from squadvault.core.storage.db_utils import table_columns, norm_id, row_to_dict, now_utc_iso
 from squadvault.core.storage.migrate import apply_migrations, init_and_migrate
 from squadvault.errors import (
     SquadVaultError,
@@ -85,6 +85,53 @@ class TestNormId:
 
     def test_int_input(self):
         assert norm_id(42) == "42"
+
+
+# ── row_to_dict ──────────────────────────────────────────────────────
+
+class TestRowToDict:
+    def test_converts_row(self, tmp_path):
+        db = str(tmp_path / "test.sqlite")
+        con = sqlite3.connect(db)
+        con.row_factory = sqlite3.Row
+        con.execute("CREATE TABLE t (a TEXT, b INTEGER)")
+        con.execute("INSERT INTO t VALUES ('hello', 42)")
+        con.commit()
+        row = con.execute("SELECT * FROM t").fetchone()
+        result = row_to_dict(row)
+        con.close()
+        assert result == {"a": "hello", "b": 42}
+
+    def test_empty_values(self, tmp_path):
+        db = str(tmp_path / "test.sqlite")
+        con = sqlite3.connect(db)
+        con.row_factory = sqlite3.Row
+        con.execute("CREATE TABLE t (a TEXT, b INTEGER)")
+        con.execute("INSERT INTO t VALUES (NULL, NULL)")
+        con.commit()
+        row = con.execute("SELECT * FROM t").fetchone()
+        result = row_to_dict(row)
+        con.close()
+        assert result == {"a": None, "b": None}
+
+
+# ── now_utc_iso ──────────────────────────────────────────────────────
+
+class TestNowUtcIso:
+    def test_returns_z_suffix(self):
+        ts = now_utc_iso()
+        assert ts.endswith("Z")
+
+    def test_iso_format(self):
+        ts = now_utc_iso()
+        assert "T" in ts
+        assert len(ts) == 20  # "2024-01-01T00:00:00Z"
+
+    def test_deterministic_within_second(self):
+        t1 = now_utc_iso()
+        t2 = now_utc_iso()
+        # Within same second, should be identical
+        assert t1 == t2 or t1 < t2
 
 
 # ── apply_migrations ─────────────────────────────────────────────────

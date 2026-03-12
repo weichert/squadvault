@@ -12,12 +12,9 @@ from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     render_deterministic_bullets_v1,
 )
 from squadvault.core.storage.session import DatabaseSession
-from squadvault.core.storage.db_utils import norm_id as _norm_id
+from squadvault.core.storage.db_utils import norm_id as _norm_id, row_to_dict as _row_to_dict
 
 
-def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
-    """Convert a sqlite3.Row to a plain dict."""
-    return {k: row[k] for k in row.keys()}
 
 
 def _fetch_canonical_events_by_ids(

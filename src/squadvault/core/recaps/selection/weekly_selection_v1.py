@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 
 from squadvault.core.recaps.selection.weekly_windows_v1 import WeeklyWindow, window_for_week_index
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
 
 
 # -------------------------
@@ -67,9 +68,6 @@ class SelectionResult:
     fingerprint: str
 
 
-def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
-    """Convert a sqlite3.Row to a plain dict."""
-    return {k: row[k] for k in row.keys()}
 
 
 def _fingerprint_from_ids(ids: List[str]) -> str:

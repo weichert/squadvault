@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 import sqlite3
-from datetime import datetime, timezone
 
 from squadvault.core.recaps.selection.weekly_selection_v1 import SelectionResult
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.storage.db_utils import now_utc_iso as _now_utc_iso
 
 
 @dataclass(frozen=True)
@@ -23,11 +23,6 @@ class StoredSelection:
     event_count: int
     fingerprint: str
     computed_at: str
-
-
-def _now_utc_iso() -> str:
-    """Return current UTC time as ISO-8601 string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def get_stored_selection(

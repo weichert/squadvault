@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
 
 
 def utc_now_iso() -> str:
@@ -21,9 +22,6 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
-    """Convert sqlite3.Row to plain dict."""
-    return {k: row[k] for k in row.keys()}
 
 
 def _fetch_approved_weekly_recap_artifact(
