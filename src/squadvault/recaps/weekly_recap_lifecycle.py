@@ -5,13 +5,22 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
-from typing import Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from squadvault.core.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
 from squadvault.errors import RecapNotFoundError, RecapStateError, RecapDataError
-from squadvault.core.recaps.render.render_recap_text_v1 import render_recap_text_from_path_v1
+from squadvault.core.recaps.render.render_recap_text_v1 import (
+    render_recap_text_from_path_v1,
+    render_recap_text_v1,
+)
+from squadvault.core.recaps.render.deterministic_bullets_v1 import (
+    CanonicalEventRow,
+    render_deterministic_bullets_v1,
+)
+from squadvault.core.resolvers import PlayerResolver, FranchiseResolver
 from squadvault.core.recaps.recap_runs import (
     get_recap_run_state,
     sync_recap_run_state_from_artifacts,
@@ -153,22 +162,17 @@ def _persist_editorial_attunement_v1_to_recap_runs(
     week_index: int,
     directive: str,
 ) -> None:
-    """Persist EAL directive into recap_runs in a runtime-safe, additive way.
+    """Persist EAL directive into recap_runs as audit metadata.
 
-    - If recap_runs lacks editorial_attunement_v1, add the column.
-    - Update all rows for (league_id, season, week_index). Safe for both
-      one-row-per-week and multi-row-per-week schemas.
+    The editorial_attunement_v1 column is defined in schema.sql.
+    Schema is the sole authority for table structure — no runtime
+    DDL permitted (Phase 2: Eliminate Runtime Schema Mutation).
     """
     directive = (directive or "").strip()
     if not directive:
         return
 
     with DatabaseSession(db_path) as con:
-        cur = con.execute("PRAGMA table_info(recap_runs)")
-        cols = {str(r[1]) for r in cur.fetchall()}  # (cid, name, type, notnull, dflt_value, pk)
-        if "editorial_attunement_v1" not in cols:
-            con.execute("ALTER TABLE recap_runs ADD COLUMN editorial_attunement_v1 TEXT")
-
         con.execute(
             "UPDATE recap_runs SET editorial_attunement_v1=? WHERE league_id=? AND season=? AND week_index=?",
             (directive, league_id, season, week_index),
@@ -401,6 +405,187 @@ def _ensure_artifact_on_disk(
 # Canonical lifecycle API (scripts should call ONLY these)
 # =============================================================================
 
+def _load_canonical_event_rows(
+    db_path: str,
+    canonical_ids: List[str],
+) -> List[CanonicalEventRow]:
+    """Load canonical event rows with payloads from v_canonical_best_events.
+
+    canonical_ids are action fingerprints stored in recap_runs.canonical_ids_json.
+    Returns CanonicalEventRow objects suitable for the bullets renderer.
+    IDs that don't resolve are silently skipped (defensive).
+    """
+    if not canonical_ids:
+        return []
+
+    rows: List[CanonicalEventRow] = []
+    with DatabaseSession(db_path) as con:
+        # Check if view exists (defensive for minimal test DBs)
+        tables = {r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type IN ('table','view')"
+        ).fetchall()}
+        if "v_canonical_best_events" not in tables:
+            return []
+
+        ids_str = [str(cid).strip() for cid in canonical_ids if str(cid).strip()]
+        if not ids_str:
+            return []
+
+        CHUNK = 900
+        for i in range(0, len(ids_str), CHUNK):
+            chunk = ids_str[i:i + CHUNK]
+            placeholders = ",".join(["?"] * len(chunk))
+            db_rows = con.execute(
+                f"""SELECT canonical_event_id, event_type, occurred_at, payload_json
+                    FROM v_canonical_best_events
+                    WHERE action_fingerprint IN ({placeholders})""",
+                chunk,
+            ).fetchall()
+
+            for r in db_rows:
+                try:
+                    payload = json.loads(r[3]) if r[3] else {}
+                except (ValueError, TypeError):
+                    payload = {}
+                if not isinstance(payload, dict):
+                    payload = {}
+                rows.append(CanonicalEventRow(
+                    canonical_id=str(r[0]),
+                    event_type=str(r[1] or ""),
+                    occurred_at=str(r[2] or ""),
+                    payload=payload,
+                ))
+
+    return rows
+
+
+def _collect_ids_from_payloads(
+    events: List[CanonicalEventRow],
+) -> tuple[set, set]:
+    """Extract all player IDs and franchise IDs from event payloads."""
+    player_ids: set = set()
+    franchise_ids: set = set()
+
+    for e in events:
+        p = e.payload
+        for key in ("player_id", "player"):
+            v = p.get(key)
+            if v is not None:
+                player_ids.add(str(v).strip())
+
+        for key in ("franchise_id", "team_id", "from_franchise_id", "to_franchise_id",
+                     "from_team_id", "to_team_id", "winner_franchise_id", "loser_franchise_id",
+                     "winner_team_id", "loser_team_id"):
+            v = p.get(key)
+            if v is not None:
+                franchise_ids.add(str(v).strip())
+
+        # Handle list-valued player IDs (added/dropped)
+        for key in ("players_added_ids", "players_dropped_ids"):
+            v = p.get(key)
+            if isinstance(v, list):
+                for item in v:
+                    if item is not None:
+                        player_ids.add(str(item).strip())
+            elif isinstance(v, str) and v.strip():
+                for item in v.split(","):
+                    s = item.strip()
+                    if s:
+                        player_ids.add(s)
+
+    player_ids.discard("")
+    franchise_ids.discard("")
+    return player_ids, franchise_ids
+
+
+def _render_text_from_recap_runs(
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    *,
+    eal_directives: Optional[EALDirectivesV1] = None,
+) -> Optional[str]:
+    """Render recap text directly from recap_runs data (no recaps table needed).
+
+    Returns rendered text if recap_runs has sufficient data, else None.
+    This is the canonical path — it reads from recap_runs which is the
+    authoritative process ledger. Includes deterministic event bullets
+    with name resolution from franchise_directory and player_directory.
+    """
+    _ = eal_directives  # EAL v1: accepted but not applied at render layer
+    with DatabaseSession(db_path) as con:
+        row = con.execute(
+            """SELECT selection_fingerprint, canonical_ids_json,
+                      counts_by_type_json, window_start, window_end
+               FROM recap_runs
+               WHERE league_id=? AND season=? AND week_index=?""",
+            (league_id, season, week_index),
+        ).fetchone()
+
+    if not row or not row[0]:
+        return None
+
+    fp, ids_json, counts_json, win_start, win_end = row
+
+    try:
+        canonical_ids = json.loads(ids_json) if ids_json else []
+    except (ValueError, TypeError):
+        canonical_ids = []
+
+    try:
+        counts_by_type = json.loads(counts_json) if counts_json else {}
+    except (ValueError, TypeError):
+        counts_by_type = {}
+
+    # Build the structural summary
+    artifact = {
+        "league_id": league_id,
+        "season": season,
+        "week_index": week_index,
+        "recap_version": 0,
+        "window": {"start": win_start, "end": win_end},
+        "selection": {
+            "fingerprint": fp,
+            "event_count": len(canonical_ids) if isinstance(canonical_ids, list) else 0,
+            "counts_by_type": counts_by_type if isinstance(counts_by_type, dict) else {},
+            "canonical_ids": canonical_ids if isinstance(canonical_ids, list) else [],
+        },
+    }
+
+    summary = render_recap_text_v1(artifact)
+
+    # Load canonical events and render deterministic bullets with name resolution
+    if isinstance(canonical_ids, list) and canonical_ids:
+        event_rows = _load_canonical_event_rows(db_path, canonical_ids)
+
+        if event_rows:
+            player_ids, franchise_ids = _collect_ids_from_payloads(event_rows)
+
+            # Build resolvers (fail-safe: if directories are empty, IDs pass through)
+            player_res = PlayerResolver(db_path, league_id, season)
+            franchise_res = FranchiseResolver(db_path, league_id, season)
+
+            if player_ids:
+                player_res.load_for_ids(player_ids)
+            if franchise_ids:
+                franchise_res.load_for_ids(franchise_ids)
+
+            bullets = render_deterministic_bullets_v1(
+                event_rows,
+                team_resolver=franchise_res.one,
+                player_resolver=player_res.one,
+            )
+
+            if bullets:
+                lines = ["\nWhat happened this week:"]
+                for b in bullets:
+                    lines.append(f"  - {b}")
+                summary += "\n".join(lines) + "\n"
+
+    return summary
+
+
 def generate_weekly_recap_draft(
     *,
     db_path: str,
@@ -414,19 +599,14 @@ def generate_weekly_recap_draft(
     """
     Canonical entrypoint: mint a WEEKLY_RECAP DRAFT artifact version.
 
-    Preserves your current behavior:
-    - Requires recap_runs row to exist
-    - Reads selection_fingerprint + window bounds from recap_runs
-    - Renders text from recaps.ACTIVE artifact_path
-    - Fingerprint-idempotent unless force=True
-    - Syncs recap_runs derived state from recap_artifacts
+    Rendering priority:
+    1. Render from recap_runs data directly (canonical path, no recaps table needed)
+    2. Fall back to legacy recaps.artifact_path if recap_runs data is insufficient
+       (emits DeprecationWarning — this path will be removed)
     """
     state = get_recap_run_state(db_path, league_id, season, week_index)
     if state is None:
         raise RecapNotFoundError("No recap_runs row found for that week.")
-
-    path = _get_active_artifact_path(db_path, league_id, season, week_index)
-    _ensure_artifact_on_disk(path, db_path, league_id, season, week_index)
 
     # --- EAL v1 writer consumption boundary (read-only) ---
     eal_directives = load_eal_directives_v1(
@@ -434,10 +614,28 @@ def generate_weekly_recap_draft(
         recap_run_id=state,
     )
 
-    rendered_text = render_recap_text_from_path_v1(
-        path,
+    # Canonical path: render directly from recap_runs (no recaps table dependency)
+    rendered_text = _render_text_from_recap_runs(
+        db_path, league_id, season, week_index,
         eal_directives=eal_directives,
     )
+
+    if rendered_text is None:
+        # Legacy fallback: read from recaps table + filesystem
+        warnings.warn(
+            f"generate_weekly_recap_draft: falling back to legacy recaps table "
+            f"for league={league_id} season={season} week={week_index}. "
+            f"This path is deprecated and will be removed.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        path = _get_active_artifact_path(db_path, league_id, season, week_index)
+        _ensure_artifact_on_disk(path, db_path, league_id, season, week_index)
+        rendered_text = render_recap_text_from_path_v1(
+            path,
+            eal_directives=eal_directives,
+        )
+
     selection_fingerprint, window_start, window_end = _get_recap_run_trace(
         db_path, league_id, season, week_index
     )
