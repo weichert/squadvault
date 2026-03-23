@@ -1,4 +1,4 @@
-"""Tests for squadvault.recaps.deterministic_bullets_v1
+"""Tests for squadvault.core.recaps.render.deterministic_bullets_v1
 
 Covers: every event type bullet format, deterministic ordering,
 skip/silence rules, resolver callbacks, _money edge cases,
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from squadvault.recaps.deterministic_bullets_v1 import (
+from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     MAX_BULLETS,
     _ascii_punct,

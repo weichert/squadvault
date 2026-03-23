@@ -1,4 +1,12 @@
-"""Legacy recaps table bridge for backward-compatible recap CRUD."""
+"""Legacy recaps table bridge — DEPRECATED.
+
+This module provides CRUD operations against the legacy `recaps` table.
+The canonical lifecycle now operates through `recap_runs` + `recap_artifacts`.
+
+No new code should read from or write to the `recaps` table.
+This module will be retired once all legacy consumers are migrated.
+See: Development Plan v2.0, Phase 3.
+"""
 
 from __future__ import annotations
 

@@ -127,30 +127,14 @@ def _normalize_row(fr: Dict[str, Any]) -> Optional[Row]:
 
 
 def _ensure_table(conn: sqlite3.Connection) -> None:
-    """Create franchise_directory table if it does not exist."""
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS franchise_directory (
-          league_id     TEXT    NOT NULL,
-          season        INTEGER NOT NULL,
-          franchise_id  TEXT    NOT NULL,
+    """Verify franchise_directory table exists.
 
-          name          TEXT,
-          owner_name    TEXT,
-
-          raw_json      TEXT,
-          updated_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-
-          PRIMARY KEY (league_id, season, franchise_id)
-        );
-        """
-    )
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_franchise_directory_lookup
-          ON franchise_directory (league_id, season, franchise_id);
-        """
-    )
+    The franchise_directory table is defined in schema.sql.
+    Schema is the sole authority for table structure — no runtime
+    DDL permitted (Phase 2: Eliminate Runtime Schema Mutation).
+    """
+    # No-op: table creation is handled by schema.sql and migrations.
+    pass
 
 
 def _upsert_rows(conn: sqlite3.Connection, league_id: str, season: int, rows: List[Row]) -> int:

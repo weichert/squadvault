@@ -190,7 +190,7 @@ def _prepend_deterministic_facts_block(
     This does NOT mutate the DB; it just prints a facts block + newline.
     """
     from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-    from squadvault.recaps.deterministic_bullets_v1 import render_deterministic_bullets_v1
+    from squadvault.core.recaps.render.deterministic_bullets_v1 import render_deterministic_bullets_v1
 
     sel = select_weekly_recap_events_v1(
         db_path=db_path,

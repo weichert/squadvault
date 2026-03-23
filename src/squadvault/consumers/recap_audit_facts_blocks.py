@@ -94,7 +94,7 @@ def main() -> int:
 
     # Import here so PYTHONPATH=src works and we stay aligned with the live selection logic.
     from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-    from squadvault.recaps.deterministic_bullets_v1 import QUIET_WEEK_MIN_EVENTS
+    from squadvault.core.recaps.render.deterministic_bullets_v1 import QUIET_WEEK_MIN_EVENTS
     threshold = QUIET_WEEK_MIN_EVENTS if args.min_events_for_facts is None else int(args.min_events_for_facts)
 
     with DatabaseSession(args.db) as conn:

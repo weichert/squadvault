@@ -1,8 +1,14 @@
-"""Re-export shim — canonical location is squadvault.recaps.weekly_recap_lifecycle
+"""DEPRECATED — canonical location is squadvault.recaps.weekly_recap_lifecycle.
 
-This file exists for backward compatibility only. All logic lives in
-squadvault.recaps.weekly_recap_lifecycle.
+This shim will be removed in a future version. Update imports to:
+    from squadvault.recaps.weekly_recap_lifecycle import ...
 """
+import warnings as _w
+_w.warn(
+    "squadvault.core.recaps.weekly_recap_lifecycle is deprecated. "
+    "Use squadvault.recaps.weekly_recap_lifecycle.",
+    DeprecationWarning, stacklevel=2,
+)
 from squadvault.recaps.weekly_recap_lifecycle import (  # noqa: F401
     ARTIFACT_TYPE_WEEKLY_RECAP,
     ApproveResult,

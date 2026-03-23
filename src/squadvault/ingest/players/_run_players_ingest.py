@@ -148,29 +148,14 @@ def _parse_players_xml(payload: bytes) -> List[PlayerRow]:
 
 
 def _ensure_table_exists(conn: sqlite3.Connection) -> None:
-    """Create player_directory table if it does not exist."""
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS player_directory (
-          league_id   TEXT    NOT NULL,
-          season      INTEGER NOT NULL,
-          player_id   TEXT    NOT NULL,
-          name        TEXT,
-          position    TEXT,
-          team        TEXT,
-          raw_json    TEXT,
-          updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-          PRIMARY KEY (league_id, season, player_id)
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_player_directory_lookup
-          ON player_directory (league_id, season, player_id)
-        """
-    )
-    conn.commit()
+    """Verify player_directory table exists.
+
+    The player_directory table is defined in schema.sql.
+    Schema is the sole authority for table structure — no runtime
+    DDL permitted (Phase 2: Eliminate Runtime Schema Mutation).
+    """
+    # No-op: table creation is handled by schema.sql and migrations.
+    pass
 
 
 def _upsert_players(

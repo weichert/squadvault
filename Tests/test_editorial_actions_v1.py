@@ -1,11 +1,12 @@
 """Tests for squadvault.consumers.editorial_actions.
 
 Covers: ensure_editorial_tables, insert_editorial_action, fetch_editorial_log,
-action validation, table creation idempotency.
+action validation. Table is now created by schema.sql, not at runtime.
 """
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -17,12 +18,15 @@ from squadvault.consumers.editorial_actions import (
     utc_now_iso,
 )
 
+SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"
+
 
 @pytest.fixture
 def conn(tmp_path):
-    """Fresh in-memory DB connection."""
+    """Fresh DB from schema.sql."""
     db_path = str(tmp_path / "test.sqlite")
     c = sqlite3.connect(db_path)
+    c.executescript(SCHEMA_PATH.read_text())
     yield c
     c.close()
 
@@ -40,16 +44,17 @@ class TestUtcNowIso:
 # ── ensure_editorial_tables ──────────────────────────────────────────
 
 class TestEnsureEditorialTables:
-    def test_creates_table(self, conn):
-        ensure_editorial_tables(conn)
+    def test_table_exists_from_schema(self, conn):
+        """editorial_actions table is created by schema.sql, not runtime."""
         tables = [r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()]
         assert "editorial_actions" in tables
 
-    def test_idempotent(self, conn):
+    def test_ensure_is_safe_noop(self, conn):
+        """ensure_editorial_tables is a no-op and does not fail."""
         ensure_editorial_tables(conn)
-        ensure_editorial_tables(conn)  # second call should not fail
+        ensure_editorial_tables(conn)  # second call also safe
         count = conn.execute(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='editorial_actions'"
         ).fetchone()[0]

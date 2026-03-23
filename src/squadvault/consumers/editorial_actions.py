@@ -17,31 +17,15 @@ def utc_now_iso() -> str:
 
 
 def ensure_editorial_tables(conn: sqlite3.Connection) -> None:
-    """Create editorial action tables if they do not exist."""
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS editorial_actions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          league_id TEXT NOT NULL,
-          season INTEGER NOT NULL,
-          week_index INTEGER NOT NULL,
-          artifact_kind TEXT NOT NULL,
-          artifact_version INTEGER NOT NULL,
-          selection_fingerprint TEXT,
-          action TEXT NOT NULL CHECK (action IN ('OPEN','APPROVE','REGENERATE','WITHHOLD','NOTES')),
-          actor TEXT NOT NULL,
-          notes_md TEXT,
-          created_at TEXT NOT NULL
-        );
-        """
-    )
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_editorial_actions_lookup
-        ON editorial_actions (league_id, season, week_index, artifact_kind, artifact_version);
-        """
-    )
-    conn.commit()
+    """Verify editorial action tables exist.
+
+    The editorial_actions table is defined in schema.sql.
+    Schema is the sole authority for table structure — no runtime
+    DDL permitted (Phase 2: Eliminate Runtime Schema Mutation).
+    """
+    # No-op: table creation is handled by schema.sql and migrations.
+    # Retained as a function to avoid changing all call sites.
+    pass
 
 
 def insert_editorial_action(

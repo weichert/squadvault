@@ -139,7 +139,11 @@ def persist_rivalry_chronicle_v1(
     missing_weeks_policy: MissingWeeksPolicy,
     created_at_utc: str,
 ) -> PersistedChronicleV1:
-    """Persist a generated rivalry chronicle as a versioned artifact."""
+    """Persist a generated rivalry chronicle as a versioned DRAFT artifact.
+
+    Same governance model as Weekly Recap: generate produces DRAFT,
+    explicit human approval transitions to APPROVED.
+    """
     gen: RivalryChronicleGeneratedV1 = generate_rivalry_chronicle_v1(
         db_path=db_path,
         league_id=league_id,
@@ -153,25 +157,36 @@ def persist_rivalry_chronicle_v1(
     with DatabaseSession(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
-        latest = _latest_approved_chronicle_row(conn, league_id, season, gen.anchor_week_index)
-        if latest is not None:
-            latest_fp = str(latest["selection_fingerprint"])
-            latest_v = int(latest["version"])
-            # Guard: identical fingerprint => no new version
-            if latest_fp == gen.fingerprint:
-                return PersistedChronicleV1(
-                    league_id=int(league_id),
-                    season=int(season),
-                    anchor_week_index=int(gen.anchor_week_index),
-                    artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
-                    version=latest_v,
-                    created_new=False,
-                )
+        # Idempotency: check if any artifact (DRAFT or APPROVED) already
+        # has the same fingerprint for this anchor week
+        existing = conn.execute(
+            """
+            SELECT version, state, selection_fingerprint
+            FROM recap_artifacts
+            WHERE league_id = ?
+              AND season = ?
+              AND week_index = ?
+              AND artifact_type = ?
+              AND selection_fingerprint = ?
+            ORDER BY version DESC
+            LIMIT 1
+            """,
+            (int(league_id), int(season), int(gen.anchor_week_index),
+             ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1, gen.fingerprint),
+        ).fetchone()
+
+        if existing is not None:
+            return PersistedChronicleV1(
+                league_id=int(league_id),
+                season=int(season),
+                anchor_week_index=int(gen.anchor_week_index),
+                artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
+                version=int(existing["version"]),
+                created_new=False,
+            )
 
         new_v = _next_version(conn, league_id, season, gen.anchor_week_index)
 
-        # Minimal insert: rely on schema-resilient optional columns via column detection pattern?
-        # We keep it explicit and only set columns that exist in schema.sql (recap_artifacts).
         _insert_recap_artifact_row_schema_resilient(
             conn,
             league_id=int(league_id),
@@ -179,7 +194,7 @@ def persist_rivalry_chronicle_v1(
             week_index=int(gen.anchor_week_index),
             artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
             version=int(new_v),
-            state="APPROVED",
+            state="DRAFT",
             selection_fingerprint=str(gen.fingerprint),
             rendered_text=str(gen.text),
             created_at_utc=str(created_at_utc),

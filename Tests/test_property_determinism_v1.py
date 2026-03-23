@@ -8,7 +8,7 @@ from __future__ import annotations
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from squadvault.recaps.deterministic_bullets_v1 import (
+from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     render_deterministic_bullets_v1,
 )

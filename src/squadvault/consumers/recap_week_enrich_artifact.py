@@ -341,7 +341,7 @@ def build_deterministic_facts_block_v1(
     - By default uses deterministic_bullets_v1.QUIET_WEEK_MIN_EVENTS
     - If min_events_for_facts is provided, overrides the threshold deterministically.
     """
-    from squadvault.recaps.deterministic_bullets_v1 import (
+    from squadvault.core.recaps.render.deterministic_bullets_v1 import (
         CanonicalEventRow,
         QUIET_WEEK_MIN_EVENTS,
         render_deterministic_bullets_v1,
@@ -504,7 +504,7 @@ def main() -> int:
     if args.remove_facts_block and args.rewrite_facts_block:
         raise SystemExit("Choose only one: --remove-facts-block OR --rewrite-facts-block")
 
-    from squadvault.recaps.select_weekly_recap_events_v1 import select_weekly_recap_events_v1
+    from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
     _db_session = DatabaseSession(args.db)
     conn = _db_session.__enter__()
     cols = _recap_artifacts_columns(conn)

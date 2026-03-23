@@ -136,24 +136,14 @@ def recap_generation_verdict(
 # =========================
 
 def ensure_verdict_table(conn: sqlite3.Connection, table: str) -> None:
-    """Create verdict table if it does not exist."""
-    conn.execute(
-        f"""
-        CREATE TABLE IF NOT EXISTS {table} (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            created_at TEXT NOT NULL,
-            league_id TEXT NOT NULL,
-            season INTEGER NOT NULL,
-            range_start TEXT NOT NULL,
-            range_end TEXT NOT NULL,
-            status TEXT NOT NULL,
-            reason TEXT,
-            inputs_hash TEXT NOT NULL,
-            payload_json TEXT NOT NULL
-        )
-        """
-    )
-    conn.commit()
+    """Verify verdict table exists.
+
+    The recap_verdicts table is defined in schema.sql.
+    Schema is the sole authority for table structure — no runtime
+    DDL permitted (Phase 2: Eliminate Runtime Schema Mutation).
+    """
+    # No-op: table creation is handled by schema.sql and migrations.
+    pass
 
 
 def persist_verdict(

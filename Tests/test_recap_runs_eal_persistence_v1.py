@@ -9,7 +9,11 @@ from squadvault.recaps.weekly_recap_lifecycle import _persist_editorial_attuneme
 
 
 class TestRecapRunsEALPersistenceV1(unittest.TestCase):
-    def test_adds_column_and_persists_value(self) -> None:
+    def test_persists_value_to_existing_column(self) -> None:
+        """EAL directive is persisted to recap_runs.editorial_attunement_v1.
+
+        The column is defined in schema.sql — no runtime ALTER TABLE.
+        """
         with tempfile.TemporaryDirectory() as td:
             db = Path(td) / "t.sqlite"
             con = sqlite3.connect(str(db))
@@ -20,15 +24,23 @@ class TestRecapRunsEALPersistenceV1(unittest.TestCase):
                       league_id TEXT NOT NULL,
                       season INTEGER NOT NULL,
                       week_index INTEGER NOT NULL,
+                      state TEXT NOT NULL,
                       selection_fingerprint TEXT NOT NULL,
+                      canonical_ids_json TEXT NOT NULL,
+                      counts_by_type_json TEXT NOT NULL,
                       window_start TEXT,
-                      window_end TEXT
+                      window_end TEXT,
+                      editorial_attunement_v1 TEXT
                     );
                     """
                 )
                 con.execute(
-                    "INSERT INTO recap_runs (league_id, season, week_index, selection_fingerprint, window_start, window_end) VALUES (?,?,?,?,?,?)",
-                    ("L1", 2024, 6, "fp", "ws", "we"),
+                    """INSERT INTO recap_runs
+                       (league_id, season, week_index, state,
+                        selection_fingerprint, canonical_ids_json, counts_by_type_json,
+                        window_start, window_end)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    ("L1", 2024, 6, "DRAFT", "fp", "[]", "{}", "ws", "we"),
                 )
                 con.commit()
             finally:
@@ -44,9 +56,6 @@ class TestRecapRunsEALPersistenceV1(unittest.TestCase):
 
             con = sqlite3.connect(str(db))
             try:
-                cols = {r[1] for r in con.execute("PRAGMA table_info(recap_runs)").fetchall()}
-                assert "editorial_attunement_v1" in cols
-
                 row = con.execute(
                     "SELECT editorial_attunement_v1 FROM recap_runs WHERE league_id=? AND season=? AND week_index=?",
                     ("L1", 2024, 6),
