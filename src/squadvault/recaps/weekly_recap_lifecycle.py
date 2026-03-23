@@ -27,6 +27,7 @@ from squadvault.core.recaps.recap_runs import (
 )
 from squadvault.core.recaps.recap_artifacts import latest_approved_version
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.ai.creative_layer_v1 import draft_narrative_v1
 
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
@@ -674,6 +675,54 @@ def generate_weekly_recap_draft(
         directive=editorial_attunement_v1,
     )
     # SV_EAL_V1_END
+
+    # SV_CREATIVE_LAYER_V1_BEGIN
+    # Attempt governed narrative prose draft constrained by EAL directive.
+    # Falls back silently to deterministic facts-only if EAL vetoes, key absent, or any error.
+    # Facts block is always preserved — narrative is additive only, never a replacement.
+    _creative_bullets: list[str] = []
+    with DatabaseSession(db_path) as _cl_con:
+        _cl_row = _cl_con.execute(
+            "SELECT canonical_ids_json FROM recap_runs"
+            " WHERE league_id=? AND season=? AND week_index=?",
+            (league_id, season, week_index),
+        ).fetchone()
+        if _cl_row and _cl_row[0]:
+            try:
+                _cl_ids = json.loads(_cl_row[0])
+                if isinstance(_cl_ids, list) and _cl_ids:
+                    _cl_events = _load_canonical_event_rows(db_path, _cl_ids)
+                    if _cl_events:
+                        _cl_pids, _cl_fids = _collect_ids_from_payloads(_cl_events)
+                        _cl_pres = PlayerResolver(db_path, league_id, season)
+                        _cl_fres = FranchiseResolver(db_path, league_id, season)
+                        if _cl_pids:
+                            _cl_pres.load_for_ids(_cl_pids)
+                        if _cl_fids:
+                            _cl_fres.load_for_ids(_cl_fids)
+                        _creative_bullets = render_deterministic_bullets_v1(
+                            _cl_events,
+                            team_resolver=_cl_fres.one,
+                            player_resolver=_cl_pres.one,
+                        )
+            except Exception:
+                _creative_bullets = []
+
+    _narrative_draft = draft_narrative_v1(
+        facts_bullets=_creative_bullets,
+        eal_directive=editorial_attunement_v1,
+        league_id=league_id,
+        season=season,
+        week_index=week_index,
+    )
+    if _narrative_draft:
+        rendered_text = (
+            rendered_text.rstrip()
+            + "\n\n--- Narrative Draft (AI-assisted, requires human approval) ---\n"
+            + _narrative_draft
+            + "\n"
+        )
+    # SV_CREATIVE_LAYER_V1_END
 
     prev_approved = latest_approved_version(db_path, league_id, season, week_index)
 
