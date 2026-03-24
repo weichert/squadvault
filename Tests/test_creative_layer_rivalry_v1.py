@@ -187,6 +187,10 @@ class TestLiveAPI:
         not os.environ.get("ANTHROPIC_API_KEY", "").strip(),
         reason="ANTHROPIC_API_KEY not set — skipping live API test",
     )
+    @pytest.mark.skipif(
+        not __import__("importlib").util.find_spec("anthropic"),
+        reason="anthropic package not installed — skipping live API test",
+    )
     def test_live_narrative_draft(self):
         """Call the real API and verify the response is reasonable prose."""
         result = draft_rivalry_narrative_v1(
