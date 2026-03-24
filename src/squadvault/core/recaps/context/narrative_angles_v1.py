@@ -306,8 +306,11 @@ def _detect_season_records(
             strength = 2
             headline = f"{wh_fid} set the season scoring high: {wh_score:.2f}"
 
-            # Check if it's also an all-time record
-            if (history and history.all_time_high
+            # Check if it's also an all-time record (multi-season only —
+            # with single-season data, season high IS the all-time high by
+            # definition, which is not meaningful).
+            if (history and history.is_multi_season
+                    and history.all_time_high
                     and wh_score >= history.all_time_high.score):
                 strength = 3
                 headline = f"{wh_fid} set an ALL-TIME scoring record: {wh_score:.2f}"
@@ -341,8 +344,16 @@ def _detect_rivalry_angles(
     history: Optional[LeagueHistoryContextV1],
     all_matchups: Optional[Sequence[HistoricalMatchup]],
 ) -> List[NarrativeAngle]:
-    """Detect notable rivalry angles when this week's opponents have history."""
+    """Detect notable rivalry angles when this week's opponents have history.
+
+    Suppressed when only a single season is ingested: with one season of
+    data, head-to-head records are too thin for meaningful rivalry claims.
+    """
     if not history or not all_matchups or not ctx.has_this_week_data:
+        return []
+
+    # Guard: single-season data produces thin h2h — suppress rivalry framing
+    if not history.is_multi_season:
         return []
 
     angles: List[NarrativeAngle] = []
@@ -395,8 +406,18 @@ def _detect_streak_records(
     ctx: SeasonContextV1,
     history: Optional[LeagueHistoryContextV1],
 ) -> List[NarrativeAngle]:
-    """Detect when a current streak matches or approaches the league record."""
+    """Detect when a current streak matches or approaches the league record.
+
+    Suppressed entirely when only a single season is ingested: with one
+    season of data, every sufficiently long streak IS the "record" by
+    definition, which is meaningless. Governance: creativity must never
+    compensate for missing context.
+    """
     if not history:
+        return []
+
+    # Guard: single-season data makes "league record" claims meaningless
+    if not history.is_multi_season:
         return []
 
     angles: List[NarrativeAngle] = []

@@ -623,11 +623,22 @@ def render_league_history_for_prompt(
 
     season_str = ", ".join(str(s) for s in ctx.seasons_available)
     lines.append(f"League history ({len(ctx.seasons_available)} season(s): {season_str}):")
-    lines.append(f"Total matchups all-time: {ctx.total_matchups_all_time}")
+    lines.append(f"Total matchups: {ctx.total_matchups_all_time}")
 
-    # All-time standings
+    # Data depth caveat — prominent warning for the LLM
+    if not ctx.is_multi_season:
+        lines.append("")
+        lines.append(
+            "** DATA DEPTH WARNING: Only one season of data is available. "
+            "All records below reflect THIS SEASON ONLY. Do NOT describe "
+            "these as 'all-time', 'league history', or 'league record' — "
+            "they are single-season observations. **"
+        )
+
+    # Standings
+    scope_label = "All-time" if ctx.is_multi_season else f"Season {ctx.seasons_available[0]}"
     lines.append("")
-    lines.append("All-time records:")
+    lines.append(f"{scope_label} records:")
     for rec in ctx.all_time_records:
         name = _name(rec.franchise_id)
         record = f"{rec.total_wins}-{rec.total_losses}"
@@ -639,26 +650,31 @@ def render_league_history_for_prompt(
     # Scoring records
     if ctx.all_time_high or ctx.all_time_low:
         lines.append("")
-        lines.append("All-time scoring records:")
+        scoring_label = "All-time scoring records:" if ctx.is_multi_season else "Season scoring records:"
+        lines.append(scoring_label)
         if ctx.all_time_high:
             name = _name(ctx.all_time_high.franchise_id)
+            score_label = "Highest score ever" if ctx.is_multi_season else "Season high"
             lines.append(
-                f"  Highest score ever: {name} — {ctx.all_time_high.score:.2f}"
+                f"  {score_label}: {name} — {ctx.all_time_high.score:.2f}"
                 f" (Season {ctx.all_time_high.season}, Week {ctx.all_time_high.week})"
             )
         if ctx.all_time_low:
             name = _name(ctx.all_time_low.franchise_id)
+            score_label = "Lowest score ever" if ctx.is_multi_season else "Season low"
             lines.append(
-                f"  Lowest score ever: {name} — {ctx.all_time_low.score:.2f}"
+                f"  {score_label}: {name} — {ctx.all_time_low.score:.2f}"
                 f" (Season {ctx.all_time_low.season}, Week {ctx.all_time_low.week})"
             )
         if ctx.all_time_avg_score is not None:
-            lines.append(f"  League all-time average: {ctx.all_time_avg_score:.2f}")
+            avg_label = "League all-time average" if ctx.is_multi_season else "Season average"
+            lines.append(f"  {avg_label}: {ctx.all_time_avg_score:.2f}")
 
     # Streak records
     if ctx.longest_win_streak or ctx.longest_loss_streak:
         lines.append("")
-        lines.append("Streak records:")
+        streak_label = "Streak records:" if ctx.is_multi_season else "Season streak records:"
+        lines.append(streak_label)
         if ctx.longest_win_streak:
             s = ctx.longest_win_streak
             name = _name(s.franchise_id)
