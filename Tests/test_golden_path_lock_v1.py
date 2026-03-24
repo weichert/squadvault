@@ -46,6 +46,9 @@ from squadvault.core.exports.approved_weekly_recap_export_v1 import (
     fetch_latest_approved_weekly_recap,
     write_approved_weekly_recap_export_bundle,
 )
+from squadvault.core.eal.editorial_attunement_v1 import (
+    EAL_MODERATE_CONFIDENCE_ONLY,
+)
 from squadvault.recaps.weekly_recap_lifecycle import (
     generate_weekly_recap_draft,
     approve_latest_weekly_recap,
@@ -193,6 +196,10 @@ class TestGoldenPathLock:
         con.close()
         assert eal_row is not None and eal_row[0] is not None, (
             "Step 8: EAL directive persisted as audit metadata"
+        )
+        assert eal_row[0] == EAL_MODERATE_CONFIDENCE_ONLY, (
+            f"Step 8: EAL directive should be MODERATE_CONFIDENCE_ONLY for "
+            f">=3 events, got {eal_row[0]!r}"
         )
 
         # ── Step 9-10: Approve (human gate) ─────────────────────────

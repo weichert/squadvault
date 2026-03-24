@@ -132,7 +132,7 @@ def main() -> int:
                     force=True,
                     created_by="batch_reprocess",
                 )
-                print(f"           regen OK: artifact_id={getattr(res, 'artifact_id', '?')}")
+                print(f"           regen OK: version={res.version} new={res.created_new}")
             except Exception as e:
                 print(f"           regen ERROR: {e}")
                 summary["errors"].append((w, str(e)))

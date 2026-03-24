@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# scripts/py — canonical python shim (v1)
+# scripts/py — canonical python shim (v2)
 # Goals:
 # - CWD-independent (safe under any working directory)
 # - Deterministic tool selection (prefer python3, fallback to python)
 # - Exec passthrough (propagate exit code)
+# - Sets PYTHONPATH so callers never need to
 repo_root="$(
   cd "$(dirname "$0")/.." >/dev/null 2>&1
   pwd
 )"
 cd "${repo_root}"
+export PYTHONPATH="${repo_root}/src${PYTHONPATH:+:${PYTHONPATH}}"
 
 if command -v python3 >/dev/null 2>&1; then
   exec python3 "$@"
