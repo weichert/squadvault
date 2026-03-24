@@ -319,3 +319,17 @@ CREATE TABLE IF NOT EXISTS recap_verdicts (
   inputs_hash TEXT NOT NULL,
   payload_json TEXT NOT NULL
 );
+
+-- =========================
+-- League tone profiles (governed voice presets)
+-- =========================
+
+CREATE TABLE IF NOT EXISTS league_tone_profiles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  league_id TEXT NOT NULL,
+  tone_preset TEXT NOT NULL CHECK (tone_preset IN ('TRASH_TALK', 'POINTED', 'BALANCED', 'FRIENDLY')),
+  set_by TEXT NOT NULL DEFAULT 'commissioner',
+  notes TEXT,
+  created_at TEXT NOT NULL,
+  UNIQUE (league_id)
+);

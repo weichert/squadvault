@@ -105,6 +105,22 @@ _EAL_TEMPERATURE = {
 }
 
 
+def _build_system_prompt(tone_preset: str = "") -> str:
+    """Build the system prompt with optional tone preset directive.
+
+    The tone preset modifies the voice but never overrides the hard rules.
+    If no preset is provided, the base system prompt is used as-is (POINTED voice).
+    """
+    if not tone_preset or tone_preset == "POINTED":
+        # POINTED is the default voice baked into the base system prompt
+        return _SYSTEM_PROMPT
+
+    from squadvault.core.tone.tone_profile_v1 import get_voice_directive
+    directive = get_voice_directive(tone_preset)
+    # Inject the tone directive between the voice rules and hard rules
+    return _SYSTEM_PROMPT.rstrip() + "\n\n" + directive + "\n"
+
+
 def _build_user_prompt(
     *,
     facts_bullets: list[str],
@@ -116,6 +132,7 @@ def _build_user_prompt(
     league_history: str = "",
     narrative_angles: str = "",
     writer_room_context: str = "",
+    tone_preset: str = "",
 ) -> str:
     """Build the user-turn prompt with full context feed.
 
@@ -189,6 +206,7 @@ def draft_narrative_v1(
     league_history: str = "",
     narrative_angles: str = "",
     writer_room_context: str = "",
+    tone_preset: str = "",
 ) -> Optional[str]:
     """Attempt to produce a governed prose narrative draft.
 
@@ -252,6 +270,7 @@ def draft_narrative_v1(
         league_history=league_history,
         narrative_angles=narrative_angles,
         writer_room_context=writer_room_context,
+        tone_preset=tone_preset,
     )
 
     # EAL-modulated temperature
@@ -261,11 +280,12 @@ def draft_narrative_v1(
         import anthropic  # local import: optional dependency
 
         client = anthropic.Anthropic(api_key=api_key)
+        system_prompt = _build_system_prompt(tone_preset)
         message = client.messages.create(
             model=_MODEL,
             max_tokens=_MAX_TOKENS,
             temperature=temperature,
-            system=_SYSTEM_PROMPT,
+            system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
             tools=[{"type": "web_search_20250305", "name": "web_search"}],
         )

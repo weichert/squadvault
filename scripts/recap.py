@@ -30,6 +30,12 @@ import subprocess
 from collections import Counter
 from typing import Any, Optional
 
+from squadvault.core.tone.tone_profile_v1 import (
+    get_tone_preset,
+    set_tone_preset,
+    VALID_PRESETS,
+    DEFAULT_PRESET,
+)
 from squadvault.recaps.weekly_recap_lifecycle import (
     approve_latest_weekly_recap,
     generate_weekly_recap_draft,
@@ -283,6 +289,33 @@ def cmd_editorial_log(args: argparse.Namespace) -> int:
             "--limit", str(args.limit),
         ],
     )
+
+
+def cmd_set_tone(args: argparse.Namespace) -> int:
+    try:
+        result = set_tone_preset(
+            db_path=args.db,
+            league_id=args.league_id,
+            preset=args.preset,
+            set_by=args.set_by,
+            notes=args.notes,
+        )
+        _print_json({"league_id": args.league_id, "tone_preset": result, "status": "set"})
+        return 0
+    except ValueError as e:
+        _print_json({"error": str(e)})
+        return 1
+
+
+def cmd_get_tone(args: argparse.Namespace) -> int:
+    preset = get_tone_preset(db_path=args.db, league_id=args.league_id)
+    is_default = preset == DEFAULT_PRESET
+    _print_json({
+        "league_id": args.league_id,
+        "tone_preset": preset,
+        "is_default": is_default,
+    })
+    return 0
 
 
 def cmd_list_weeks(args: argparse.Namespace) -> int:
@@ -951,6 +984,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional output path for selection_set_v1.json (Writing Room).",
     )
     sp.set_defaults(fn=cmd_check)
+
+    # set-tone
+    sp = sub.add_parser("set-tone", help="Set the tone preset for a league (commissioner)")
+    sp.add_argument("--db", required=True)
+    sp.add_argument("--league-id", dest="league_id", required=True)
+    sp.add_argument("preset", choices=sorted(VALID_PRESETS),
+                    help="Voice preset: TRASH_TALK, POINTED, BALANCED, FRIENDLY")
+    sp.add_argument("--set-by", dest="set_by", default="commissioner")
+    sp.add_argument("--notes", default=None, help="Optional note about the change")
+    sp.set_defaults(fn=cmd_set_tone)
+
+    # get-tone
+    sp = sub.add_parser("get-tone", help="Show the current tone preset for a league")
+    sp.add_argument("--db", required=True)
+    sp.add_argument("--league-id", dest="league_id", required=True)
+    sp.set_defaults(fn=cmd_get_tone)
 
     # list-weeks
     sp = sub.add_parser("list-weeks", help="List all weeks and their recap/artifact status for a season")

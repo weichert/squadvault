@@ -28,6 +28,7 @@ from squadvault.core.recaps.recap_runs import (
 from squadvault.core.recaps.recap_artifacts import latest_approved_version
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.ai.creative_layer_v1 import draft_narrative_v1
+from squadvault.core.tone.tone_profile_v1 import get_tone_preset
 from squadvault.core.recaps.context.season_context_v1 import (
     derive_season_context_v1,
     render_season_context_for_prompt,
@@ -825,6 +826,12 @@ def generate_weekly_recap_draft(
     except Exception:
         pass
 
+    # Read governed tone preset (commissioner-configured, defaults to POINTED)
+    try:
+        _cl_tone_preset = get_tone_preset(db_path, league_id)
+    except Exception:
+        _cl_tone_preset = ""
+
     _narrative_draft = draft_narrative_v1(
         facts_bullets=_creative_bullets,
         eal_directive=editorial_attunement_v1,
@@ -835,6 +842,7 @@ def generate_weekly_recap_draft(
         league_history=_league_history_text,
         narrative_angles=_narrative_angles_text,
         writer_room_context=_writer_room_text,
+        tone_preset=_cl_tone_preset,
     )
     if _narrative_draft:
         rendered_text = (
