@@ -49,7 +49,7 @@ def events_for_franchise(
     limit: int = 10000,
 ) -> List[Dict[str, Any]]:
     """Fetch all events involving a specific franchise."""
-    events = fetch_all_events(store, league_id=league_id, season=season, limit=limit)
+    events = fetch_all_events(store, league_id=league_id, season=season, limit=limit, use_canonical=False)
 
     if narrative_only:
         events = filter_events_for_narrative(events)

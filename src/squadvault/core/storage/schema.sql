@@ -249,7 +249,11 @@ CREATE INDEX IF NOT EXISTS ix_recap_sel_lookup
 ON recap_selections (league_id, season, week_index);
 
 -- =========================
--- Legacy recaps table
+-- SV_DEFECT4_LEGACY_RECAPS_DEPRECATED
+-- DEPRECATED: Legacy recaps table. Retained for backward compatibility only.
+-- The canonical lifecycle uses recap_artifacts + recap_runs.
+-- No golden-path code should read from or write to this table.
+-- Scheduled for removal after observation window confirms no dependency.
 -- =========================
 
 CREATE TABLE IF NOT EXISTS recaps (

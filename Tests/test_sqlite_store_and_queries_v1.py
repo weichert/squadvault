@@ -115,32 +115,32 @@ class TestEventQueries:
 
     def test_fetch_all(self):
         """fetch_all_events returns all events."""
-        result = fetch_all_events(self.store, league_id=LEAGUE, season=SEASON)
+        result = fetch_all_events(self.store, league_id=LEAGUE, season=SEASON, use_canonical=False)
         assert len(result) == 5
 
     def test_fetch_by_type(self):
         """fetch_by_event_type filters exactly."""
-        result = fetch_by_event_type(self.store, league_id=LEAGUE, season=SEASON, event_type="DRAFT_PICK")
+        result = fetch_by_event_type(self.store, league_id=LEAGUE, season=SEASON, event_type="DRAFT_PICK", use_canonical=False)
         assert len(result) == 2
         assert all(e["event_type"] == "DRAFT_PICK" for e in result)
 
     def test_fetch_by_prefix(self):
         """fetch_by_event_type_prefix filters by prefix."""
-        result = fetch_by_event_type_prefix(self.store, league_id=LEAGUE, season=SEASON, prefix="TRANSACTION_")
+        result = fetch_by_event_type_prefix(self.store, league_id=LEAGUE, season=SEASON, prefix="TRANSACTION_", use_canonical=False)
         assert len(result) == 2  # TRADE + FREE_AGENT
 
     def test_draft_picks(self):
-        assert len(draft_picks(self.store, league_id=LEAGUE, season=SEASON)) == 2
+        assert len(draft_picks(self.store, league_id=LEAGUE, season=SEASON, use_canonical=False)) == 2
 
     def test_waiver_awards(self):
-        assert len(waiver_awards(self.store, league_id=LEAGUE, season=SEASON)) == 1
+        assert len(waiver_awards(self.store, league_id=LEAGUE, season=SEASON, use_canonical=False)) == 1
 
     def test_trades(self):
-        assert len(trades(self.store, league_id=LEAGUE, season=SEASON)) == 1
+        assert len(trades(self.store, league_id=LEAGUE, season=SEASON, use_canonical=False)) == 1
 
     def test_free_agent_transactions(self):
-        assert len(free_agent_transactions(self.store, league_id=LEAGUE, season=SEASON)) == 1
+        assert len(free_agent_transactions(self.store, league_id=LEAGUE, season=SEASON, use_canonical=False)) == 1
 
     def test_empty_league(self):
         """Querying a non-existent league returns empty."""
-        assert fetch_all_events(self.store, league_id="NOBODY", season=SEASON) == []
+        assert fetch_all_events(self.store, league_id="NOBODY", season=SEASON, use_canonical=False) == []
