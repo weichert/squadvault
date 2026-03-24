@@ -166,6 +166,10 @@ def _render_deterministic_bullets_from_facts_v1(
 
         team_name = lookup.franchise(franchise_id)
 
+        # Silence over fabrication: skip events with no resolvable identity.
+        if not franchise_id and not norm:
+            continue
+
         # Prefer normalized ids (deterministic) for add/drop
         add_ids = _as_list(norm.get("add_player_ids"))
         drop_ids = _as_list(norm.get("drop_player_ids"))

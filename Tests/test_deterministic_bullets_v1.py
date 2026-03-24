@@ -68,10 +68,11 @@ class TestTradeBullet:
         assert len(bullets) == 1
         assert "TeamB acquired Joe Burrow from TeamA." == bullets[0]
 
-    def test_trade_missing_fields_uses_fallbacks(self):
+    def test_trade_missing_fields_produces_silence(self):
+        # Empty payload means no participants identifiable — silence preferred.
         row = _row(event_type="TRADE", payload={})
         bullets = render_deterministic_bullets_v1([row])
-        assert "Unknown team acquired Unknown player from Unknown team." == bullets[0]
+        assert bullets == [], "Empty payload should produce silence"
 
 
 # ── Event type: WAIVER_BID_AWARDED ───────────────────────────────────
@@ -191,8 +192,14 @@ class TestSkipRules:
         row = _row(event_type="TRANSACTION_SOME_NOISE", payload={})
         assert render_deterministic_bullets_v1([row]) == []
 
-    def test_unknown_non_transaction_type_gets_generic_bullet(self):
+    def test_unknown_non_transaction_type_empty_payload_silent(self):
+        # Empty payload — silence preferred even for unknown event types.
         row = _row(event_type="LEAGUE_EXPANSION", payload={})
+        assert render_deterministic_bullets_v1([row]) == []
+
+    def test_unknown_non_transaction_type_with_payload_gets_generic_bullet(self):
+        # Non-empty payload — generic bullet still produced.
+        row = _row(event_type="LEAGUE_EXPANSION", payload={"detail": "added team"})
         bullets = render_deterministic_bullets_v1([row])
         assert bullets == ["League Expansion recorded."]
 
@@ -358,7 +365,26 @@ class TestMaxBullets:
 # ── None payload ─────────────────────────────────────────────────────
 
 class TestNonePayload:
-    def test_none_payload_matchup(self):
+    def test_none_payload_produces_silence(self):
+        # None payload becomes empty dict, which produces silence.
         row = _row(event_type="MATCHUP_RESULT", payload=None)
         bullets = render_deterministic_bullets_v1([row])
-        assert bullets == ["Unknown team beat Unknown team."]
+        assert bullets == [], "Empty payload should produce silence, not a fabricated bullet"
+
+    def test_empty_dict_payload_produces_silence(self):
+        # Explicit empty dict payload produces silence.
+        row = _row(event_type="TRANSACTION_FREE_AGENT", payload={})
+        bullets = render_deterministic_bullets_v1([row])
+        assert bullets == [], "Empty payload should produce silence, not '? added <?>'"
+
+    def test_empty_payload_skipped_among_valid_events(self):
+        # Empty payload events are skipped; valid events still render.
+        rows = [
+            _row(canonical_id="empty", event_type="TRANSACTION_FREE_AGENT", payload={}),
+            _row(canonical_id="valid", event_type="TRANSACTION_FREE_AGENT", payload={
+                "franchise_id": "F01", "player_id": "P100",
+            }),
+        ]
+        bullets = render_deterministic_bullets_v1(rows)
+        assert len(bullets) == 1
+        assert "F01 added P100 (free agent)." == bullets[0]

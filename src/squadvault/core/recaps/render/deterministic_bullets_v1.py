@@ -91,6 +91,12 @@ def render_deterministic_bullets_v1(
         if et in _SKIP_EVENT_TYPES:
             continue
 
+        # Silence over fabrication: skip events with empty payloads.
+        # An empty payload means we cannot identify participants — producing
+        # a bullet would yield "? added <?>" which erodes trust.
+        if not p:
+            continue
+
         if et in ("TRANSACTION_TRADE", "TRADE"):
             from_team = _team(team_resolver, p.get("from_franchise_id") or p.get("from_team_id"))
             to_team = _team(team_resolver, p.get("to_franchise_id") or p.get("to_team_id"))
