@@ -1,0 +1,416 @@
+"""Tests for League History Context v1 — cross-season longitudinal derivation.
+
+Uses multi-season synthetic matchup data to verify all-time records,
+head-to-head, streaks spanning seasons, scoring records, and best/worst seasons.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sqlite3
+
+import pytest
+
+from squadvault.core.recaps.context.league_history_v1 import (
+    AllTimeRecord,
+    HeadToHeadRecord,
+    HistoricalMatchup,
+    LeagueHistoryContextV1,
+    StreakRecord,
+    _compute_all_time_records,
+    _compute_longest_streaks,
+    _compute_scoring_records,
+    _compute_season_records,
+    build_cross_season_name_resolver,
+    compute_head_to_head,
+    derive_league_history_v1,
+    render_league_history_for_prompt,
+    resolve_franchise_name_any_season,
+)
+
+SCHEMA_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"
+)
+
+LEAGUE = "test_league"
+
+
+def _fresh_db(tmp_path, name="test.sqlite"):
+    db_path = str(tmp_path / name)
+    schema_sql = open(SCHEMA_PATH, encoding="utf-8").read()
+    con = sqlite3.connect(db_path)
+    con.executescript(schema_sql)
+    con.close()
+    return db_path
+
+
+def _insert_matchup(
+    con, *, league_id, season, week, winner_id, loser_id,
+    winner_score, loser_score, is_tie=False,
+):
+    occurred_at = f"{season}-10-{week:02d}T12:00:00Z"
+    payload = {
+        "week": week,
+        "winner_franchise_id": winner_id,
+        "loser_franchise_id": loser_id,
+        "winner_score": f"{winner_score:.2f}",
+        "loser_score": f"{loser_score:.2f}",
+        "is_tie": is_tie,
+    }
+    payload_json = json.dumps(payload, sort_keys=True)
+    ext_id = f"m_{league_id}_{season}_{week}_{winner_id}_{loser_id}"
+
+    con.execute(
+        """INSERT INTO memory_events
+           (league_id, season, external_source, external_id, event_type,
+            occurred_at, ingested_at, payload_json)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (league_id, season, "test", ext_id, "WEEKLY_MATCHUP_RESULT",
+         occurred_at, occurred_at, payload_json),
+    )
+    me_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+    con.execute(
+        """INSERT INTO canonical_events
+           (league_id, season, event_type, action_fingerprint,
+            best_memory_event_id, best_score, updated_at, occurred_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (league_id, season, "WEEKLY_MATCHUP_RESULT",
+         f"fp_{ext_id}", me_id, 100, occurred_at, occurred_at),
+    )
+
+
+def _seed_multi_season(con, league_id=LEAGUE):
+    """Seed 2 seasons of data for 4 teams.
+
+    Season 2023 (3 weeks):
+      W1: A beats B 120-100, C beats D 95-90
+      W2: A beats C 110-105, B beats D 115-80
+      W3: A beats D 130-70,  C beats B 100-98
+
+    Season 2024 (3 weeks):
+      W1: B beats A 105-100, C beats D 92-88
+      W2: A beats B 140-90,  D beats C 110-105
+      W3: A beats C 125-120, B beats D 108-95
+
+    After all:
+      A: 2023=3-0, 2024=2-1 → all-time 5-1
+      B: 2023=1-2, 2024=2-1 → all-time 3-3
+      C: 2023=2-1, 2024=1-2 → all-time 3-3
+      D: 2023=0-3, 2024=1-2 → all-time 1-5
+    """
+    games = [
+        # (season, week, winner, loser, w_score, l_score)
+        (2023, 1, "A", "B", 120.0, 100.0),
+        (2023, 1, "C", "D", 95.0, 90.0),
+        (2023, 2, "A", "C", 110.0, 105.0),
+        (2023, 2, "B", "D", 115.0, 80.0),
+        (2023, 3, "A", "D", 130.0, 70.0),
+        (2023, 3, "C", "B", 100.0, 98.0),
+        (2024, 1, "B", "A", 105.0, 100.0),
+        (2024, 1, "C", "D", 92.0, 88.0),
+        (2024, 2, "A", "B", 140.0, 90.0),
+        (2024, 2, "D", "C", 110.0, 105.0),
+        (2024, 3, "A", "C", 125.0, 120.0),
+        (2024, 3, "B", "D", 108.0, 95.0),
+    ]
+    for s, w, winner, loser, ws, ls in games:
+        _insert_matchup(
+            con, league_id=league_id, season=s, week=w,
+            winner_id=winner, loser_id=loser,
+            winner_score=ws, loser_score=ls,
+        )
+    con.commit()
+
+
+def _seed_franchise_names(con, league_id=LEAGUE):
+    """Seed franchise names across seasons (name changes between seasons)."""
+    names = [
+        (league_id, 2023, "A", "Alpha Squad"),
+        (league_id, 2023, "B", "Beta Bombers"),
+        (league_id, 2023, "C", "Charlie's Angels"),
+        (league_id, 2023, "D", "Delta Dogs"),
+        (league_id, 2024, "A", "Gopher Boys"),      # renamed
+        (league_id, 2024, "B", "Hoosier Daddy"),     # renamed
+        (league_id, 2024, "C", "Charlie's Angels"),   # kept name
+        (league_id, 2024, "D", "Delta Dynasty"),      # renamed
+    ]
+    for lid, season, fid, name in names:
+        con.execute(
+            "INSERT OR REPLACE INTO franchise_directory (league_id, season, franchise_id, name) VALUES (?,?,?,?)",
+            (lid, season, fid, name),
+        )
+    con.commit()
+
+
+# ── Unit: all-time records ───────────────────────────────────────────
+
+
+class TestAllTimeRecords:
+    def _matchups(self):
+        return [
+            HistoricalMatchup(2023, 1, "A", "B", 120, 100, False, 20),
+            HistoricalMatchup(2023, 2, "A", "C", 110, 105, False, 5),
+            HistoricalMatchup(2024, 1, "B", "A", 105, 100, False, 5),
+            HistoricalMatchup(2024, 2, "A", "B", 140, 90, False, 50),
+        ]
+
+    def test_cross_season_accumulation(self):
+        records = _compute_all_time_records(self._matchups())
+        assert records["A"].total_wins == 3
+        assert records["A"].total_losses == 1
+        assert records["A"].seasons_active == (2023, 2024)
+        assert records["B"].total_wins == 1
+        assert records["B"].total_losses == 2
+
+    def test_points_accumulate(self):
+        records = _compute_all_time_records(self._matchups())
+        # A: scored 120+110+100+140=470
+        assert records["A"].total_points_for == 470.0
+
+
+# ── Unit: head-to-head ───────────────────────────────────────────────
+
+
+class TestHeadToHead:
+    def _matchups(self):
+        return [
+            HistoricalMatchup(2023, 1, "A", "B", 120, 100, False, 20),
+            HistoricalMatchup(2023, 2, "A", "C", 110, 105, False, 5),
+            HistoricalMatchup(2024, 1, "B", "A", 105, 100, False, 5),
+            HistoricalMatchup(2024, 2, "A", "B", 140, 90, False, 50),
+        ]
+
+    def test_a_vs_b(self):
+        h2h = compute_head_to_head(self._matchups(), "A", "B")
+        assert h2h.a_wins == 2  # A beat B twice
+        assert h2h.b_wins == 1  # B beat A once
+        assert h2h.total_meetings == 3
+
+    def test_chronological_order(self):
+        h2h = compute_head_to_head(self._matchups(), "A", "B")
+        assert len(h2h.meetings) == 3
+        assert h2h.meetings[0].season == 2023  # first meeting
+        assert h2h.meetings[2].season == 2024  # last meeting
+
+    def test_no_meetings(self):
+        h2h = compute_head_to_head(self._matchups(), "B", "C")
+        assert h2h.total_meetings == 0
+
+    def test_symmetry(self):
+        """A vs B and B vs A should report same data."""
+        h2h_ab = compute_head_to_head(self._matchups(), "A", "B")
+        h2h_ba = compute_head_to_head(self._matchups(), "B", "A")
+        assert h2h_ab.a_wins == h2h_ba.b_wins
+        assert h2h_ab.b_wins == h2h_ba.a_wins
+        assert h2h_ab.total_meetings == h2h_ba.total_meetings
+
+
+# ── Unit: cross-season streaks ───────────────────────────────────────
+
+
+class TestCrossSeasonStreaks:
+    def test_streak_spans_seasons(self):
+        """A wins last 2 of 2023, first 1 of 2024 → 3-game win streak."""
+        matchups = [
+            HistoricalMatchup(2023, 2, "A", "C", 110, 105, False, 5),
+            HistoricalMatchup(2023, 3, "A", "D", 130, 70, False, 60),
+            HistoricalMatchup(2024, 1, "A", "B", 105, 100, False, 5),
+            HistoricalMatchup(2024, 2, "B", "A", 110, 100, False, 10),
+        ]
+        win, loss = _compute_longest_streaks(matchups)
+        assert win is not None
+        assert win.franchise_id == "A"
+        assert win.length == 3
+        assert win.start_season == 2023
+        assert win.end_season == 2024
+
+    def test_tie_ends_streak(self):
+        matchups = [
+            HistoricalMatchup(2023, 1, "A", "B", 100, 90, False, 10),
+            HistoricalMatchup(2023, 2, "A", "B", 95, 95, True, 0),
+            HistoricalMatchup(2023, 3, "A", "C", 110, 100, False, 10),
+        ]
+        win, _ = _compute_longest_streaks(matchups)
+        # Streak is 1 (after tie), not 2 (tie breaks the first streak)
+        assert win is not None
+        assert win.length == 1
+
+    def test_loss_streak(self):
+        matchups = [
+            HistoricalMatchup(2023, 1, "A", "D", 100, 90, False, 10),
+            HistoricalMatchup(2023, 2, "A", "D", 110, 80, False, 30),
+            HistoricalMatchup(2023, 3, "A", "D", 120, 70, False, 50),
+        ]
+        _, loss = _compute_longest_streaks(matchups)
+        assert loss is not None
+        assert loss.franchise_id == "D"
+        assert loss.length == 3
+
+
+# ── Unit: scoring records ────────────────────────────────────────────
+
+
+class TestScoringRecords:
+    def test_all_time_high_across_seasons(self):
+        matchups = [
+            HistoricalMatchup(2023, 1, "A", "B", 120, 100, False, 20),
+            HistoricalMatchup(2024, 2, "A", "B", 155, 90, False, 65),
+        ]
+        high, low, avg = _compute_scoring_records(matchups)
+        assert high.score == 155.0
+        assert high.season == 2024
+        assert low.score == 90.0
+        assert avg is not None
+
+
+# ── Unit: best/worst seasons ─────────────────────────────────────────
+
+
+class TestSeasonRecords:
+    def test_best_worst(self):
+        matchups = [
+            HistoricalMatchup(2023, 1, "A", "B", 120, 100, False, 20),
+            HistoricalMatchup(2023, 2, "A", "C", 110, 105, False, 5),
+            HistoricalMatchup(2023, 3, "A", "D", 130, 70, False, 60),
+            HistoricalMatchup(2024, 1, "B", "A", 105, 100, False, 5),
+            HistoricalMatchup(2024, 2, "B", "A", 110, 100, False, 10),
+        ]
+        best, worst = _compute_season_records(matchups)
+        assert best.franchise_id == "A"
+        assert best.season == 2023
+        assert best.wins == 3
+        assert best.losses == 0
+        assert worst.losses >= 2
+
+
+# ── Integration: full derivation ─────────────────────────────────────
+
+
+class TestDeriveLeagueHistory:
+    def test_multi_season(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_multi_season(con)
+        con.close()
+
+        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+
+        assert ctx.has_history
+        assert ctx.is_multi_season
+        assert ctx.seasons_available == (2023, 2024)
+        assert ctx.total_matchups_all_time == 12
+
+        # A is all-time leader: 5-1
+        assert ctx.all_time_records[0].franchise_id == "A"
+        assert ctx.all_time_records[0].total_wins == 5
+        assert ctx.all_time_records[0].total_losses == 1
+
+        # All-time high: A scored 140 in 2024 W2
+        assert ctx.all_time_high is not None
+        assert ctx.all_time_high.score == 140.0
+        assert ctx.all_time_high.franchise_id == "A"
+
+        # All-time low: D scored 70 in 2023 W3
+        assert ctx.all_time_low is not None
+        assert ctx.all_time_low.score == 70.0
+        assert ctx.all_time_low.franchise_id == "D"
+
+    def test_single_season(self, tmp_path):
+        """With only one season, still produces valid context."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _insert_matchup(con, league_id=LEAGUE, season=2024, week=1,
+                        winner_id="A", loser_id="B", winner_score=100, loser_score=90)
+        con.commit()
+        con.close()
+
+        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        assert ctx.has_history
+        assert not ctx.is_multi_season
+        assert ctx.seasons_available == (2024,)
+
+    def test_no_data(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        assert not ctx.has_history
+        assert ctx.all_time_records == ()
+
+    def test_deterministic(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_multi_season(con)
+        con.close()
+
+        ctx1 = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        ctx2 = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        assert ctx1 == ctx2
+
+
+# ── Integration: franchise name resolution ───────────────────────────
+
+
+class TestCrossSeasonNames:
+    def test_most_recent_name_wins(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_franchise_names(con)
+        con.close()
+
+        name = resolve_franchise_name_any_season(db_path, LEAGUE, "A")
+        assert name == "Gopher Boys"  # 2024 name, not 2023 "Alpha Squad"
+
+    def test_unchanged_name(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_franchise_names(con)
+        con.close()
+
+        name = resolve_franchise_name_any_season(db_path, LEAGUE, "C")
+        assert name == "Charlie's Angels"  # same in both seasons
+
+    def test_unknown_franchise(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        name = resolve_franchise_name_any_season(db_path, LEAGUE, "ZZZZZ")
+        assert name == "ZZZZZ"  # fallback to raw ID
+
+    def test_build_name_map(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_franchise_names(con)
+        con.close()
+
+        name_map = build_cross_season_name_resolver(db_path, LEAGUE)
+        assert name_map["A"] == "Gopher Boys"
+        assert name_map["B"] == "Hoosier Daddy"
+        assert name_map["D"] == "Delta Dynasty"
+
+
+# ── Integration: prompt rendering ────────────────────────────────────
+
+
+class TestHistoryPromptRendering:
+    def test_renders_multi_season(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_multi_season(con)
+        _seed_franchise_names(con)
+        con.close()
+
+        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        name_map = build_cross_season_name_resolver(db_path, LEAGUE)
+        text = render_league_history_for_prompt(ctx, name_map=name_map)
+
+        assert "2 season(s)" in text
+        assert "Gopher Boys" in text
+        assert "All-time records:" in text
+        assert "5-1" in text  # A's all-time record
+        assert "Highest score ever:" in text
+        assert "140.00" in text
+        assert "Lowest score ever:" in text
+        assert "70.00" in text
+
+    def test_empty_renders_cleanly(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        text = render_league_history_for_prompt(ctx)
+        assert "No league history" in text

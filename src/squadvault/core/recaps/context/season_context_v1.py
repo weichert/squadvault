@@ -55,10 +55,12 @@ class TeamRecord:
 
     @property
     def games_played(self) -> int:
+        """Total games played."""
         return self.wins + self.losses + self.ties
 
     @property
     def win_pct(self) -> float:
+        """Winning percentage (0.0 to 1.0)."""
         if self.games_played == 0:
             return 0.0
         return self.wins / self.games_played
@@ -120,10 +122,12 @@ class SeasonContextV1:
 
     @property
     def has_matchup_data(self) -> bool:
+        """True if any matchup data exists through this week."""
         return self.total_matchups_through_week > 0
 
     @property
     def has_this_week_data(self) -> bool:
+        """True if matchup data exists for this specific week."""
         return self.matchups_this_week > 0
 
 
@@ -283,6 +287,7 @@ def _compute_records(
 
     # Compute streaks from game logs
     def _streak(log: List[str]) -> int:
+        """Compute current streak from game log. Positive=wins, negative=losses."""
         if not log:
             return 0
         last = log[-1]
@@ -484,6 +489,7 @@ def render_season_context_for_prompt(
         return "(No matchup data available for this season/week.)\n"
 
     def _name(fid: str) -> str:
+        """Resolve franchise ID to display name."""
         if team_resolver is not None:
             try:
                 n = team_resolver(fid)
@@ -494,6 +500,7 @@ def render_season_context_for_prompt(
         return fid
 
     def _streak_str(s: int) -> str:
+        """Format streak as W3, L2, or - for no streak."""
         if s > 0:
             return f"W{s}"
         elif s < 0:
