@@ -255,6 +255,17 @@ def action_fingerprint(row: MemoryEventRow, payload: dict[str, Any]) -> str:
         return f"{et}:{row.league_id}:{row.season}:{occurred_at}:{franchise_id}:PAYLOAD:{sha1_text(row.payload_json)}"
 
     # -------------------------
+    # WEEKLY_MATCHUP_RESULT
+    # -------------------------
+    if et == "WEEKLY_MATCHUP_RESULT":
+        week = norm(payload.get("week"))
+        # Use sorted franchise IDs for stable fingerprint regardless of winner/loser ordering
+        winner_id = norm(payload.get("winner_franchise_id"))
+        loser_id = norm(payload.get("loser_franchise_id"))
+        sorted_ids = sorted([winner_id, loser_id])
+        return f"{et}:{row.league_id}:{row.season}:W{week}:{sorted_ids[0]}:{sorted_ids[1]}"
+
+    # -------------------------
     # Default safe rollout
     # -------------------------
     return f"{et}:{row.league_id}:{row.season}:MEMORY_EVENT_ID:{row.id}"

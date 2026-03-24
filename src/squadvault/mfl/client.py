@@ -115,6 +115,27 @@ class MflClient:
         resp.raise_for_status()
         return resp.json(), url
 
+    def get_weekly_results(self, year: int, week: int) -> tuple[Dict[str, Any], str]:
+        """
+        Fetch weeklyResults export for a given year and week.
+
+        Returns franchise-level matchup scores for head-to-head matchups.
+        v1 behavior: same auth pattern as get_transactions.
+        """
+        url = self.export_url(year, "weeklyResults") + f"&W={week}"
+        resp = http_request_with_retries(self.session, "GET", url)
+
+        if resp.status_code != 200 and self.username and self.password:
+            logger.info(
+                "MFL unauthenticated request failed (%s); attempting login then retry.",
+                resp.status_code,
+            )
+            self._login(year)
+            resp = http_request_with_retries(self.session, "GET", url)
+
+        resp.raise_for_status()
+        return resp.json(), url
+
     def _login(self, year: int) -> None:
         """
         Best-effort login for leagues requiring authentication.

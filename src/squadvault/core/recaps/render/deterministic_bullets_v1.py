@@ -127,7 +127,11 @@ def render_deterministic_bullets_v1(
             w = _safe(p.get("winner_score"), "")
             l = _safe(p.get("loser_score"), "")
             score_txt = f" {w}-{l}" if (w and l) else ""
-            bullets.append(_ascii_punct(f"{winner} beat {loser}{score_txt}."))
+            is_tie = p.get("is_tie", False)
+            if is_tie:
+                bullets.append(_ascii_punct(f"{winner} tied {loser}{score_txt}."))
+            else:
+                bullets.append(_ascii_punct(f"{winner} beat {loser}{score_txt}."))
 
         else:
             # Conservative MVP: don't emit low-signal transaction noise.
