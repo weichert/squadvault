@@ -494,6 +494,26 @@ def _collect_ids_from_payloads(
                     if s:
                         player_ids.add(s)
 
+        # Extract IDs from embedded MFL trade JSON (franchise + player IDs)
+        raw_mfl = p.get("raw_mfl_json")
+        if raw_mfl and isinstance(raw_mfl, str):
+            try:
+                mfl = json.loads(raw_mfl)
+                if isinstance(mfl, dict):
+                    for fkey in ("franchise", "franchise2"):
+                        fv = mfl.get(fkey)
+                        if fv:
+                            franchise_ids.add(str(fv).strip())
+                    for pkey in ("franchise1_gave_up", "franchise2_gave_up"):
+                        pv = mfl.get(pkey, "")
+                        if pv:
+                            for pid in str(pv).split(","):
+                                s = pid.strip()
+                                if s:
+                                    player_ids.add(s)
+            except (ValueError, TypeError):
+                pass
+
     player_ids.discard("")
     franchise_ids.discard("")
     return player_ids, franchise_ids

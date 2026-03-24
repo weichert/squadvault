@@ -17,6 +17,7 @@ from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.canonicalize.run_canonicalize import canonicalize
 from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
 from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
+from squadvault.core.recaps.render.deterministic_bullets_v1 import CanonicalEventRow
 from squadvault.recaps.weekly_recap_lifecycle import (
     _render_text_from_recap_runs,
     _load_canonical_event_rows,
@@ -243,3 +244,23 @@ class TestNameResolutionHelpers:
         assert len(franchise_ids) > 0
         assert "P100" in player_ids
         assert "F01" in franchise_ids
+
+
+    def test_collect_ids_extracts_mfl_trade_json(self, nr_db):
+        # MFL trades embed franchise + player IDs in raw_mfl_json
+        row = CanonicalEventRow(
+            canonical_id="trade_test",
+            occurred_at="2024-09-12T00:00:00Z",
+            event_type="TRANSACTION_TRADE",
+            payload={
+                "franchise_id": "0004",
+                "raw_mfl_json": '{"franchise":"0004","franchise2":"0010",'
+                               '"franchise1_gave_up":"15754,","franchise2_gave_up":"16214,",'
+                               '"timestamp":"1726111841","type":"TRADE"}',
+            },
+        )
+        player_ids, franchise_ids = _collect_ids_from_payloads([row])
+        assert "15754" in player_ids, "Player ID from franchise1_gave_up"
+        assert "16214" in player_ids, "Player ID from franchise2_gave_up"
+        assert "0004" in franchise_ids, "Franchise from raw_mfl_json"
+        assert "0010" in franchise_ids, "Franchise2 from raw_mfl_json"
