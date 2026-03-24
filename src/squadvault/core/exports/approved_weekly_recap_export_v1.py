@@ -265,7 +265,8 @@ def write_approved_weekly_recap_export_bundle(
     }
 
     if not deterministic:
-        meta["exported_at"] = __import__("datetime").datetime.utcnow().isoformat() + "Z"
+        from datetime import datetime, timezone
+        meta["exported_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         meta["export_host"] = os.uname().nodename if hasattr(os, "uname") else None
 
     metadata_json_path.write_text(
