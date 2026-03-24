@@ -55,6 +55,18 @@ def main() -> None:
         password=MFL_PASSWORD,
     )
 
+    # Look up lock timestamps to derive occurred_at for matchup events.
+    # Matchup results get occurred_at = window_start (the lock that opens each week).
+    week_occurred_at: dict[int, str | None] = {}
+    try:
+        from squadvault.core.recaps.selection.weekly_windows_v1 import window_for_week_index
+        for w in range(1, MAX_WEEKS + 1):
+            win = window_for_week_index(str(DB_PATH), LEAGUE_ID, YEAR, w)
+            if win.mode == "LOCK_TO_LOCK" and win.window_start:
+                week_occurred_at[w] = win.window_start
+    except Exception as e:
+        print(f"  WARNING: Could not load lock timestamps — occurred_at will be None: {e}")
+
     total_inserted = 0
     total_skipped = 0
     total_events = 0
@@ -72,6 +84,7 @@ def main() -> None:
             league_id=LEAGUE_ID,
             weekly_results_json=raw_json,
             source_url=source_url,
+            occurred_at=week_occurred_at.get(week),
         )
 
         if not events:

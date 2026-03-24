@@ -50,6 +50,7 @@ def derive_matchup_result_envelopes(
     league_id: str,
     weekly_results_json: Dict[str, Any],
     source_url: str,
+    occurred_at: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Produces canonical WEEKLY_MATCHUP_RESULT event envelopes from MFL
@@ -171,7 +172,7 @@ def derive_matchup_result_envelopes(
         events.append(
             {
                 "event_type": "WEEKLY_MATCHUP_RESULT",
-                "occurred_at": None,  # No timestamp from MFL matchup data
+                "occurred_at": occurred_at,  # From lock timestamp; None if unavailable
                 "external_source": "MFL",
                 "external_id": external_id,
                 "league_id": league_id,
