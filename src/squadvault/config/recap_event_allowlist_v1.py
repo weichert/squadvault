@@ -8,7 +8,11 @@ INCLUDE_EVENT_TYPES = {
     "TRANSACTION_BBID_WAIVER",
     "WAIVER_BID_AWARDED",
     "TRANSACTION_AUCTION_WON",  # include if it represents a player acquisition
+    "WEEKLY_MATCHUP_RESULT",  # head-to-head matchup outcomes
 }
+
+# Canonical alias consumed by weekly_selection_v1
+ALLOWLIST_EVENT_TYPES = sorted(INCLUDE_EVENT_TYPES)
 
 # Ops / noise / boundaries / non-story
 EXCLUDE_EVENT_TYPES = {

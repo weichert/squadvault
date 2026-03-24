@@ -48,6 +48,7 @@ def _load_allowlist_event_types() -> List[str]:
         "TRANSACTION_TRADE",
         "TRANSACTION_BBID_WAIVER",
         "WAIVER_BID_AWARDED",
+        "WEEKLY_MATCHUP_RESULT",
         # NOTE: lock events exist but should not be recap bullets; keep them out by default.
         # "TRANSACTION_LOCK_ALL_PLAYERS",
         # "TRANSACTION_BBID_AUTO_PROCESS_WAIVERS",
