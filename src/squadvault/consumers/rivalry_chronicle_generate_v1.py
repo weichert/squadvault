@@ -5,11 +5,11 @@
 # SV_CONTRACT_DOC_PATH: docs/contracts/rivalry_chronicle_contract_output_v1.md
 
 from __future__ import annotations
-# SV_PATCH_RC_GENERATE_PASS_BOTH_WEEK_SELECTORS_V4: restore-from-HEAD then pass both week_indices+week_range safely
 
 import argparse
 import os
 import sys
+from typing import Sequence
 
 from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
 from squadvault.chronicle.generate_rivalry_chronicle_v1 import generate_rivalry_chronicle_v1
@@ -22,90 +22,114 @@ def _debug(msg: str) -> None:
         print(msg, file=sys.stderr)
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint: generate a rivalry chronicle."""
     ap = argparse.ArgumentParser(description="Generate + persist Rivalry Chronicle v1 (APPROVED recaps only).")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", type=int, required=True)
     ap.add_argument("--season", type=int, required=True)
 
-    g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--week-range", type=str, help="inclusive start:end (e.g., 1:14)")
-    g.add_argument("--weeks", type=str, help="comma-separated week indices (e.g., 1,2,3)")
+    # Team pair (contract-compliant path)
+    ap.add_argument("--team-a-id", type=str, default=None, help="Franchise ID for Team A")
+    ap.add_argument("--team-b-id", type=str, default=None, help="Franchise ID for Team B")
+
+    # Week selection: either --start-week/--end-week or --week-range or --weeks
+    week_group = ap.add_mutually_exclusive_group(required=True)
+    week_group.add_argument("--week-range", type=str, help="inclusive start:end (e.g., 1:14)")
+    week_group.add_argument("--weeks", type=str, help="comma-separated week indices (e.g., 1,2,3)")
+    week_group.add_argument("--start-week", type=int, help="Start week (requires --end-week)")
+
+    ap.add_argument("--end-week", type=int, default=None, help="End week (requires --start-week)")
 
     ap.add_argument(
         "--missing-weeks-policy",
         choices=[p.value for p in MissingWeeksPolicy],
-        default=MissingWeeksPolicy.REFUSE.value,
-        help="refuse (default) OR acknowledge_missing",
+        default=MissingWeeksPolicy.ACKNOWLEDGE_MISSING.value,
+        help="refuse OR acknowledge_missing (default)",
     )
-    ap.add_argument("--created-at-utc", required=True)
+    ap.add_argument("--created-at-utc", default=None)
+    ap.add_argument("--requested-at-utc", default=None, help="Alias for --created-at-utc (metadata only)")
+    ap.add_argument("--out", default=None, help="Optional: write draft payload JSON to this path")
 
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
-    if args.week_range:
+    # Resolve created_at_utc
+    created_at_utc = args.created_at_utc or args.requested_at_utc
+    if not created_at_utc:
+        from datetime import datetime, timezone
+        created_at_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Resolve week selection
+    if args.start_week is not None:
+        if args.end_week is None:
+            raise SystemExit("ERROR: --start-week requires --end-week")
+        week_range = (args.start_week, args.end_week)
+        week_indices = tuple(range(args.start_week, args.end_week + 1))
+    elif args.week_range:
         start_s, end_s = args.week_range.split(":")
         week_range = (int(start_s), int(end_s))
-        week_indices = None
+        week_indices = tuple(range(int(start_s), int(end_s) + 1))
     else:
         week_indices = tuple(int(x.strip()) for x in args.weeks.split(",") if x.strip() != "")
-        week_range = None
+        week_range = (min(week_indices), max(week_indices)) if week_indices else None
 
-    # SV_PATCH_V4: chronicle consumer generates gen.text before persist
-    # SV_PATCH_V4_1: pass exactly one of week_indices/week_range to generator
-    # SV_PATCH_RIVALRY_CHRONICLE_GENERATE_V1: generate text, validate non-empty, pass persist kwargs
-    # Generator/persist may require week_indices and/or week_range (kw-only).
-    # Compute BOTH and pass supported kwargs (signature-filtered).
-    import inspect
+    if not week_indices:
+        raise SystemExit("ERROR: no weeks specified")
 
-    def _filter_kwargs(fn, kwargs) -> dict:
-        """Filter kwargs to only those accepted by a function's signature."""
-        params = set(inspect.signature(fn).parameters.keys())
-        return {k: v for k, v in kwargs.items() if k in params}
+    # Validate team pair: both or neither
+    team_a_id = getattr(args, "team_a_id", None)
+    team_b_id = getattr(args, "team_b_id", None)
+    if (team_a_id is None) != (team_b_id is None):
+        raise SystemExit("ERROR: --team-a-id and --team-b-id must both be provided or both omitted")
 
-    # CLI guarantees exactly one of (week_indices, week_range) is set.
-    if week_range is None:
-        if not week_indices:
-            raise SystemExit('ERROR: --weeks provided but empty')
-        week_indices_eff = tuple(int(x) for x in week_indices)
-        week_range_eff = (min(week_indices_eff), max(week_indices_eff))
-    else:
-        w0, w1 = int(week_range[0]), int(week_range[1])
-        if w1 < w0:
-            raise SystemExit('ERROR: --week-range end < start')
-        week_range_eff = (w0, w1)
-        week_indices_eff = tuple(range(w0, w1 + 1))
-
-    gen_kwargs = dict(
+    gen = generate_rivalry_chronicle_v1(
         db_path=args.db,
         league_id=int(args.league_id),
         season=int(args.season),
+        week_indices=week_indices,
+        week_range=week_range,
         missing_weeks_policy=MissingWeeksPolicy(args.missing_weeks_policy),
-        created_at_utc=str(args.created_at_utc),
-        week_indices=week_indices_eff,
-        week_range=week_range_eff,
+        created_at_utc=str(created_at_utc),
+        team_a_id=str(team_a_id) if team_a_id is not None else None,
+        team_b_id=str(team_b_id) if team_b_id is not None else None,
     )
-    gen = generate_rivalry_chronicle_v1(**_filter_kwargs(generate_rivalry_chronicle_v1, gen_kwargs))
     txt = str(getattr(gen, 'text', None) or '')
     if not txt.strip():
         raise SystemExit('ERROR: rivalry_chronicle_generate_v1 produced empty gen.text; refusing to persist')
 
-    persist_kwargs = dict(
-        rendered_text=txt,
+    res = persist_rivalry_chronicle_v1(
         db_path=args.db,
-        league_id=args.league_id,
-        season=args.season,
+        league_id=int(args.league_id),
+        season=int(args.season),
+        week_indices=week_indices,
+        week_range=week_range,
         missing_weeks_policy=MissingWeeksPolicy(args.missing_weeks_policy),
-        created_at_utc=args.created_at_utc,
-        week_indices=week_indices_eff,
-        week_range=week_range_eff,
+        created_at_utc=str(created_at_utc),
+        team_a_id=str(team_a_id) if team_a_id is not None else None,
+        team_b_id=str(team_b_id) if team_b_id is not None else None,
     )
-    res = persist_rivalry_chronicle_v1(**_filter_kwargs(persist_rivalry_chronicle_v1, persist_kwargs))
 
     _debug(
         f"OK: {res.artifact_type} league={res.league_id} season={res.season} "
         f"anchor_week={res.anchor_week_index} v={res.version} created_new={res.created_new}"
     )
+
+    if args.out:
+        import json
+        payload = {
+            "artifact_type": res.artifact_type,
+            "league_id": res.league_id,
+            "season": res.season,
+            "anchor_week_index": res.anchor_week_index,
+            "version": res.version,
+            "created_new": res.created_new,
+            "rendered_text": txt,
+            "fingerprint": gen.fingerprint,
+        }
+        from pathlib import Path
+        Path(args.out).write_text(json.dumps(payload, indent=2))
+        _debug(f"Wrote draft payload to {args.out}")
+
     return 0
 
 

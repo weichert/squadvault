@@ -1,9 +1,6 @@
 """Persist generated rivalry chronicle artifacts to the database."""
 
 from __future__ import annotations
-# SV_PATCH_FIX_PERSIST_RC_RECAP_ARTIFACTS_IMPORT_BLOCK_V2: collapse recap_artifacts import to single-line
-# SV_PATCH_FIX_PERSIST_RC_V1_V1_SYMBOL_V1: normalize ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1_V1 -> _V1 and fix import
-# SV_PATCH_PERSIST_RC_TYPE_TO_V1: persist uses ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1 (not legacy RIVALRY_CHRONICLE)
 
 import sqlite3
 from dataclasses import dataclass
@@ -138,6 +135,8 @@ def persist_rivalry_chronicle_v1(
     week_range: Tuple[int, int] | None,
     missing_weeks_policy: MissingWeeksPolicy,
     created_at_utc: str,
+    team_a_id: str | None = None,
+    team_b_id: str | None = None,
 ) -> PersistedChronicleV1:
     """Persist a generated rivalry chronicle as a versioned DRAFT artifact.
 
@@ -152,6 +151,8 @@ def persist_rivalry_chronicle_v1(
         week_range=week_range,
         missing_weeks_policy=missing_weeks_policy,
         created_at_utc=created_at_utc,
+        team_a_id=team_a_id,
+        team_b_id=team_b_id,
     )
 
     with DatabaseSession(db_path) as conn:
