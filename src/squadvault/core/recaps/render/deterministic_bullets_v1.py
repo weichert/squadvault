@@ -109,15 +109,31 @@ def render_deterministic_bullets_v1(
     *,
     team_resolver: Callable[[Any], str] | None = None,
     player_resolver: Callable[[Any], str] | None = None,
+    player_position_resolver: Callable[[Any], str] | None = None,
 ) -> list[str]:
     """
     Deterministic factual bullets derived from canonical events.
 
     Output is stable given the same input rows and resolvers.
     No LLM, no randomness, no inference.
+
+    player_position_resolver: optional callable (player_id -> position string).
+    When provided, bullets include position (e.g. "Patrick Mahomes (QB)").
     """
     rows = list(events)
     rows.sort(key=lambda r: (r.occurred_at, r.event_type, r.canonical_id))
+
+    def _player_pos(raw_id: Any) -> str:
+        """Resolve player to 'Name (POS)' or just 'Name' if no position available."""
+        name = _player(player_resolver, raw_id)
+        if player_position_resolver is not None and raw_id:
+            try:
+                pos = player_position_resolver(raw_id)
+                if pos and str(pos).strip() and str(pos).strip() not in ("", "None"):
+                    return f"{name} ({str(pos).strip()})"
+            except (KeyError, ValueError, TypeError, LookupError):
+                pass
+        return name
 
     bullets: list[str] = []
     seen: set[str] = set()
@@ -150,7 +166,7 @@ def render_deterministic_bullets_v1(
                 # Standard trade format
                 from_team = _team(team_resolver, from_id)
                 to_team = _team(team_resolver, to_id)
-                player = _player(player_resolver, pid)
+                player = _player_pos(pid)
                 bullet = f"{to_team} acquired {player} from {from_team}."
             else:
                 # MFL trade format: extract from raw_mfl_json
@@ -158,8 +174,8 @@ def render_deterministic_bullets_v1(
                 if mfl:
                     t1 = _team(team_resolver, mfl["franchise1_id"])
                     t2 = _team(team_resolver, mfl["franchise2_id"])
-                    gave1 = [_player(player_resolver, pid) for pid in mfl["franchise1_gave_up_ids"]]
-                    gave2 = [_player(player_resolver, pid) for pid in mfl["franchise2_gave_up_ids"]]
+                    gave1 = [_player_pos(pid) for pid in mfl["franchise1_gave_up_ids"]]
+                    gave2 = [_player_pos(pid) for pid in mfl["franchise2_gave_up_ids"]]
                     if gave1 and gave2:
                         players1 = ", ".join(gave1)
                         players2 = ", ".join(gave2)
@@ -169,19 +185,19 @@ def render_deterministic_bullets_v1(
 
         elif et in ("WAIVER_BID_AWARDED",):
             team = _team(team_resolver, p.get("franchise_id") or p.get("team_id"))
-            player = _player(player_resolver, p.get("player_id") or p.get("player"))
-            bid = _money(p.get("bid") or p.get("amount") or "")
+            player = _player_pos(p.get("player_id") or p.get("player"))
+            bid = _money(p.get("bid") or p.get("bid_amount") or p.get("amount") or "")
             bid_txt = f" for {bid}" if bid else ""
             bullet = f"{team} won {player}{bid_txt} on waivers."
 
         elif et in ("TRANSACTION_FREE_AGENT",):
             team = _team(team_resolver, p.get("franchise_id") or p.get("team_id"))
-            player = _player(player_resolver, p.get("player_id") or p.get("player"))
+            player = _player_pos(p.get("player_id") or p.get("player"))
             bullet = f"{team} added {player} (free agent)."
 
         elif et in ("DRAFT_PICK",):
             team = _team(team_resolver, p.get("franchise_id") or p.get("team_id"))
-            player = _player(player_resolver, p.get("player_id") or p.get("player"))
+            player = _player_pos(p.get("player_id") or p.get("player"))
             rnd = _safe(p.get("round"), "")
             pick = _safe(p.get("pick"), "")
             suffix = ""
