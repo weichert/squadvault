@@ -70,6 +70,10 @@ class SelectionResult:
 
 
 
+# Safe window modes that produce a usable [start, end) boundary.
+# Must stay in sync with recap_week_gating_check.SAFE_WINDOW_MODES.
+_SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
+
 
 def _fingerprint_from_ids(ids: List[str]) -> str:
     # sha256 of comma-joined canonical ids
@@ -88,14 +92,24 @@ def select_weekly_recap_events_v1(
     week_index: int,
     *,
     allowlist_event_types: Optional[List[str]] = None,
+    season_end: Optional[str] = None,
 ) -> SelectionResult:
     """
     Deterministically select recap-worthy canonical event IDs for a week.
-    """
-    window = window_for_week_index(db_path, str(league_id), int(season), int(week_index))
 
-    # Conservative: refuse to select if we leading-edge can't compute a safe window.
-    if window.mode != "LOCK_TO_LOCK" or not window.window_start or not window.window_end:
+    Parameters
+    ----------
+    season_end : optional ISO-8601 UTC cap for final-week windowing.
+        Forwarded to window_for_week_index for weeks where the next lock
+        is absent (e.g., the last week of the season).
+    """
+    window = window_for_week_index(
+        db_path, str(league_id), int(season), int(week_index),
+        season_end=season_end,
+    )
+
+    # Conservative: refuse to select if we can't compute a safe window.
+    if window.mode not in _SAFE_WINDOW_MODES or not window.window_start or not window.window_end:
         return SelectionResult(
             week_index=week_index,
             window=window,
