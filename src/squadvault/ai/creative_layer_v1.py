@@ -5,7 +5,6 @@ Contract (Creative Layer Contract Card v1.0):
 - Never introduces new facts, inferences, or interpretations.
 - Returns a prose draft string or None (silence).
 - Requires ANTHROPIC_API_KEY in environment; absent key -> None (silent fallback).
-- temperature=0 for determinism.
 - AMBIGUITY_PREFER_SILENCE directive -> None (silence preferred, no API call made).
 - Any API error -> None (silent fallback to deterministic facts-only text).
 
@@ -24,7 +23,9 @@ from squadvault.core.eal.editorial_attunement_v1 import EAL_AMBIGUITY_PREFER_SIL
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-haiku-4-5-20251001"
+_MODEL = "claude-sonnet-4-20250514"
+_TEMPERATURE = 0.8
+_MAX_TOKENS = 1500
 
 # EAL directives that permit narrative drafting
 _PERMITTED_DIRECTIVES = {
@@ -33,31 +34,71 @@ _PERMITTED_DIRECTIVES = {
     "LOW_CONFIDENCE_RESTRAINT",
 }
 
-_SYSTEM_PROMPT = """\
-You assist with fantasy football league recap narrative drafting.
-You receive verified, deterministic facts about a single week of league activity.
-Your only job is to write a brief narrative paragraph based strictly on those facts.
+# ---------------------------------------------------------------------------
+# System prompt — the "voice" of the league chronicler
+# ---------------------------------------------------------------------------
 
-Rules (non-negotiable):
-- Write 2-4 sentences only.
-- Do not add scores, player names, team names, or events not listed in the facts.
-- Do not speculate, infer intent, or make emotional claims not supported by the facts.
-- Do not use superlatives (best, worst, greatest) unless a fact explicitly supports them.
-- Do not add greetings, sign-offs, headers, or meta-commentary.
-- Output only the narrative paragraph — nothing else.
+_SYSTEM_PROMPT = """\
+You are the host of a late-night fantasy football desk segment. You've been \
+following this specific league all season — you know the standings, the streaks, \
+the history, and the storylines. You have opinions, and they're grounded in data.
+
+Your job: write a weekly recap that makes league members want to share it. Think \
+Colbert's sharper monologue moments or Fallon's desk bits, adapted for fantasy football.
+
+Voice rules:
+- Insider knowledge: use standings, streaks, and history to make observations. \
+  "Three straight wins" means something different at 7-1 vs 3-5. Use that.
+- Sharp but not mean: roasts are affectionate, never cruel. You're part of this league.
+- Callbacks: reference earlier weeks when the data supports it ("remember when..."). \
+  Only callback to things in the provided context — never invent history.
+- Let big results speak: sometimes the score says it all. Don't over-narrate blowouts.
+- NFL awareness: if web search results give you injury/bye/breakout context for a \
+  transaction, weave it in naturally. But NFL news is color — not league fact.
+- Pacing: lead with the headline matchup(s), work through the week, land on a \
+  forward-looking closer if the data supports it.
+- Length: aim for 3-6 paragraphs depending on how much happened. A quiet week gets \
+  a tighter recap. A blockbuster week earns more room.
+
+Hard rules (non-negotiable):
+- NEVER invent facts, scores, player names, or events not in the provided data.
+- NEVER speculate about manager intent, strategy, or emotions.
+- NEVER use superlatives (best, worst, greatest) unless the data explicitly supports them.
+- NEVER add greetings, sign-offs, headers, or meta-commentary about being an AI.
+- Output ONLY the recap prose — nothing else.
+- NFL context from web search is background color only. It never becomes a league fact.
 """
+
+# ---------------------------------------------------------------------------
+# EAL directive -> creative guidance mapping
+# ---------------------------------------------------------------------------
 
 _EAL_GUIDANCE = {
     "HIGH_CONFIDENCE_ALLOWED": (
-        "Standard tone permitted. You may write with normal confidence."
+        "Full voice. Callbacks, running observations, sharp commentary all permitted. "
+        "This is a high-confidence week — the data is rich and the storylines are clear. "
+        "Lean into the voice. Be the host who's been watching all season."
     ),
     "MODERATE_CONFIDENCE_ONLY": (
-        "Use conservative tone. Avoid strong claims. Stay close to the facts."
+        "Standard commentary. Observations grounded in the provided context. "
+        "Stay close to what the numbers show. Moderate the sharpness — "
+        "this week's data is solid but not exceptional."
     ),
     "LOW_CONFIDENCE_RESTRAINT": (
-        "Minimal prose only. Stay as close to the facts as possible. "
-        "One or two plain sentences maximum."
+        "Minimal, restrained prose. State what happened, note one or two details. "
+        "The data this week is thin. Say less, not more. "
+        "Two to three short paragraphs maximum."
     ),
+}
+
+# ---------------------------------------------------------------------------
+# EAL -> temperature mapping (tighter constraint = lower temperature)
+# ---------------------------------------------------------------------------
+
+_EAL_TEMPERATURE = {
+    "HIGH_CONFIDENCE_ALLOWED": 0.8,
+    "MODERATE_CONFIDENCE_ONLY": 0.6,
+    "LOW_CONFIDENCE_RESTRAINT": 0.3,
 }
 
 
@@ -68,19 +109,70 @@ def _build_user_prompt(
     league_id: str,
     season: int,
     week_index: int,
+    season_context: str = "",
+    league_history: str = "",
+    narrative_angles: str = "",
+    writer_room_context: str = "",
 ) -> str:
-    """Build the user-turn prompt. Deterministic given identical inputs."""
+    """Build the user-turn prompt with full context feed.
+
+    Deterministic given identical inputs (modulo context blocks which are
+    themselves deterministic from the engine).
+    """
     guidance = _EAL_GUIDANCE.get(
         eal_directive,
         "Use conservative tone. Stay close to the facts.",
     )
+
+    parts: list[str] = []
+    parts.append(f"League: {league_id} | Season: {season} | Week {week_index}")
+    parts.append(f"EAL directive: {eal_directive} — {guidance}")
+    parts.append("")
+
+    # Context blocks — the engine's full feed
+    if season_context:
+        parts.append("=== SEASON CONTEXT (standings, streaks, scoring) ===")
+        parts.append(season_context.strip())
+        parts.append("")
+
+    if league_history:
+        parts.append("=== LEAGUE HISTORY (all-time records, cross-season) ===")
+        parts.append(league_history.strip())
+        parts.append("")
+
+    if narrative_angles:
+        parts.append("=== NARRATIVE ANGLES (detected story hooks for this week) ===")
+        parts.append(narrative_angles.strip())
+        parts.append("")
+
+    if writer_room_context:
+        parts.append("=== WRITER ROOM (scoring deltas, FAAB spending) ===")
+        parts.append(writer_room_context.strip())
+        parts.append("")
+
+    # Facts block — always present, always authoritative
     facts_block = "\n".join(f"- {b}" for b in facts_bullets) if facts_bullets else "(no facts)"
-    return (
-        f"League: {league_id} | Season: {season} | Week: {week_index}\n"
-        f"EAL directive: {eal_directive} — {guidance}\n\n"
-        f"Verified facts for this week:\n{facts_block}\n\n"
-        f"Write the narrative paragraph now."
-    )
+    parts.append("=== VERIFIED FACTS (canonical, authoritative — these are your source of truth) ===")
+    parts.append(facts_block)
+    parts.append("")
+    parts.append("Write the recap now.")
+
+    return "\n".join(parts)
+
+
+def _extract_text_from_response(message) -> str:
+    """Extract text content from an API response, handling tool_use blocks.
+
+    When web search is enabled, the response may contain tool_use and
+    tool_result blocks interleaved with text. We extract only text blocks.
+    """
+    if not message.content:
+        return ""
+    texts = []
+    for block in message.content:
+        if hasattr(block, "text") and block.text:
+            texts.append(block.text.strip())
+    return "\n\n".join(texts)
 
 
 def draft_narrative_v1(
@@ -90,6 +182,10 @@ def draft_narrative_v1(
     league_id: str,
     season: int,
     week_index: int,
+    season_context: str = "",
+    league_history: str = "",
+    narrative_angles: str = "",
+    writer_room_context: str = "",
 ) -> Optional[str]:
     """Attempt to produce a governed prose narrative draft.
 
@@ -98,6 +194,12 @@ def draft_narrative_v1(
     - No facts bullets provided
     - ANTHROPIC_API_KEY not set
     - Any API error occurs
+
+    Context parameters (all optional, additive):
+    - season_context: rendered season standings/streaks/scoring text
+    - league_history: rendered cross-season longitudinal context text
+    - narrative_angles: rendered detected story hooks text
+    - writer_room_context: rendered scoring deltas + FAAB spending text
 
     Callers must treat None as 'use deterministic facts-only output.'
     This function never raises — all failures return None.
@@ -143,7 +245,14 @@ def draft_narrative_v1(
         league_id=league_id,
         season=season,
         week_index=week_index,
+        season_context=season_context,
+        league_history=league_history,
+        narrative_angles=narrative_angles,
+        writer_room_context=writer_room_context,
     )
+
+    # EAL-modulated temperature
+    temperature = _EAL_TEMPERATURE.get(eal_directive, _TEMPERATURE)
 
     try:
         import anthropic  # local import: optional dependency
@@ -151,13 +260,14 @@ def draft_narrative_v1(
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
             model=_MODEL,
-            max_tokens=512,
-            temperature=0,
+            max_tokens=_MAX_TOKENS,
+            temperature=temperature,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
+            tools=[{"type": "web_search_20250305", "name": "web_search"}],
         )
 
-        text = message.content[0].text.strip() if message.content else ""
+        text = _extract_text_from_response(message)
         if not text:
             logger.warning(
                 "creative_layer_v1: API returned empty content — "

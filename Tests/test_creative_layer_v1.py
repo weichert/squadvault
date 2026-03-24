@@ -131,7 +131,7 @@ class TestDraftNarrativeV1SuccessPath(unittest.TestCase):
                 )
         self.assertEqual(result, "It was a busy week.")
 
-    def test_uses_temperature_zero(self) -> None:
+    def test_uses_eal_modulated_temperature(self) -> None:
         ma = self._mock("Narrative.")
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "fake-key"}):
             with patch.dict("sys.modules", {"anthropic": ma}):
@@ -140,7 +140,8 @@ class TestDraftNarrativeV1SuccessPath(unittest.TestCase):
                     league_id="L1", season=2024, week_index=6,
                 )
         kwargs = ma.Anthropic.return_value.messages.create.call_args.kwargs
-        self.assertEqual(kwargs.get("temperature"), 0)
+        # MODERATE_CONFIDENCE_ONLY maps to 0.6
+        self.assertEqual(kwargs.get("temperature"), 0.6)
 
     def test_eal_directive_in_prompt(self) -> None:
         ma = self._mock("Narrative.")

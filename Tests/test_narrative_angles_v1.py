@@ -302,8 +302,8 @@ class TestFullDetection:
         )
         history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
 
-        from squadvault.core.recaps.context.league_history_v1 import _load_all_matchups
-        all_matchups = _load_all_matchups(db_path, LEAGUE)
+        from squadvault.core.recaps.context.league_history_v1 import load_all_matchups
+        all_matchups = load_all_matchups(db_path, LEAGUE)
 
         result = detect_narrative_angles_v1(
             season_ctx=ctx,

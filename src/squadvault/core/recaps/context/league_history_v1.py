@@ -205,7 +205,7 @@ def _parse_matchup(payload_json: str, season: int, fallback_week: int) -> Option
     )
 
 
-def _load_all_matchups(db_path: str, league_id: str) -> List[HistoricalMatchup]:
+def load_all_matchups(db_path: str, league_id: str) -> List[HistoricalMatchup]:
     """Load ALL WEEKLY_MATCHUP_RESULT events across all seasons.
 
     Returns parsed list sorted by (season, week, winner_id, loser_id).
@@ -555,7 +555,7 @@ def derive_league_history_v1(
     Returns a LeagueHistoryContextV1 with all-time records, scoring records,
     streak records, and best/worst seasons.
     """
-    all_matchups = _load_all_matchups(db_path, str(league_id))
+    all_matchups = load_all_matchups(db_path, str(league_id))
 
     if not all_matchups:
         return LeagueHistoryContextV1(

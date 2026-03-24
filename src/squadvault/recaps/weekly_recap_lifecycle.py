@@ -28,6 +28,25 @@ from squadvault.core.recaps.recap_runs import (
 from squadvault.core.recaps.recap_artifacts import latest_approved_version
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.ai.creative_layer_v1 import draft_narrative_v1
+from squadvault.core.recaps.context.season_context_v1 import (
+    derive_season_context_v1,
+    render_season_context_for_prompt,
+)
+from squadvault.core.recaps.context.league_history_v1 import (
+    derive_league_history_v1,
+    load_all_matchups,
+    build_cross_season_name_resolver,
+    render_league_history_for_prompt,
+)
+from squadvault.core.recaps.context.narrative_angles_v1 import (
+    detect_narrative_angles_v1,
+    render_angles_for_prompt,
+)
+from squadvault.core.recaps.context.writer_room_context_v1 import (
+    derive_scoring_deltas,
+    derive_faab_spending,
+    render_writer_room_context_for_prompt,
+)
 
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
@@ -714,7 +733,16 @@ def generate_weekly_recap_draft(
     # Attempt governed narrative prose draft constrained by EAL directive.
     # Falls back silently to deterministic facts-only if EAL vetoes, key absent, or any error.
     # Facts block is always preserved — narrative is additive only, never a replacement.
+    #
+    # Context feed: season context + league history + narrative angles + writer room
+    # enrichments are derived from canonical data and rendered as text blocks for the
+    # creative layer prompt. These are derived, non-authoritative, and never modify facts.
     _creative_bullets: list[str] = []
+    _season_context_text = ""
+    _league_history_text = ""
+    _narrative_angles_text = ""
+    _writer_room_text = ""
+
     with DatabaseSession(db_path) as _cl_con:
         _cl_row = _cl_con.execute(
             "SELECT canonical_ids_json FROM recap_runs"
@@ -742,12 +770,71 @@ def generate_weekly_recap_draft(
             except Exception:
                 _creative_bullets = []
 
+    # --- Context derivation (all derived, non-authoritative, silent on failure) ---
+    try:
+        _cl_name_map = build_cross_season_name_resolver(db_path, league_id)
+    except Exception:
+        _cl_name_map = {}
+
+    try:
+        _cl_season_ctx = derive_season_context_v1(
+            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
+        )
+        _season_context_text = render_season_context_for_prompt(
+            _cl_season_ctx, team_resolver=lambda fid: _cl_name_map.get(fid, fid),
+        )
+    except Exception:
+        _cl_season_ctx = None
+
+    try:
+        _cl_history_ctx = derive_league_history_v1(db_path=db_path, league_id=league_id)
+        _league_history_text = render_league_history_for_prompt(
+            _cl_history_ctx, name_map=_cl_name_map,
+        )
+    except Exception:
+        _cl_history_ctx = None
+
+    try:
+        _cl_all_matchups = load_all_matchups(db_path, league_id)
+    except Exception:
+        _cl_all_matchups = None
+
+    try:
+        if _cl_season_ctx is not None:
+            _cl_angles = detect_narrative_angles_v1(
+                season_ctx=_cl_season_ctx,
+                history_ctx=_cl_history_ctx,
+                all_matchups=_cl_all_matchups,
+            )
+            _narrative_angles_text = render_angles_for_prompt(
+                _cl_angles, name_map=_cl_name_map,
+            )
+    except Exception:
+        pass
+
+    try:
+        _cl_deltas = derive_scoring_deltas(
+            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
+        )
+        _cl_faab = derive_faab_spending(
+            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
+        )
+        _writer_room_text = render_writer_room_context_for_prompt(
+            deltas=_cl_deltas, faab=_cl_faab, name_map=_cl_name_map,
+        )
+    except Exception:
+        pass
+
     _narrative_draft = draft_narrative_v1(
         facts_bullets=_creative_bullets,
         eal_directive=editorial_attunement_v1,
         league_id=league_id,
         season=season,
         week_index=week_index,
+        season_context=_season_context_text,
+        league_history=_league_history_text,
+        narrative_angles=_narrative_angles_text,
+        writer_room_context=_writer_room_text,
     )
     if _narrative_draft:
         rendered_text = (
