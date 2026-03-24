@@ -388,3 +388,114 @@ class TestNonePayload:
         bullets = render_deterministic_bullets_v1(rows)
         assert len(bullets) == 1
         assert "F01 added P100 (free agent)." == bullets[0]
+
+
+# ── MFL trade rendering ─────────────────────────────────────────────
+
+class TestMflTradeRendering:
+    def test_mfl_trade_with_raw_json(self):
+        # MFL trades store data in raw_mfl_json, not standard fields
+        row = _row(event_type="TRANSACTION_TRADE", payload={
+            "franchise_id": "0004",
+            "mfl_type": "TRADE",
+            "player_id": None,
+            "raw_mfl_json": '{"franchise":"0004","franchise2":"0010",'
+                           '"franchise1_gave_up":"15754,","franchise2_gave_up":"16214,",'
+                           '"timestamp":"1726111841","type":"TRADE"}',
+        })
+        bullets = render_deterministic_bullets_v1([row])
+        assert len(bullets) == 1
+        assert "0004" in bullets[0] and "0010" in bullets[0]
+        assert "traded" in bullets[0]
+        assert "15754" in bullets[0] and "16214" in bullets[0]
+
+    def test_mfl_trade_with_resolvers(self):
+        team_res = lambda fid: {"0004": "Eagles", "0010": "Hawks"}.get(fid, fid)
+        player_res = lambda pid: {"15754": "Chris Olave", "16214": "Sam LaPorta"}.get(pid, pid)
+        row = _row(event_type="TRANSACTION_TRADE", payload={
+            "franchise_id": "0004",
+            "raw_mfl_json": '{"franchise":"0004","franchise2":"0010",'
+                           '"franchise1_gave_up":"15754,","franchise2_gave_up":"16214,",'
+                           '"timestamp":"1726111841","type":"TRADE"}',
+        })
+        bullets = render_deterministic_bullets_v1(
+            [row], team_resolver=team_res, player_resolver=player_res,
+        )
+        assert bullets == ["Eagles traded Chris Olave to Hawks for Sam LaPorta."]
+
+    def test_mfl_trade_no_raw_json_no_standard_fields(self):
+        # No raw_mfl_json AND no standard trade fields = silence
+        row = _row(event_type="TRANSACTION_TRADE", payload={
+            "franchise_id": "0004",
+            "mfl_type": "TRADE",
+        })
+        bullets = render_deterministic_bullets_v1([row])
+        # No from/to fields, no raw_mfl_json — cannot render
+        assert bullets == []
+
+    def test_standard_trade_still_works(self):
+        # Standard from/to fields take priority over raw_mfl_json
+        row = _row(event_type="TRADE", payload={
+            "from_franchise_id": "F01",
+            "to_franchise_id": "F02",
+            "player_id": "P100",
+        })
+        bullets = render_deterministic_bullets_v1([row])
+        assert bullets == ["F02 acquired P100 from F01."]
+
+
+# ── Duplicate bullet filtering ───────────────────────────────────────
+
+class TestDuplicateFiltering:
+    def test_identical_events_produce_one_bullet(self):
+        # Same trade ingested 3 times produces 3 canonical events
+        # but should render only 1 bullet
+        payload = {
+            "franchise_id": "0004",
+            "raw_mfl_json": '{"franchise":"0004","franchise2":"0010",'
+                           '"franchise1_gave_up":"15754,","franchise2_gave_up":"16214,",'
+                           '"timestamp":"1726111841","type":"TRADE"}',
+        }
+        rows = [
+            _row(canonical_id=f"trade_{i}", event_type="TRANSACTION_TRADE", payload=payload)
+            for i in range(3)
+        ]
+        bullets = render_deterministic_bullets_v1(rows)
+        assert len(bullets) == 1
+
+    def test_different_events_not_deduped(self):
+        rows = [
+            _row(canonical_id="m1", event_type="MATCHUP_RESULT", payload={
+                "winner_franchise_id": "W1", "loser_franchise_id": "L1",
+                "winner_score": 100, "loser_score": 90,
+            }),
+            _row(canonical_id="m2", event_type="MATCHUP_RESULT", payload={
+                "winner_franchise_id": "W2", "loser_franchise_id": "L2",
+                "winner_score": 110, "loser_score": 95,
+            }),
+        ]
+        bullets = render_deterministic_bullets_v1(rows)
+        assert len(bullets) == 2
+
+
+# ── MAX_BULLETS counts only rendered bullets ─────────────────────────
+
+class TestMaxBulletsCountsRendered:
+    def test_skipped_events_dont_consume_slots(self):
+        # 10 BBID events (skipped) + 25 matchup events
+        # Old behavior: only first 20 rows processed, 10 BBID consume slots = 10 matchups
+        # New behavior: skip BBIDs, render up to 20 matchup bullets
+        bbid_rows = [
+            _row(canonical_id=f"bbid_{i}", occurred_at=f"2024-10-{(i % 28) + 1:02d}",
+                 event_type="TRANSACTION_BBID_WAIVER", payload={"x": 1})
+            for i in range(10)
+        ]
+        matchup_rows = [
+            _row(canonical_id=f"match_{i}", occurred_at=f"2024-10-{(i % 28) + 1:02d}",
+                 event_type="MATCHUP_RESULT", payload={
+                     "winner_franchise_id": f"W{i}", "loser_franchise_id": f"L{i}",
+                 })
+            for i in range(25)
+        ]
+        bullets = render_deterministic_bullets_v1(bbid_rows + matchup_rows)
+        assert len(bullets) == MAX_BULLETS

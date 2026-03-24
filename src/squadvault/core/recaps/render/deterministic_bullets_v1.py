@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
@@ -68,6 +69,41 @@ def _money(raw: Any) -> str:
         return _safe(raw, "")
 
 
+def _csv_ids(raw: str) -> list[str]:
+    """Split a comma-separated string of IDs, stripping whitespace."""
+    if not raw:
+        return []
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+def _extract_mfl_trade(p: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract normalized trade fields from raw_mfl_json if present.
+
+    MFL trades have: franchise, franchise2, franchise1_gave_up, franchise2_gave_up.
+    Returns a dict with franchise1_id, franchise2_id, franchise1_gave_up_ids,
+    franchise2_gave_up_ids, or None if raw_mfl_json is absent/unparseable.
+    """
+    raw_str = p.get("raw_mfl_json")
+    if not raw_str or not isinstance(raw_str, str):
+        return None
+    try:
+        raw = json.loads(raw_str)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    f1 = raw.get("franchise")
+    f2 = raw.get("franchise2")
+    if not f1 or not f2:
+        return None
+    return {
+        "franchise1_id": str(f1).strip(),
+        "franchise2_id": str(f2).strip(),
+        "franchise1_gave_up_ids": _csv_ids(raw.get("franchise1_gave_up", "")),
+        "franchise2_gave_up_ids": _csv_ids(raw.get("franchise2_gave_up", "")),
+    }
+
+
 def render_deterministic_bullets_v1(
     events: Iterable[CanonicalEventRow],
     *,
@@ -84,7 +120,12 @@ def render_deterministic_bullets_v1(
     rows.sort(key=lambda r: (r.occurred_at, r.event_type, r.canonical_id))
 
     bullets: list[str] = []
-    for r in rows[:MAX_BULLETS]:
+    seen: set[str] = set()
+
+    for r in rows:
+        if len(bullets) >= MAX_BULLETS:
+            break
+
         p = r.payload or {}
         et = r.event_type
 
@@ -97,23 +138,46 @@ def render_deterministic_bullets_v1(
         if not p:
             continue
 
+        bullet = None
+
         if et in ("TRANSACTION_TRADE", "TRADE"):
-            from_team = _team(team_resolver, p.get("from_franchise_id") or p.get("from_team_id"))
-            to_team = _team(team_resolver, p.get("to_franchise_id") or p.get("to_team_id"))
-            player = _player(player_resolver, p.get("player_id") or p.get("player"))
-            bullets.append(_ascii_punct(f"{to_team} acquired {player} from {from_team}."))
+            # Try standard fields first
+            from_id = p.get("from_franchise_id") or p.get("from_team_id")
+            to_id = p.get("to_franchise_id") or p.get("to_team_id")
+            pid = p.get("player_id") or p.get("player")
+
+            if from_id and to_id:
+                # Standard trade format
+                from_team = _team(team_resolver, from_id)
+                to_team = _team(team_resolver, to_id)
+                player = _player(player_resolver, pid)
+                bullet = f"{to_team} acquired {player} from {from_team}."
+            else:
+                # MFL trade format: extract from raw_mfl_json
+                mfl = _extract_mfl_trade(p)
+                if mfl:
+                    t1 = _team(team_resolver, mfl["franchise1_id"])
+                    t2 = _team(team_resolver, mfl["franchise2_id"])
+                    gave1 = [_player(player_resolver, pid) for pid in mfl["franchise1_gave_up_ids"]]
+                    gave2 = [_player(player_resolver, pid) for pid in mfl["franchise2_gave_up_ids"]]
+                    if gave1 and gave2:
+                        players1 = ", ".join(gave1)
+                        players2 = ", ".join(gave2)
+                        bullet = f"{t1} traded {players1} to {t2} for {players2}."
+                    else:
+                        bullet = f"{t1} and {t2} completed a trade."
 
         elif et in ("WAIVER_BID_AWARDED",):
             team = _team(team_resolver, p.get("franchise_id") or p.get("team_id"))
             player = _player(player_resolver, p.get("player_id") or p.get("player"))
             bid = _money(p.get("bid") or p.get("amount") or "")
             bid_txt = f" for {bid}" if bid else ""
-            bullets.append(_ascii_punct(f"{team} won {player}{bid_txt} on waivers."))
+            bullet = f"{team} won {player}{bid_txt} on waivers."
 
         elif et in ("TRANSACTION_FREE_AGENT",):
             team = _team(team_resolver, p.get("franchise_id") or p.get("team_id"))
             player = _player(player_resolver, p.get("player_id") or p.get("player"))
-            bullets.append(_ascii_punct(f"{team} added {player} (free agent)."))
+            bullet = f"{team} added {player} (free agent)."
 
         elif et in ("DRAFT_PICK",):
             team = _team(team_resolver, p.get("franchise_id") or p.get("team_id"))
@@ -125,7 +189,7 @@ def render_deterministic_bullets_v1(
                 suffix = f" (Round {rnd}, Pick {pick})"
             elif rnd:
                 suffix = f" (Round {rnd})"
-            bullets.append(_ascii_punct(f"Draft: {team} selected {player}{suffix}."))
+            bullet = f"Draft: {team} selected {player}{suffix}."
 
         elif et in ("MATCHUP_RESULT", "WEEKLY_MATCHUP_RESULT"):
             winner = _team(team_resolver, p.get("winner_franchise_id") or p.get("winner_team_id"))
@@ -135,14 +199,21 @@ def render_deterministic_bullets_v1(
             score_txt = f" {w}-{l}" if (w and l) else ""
             is_tie = p.get("is_tie", False)
             if is_tie:
-                bullets.append(_ascii_punct(f"{winner} tied {loser}{score_txt}."))
+                bullet = f"{winner} tied {loser}{score_txt}."
             else:
-                bullets.append(_ascii_punct(f"{winner} beat {loser}{score_txt}."))
+                bullet = f"{winner} beat {loser}{score_txt}."
 
         else:
             # Conservative MVP: don't emit low-signal transaction noise.
             if et.startswith("TRANSACTION_"):
                 continue
-            bullets.append(_ascii_punct(f"{et.replace('_', ' ').title()} recorded."))
+            bullet = f"{et.replace('_', ' ').title()} recorded."
+
+        if bullet is not None:
+            bullet = _ascii_punct(bullet)
+            # Deduplicate: same trade ingested multiple times produces identical bullets
+            if bullet not in seen:
+                seen.add(bullet)
+                bullets.append(bullet)
 
     return bullets
