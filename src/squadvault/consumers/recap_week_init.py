@@ -105,7 +105,16 @@ def main() -> None:
         ),
     )
 
-    # 4) Initialize recap v1 record if missing (existing behavior)
+    # 4) Initialize recap v1 record if missing (LEGACY — scheduled for removal)
+    # SV_DEFECT4_LEGACY_CONSUMER: This writes to the deprecated `recaps` table.
+    # The canonical lifecycle uses recap_runs + recap_artifacts.
+    import warnings
+    warnings.warn(
+        "recap_week_init: insert_recap_v1_if_missing writes to the deprecated "
+        "recaps table. This will be removed after observation window.",
+        DeprecationWarning,
+        stacklevel=1,
+    )
     inserted = insert_recap_v1_if_missing(
         db_path=args.db,
         league_id=args.league_id,

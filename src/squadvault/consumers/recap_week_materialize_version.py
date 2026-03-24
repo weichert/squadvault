@@ -1,4 +1,9 @@
-"""Materialize a recap version from database to disk."""
+"""Materialize a recap version from database to disk.
+
+SV_DEFECT4_LEGACY_CONSUMER: This module reads from the deprecated recaps table.
+The canonical lifecycle uses recap_runs + recap_artifacts.
+Scheduled for removal after observation window.
+"""
 
 from __future__ import annotations
 

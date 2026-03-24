@@ -36,6 +36,7 @@ from squadvault.core.tone.tone_profile_v1 import (
     VALID_PRESETS,
     DEFAULT_PRESET,
 )
+from squadvault.core.storage.migrate import apply_migrations, pending_migrations
 from squadvault.recaps.weekly_recap_lifecycle import (
     approve_latest_weekly_recap,
     generate_weekly_recap_draft,
@@ -319,6 +320,7 @@ def cmd_get_tone(args: argparse.Namespace) -> int:
 
 
 def cmd_list_weeks(args: argparse.Namespace) -> int:
+    _warn_if_migrations_pending(args.db)
     weeks = _list_week_indexes(args.db, args.league_id, args.season)
 
     if args.start_week is not None:
@@ -483,6 +485,7 @@ def cmd_list_weeks(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
+    _warn_if_migrations_pending(args.db)
     payload = _fetch_week_status(
         db_path=args.db,
         league_id=args.league_id,
@@ -769,6 +772,37 @@ def cmd_writing_room_review(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_migrate(args: argparse.Namespace) -> int:
+    """Apply pending schema migrations to the database."""
+    applied = apply_migrations(args.db)
+    if applied:
+        for v in applied:
+            print(f"  applied: {v}")
+        print(f"migrate: {len(applied)} migration(s) applied.")
+    else:
+        print("migrate: database is up to date.")
+    return 0
+
+
+def _warn_if_migrations_pending(db_path: str) -> None:
+    """Print a warning if the database has unapplied migrations.
+
+    Called by operator commands as a non-blocking advisory.
+    Does not modify the database or halt execution.
+    """
+    try:
+        pend = pending_migrations(db_path)
+        if pend:
+            import sys
+            print(
+                f"WARNING: {len(pend)} pending migration(s): {pend}. "
+                f"Run: ./scripts/recap.sh migrate --db {db_path}",
+                file=sys.stderr,
+            )
+    except Exception:
+        pass  # Never block operator flow for migration checks
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="recap", description="SquadVault recap operator CLI")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -1034,6 +1068,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--show-included", action="store_true", help="Print included signal_ids")
     sp.add_argument("--show-excluded", action="store_true", help="Print excluded signals w/ reason/details")
     sp.set_defaults(fn=cmd_writing_room_review)
+
+    # migrate
+    sp = sub.add_parser(
+        "migrate",
+        help="Apply pending schema migrations to the database",
+    )
+    sp.add_argument("--db", required=True)
+    sp.set_defaults(fn=cmd_migrate)
 
     return p
 

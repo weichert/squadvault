@@ -709,7 +709,10 @@ def generate_weekly_recap_draft(
                 " AND occurred_at >= ? AND occurred_at < ?",
                 (league_id, int(season), window_start, window_end),
             ).fetchone()
-            if _fallback_row and _fallback_row[0] and int(_fallback_row[0]) > 0:
+            # SV_DEFECT1_ZERO_COUNT_FIX: COUNT(*)=0 is valid (quiet week).
+            # Previous condition `_fallback_row[0] and int(...) > 0` excluded
+            # zero because 0 is falsy — gave None instead of 0.
+            if _fallback_row is not None:
                 included_count = int(_fallback_row[0])
     meta = EALMeta(
         has_selection_set=True,

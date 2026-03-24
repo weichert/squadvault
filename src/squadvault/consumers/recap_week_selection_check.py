@@ -1,4 +1,9 @@
-"""Check recap selection state for a given week."""
+"""Check recap selection state for a given week.
+
+SV_DEFECT4_LEGACY_CONSUMER: This module imports from the deprecated recap_store.
+The canonical lifecycle uses recap_runs + recap_artifacts.
+Scheduled for removal after observation window.
+"""
 
 import argparse
 

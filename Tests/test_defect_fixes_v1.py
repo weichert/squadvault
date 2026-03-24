@@ -101,7 +101,8 @@ class TestEALFallbackCount:
                     " AND occurred_at >= ? AND occurred_at < ?",
                     ("L1", 2024, window_start, window_end),
                 ).fetchone()
-                if _fallback_row and _fallback_row[0] and int(_fallback_row[0]) > 0:
+                # SV_DEFECT1_ZERO_COUNT_FIX: 0 is a valid count.
+                if _fallback_row is not None:
                     included_count = int(_fallback_row[0])
 
         assert included_count == 5, f"Expected 5 from fallback, got {included_count}"
@@ -136,6 +137,83 @@ class TestEALFallbackCount:
                     included_count = len(_parsed)
 
         assert included_count == 3
+
+
+    def test_fallback_zero_count_gives_zero_not_none(self, tmp_path):
+        """When canonical_ids_json is empty and canonical_events has 0 rows in
+        the window, included_count should be 0 (not None).
+
+        This is the root cause of the EAL confidence bug: 0 is falsy in Python,
+        so the old condition `_fallback_row[0] and int(...) > 0` left
+        included_count=None, producing LOW_CONFIDENCE_RESTRAINT instead of
+        AMBIGUITY_PREFER_SILENCE.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+
+        window_start = "2024-10-14T00:00:00Z"
+        window_end = "2024-10-21T00:00:00Z"
+
+        # Insert a recap_run with empty canonical_ids_json (real-world scenario:
+        # weeks processed before this column was reliably populated get "")
+        con.execute(
+            """INSERT INTO recap_runs
+               (league_id, season, week_index, state, selection_fingerprint,
+                canonical_ids_json, counts_by_type_json,
+                window_start, window_end)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("L1", 2024, 7, "ELIGIBLE", "fp_empty",
+             "", "{}", window_start, window_end),
+        )
+        # No canonical_events inserted — zero events in window
+        con.commit()
+
+        from squadvault.core.storage.session import DatabaseSession
+
+        included_count = None
+        with DatabaseSession(db_path) as _eal_con:
+            _eal_row = _eal_con.execute(
+                "SELECT canonical_ids_json FROM recap_runs"
+                " WHERE league_id=? AND season=? AND week_index=?",
+                ("L1", 2024, 7),
+            ).fetchone()
+            if _eal_row and _eal_row[0]:
+                _ids = json.loads(_eal_row[0])
+                if isinstance(_ids, list):
+                    included_count = len(_ids)
+            # Fallback: count canonical events in window
+            if included_count is None and window_start and window_end:
+                _fallback_row = _eal_con.execute(
+                    "SELECT COUNT(*) FROM canonical_events"
+                    " WHERE league_id=? AND season=?"
+                    " AND occurred_at IS NOT NULL"
+                    " AND occurred_at >= ? AND occurred_at < ?",
+                    ("L1", 2024, window_start, window_end),
+                ).fetchone()
+                # SV_DEFECT1_ZERO_COUNT_FIX: 0 is a valid count.
+                if _fallback_row is not None:
+                    included_count = int(_fallback_row[0])
+
+        assert included_count == 0, (
+            f"Expected included_count=0 for quiet week, got {included_count!r}"
+        )
+
+        # Verify this produces the correct EAL directive
+        from squadvault.core.eal.editorial_attunement_v1 import (
+            EALMeta,
+            evaluate_editorial_attunement_v1,
+            EAL_AMBIGUITY_PREFER_SILENCE,
+        )
+        meta = EALMeta(
+            has_selection_set=True,
+            has_window=True,
+            included_count=included_count,
+        )
+        directive = evaluate_editorial_attunement_v1(meta)
+        assert directive == EAL_AMBIGUITY_PREFER_SILENCE, (
+            f"Quiet week (0 events) should get AMBIGUITY_PREFER_SILENCE, got {directive}"
+        )
+        con.close()
 
 
 # ── Defect 2: use_canonical default ──────────────────────────────────
@@ -181,7 +259,8 @@ class TestCanonicalDefault:
 # ── Defect 4: Legacy recaps table deprecation ────────────────────────
 
 class TestLegacyRecapsDeprecation:
-    """The recaps table should be marked deprecated in schema.sql."""
+    """The recaps table should be marked deprecated in schema.sql
+    and all legacy consumers should carry deprecation markers."""
 
     def test_deprecation_marker_present(self):
         """schema.sql must contain the deprecation marker."""
@@ -190,3 +269,22 @@ class TestLegacyRecapsDeprecation:
             "Deprecation marker not found in schema.sql"
         )
         assert "DEPRECATED" in schema_text
+
+    def test_legacy_consumers_have_deprecation_markers(self):
+        """All consumer files that import from recap_store must have
+        the SV_DEFECT4_LEGACY_CONSUMER marker."""
+        import pathlib
+        consumer_dir = pathlib.Path(SCHEMA_PATH).parent.parent.parent / "consumers"
+        legacy_consumers = [
+            "recap_week_init.py",
+            "recap_week_selection_check.py",
+            "recap_week_write_artifact.py",
+            "recap_week_materialize_version.py",
+        ]
+        for name in legacy_consumers:
+            path = consumer_dir / name
+            assert path.exists(), f"{name} not found at {path}"
+            text = path.read_text(encoding="utf-8")
+            assert "SV_DEFECT4_LEGACY_CONSUMER" in text, (
+                f"{name} missing SV_DEFECT4_LEGACY_CONSUMER deprecation marker"
+            )

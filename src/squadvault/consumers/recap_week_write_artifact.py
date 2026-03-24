@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Write a recap artifact JSON to disk from database."""
+"""Write a recap artifact JSON to disk from database.
+
+SV_DEFECT4_LEGACY_CONSUMER: This module writes to the deprecated recaps table
+via recap_store. The canonical lifecycle uses recap_runs + recap_artifacts.
+Scheduled for removal after observation window.
+"""
 
 
 import argparse

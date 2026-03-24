@@ -77,6 +77,27 @@ def apply_migrations(db_path: str) -> list[str]:
         con.close()
 
 
+def pending_migrations(db_path: str) -> list[str]:
+    """Return list of migration versions that have not yet been applied.
+
+    Does not modify the database. Safe to call for diagnostics.
+    """
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    try:
+        # Check if _schema_migrations table exists
+        tables = {r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "_schema_migrations" not in tables:
+            # No tracking table => all migrations are pending
+            return [v for v, _ in _discover_migrations()]
+        applied = _applied_versions(con)
+        return [v for v, _ in _discover_migrations() if v not in applied]
+    finally:
+        con.close()
+
+
 def init_and_migrate(db_path: str) -> None:
     """Initialize database from schema.sql and apply any pending migrations."""
     con = sqlite3.connect(db_path)
