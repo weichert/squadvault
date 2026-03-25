@@ -9,7 +9,7 @@ import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 from squadvault.core.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
 from squadvault.errors import RecapNotFoundError, RecapStateError, RecapDataError
 from squadvault.core.recaps.render.render_recap_text_v1 import (
@@ -45,6 +45,7 @@ from squadvault.core.recaps.context.narrative_angles_v1 import (
     render_angles_for_prompt,
 )
 from squadvault.core.recaps.context.writer_room_context_v1 import (
+    RosterActivity,
     derive_roster_activity,
     derive_scoring_deltas,
     derive_faab_spending,
@@ -53,6 +54,84 @@ from squadvault.core.recaps.context.writer_room_context_v1 import (
 
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
+
+
+# =============================================================================
+# Creative layer bullet grouping (prevents LLM self-counting)
+# =============================================================================
+
+_MATCHUP_MARKERS = (" beat ", " tied ")
+_TRANSACTION_MARKERS = (" won ", " added ", " traded ", " acquired ")
+
+
+def _group_bullets_for_creative_layer(
+    flat_bullets: list[str],
+    roster_activity: Sequence[RosterActivity],
+    name_map: dict[str, str],
+) -> list[str]:
+    if not flat_bullets or not roster_activity:
+        return flat_bullets
+
+    matchup_bullets: list[str] = []
+    transaction_bullets: list[str] = []
+    for b in flat_bullets:
+        is_matchup = any(m in b for m in _MATCHUP_MARKERS)
+        is_transaction = any(m in b for m in _TRANSACTION_MARKERS)
+        if is_matchup and not is_transaction:
+            matchup_bullets.append(b)
+        else:
+            transaction_bullets.append(b)
+
+    if not transaction_bullets:
+        return flat_bullets
+
+    roster_by_name: dict[str, RosterActivity] = {}
+    for ra in roster_activity:
+        name = name_map.get(ra.franchise_id, ra.franchise_id)
+        roster_by_name[name] = ra
+
+    team_names = sorted(roster_by_name.keys(), key=len, reverse=True)
+    grouped: dict[str, list[str]] = {}
+    ungrouped: list[str] = []
+    for b in transaction_bullets:
+        matched = False
+        for name in team_names:
+            if b.startswith(name + " "):
+                grouped.setdefault(name, []).append(b)
+                matched = True
+                break
+        if not matched:
+            ungrouped.append(b)
+
+    result = list(matchup_bullets)
+    sorted_teams = sorted(
+        grouped.keys(),
+        key=lambda n: roster_by_name[n].total_moves if n in roster_by_name else 0,
+        reverse=True,
+    )
+    for name in sorted_teams:
+        team_bullets = grouped[name]
+        ra = roster_by_name.get(name)
+        if ra:
+            parts = []
+            if ra.waiver_wins:
+                parts.append("%d waiver win%s" % (ra.waiver_wins, "s" if ra.waiver_wins != 1 else ""))
+            if ra.free_agent_adds:
+                parts.append("%d FA add%s" % (ra.free_agent_adds, "s" if ra.free_agent_adds != 1 else ""))
+            if ra.trades:
+                parts.append("%d trade%s" % (ra.trades, "s" if ra.trades != 1 else ""))
+            detail = ", ".join(parts) if parts else "0 moves"
+            header = "%s: %d roster move%s this week (%s)" % (
+                name, ra.total_moves, "s" if ra.total_moves != 1 else "", detail)
+        else:
+            header = "%s: roster moves this week" % name
+        result.append(header)
+        for tb in team_bullets:
+            suffix = tb[len(name):].lstrip()
+            result.append("  - %s" % suffix)
+    result.extend(ungrouped)
+    return result
+
 
 
 # =============================================================================
@@ -749,6 +828,7 @@ def generate_weekly_recap_draft(
     _narrative_angles_text = ""
     _cl_tenure_map = None
     _writer_room_text = ""
+    _cl_roster: Sequence[RosterActivity] = ()
 
     with DatabaseSession(db_path) as _cl_con:
         _cl_row = _cl_con.execute(
@@ -837,6 +917,15 @@ def generate_weekly_recap_draft(
         )
     except Exception:
         pass
+
+    # Group transaction bullets under per-team verified count headers.
+    if _cl_roster and _cl_name_map and _creative_bullets:
+        try:
+            _creative_bullets = _group_bullets_for_creative_layer(
+                _creative_bullets, _cl_roster, _cl_name_map,
+            )
+        except Exception:
+            pass  # Fall back to flat bullets on any error
 
     # Read governed tone preset (commissioner-configured, defaults to POINTED)
     try:
