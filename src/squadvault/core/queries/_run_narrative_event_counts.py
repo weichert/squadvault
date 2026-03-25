@@ -19,7 +19,7 @@ SEASON = int(os.environ.get("SQUADVAULT_YEAR", "2024"))
 
 store = SQLiteStore(DB_PATH)
 
-all_events = fetch_all_events(store, league_id=LEAGUE_ID, season=SEASON, limit=10000, use_canonical=False)
+all_events = fetch_all_events(store, league_id=LEAGUE_ID, season=SEASON, limit=10000)
 narrative = filter_events_for_narrative(all_events)
 
 counts = Counter([e["event_type"] for e in narrative])

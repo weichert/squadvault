@@ -3,10 +3,25 @@
 import argparse
 import os
 import sqlite3
+from typing import Optional
 
 from squadvault.core.recaps.render.render_recap_text_from_facts_v1 import render_recap_from_enriched_path_v1
-from squadvault.recaps.weekly_recap_lifecycle import _get_active_artifact_path
+from squadvault.core.storage.session import DatabaseSession
 from squadvault.errors import RecapNotFoundError, RecapDataError
+
+
+def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_index: int) -> Optional[str]:
+    """Read artifact_path from legacy recaps table (deprecated, local copy)."""
+    with DatabaseSession(db_path) as con:
+        row = con.execute(
+            """SELECT artifact_path FROM recaps
+               WHERE league_id=? AND season=? AND week_index=? AND status='ACTIVE'
+               ORDER BY recap_version DESC LIMIT 1""",
+            (league_id, season, week_index),
+        ).fetchone()
+    if not row or not row[0]:
+        return None
+    return str(row[0])
 
 
 def main() -> None:

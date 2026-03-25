@@ -20,6 +20,7 @@ from squadvault.core.queries.franchise_queries import (
     free_agent_moves_for_franchise,
 )
 from squadvault.core.storage.sqlite_store import SQLiteStore
+from squadvault.core.canonicalize.run_canonicalize import canonicalize
 
 SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"
 LEAGUE = "test_league"
@@ -105,6 +106,8 @@ def store(tmp_path):
             "payload": {"franchise_id": "F002"},
         },
     ])
+    # Canonicalize so the canonical view has data (franchise_queries reads canonical by default)
+    canonicalize(league_id=LEAGUE, season=SEASON, db_path=str(db))
     return s
 
 

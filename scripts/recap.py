@@ -846,7 +846,7 @@ def cmd_season_html(args: argparse.Namespace) -> int:
     emailing, or hosting.
     """
     if not args.output:
-        args.output = "season_%d_recaps.html" % args.season
+        args.output = "outputs/season_%d_recaps.html" % args.season
     _warn_if_migrations_pending(args.db)
     from squadvault.core.storage.session import DatabaseSession
     from squadvault.core.exports.season_html_export_v1 import (
@@ -1293,7 +1293,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--league-id", dest="league_id", required=True)
     sp.add_argument("--season", type=int, required=True)
     sp.add_argument("--output", default=None,
-                    help="Output HTML file path (default: season_YYYY_recaps.html)")
+                    help="Output HTML file path (default: outputs/season_YYYY_recaps.html)")
     sp.add_argument("--league-name", dest="league_name", default=None,
                     help="Display name for the league (default: 'League <id>')")
     sp.set_defaults(fn=cmd_season_html)

@@ -31,6 +31,9 @@ venv/
 artifacts/**
 !artifacts/CREATIVE_SURFACE_FINGERPRINT_v1.json
 
+# Generated outputs (season-html, exports)
+outputs/
+
 # Local audit / CI logs
 .local_audit/
 .local_ci_logs/

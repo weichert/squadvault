@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
-import warnings
 from dataclasses import dataclass
-from pathlib import Path
 from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
 from typing import Any, List, Optional, Tuple
 from squadvault.core.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
 from squadvault.errors import RecapNotFoundError, RecapStateError, RecapDataError
 from squadvault.core.recaps.render.render_recap_text_v1 import (
-    render_recap_text_from_path_v1,
     render_recap_text_v1,
 )
 from squadvault.core.recaps.render.deterministic_bullets_v1 import (
@@ -88,28 +84,6 @@ def _utc_now_sql() -> str:
     return "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
 
 
-def _get_active_artifact_path(db_path: str, league_id: str, season: int, week_index: int) -> str:
-    """
-    Legacy source of the rendered recap text: reads from recaps.status='ACTIVE'
-    and uses artifact_path to load the text to mint into recap_artifacts.
-    Preserved to avoid behavior drift during hardening.
-    """
-    with DatabaseSession(db_path) as con:
-        row = con.execute(
-            """
-            SELECT artifact_path
-            FROM recaps
-            WHERE league_id=? AND season=? AND week_index=? AND status='ACTIVE'
-            ORDER BY recap_version DESC
-            LIMIT 1;
-            """,
-            (league_id, season, week_index),
-        ).fetchone()
-
-    if not row or not row[0]:
-        raise RecapNotFoundError("No ACTIVE recap with artifact_path found for that week.")
-
-    return str(row[0])
 
 
 # SV_FIX_GET_RECAP_RUN_TRACE_OPTIONAL_EAL_RETURN_V1
@@ -379,50 +353,6 @@ def _approve_version_and_supersede_previous(
 # Artifact materialization helper
 # =============================================================================
 
-def _ensure_artifact_on_disk(
-    path: str,
-    db_path: str,
-    league_id: str,
-    season: int,
-    week_index: int,
-) -> None:
-    """Materialize ACTIVE recap JSON if missing on disk.
-
-    CI runners start from a clean checkout; artifacts/ may not exist yet.
-    Creates a minimal deterministic artifact (no event invention).
-    """
-    p = Path(path)
-    if p.exists():
-        return
-
-    p.parent.mkdir(parents=True, exist_ok=True)
-
-    m = re.search(r"recap_v(\d+)\.json$", p.name)
-    if not m:
-        raise RecapDataError(f"Active recap artifact path has unexpected filename: {path}")
-    recap_version = int(m.group(1))
-
-    selection_fingerprint, window_start, window_end = _get_recap_run_trace(
-        db_path, league_id, season, week_index
-    )
-
-    artifact = {
-        "league_id": league_id,
-        "season": season,
-        "week_index": week_index,
-        "recap_version": recap_version,
-        "window": {"start": window_start, "end": window_end},
-        "selection": {
-            "fingerprint": selection_fingerprint,
-            "event_count": 0,
-            "counts_by_type": {},
-            "canonical_ids": [],
-        },
-    }
-
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(artifact, f, sort_keys=True)
-        f.write("\n")
 
 
 # =============================================================================
@@ -643,10 +573,8 @@ def generate_weekly_recap_draft(
     """
     Canonical entrypoint: mint a WEEKLY_RECAP DRAFT artifact version.
 
-    Rendering priority:
-    1. Render from recap_runs data directly (canonical path, no recaps table needed)
-    2. Fall back to legacy recaps.artifact_path if recap_runs data is insufficient
-       (emits DeprecationWarning — this path will be removed)
+    Renders from recap_runs data directly (canonical path, no recaps table needed).
+    Raises RecapDataError if recap_runs has insufficient data for rendering.
     """
     state = get_recap_run_state(db_path, league_id, season, week_index)
     if state is None:
@@ -665,19 +593,10 @@ def generate_weekly_recap_draft(
     )
 
     if rendered_text is None:
-        # Legacy fallback: read from recaps table + filesystem
-        warnings.warn(
-            f"generate_weekly_recap_draft: falling back to legacy recaps table "
-            f"for league={league_id} season={season} week={week_index}. "
-            f"This path is deprecated and will be removed.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        path = _get_active_artifact_path(db_path, league_id, season, week_index)
-        _ensure_artifact_on_disk(path, db_path, league_id, season, week_index)
-        rendered_text = render_recap_text_from_path_v1(
-            path,
-            eal_directives=eal_directives,
+        raise RecapDataError(
+            f"Cannot render recap for league={league_id} season={season} "
+            f"week={week_index}: recap_runs has insufficient data. "
+            f"Ensure the week has been processed (ingest → canonicalize → select)."
         )
 
     selection_fingerprint, window_start, window_end = _get_recap_run_trace(

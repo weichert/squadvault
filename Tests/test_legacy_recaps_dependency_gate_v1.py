@@ -34,7 +34,7 @@ KNOWN_LEGACY_CONSUMERS = {
     "core/recaps/recap_store.py",         # Full CRUD bridge (deprecated)
     "consumers/recap_week_status.py",     # CLI status display
     "consumers/recap_week_render.py",     # CLI recap rendering
-    "recaps/weekly_recap_lifecycle.py",   # Legacy fallback path (deprecated)
+    "consumers/recap_week_render_facts.py",  # CLI enriched facts rendering
 }
 
 # Files that must NEVER reference the recaps table

@@ -26,6 +26,7 @@ ALLOWED_ROOT_DIRS = {
     ".git",
     "artifacts",
     "fixtures",
+    "outputs",
     "scripts",
     "src",
     "Tests",
