@@ -361,7 +361,7 @@ def render_writer_room_context_for_prompt(
     if roster_activity:
         if lines:
             lines.append("")
-        lines.append("Roster activity through this week (season cumulative — cite these, do not invent your own):")
+        lines.append("Roster activity through this week (AUTHORITATIVE — use ONLY these counts, do NOT count bullets):")
         for r in roster_activity:
             name = _name(r.franchise_id)
             parts = []

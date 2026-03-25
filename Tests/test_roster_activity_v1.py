@@ -133,7 +133,7 @@ class TestRenderIncludesRosterActivity:
         )
         assert "Team Alpha: 17 total moves" in result
         assert "Team Beta: 7 total moves" in result
-        assert "verified counts" in result.lower() or "do not invent" in result.lower()
+        assert "verified counts" in result.lower() or "do not invent" in result.lower() or "authoritative" in result.lower()
 
 
 class TestStatsGuardrail:
