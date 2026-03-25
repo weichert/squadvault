@@ -920,11 +920,17 @@ def generate_weekly_recap_draft(
         pass
 
     # Group transaction bullets under per-team verified count headers.
+    # Then strip sub-bullets so the LLM only sees summary headers.
+    # This prevents the model from self-counting individual transactions
+    # and arriving at wrong totals. Individual transactions remain in
+    # the stored deterministic text (What happened this week section).
     if _cl_roster and _cl_name_map and _creative_bullets:
         try:
             _creative_bullets = _group_bullets_for_creative_layer(
                 _creative_bullets, _cl_roster, _cl_name_map,
             )
+            # Strip sub-bullets: LLM sees only matchups + roster summary headers
+            _creative_bullets = [b for b in _creative_bullets if not b.startswith("  - ")]
         except Exception:
             pass  # Fall back to flat bullets on any error
 
