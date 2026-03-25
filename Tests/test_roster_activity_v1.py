@@ -137,8 +137,8 @@ class TestRenderIncludesRosterActivity:
 
 
 class TestStatsGuardrail:
-    """System prompt should reference WRITER ROOM for stats."""
+    """System prompt should forbid aggregate roster count fabrication."""
 
     def test_guardrail_present(self):
         from squadvault.ai.creative_layer_v1 import _SYSTEM_PROMPT
-        assert "WRITER ROOM" in _SYSTEM_PROMPT
+        assert "Do NOT claim" in _SYSTEM_PROMPT or "do not claim" in _SYSTEM_PROMPT.lower()

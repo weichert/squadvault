@@ -353,7 +353,7 @@ def render_writer_room_context_for_prompt(
     if faab:
         if lines:
             lines.append("")
-        lines.append("FAAB spending this season:")
+        lines.append("FAAB spending through this week:")
         sorted_faab = sorted(faab, key=lambda f: -f.total_spent)
         for f in sorted_faab:
             name = _name(f.franchise_id)
@@ -362,7 +362,7 @@ def render_writer_room_context_for_prompt(
                 pct = f.pct_spent * 100 if f.pct_spent is not None else 0
                 budget_str = f" (${f.remaining:.0f} remaining of ${f.budget:.0f}, {pct:.0f}% spent)"
             lines.append(
-                f"  {name}: ${f.total_spent:.0f} on {f.num_acquisitions} acquisition(s){budget_str}"
+                f"  {name}: ${f.total_spent:.0f} spent{budget_str}"
             )
 
     # Roster activity (season cumulative)

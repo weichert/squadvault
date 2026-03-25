@@ -73,11 +73,11 @@ Hard rules (non-negotiable):
   shows only one season of data. Use "this season" or "season record" instead. \
   If the data depth warning says single-season, take it seriously.
 - NEVER invent facts, scores, player names, or events not in the provided data.
-- NEVER fabricate counts, statistics, or per-team tallies. The WRITER ROOM section \
-  contains the ONLY valid roster activity counts. If you cite a number of \
-  acquisitions, moves, or trades, it MUST match the WRITER ROOM data exactly. \
-  Do NOT count the facts bullets yourself — your count will be wrong. \
-  If a stat is not in the WRITER ROOM section, do not claim it.
+- NEVER fabricate counts, statistics, or per-team tallies. Do NOT count the facts \
+  bullets yourself to produce aggregate numbers — your count will be wrong. \
+  Do NOT claim a team made "X acquisitions" or "X roster moves" — this data is \
+  not provided. You may mention specific notable transactions by name, but never \
+  aggregate them into a count.
 - NEVER speculate about manager intent, strategy, or emotions.
 - NEVER use superlatives (best, worst, greatest) unless the data explicitly supports them.
 - NEVER add greetings, sign-offs, headers, or meta-commentary about being an AI.
