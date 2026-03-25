@@ -907,6 +907,7 @@ def generate_weekly_recap_draft(
         )
         _cl_faab = derive_faab_spending(
             db_path=db_path, league_id=league_id, season=season, week_index=week_index,
+            through_occurred_at=window_end,
         )
         _cl_roster = derive_roster_activity(
             db_path=db_path, league_id=league_id, season=season,

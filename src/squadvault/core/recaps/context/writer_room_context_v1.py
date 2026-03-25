@@ -133,24 +133,32 @@ def derive_faab_spending(
     season: int,
     week_index: int,
     faab_budget: Optional[float] = None,
+    through_occurred_at: Optional[str] = None,
 ) -> Tuple[FaabSpending, ...]:
     """Compute cumulative FAAB spending per franchise through a given week.
 
     Reads all WAIVER_BID_AWARDED canonical events for the season and sums
-    bid amounts per franchise. Only includes events with occurred_at <= week boundary.
+    bid amounts per franchise.
+
+    If through_occurred_at is provided, only includes events with
+    occurred_at <= that timestamp (ISO-8601).
 
     faab_budget: if provided, computes remaining budget and % spent.
     """
     spending: Dict[str, float] = {}
     counts: Dict[str, int] = {}
 
-    with DatabaseSession(db_path) as con:
-        rows = con.execute(
-            """SELECT payload_json FROM v_canonical_best_events
+    sql = """SELECT payload_json FROM v_canonical_best_events
                WHERE league_id = ? AND season = ?
-                 AND event_type = 'WAIVER_BID_AWARDED'""",
-            (str(league_id), int(season)),
-        ).fetchall()
+                 AND event_type = 'WAIVER_BID_AWARDED'"""
+    params: list = [str(league_id), int(season)]
+
+    if through_occurred_at:
+        sql += " AND occurred_at IS NOT NULL AND occurred_at <= ?"
+        params.append(through_occurred_at)
+
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(sql, params).fetchall()
 
     for row in rows:
         try:
