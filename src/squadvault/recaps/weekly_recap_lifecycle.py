@@ -45,6 +45,7 @@ from squadvault.core.recaps.context.narrative_angles_v1 import (
     render_angles_for_prompt,
 )
 from squadvault.core.recaps.context.writer_room_context_v1 import (
+    derive_roster_activity,
     derive_scoring_deltas,
     derive_faab_spending,
     render_writer_room_context_for_prompt,
@@ -827,8 +828,12 @@ def generate_weekly_recap_draft(
         _cl_faab = derive_faab_spending(
             db_path=db_path, league_id=league_id, season=season, week_index=week_index,
         )
+        _cl_roster = derive_roster_activity(
+            db_path=db_path, league_id=league_id, season=season,
+        )
         _writer_room_text = render_writer_room_context_for_prompt(
-            deltas=_cl_deltas, faab=_cl_faab, name_map=_cl_name_map,
+            deltas=_cl_deltas, faab=_cl_faab, roster_activity=_cl_roster,
+            name_map=_cl_name_map,
         )
     except Exception:
         pass

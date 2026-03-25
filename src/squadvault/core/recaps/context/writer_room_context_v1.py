@@ -197,6 +197,108 @@ def derive_faab_spending(
     return tuple(results)
 
 
+# ── Roster Activity (season cumulative) ──────────────────────────────
+
+
+@dataclass(frozen=True)
+class RosterActivity:
+    """Cumulative roster activity for a franchise through a given season."""
+    franchise_id: str
+    waiver_wins: int      # WAIVER_BID_AWARDED count
+    free_agent_adds: int  # TRANSACTION_FREE_AGENT count
+    trades: int           # TRANSACTION_TRADE count
+    total_moves: int      # sum of all above
+
+    @property
+    def is_active(self) -> bool:
+        """True if the franchise has made any roster moves."""
+        return self.total_moves > 0
+
+
+def derive_roster_activity(
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+) -> Tuple[RosterActivity, ...]:
+    """Compute cumulative roster activity per franchise for the entire season.
+
+    Counts:
+    - WAIVER_BID_AWARDED: paid waiver claims
+    - TRANSACTION_FREE_AGENT: free agent pickups
+    - TRANSACTION_TRADE: trades executed
+
+    Returns a tuple of RosterActivity, one per franchise with any activity,
+    sorted by total_moves descending.
+    """
+    waiver_counts: Dict[str, int] = {}
+    fa_counts: Dict[str, int] = {}
+    trade_counts: Dict[str, int] = {}
+
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT ce.event_type, me.payload_json
+               FROM canonical_events ce
+               JOIN memory_events me ON me.id = ce.best_memory_event_id
+               WHERE ce.league_id = ? AND ce.season = ?
+                 AND ce.event_type IN (
+                     'WAIVER_BID_AWARDED',
+                     'TRANSACTION_FREE_AGENT',
+                     'TRANSACTION_TRADE'
+                 )""",
+            (str(league_id), int(season)),
+        ).fetchall()
+
+    for row in rows:
+        event_type = str(row[0])
+        try:
+            p = json.loads(row[1]) if isinstance(row[1], str) else row[1]
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(p, dict):
+            continue
+
+        fid = p.get("franchise_id") or p.get("team_id") or p.get("franchise")
+        if not fid:
+            # For trades, both sides have franchise references
+            # Count the initiator if available, or skip
+            fids = []
+            for key in ("franchise1_id", "franchise2_id", "team1_id", "team2_id"):
+                if p.get(key):
+                    fids.append(str(p[key]).strip())
+            if not fids:
+                continue
+            for f in fids:
+                trade_counts[f] = trade_counts.get(f, 0) + 1
+            continue
+
+        fid = str(fid).strip()
+
+        if event_type == "WAIVER_BID_AWARDED":
+            waiver_counts[fid] = waiver_counts.get(fid, 0) + 1
+        elif event_type == "TRANSACTION_FREE_AGENT":
+            fa_counts[fid] = fa_counts.get(fid, 0) + 1
+        elif event_type == "TRANSACTION_TRADE":
+            trade_counts[fid] = trade_counts.get(fid, 0) + 1
+
+    all_fids = set(waiver_counts) | set(fa_counts) | set(trade_counts)
+    results: List[RosterActivity] = []
+    for fid in sorted(all_fids):
+        ww = waiver_counts.get(fid, 0)
+        fa = fa_counts.get(fid, 0)
+        tr = trade_counts.get(fid, 0)
+        results.append(RosterActivity(
+            franchise_id=fid,
+            waiver_wins=ww,
+            free_agent_adds=fa,
+            trades=tr,
+            total_moves=ww + fa + tr,
+        ))
+
+    results.sort(key=lambda r: -r.total_moves)
+    return tuple(results)
+
+
 # ── Prompt rendering ─────────────────────────────────────────────────
 
 
@@ -204,9 +306,10 @@ def render_writer_room_context_for_prompt(
     *,
     deltas: Sequence[ScoringDelta],
     faab: Sequence[FaabSpending],
+    roster_activity: Sequence[RosterActivity] = (),
     name_map: Optional[Dict[str, str]] = None,
 ) -> str:
-    """Render scoring deltas and FAAB spending as a text block for the creative layer."""
+    """Render scoring deltas, FAAB spending, and roster activity for the creative layer."""
 
     def _name(fid: str) -> str:
         """Resolve franchise ID to display name."""
@@ -244,6 +347,23 @@ def render_writer_room_context_for_prompt(
             lines.append(
                 f"  {name}: ${f.total_spent:.0f} on {f.num_acquisitions} acquisition(s){budget_str}"
             )
+
+    # Roster activity (season cumulative)
+    if roster_activity:
+        if lines:
+            lines.append("")
+        lines.append("Season roster activity (verified counts — cite these, do not invent your own):")
+        for r in roster_activity:
+            name = _name(r.franchise_id)
+            parts = []
+            if r.waiver_wins:
+                parts.append(f"{r.waiver_wins} waiver wins")
+            if r.free_agent_adds:
+                parts.append(f"{r.free_agent_adds} FA adds")
+            if r.trades:
+                parts.append(f"{r.trades} trades")
+            detail = ", ".join(parts) if parts else "0 moves"
+            lines.append(f"  {name}: {r.total_moves} total moves ({detail})")
 
     if not lines:
         return ""
