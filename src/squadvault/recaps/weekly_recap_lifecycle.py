@@ -746,6 +746,7 @@ def generate_weekly_recap_draft(
     _season_context_text = ""
     _league_history_text = ""
     _narrative_angles_text = ""
+    _cl_tenure_map = None
     _writer_room_text = ""
 
     with DatabaseSession(db_path) as _cl_con:
@@ -811,6 +812,7 @@ def generate_weekly_recap_draft(
                 season_ctx=_cl_season_ctx,
                 history_ctx=_cl_history_ctx,
                 all_matchups=_cl_all_matchups,
+                tenure_map=_cl_tenure_map,
             )
             _narrative_angles_text = render_angles_for_prompt(
                 _cl_angles, name_map=_cl_name_map,

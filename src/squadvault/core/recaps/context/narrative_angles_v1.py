@@ -343,58 +343,79 @@ def _detect_rivalry_angles(
     ctx: SeasonContextV1,
     history: Optional[LeagueHistoryContextV1],
     all_matchups: Optional[Sequence[HistoricalMatchup]],
+    tenure_map: Optional[Dict[str, int]] = None,
 ) -> List[NarrativeAngle]:
     """Detect notable rivalry angles when this week's opponents have history.
 
-    Suppressed when only a single season is ingested: with one season of
-    data, head-to-head records are too thin for meaningful rivalry claims.
+    Tenure-aware: if either franchise changed ownership recently, only
+    count matchups from the newer owner's tenure. This prevents attributing
+    15 years of franchise slot history to a 2-year-old team name.
+
+    Suppressed when only a single season is ingested.
     """
     if not history or not all_matchups or not ctx.has_this_week_data:
         return []
 
-    # Guard: single-season data produces thin h2h — suppress rivalry framing
     if not history.is_multi_season:
         return []
 
     angles: List[NarrativeAngle] = []
 
     for wm in ctx.week_matchups:
-        h2h = compute_head_to_head(all_matchups, wm.winner_id, wm.loser_id)
-        if h2h.total_meetings < 3:
+        # Determine tenure-filtered matchups for this specific pair
+        pair_matchups = [
+            m for m in all_matchups
+            if (m.winner_id == wm.winner_id and m.loser_id == wm.loser_id)
+            or (m.winner_id == wm.loser_id and m.loser_id == wm.winner_id)
+        ]
+        tenure_label = "all-time"
+
+        if tenure_map:
+            t_w = tenure_map.get(wm.winner_id)
+            t_l = tenure_map.get(wm.loser_id)
+            if t_w and t_l:
+                newer_start = max(t_w, t_l)
+                earliest = min(history.seasons_available) if history.seasons_available else newer_start
+                if newer_start > earliest:
+                    # At least one franchise changed hands — filter to tenure period
+                    pair_matchups = [m for m in pair_matchups if m.season >= newer_start]
+                    tenure_label = f"since {newer_start}"
+
+        h2h = compute_head_to_head(pair_matchups, wm.winner_id, wm.loser_id)
+        if h2h.total_meetings < 2:
             continue
 
-        # Dominance angle: one side has won 70%+ of meetings
         total = h2h.total_meetings
-        if h2h.a_wins / total >= 0.70 and h2h.a_wins >= 3:
-            dominant = wm.winner_id if h2h.franchise_a == wm.winner_id else wm.loser_id
+
+        # Dominance angle
+        if total >= 3 and h2h.a_wins / total >= 0.70 and h2h.a_wins >= 3:
             record_str = f"{h2h.a_wins}-{h2h.b_wins}"
             if h2h.ties:
                 record_str += f"-{h2h.ties}"
             angles.append(NarrativeAngle(
                 category="RIVALRY",
-                headline=f"{wm.winner_id} leads all-time series {record_str}",
-                detail=f"{total} total meetings.",
+                headline=f"{wm.winner_id} leads the series {record_str} ({tenure_label})",
+                detail=f"{total} meetings {tenure_label}.",
                 strength=2,
                 franchise_ids=(wm.winner_id, wm.loser_id),
             ))
-        elif h2h.b_wins / total >= 0.70 and h2h.b_wins >= 3:
+        elif total >= 3 and h2h.b_wins / total >= 0.70 and h2h.b_wins >= 3:
             record_str = f"{h2h.b_wins}-{h2h.a_wins}"
             if h2h.ties:
                 record_str += f"-{h2h.ties}"
             angles.append(NarrativeAngle(
                 category="RIVALRY",
-                headline=f"Upset in the rivalry: {wm.winner_id} wins despite trailing {record_str} all-time",
-                detail=f"{total} total meetings.",
+                headline=f"Upset: {wm.winner_id} wins despite trailing {record_str} ({tenure_label})",
+                detail=f"{total} meetings {tenure_label}.",
                 strength=3,
                 franchise_ids=(wm.winner_id, wm.loser_id),
             ))
-
-        # Even rivalry: close to 50/50 with 5+ meetings
+        # Even rivalry
         elif total >= 5 and abs(h2h.a_wins - h2h.b_wins) <= 1:
             angles.append(NarrativeAngle(
                 category="RIVALRY",
-                headline=f"Even rivalry: {wm.winner_id} vs {wm.loser_id} ({h2h.a_wins}-{h2h.b_wins})",
-                detail=f"{total} total meetings, nearly even.",
+                headline=f"Even rivalry: {wm.winner_id} vs {wm.loser_id} ({h2h.a_wins}-{h2h.b_wins}, {tenure_label})",
+                detail=f"{total} meetings {tenure_label}, nearly even.",
                 strength=1,
                 franchise_ids=(wm.winner_id, wm.loser_id),
             ))
@@ -466,6 +487,7 @@ def detect_narrative_angles_v1(
     season_ctx: SeasonContextV1,
     history_ctx: Optional[LeagueHistoryContextV1] = None,
     all_matchups: Optional[Sequence[HistoricalMatchup]] = None,
+    tenure_map: Optional[Dict[str, int]] = None,
 ) -> WeekAnglesV1:
     """Detect all narrative angles for a given week.
 
@@ -483,7 +505,7 @@ def detect_narrative_angles_v1(
     all_angles.extend(_detect_scoring_anomalies(season_ctx))
     all_angles.extend(_detect_margin_stories(season_ctx))
     all_angles.extend(_detect_season_records(season_ctx, history_ctx))
-    all_angles.extend(_detect_rivalry_angles(season_ctx, history_ctx, all_matchups))
+    all_angles.extend(_detect_rivalry_angles(season_ctx, history_ctx, all_matchups, tenure_map))
     all_angles.extend(_detect_streak_records(season_ctx, history_ctx))
 
     # Deterministic sort: strength desc, then category asc, then headline asc
