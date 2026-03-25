@@ -220,13 +220,18 @@ def derive_roster_activity(
     db_path: str,
     league_id: str,
     season: int,
+    through_occurred_at: Optional[str] = None,
 ) -> Tuple[RosterActivity, ...]:
-    """Compute cumulative roster activity per franchise for the entire season.
+    """Compute cumulative roster activity per franchise.
 
     Counts:
     - WAIVER_BID_AWARDED: paid waiver claims
     - TRANSACTION_FREE_AGENT: free agent pickups
     - TRANSACTION_TRADE: trades executed
+
+    If through_occurred_at is provided, only counts events with
+    occurred_at <= that timestamp (ISO-8601). This scopes the counts
+    to "through this week" rather than the entire season.
 
     Returns a tuple of RosterActivity, one per franchise with any activity,
     sorted by total_moves descending.
@@ -235,9 +240,7 @@ def derive_roster_activity(
     fa_counts: Dict[str, int] = {}
     trade_counts: Dict[str, int] = {}
 
-    with DatabaseSession(db_path) as con:
-        rows = con.execute(
-            """SELECT ce.event_type, me.payload_json
+    sql = """SELECT ce.event_type, me.payload_json
                FROM canonical_events ce
                JOIN memory_events me ON me.id = ce.best_memory_event_id
                WHERE ce.league_id = ? AND ce.season = ?
@@ -245,9 +248,15 @@ def derive_roster_activity(
                      'WAIVER_BID_AWARDED',
                      'TRANSACTION_FREE_AGENT',
                      'TRANSACTION_TRADE'
-                 )""",
-            (str(league_id), int(season)),
-        ).fetchall()
+                 )"""
+    params: list = [str(league_id), int(season)]
+
+    if through_occurred_at:
+        sql += " AND ce.occurred_at IS NOT NULL AND ce.occurred_at <= ?"
+        params.append(through_occurred_at)
+
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(sql, params).fetchall()
 
     for row in rows:
         event_type = str(row[0])
@@ -352,7 +361,7 @@ def render_writer_room_context_for_prompt(
     if roster_activity:
         if lines:
             lines.append("")
-        lines.append("Season roster activity (verified counts — cite these, do not invent your own):")
+        lines.append("Roster activity through this week (season cumulative — cite these, do not invent your own):")
         for r in roster_activity:
             name = _name(r.franchise_id)
             parts = []

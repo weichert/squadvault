@@ -89,6 +89,22 @@ class ScoringMilestone:
 
 
 @dataclass(frozen=True)
+class PlayoffInfo:
+    """Derived playoff context for a week.
+
+    Detected from matchup count progression — no configuration needed.
+    In a league with N teams, regular season has N/2 matchups per week.
+    When matchup count drops, it's playoffs.
+    """
+    is_playoff: bool
+    playoff_round: Optional[str]  # "QUARTERFINAL", "SEMIFINAL", "CHAMPIONSHIP", None
+    playoff_round_label: Optional[str]  # human-readable, e.g. "Championship"
+    regular_season_matchup_count: int  # e.g. 5 for a 10-team league
+    last_regular_season_week: int  # last week with full matchup count
+    teams_remaining: Optional[int]  # 2 * matchups_this_week during playoffs
+
+
+@dataclass(frozen=True)
 class SeasonContextV1:
     """Full derived season context for a given week.
 
@@ -119,6 +135,9 @@ class SeasonContextV1:
     # Metadata
     total_matchups_through_week: int
     matchups_this_week: int
+
+    # Playoff detection (derived from matchup count progression)
+    playoff_info: Optional[PlayoffInfo] = None
 
     @property
     def has_matchup_data(self) -> bool:
@@ -151,6 +170,7 @@ def _empty_context(league_id: str, season: int, week: int) -> SeasonContextV1:
         season_avg_score=None,
         total_matchups_through_week=0,
         matchups_this_week=0,
+        playoff_info=None,
     )
 
 
@@ -233,6 +253,83 @@ def _load_matchups(
     # Deterministic sort
     matchups.sort(key=lambda m: (m.week, m.winner_id, m.loser_id))
     return matchups
+
+
+def _detect_playoff_info(
+    all_matchups: Sequence[MatchupResult],
+    week_index: int,
+) -> Optional[PlayoffInfo]:
+    """Detect whether a week is regular season or playoffs.
+
+    Detection is purely data-driven: count matchups per week across the
+    season. Regular season has a consistent count (N/2 for N teams).
+    When the count drops, it's playoffs.
+
+    Round labels are derived from teams remaining (2 * matchups):
+      8 teams -> Quarterfinal
+      4 teams -> Semifinal
+      2 teams -> Championship
+
+    This works for any league size and any playoff week configuration,
+    including the NFL's 2021 schedule expansion.
+    """
+    if not all_matchups:
+        return None
+
+    # Count matchups per week
+    from collections import Counter
+    week_counts: Counter = Counter()
+    for m in all_matchups:
+        week_counts[m.week] += 1
+
+    if not week_counts:
+        return None
+
+    # Regular season matchup count = the most common (mode) count
+    # This handles leagues where some weeks might have byes
+    regular_count = max(week_counts.values())
+
+    # Find last regular season week (last week with full matchup count)
+    all_weeks = sorted(week_counts.keys())
+    last_regular_week = 0
+    for w in all_weeks:
+        if week_counts[w] >= regular_count:
+            last_regular_week = w
+
+    this_week_count = week_counts.get(week_index, 0)
+    is_playoff = week_index > last_regular_week and this_week_count < regular_count
+
+    if not is_playoff:
+        return PlayoffInfo(
+            is_playoff=False,
+            playoff_round=None,
+            playoff_round_label=None,
+            regular_season_matchup_count=regular_count,
+            last_regular_season_week=last_regular_week,
+            teams_remaining=None,
+        )
+
+    teams_remaining = this_week_count * 2
+
+    # Round label from teams remaining
+    _ROUND_LABELS = {
+        2: ("CHAMPIONSHIP", "Championship"),
+        4: ("SEMIFINAL", "Semifinal"),
+        8: ("QUARTERFINAL", "Quarterfinal"),
+    }
+    round_code, round_label = _ROUND_LABELS.get(
+        teams_remaining,
+        ("PLAYOFF", "Playoff Round"),
+    )
+
+    return PlayoffInfo(
+        is_playoff=True,
+        playoff_round=round_code,
+        playoff_round_label=round_label,
+        regular_season_matchup_count=regular_count,
+        last_regular_season_week=last_regular_week,
+        teams_remaining=teams_remaining,
+    )
 
 
 def _compute_records(
@@ -450,6 +547,21 @@ def derive_season_context_v1(
     # Season milestones
     season_high, season_low, season_avg = _season_milestones(all_matchups, week_index)
 
+    # Playoff detection (data-driven, no config needed)
+    playoff_info = _detect_playoff_info(all_matchups, week_index)
+
+    # During playoffs, standings should reflect end-of-regular-season,
+    # not cumulative including playoff games
+    if playoff_info and playoff_info.is_playoff:
+        reg_season_records = _compute_records(
+            all_matchups,
+            through_week=playoff_info.last_regular_season_week,
+        )
+        standings = tuple(sorted(
+            reg_season_records.values(),
+            key=lambda r: (-r.wins, -r.points_for, r.franchise_id),
+        ))
+
     return SeasonContextV1(
         league_id=str(league_id),
         season=int(season),
@@ -465,6 +577,7 @@ def derive_season_context_v1(
         season_avg_score=season_avg,
         total_matchups_through_week=len(through),
         matchups_this_week=len(this_week),
+        playoff_info=playoff_info,
     )
 
 
@@ -509,8 +622,27 @@ def render_season_context_for_prompt(
 
     lines: List[str] = []
 
+    # Playoff context — CRITICAL for creative layer to know what kind of week this is
+    pi = ctx.playoff_info
+    if pi and pi.is_playoff:
+        lines.append("*** WEEK TYPE: PLAYOFF ***")
+        lines.append("This is a PLAYOFF week, not regular season.")
+        lines.append("Round: %s" % (pi.playoff_round_label or "Playoff"))
+        lines.append("Teams remaining: %d (only %d matchup(s) this week)"
+                      % (pi.teams_remaining or 0, ctx.matchups_this_week))
+        lines.append("Regular season ended after Week %d." % pi.last_regular_season_week)
+        lines.append("Teams NOT playing this week have been ELIMINATED.")
+        lines.append("Do NOT reference eliminated teams' records or streaks as ongoing.")
+        lines.append("Do NOT say 'regular season' — this is the postseason.")
+        if pi.playoff_round == "CHAMPIONSHIP":
+            lines.append("This is the CHAMPIONSHIP game. The winner takes the title.")
+        lines.append("")
+
     # Standings
-    lines.append(f"Season standings through Week {ctx.through_week}:")
+    if pi and pi.is_playoff:
+        lines.append("Final regular season standings (through Week %d):" % pi.last_regular_season_week)
+    else:
+        lines.append("Season standings through Week %d:" % ctx.through_week)
     for i, rec in enumerate(ctx.standings, 1):
         name = _name(rec.franchise_id)
         record = f"{rec.wins}-{rec.losses}"

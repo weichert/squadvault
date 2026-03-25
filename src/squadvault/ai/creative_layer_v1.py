@@ -86,6 +86,11 @@ Hard rules (non-negotiable):
   "this roster slot" — not the current team name.
 - Output ONLY the recap prose — nothing else.
 - NEVER inject NFL news, injury reports, or real-world football events not present in the data.
+- When the SEASON CONTEXT says "WEEK TYPE: PLAYOFF", this is a PLAYOFF week. \
+  Do NOT reference it as regular season. Do NOT discuss eliminated teams' records \
+  as if they are still playing. Do NOT say "regular season title" — say \
+  "championship" or the appropriate playoff round. Teams not in this week's \
+  matchups have been eliminated. Focus only on the teams playing.
 """
 
 # ---------------------------------------------------------------------------

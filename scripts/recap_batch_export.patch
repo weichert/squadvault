@@ -1,0 +1,168 @@
+diff --git a/scripts/recap.py b/scripts/recap.py
+index 11c44f7..2cb2223 100755
+--- a/scripts/recap.py
++++ b/scripts/recap.py
+@@ -772,6 +772,134 @@ def cmd_writing_room_review(args: argparse.Namespace) -> int:
+     return 0
+ 
+ 
++def cmd_batch_read(args: argparse.Namespace) -> int:
++    """Batch-read all shareable recaps for a season.
++
++    Outputs each week's narrative in shareable format, separated by
++    dividers.  With --out-dir, writes individual .md files instead of stdout.
++    """
++    _warn_if_migrations_pending(args.db)
++    from squadvault.core.storage.session import DatabaseSession
++    from squadvault.core.exports.season_html_export_v1 import extract_shareable_parts
++
++    weeks = _list_week_indexes(args.db, args.league_id, args.season)
++    if not weeks:
++        print("No weeks found for that league/season.", file=sys.stderr)
++        return 1
++
++    out_dir = Path(args.out_dir) if args.out_dir else None
++    if out_dir:
++        out_dir.mkdir(parents=True, exist_ok=True)
++
++    count = 0
++    with DatabaseSession(args.db) as con:
++        for w in weeks:
++            row = con.execute(
++                """SELECT rendered_text, version, state FROM recap_artifacts
++                   WHERE league_id=? AND season=? AND week_index=?
++                     AND artifact_type='WEEKLY_RECAP'
++                   ORDER BY version DESC LIMIT 1""",
++                (args.league_id, args.season, w),
++            ).fetchone()
++            if not row or not row[0]:
++                continue
++            rendered_text, version, state = row[0], row[1], row[2]
++
++            # Skip withheld weeks unless --include-withheld
++            if state == "WITHHELD" and not args.include_withheld:
++                continue
++
++            narrative, bullets = extract_shareable_parts(rendered_text)
++
++            header = "PFL Buddies -- Season %d, Week %d" % (args.season, w)
++            divider = "=" * len(header)
++
++            lines = [header, divider, "", narrative]
++            if bullets:
++                lines += ["", "---", ""]
++                lines.append("What happened this week:")
++                for b in bullets:
++                    lines.append("- " + b)
++            lines += ["", "[v%d -- %s]" % (version, state), ""]
++
++            text = "\n".join(lines)
++
++            if out_dir:
++                fname = "week_%02d.md" % w
++                (out_dir / fname).write_text(text + "\n", encoding="utf-8")
++                print("  wrote %s (%d chars)" % (fname, len(narrative)))
++            else:
++                print(text)
++                print()
++
++            count += 1
++
++    if out_dir:
++        print("batch-read: %d weeks written to %s/" % (count, out_dir))
++    return 0
++
++
++def cmd_season_html(args: argparse.Namespace) -> int:
++    """Generate a styled HTML archive of all weekly recaps for a season.
++
++    Produces a single self-contained HTML file suitable for sharing,
++    emailing, or hosting.
++    """
++    if not args.output:
++        args.output = "season_%d_recaps.html" % args.season
++    _warn_if_migrations_pending(args.db)
++    from squadvault.core.storage.session import DatabaseSession
++    from squadvault.core.exports.season_html_export_v1 import (
++        WeekRecapData,
++        extract_shareable_parts,
++        render_season_html,
++    )
++
++    weeks = _list_week_indexes(args.db, args.league_id, args.season)
++    if not weeks:
++        print("No weeks found for that league/season.", file=sys.stderr)
++        return 1
++
++    week_data = []
++    with DatabaseSession(args.db) as con:
++        for w in weeks:
++            row = con.execute(
++                """SELECT rendered_text, version, state FROM recap_artifacts
++                   WHERE league_id=? AND season=? AND week_index=?
++                     AND artifact_type='WEEKLY_RECAP'
++                   ORDER BY version DESC LIMIT 1""",
++                (args.league_id, args.season, w),
++            ).fetchone()
++            if not row or not row[0]:
++                continue
++            rendered_text, version, state = row[0], row[1], row[2]
++            if state == "WITHHELD":
++                continue
++
++            narrative, bullets = extract_shareable_parts(rendered_text)
++            week_data.append(WeekRecapData(
++                week=w,
++                narrative=narrative,
++                bullets=bullets,
++                version=version,
++                state=state,
++            ))
++
++    if not week_data:
++        print("No recaps with content found.", file=sys.stderr)
++        return 1
++
++    league_name = args.league_name or ("League " + str(args.league_id))
++
++    html_content = render_season_html(week_data, league_name, args.season)
++
++    out_path = Path(args.output)
++    out_path.parent.mkdir(parents=True, exist_ok=True)
++    out_path.write_text(html_content, encoding="utf-8")
++    print("season-html: wrote %d weeks to %s" % (len(week_data), out_path))
++    return 0
++
++
+ def cmd_read(args: argparse.Namespace) -> int:
+     """Read the latest recap for a week — shareable format (narrative only)."""
+     _warn_if_migrations_pending(args.db)
+@@ -1148,6 +1276,28 @@ def build_parser() -> argparse.ArgumentParser:
+     sp.add_argument("--db", required=True)
+     sp.set_defaults(fn=cmd_migrate)
+ 
++    # batch-read
++    sp = sub.add_parser("batch-read", help="Read all shareable recaps for a season")
++    sp.add_argument("--db", required=True)
++    sp.add_argument("--league-id", dest="league_id", required=True)
++    sp.add_argument("--season", type=int, required=True)
++    sp.add_argument("--out-dir", dest="out_dir", default=None,
++                    help="Write individual .md files to this directory (default: stdout)")
++    sp.add_argument("--include-withheld", dest="include_withheld", action="store_true",
++                    help="Include withheld weeks in output")
++    sp.set_defaults(fn=cmd_batch_read)
++
++    # season-html
++    sp = sub.add_parser("season-html", help="Generate styled HTML archive of season recaps")
++    sp.add_argument("--db", required=True)
++    sp.add_argument("--league-id", dest="league_id", required=True)
++    sp.add_argument("--season", type=int, required=True)
++    sp.add_argument("--output", default=None,
++                    help="Output HTML file path (default: season_YYYY_recaps.html)")
++    sp.add_argument("--league-name", dest="league_name", default=None,
++                    help="Display name for the league (default: 'League <id>')")
++    sp.set_defaults(fn=cmd_season_html)
++
+     return p
+ 
+ 
