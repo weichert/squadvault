@@ -34,6 +34,7 @@ from squadvault.core.recaps.context.season_context_v1 import (
     render_season_context_for_prompt,
 )
 from squadvault.core.recaps.context.league_history_v1 import (
+    compute_franchise_tenures,
     derive_league_history_v1,
     load_all_matchups,
     build_cross_season_name_resolver,
@@ -792,8 +793,9 @@ def generate_weekly_recap_draft(
 
     try:
         _cl_history_ctx = derive_league_history_v1(db_path=db_path, league_id=league_id)
+        _cl_tenure_map = compute_franchise_tenures(db_path, league_id)
         _league_history_text = render_league_history_for_prompt(
-            _cl_history_ctx, name_map=_cl_name_map,
+            _cl_history_ctx, name_map=_cl_name_map, tenure_map=_cl_tenure_map,
         )
     except Exception:
         _cl_history_ctx = None

@@ -542,6 +542,61 @@ def build_cross_season_name_resolver(
     return name_map
 
 
+# ── Franchise tenure ──────────────────────────────────────────────────
+
+
+def compute_franchise_tenures(
+    db_path: str,
+    league_id: str,
+) -> Dict[str, int]:
+    """Compute when each franchise's CURRENT name first appeared.
+
+    Returns dict of franchise_id -> first_season_with_current_name.
+
+    This is critical for historical attribution: a franchise slot may
+    have had different owners over the years. "Brandon Knows Ball leads
+    the all-time series 19-8" is misleading if Brandon only joined in
+    2023 — that's the franchise SLOT's record, not the current owner's.
+    """
+    # Step 1: get the current (most recent) name for each franchise
+    current_names: Dict[str, str] = {}
+    all_names: Dict[str, List[Tuple[int, str]]] = {}  # fid -> [(season, name), ...]
+
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT franchise_id, season, name FROM franchise_directory
+               WHERE league_id = ?
+               ORDER BY franchise_id, season ASC""",
+            (str(league_id),),
+        ).fetchall()
+
+    for row in rows:
+        fid = str(row[0]).strip()
+        season = int(row[1])
+        name = str(row[2]).strip() if row[2] else fid
+
+        if fid not in all_names:
+            all_names[fid] = []
+        all_names[fid].append((season, name))
+
+    # Step 2: for each franchise, find when the current name first appeared
+    tenures: Dict[str, int] = {}
+    for fid, seasons_names in all_names.items():
+        if not seasons_names:
+            continue
+        current_name = seasons_names[-1][1]  # most recent season's name
+        # Walk backward to find earliest appearance of this name
+        first_season = seasons_names[-1][0]
+        for season, name in reversed(seasons_names):
+            if name == current_name:
+                first_season = season
+            else:
+                break  # name changed — stop
+        tenures[fid] = first_season
+
+    return tenures
+
+
 # ── Public API ───────────────────────────────────────────────────────
 
 
@@ -605,10 +660,12 @@ def render_league_history_for_prompt(
     ctx: LeagueHistoryContextV1,
     *,
     name_map: Optional[Dict[str, str]] = None,
+    tenure_map: Optional[Dict[str, int]] = None,
 ) -> str:
     """Render league history as a text block for the creative layer prompt.
 
     name_map: optional dict of franchise_id -> display_name.
+    tenure_map: optional dict of franchise_id -> first season with current name.
     """
     if not ctx.has_history:
         return "(No league history available.)\n"
@@ -646,6 +703,23 @@ def render_league_history_for_prompt(
             record += f"-{rec.total_ties}"
         pct = f"{rec.all_time_win_pct:.3f}"
         lines.append(f"  {name}: {record} ({pct}), PF: {rec.total_points_for:.1f}")
+
+    # Franchise tenure (ownership history)
+    if tenure_map and ctx.is_multi_season:
+        lines.append("")
+        lines.append("** FRANCHISE TENURE (when current team names started):")
+        for fid in sorted(tenure_map.keys()):
+            name = _name(fid)
+            start = tenure_map[fid]
+            latest = ctx.seasons_available[-1] if ctx.seasons_available else start
+            years_active = latest - start + 1
+            if start == ctx.seasons_available[0] if ctx.seasons_available else True:
+                lines.append(f"  {name}: since {start} (entire league history)")
+            else:
+                lines.append(f"  {name}: since {start} ({years_active} season(s))")
+        lines.append("IMPORTANT: All-time records above track the FRANCHISE SLOT, not")
+        lines.append("the current owner. Do NOT attribute pre-tenure history to the")
+        lines.append("current team name. Say \"this franchise\" for pre-tenure records. **")
 
     # Scoring records
     if ctx.all_time_high or ctx.all_time_low:
