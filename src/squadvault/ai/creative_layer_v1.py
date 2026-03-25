@@ -50,11 +50,19 @@ Voice rules:
 - Insider knowledge: use standings, streaks, and history to make observations. \
   "Three straight wins" means something different at 7-1 vs 3-5. Use that.
 - Sharp but not mean: roasts are affectionate, never cruel. You're part of this league.
-- Callbacks: reference earlier weeks when the data supports it ("remember when..."). \
+- Callbacks are REQUIRED when the data supports them. The NARRATIVE ANGLES and \
+  LEAGUE HISTORY sections contain detected cross-season hooks — USE THEM. If a \
+  team just set an all-time scoring record, SAY SO. If two rivals have met 12 \
+  times before, REFERENCE the series record. If a streak approaches a league \
+  record, CALL IT OUT. These callbacks are what make the recap feel like it \
+  comes from someone who has watched this league for years, not just this week. \
   Only callback to things in the provided context — never invent history.
 - Let big results speak: sometimes the score says it all. Don't over-narrate blowouts.
-- NFL awareness: if web search results give you injury/bye/breakout context for a \
-  transaction, weave it in naturally. But NFL news is color — not league fact.
+- NFL awareness: you may use general football knowledge (positions, team names, \
+  typical fantasy value) but NEVER claim specific NFL news events (injuries, \
+  suspensions, roster moves) unless that information is explicitly in the \
+  provided context. When in doubt, describe what happened in the league without \
+  speculating about why.
 - Pacing: lead with the headline matchup(s), work through the week, land on a \
   forward-looking closer if the data supports it.
 - Length: aim for 3-6 paragraphs depending on how much happened. A quiet week gets \
@@ -69,7 +77,7 @@ Hard rules (non-negotiable):
 - NEVER use superlatives (best, worst, greatest) unless the data explicitly supports them.
 - NEVER add greetings, sign-offs, headers, or meta-commentary about being an AI.
 - Output ONLY the recap prose — nothing else.
-- NFL context from web search is background color only. It never becomes a league fact.
+- NEVER inject NFL news, injury reports, or real-world football events not present in the data.
 """
 
 # ---------------------------------------------------------------------------
@@ -156,12 +164,17 @@ def _build_user_prompt(
         parts.append("")
 
     if league_history:
-        parts.append("=== LEAGUE HISTORY (all-time records, cross-season) ===")
+        parts.append("=== LEAGUE HISTORY (all-time records, cross-season — REFERENCE THIS) ===")
+        parts.append("Use this data for context: all-time records, scoring records, streaks.")
+        parts.append("When a score approaches a league record or a team's record is notable, mention it.")
         parts.append(league_history.strip())
         parts.append("")
 
     if narrative_angles:
-        parts.append("=== NARRATIVE ANGLES (detected story hooks for this week) ===")
+        parts.append("=== NARRATIVE ANGLES (detected story hooks — USE THESE) ===")
+        parts.append("IMPORTANT: The angles below are pre-computed from 16 seasons of data.")
+        parts.append("Work the HEADLINE and NOTABLE angles into your prose naturally.")
+        parts.append("These are the hooks that make the recap feel historically informed.")
         parts.append(narrative_angles.strip())
         parts.append("")
 
@@ -181,10 +194,9 @@ def _build_user_prompt(
 
 
 def _extract_text_from_response(message) -> str:
-    """Extract text content from an API response, handling tool_use blocks.
+    """Extract text content from an API response.
 
-    When web search is enabled, the response may contain tool_use and
-    tool_result blocks interleaved with text. We extract only text blocks.
+    Returns the first text block from the response content.
     """
     if not message.content:
         return ""
@@ -281,13 +293,17 @@ def draft_narrative_v1(
 
         client = anthropic.Anthropic(api_key=api_key)
         system_prompt = _build_system_prompt(tone_preset)
+        # SV_NO_WEB_SEARCH: Web search removed to prevent unverified NFL
+        # commentary from being injected into league recaps. The creative
+        # layer must work only with league-sourced data. Per governance:
+        # silence over fabrication. Web search may be re-added later with
+        # proper attribution and verification guardrails.
         message = client.messages.create(
             model=_MODEL,
             max_tokens=_MAX_TOKENS,
             temperature=temperature,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
-            tools=[{"type": "web_search_20250305", "name": "web_search"}],
         )
 
         text = _extract_text_from_response(message)

@@ -850,9 +850,9 @@ def generate_weekly_recap_draft(
     if _narrative_draft:
         rendered_text = (
             rendered_text.rstrip()
-            + "\n\n--- Narrative Draft (AI-assisted, requires human approval) ---\n"
+            + "\n\n--- SHAREABLE RECAP ---\n"
             + _narrative_draft
-            + "\n"
+            + "\n--- END SHAREABLE RECAP ---\n"
         )
     # SV_CREATIVE_LAYER_V1_END
 

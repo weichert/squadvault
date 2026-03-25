@@ -772,6 +772,70 @@ def cmd_writing_room_review(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_read(args: argparse.Namespace) -> int:
+    """Read the latest recap for a week — shareable format (narrative only)."""
+    _warn_if_migrations_pending(args.db)
+    from squadvault.core.storage.session import DatabaseSession
+    with DatabaseSession(args.db) as con:
+        row = con.execute(
+            """SELECT rendered_text, version, state FROM recap_artifacts
+               WHERE league_id=? AND season=? AND week_index=?
+                 AND artifact_type='WEEKLY_RECAP'
+               ORDER BY version DESC LIMIT 1""",
+            (args.league_id, args.season, args.week_index),
+        ).fetchone()
+    if not row or not row[0]:
+        print("No recap found for that week.", file=sys.stderr)
+        return 1
+    rendered_text, version, state = row[0], row[1], row[2]
+
+    # Extract shareable portion if delimiters exist
+    SHARE_START = "--- SHAREABLE RECAP ---"
+    SHARE_END = "--- END SHAREABLE RECAP ---"
+
+    if SHARE_START in rendered_text:
+        start = rendered_text.index(SHARE_START) + len(SHARE_START)
+        end = rendered_text.index(SHARE_END) if SHARE_END in rendered_text else len(rendered_text)
+        narrative = rendered_text[start:end].strip()
+    else:
+        # Legacy format: try old delimiter
+        OLD_DELIM = "--- Narrative Draft (AI-assisted, requires human approval) ---"
+        if OLD_DELIM in rendered_text:
+            start = rendered_text.index(OLD_DELIM) + len(OLD_DELIM)
+            narrative = rendered_text[start:].strip()
+        else:
+            narrative = rendered_text
+
+    # Also extract the "What happened this week:" bullets if present
+    bullets_section = ""
+    BULLETS_MARKER = "What happened this week:"
+    if BULLETS_MARKER in rendered_text and SHARE_START in rendered_text:
+        b_start = rendered_text.index(BULLETS_MARKER)
+        b_end = rendered_text.index(SHARE_START)
+        bullets_section = rendered_text[b_start:b_end].strip()
+
+    if args.format == "full":
+        # Full rendered_text (including telemetry — for commissioner audit)
+        print(rendered_text)
+    else:
+        # Shareable format
+        header = f"PFL Buddies — Season {args.season}, Week {args.week_index}"
+        print(header)
+        print("=" * len(header))
+        print()
+        print(narrative)
+        if bullets_section:
+            print()
+            print("---")
+            print()
+            print(bullets_section)
+        print()
+        state_label = f"[v{version} — {state}]"
+        print(state_label)
+
+    return 0
+
+
 def cmd_migrate(args: argparse.Namespace) -> int:
     """Apply pending schema migrations to the database."""
     applied = apply_migrations(args.db)
@@ -1068,6 +1132,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--show-included", action="store_true", help="Print included signal_ids")
     sp.add_argument("--show-excluded", action="store_true", help="Print excluded signals w/ reason/details")
     sp.set_defaults(fn=cmd_writing_room_review)
+
+    # read
+    sp = sub.add_parser("read", help="Read the latest recap in shareable format")
+    add_common(sp)
+    sp.add_argument("--format", choices=["share", "full"], default="share",
+                    help="share (narrative only, default) or full (with telemetry)")
+    sp.set_defaults(fn=cmd_read)
 
     # migrate
     sp = sub.add_parser(
