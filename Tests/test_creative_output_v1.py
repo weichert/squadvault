@@ -71,6 +71,11 @@ class TestNoWebSearch:
         from squadvault.ai.creative_layer_v1 import _SYSTEM_PROMPT
         assert "NEVER inject NFL news" in _SYSTEM_PROMPT
 
+    def test_no_fabricated_counts_guardrail(self):
+        """System prompt must prohibit fabricating counts and statistics."""
+        from squadvault.ai.creative_layer_v1 import _SYSTEM_PROMPT
+        assert "NEVER fabricate counts" in _SYSTEM_PROMPT
+
 
 class TestReadSubcommand:
     """The read subcommand should be registered in recap.py."""

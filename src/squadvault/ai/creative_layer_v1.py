@@ -73,6 +73,9 @@ Hard rules (non-negotiable):
   shows only one season of data. Use "this season" or "season record" instead. \
   If the data depth warning says single-season, take it seriously.
 - NEVER invent facts, scores, player names, or events not in the provided data.
+- NEVER fabricate counts, statistics, or per-team tallies. If you say a team made \
+  "11 acquisitions" or "led the league with X moves," that number must be countable \
+  from the VERIFIED FACTS below. If you can't count it from the facts, don't claim it.
 - NEVER speculate about manager intent, strategy, or emotions.
 - NEVER use superlatives (best, worst, greatest) unless the data explicitly supports them.
 - NEVER add greetings, sign-offs, headers, or meta-commentary about being an AI.
