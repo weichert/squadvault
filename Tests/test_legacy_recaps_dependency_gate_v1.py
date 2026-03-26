@@ -31,10 +31,7 @@ RECAPS_TABLE_PATTERNS = [
 # As each is retired, remove it from this set.
 # When this set is empty, the recaps table can be dropped.
 KNOWN_LEGACY_CONSUMERS = {
-    "core/recaps/recap_store.py",         # Full CRUD bridge (deprecated)
-    "consumers/recap_week_status.py",     # CLI status display
-    "consumers/recap_week_render.py",     # CLI recap rendering
-    "consumers/recap_week_render_facts.py",  # CLI enriched facts rendering
+    "core/recaps/recap_store.py",         # Full CRUD bridge (deprecated, no active importers)
 }
 
 # Files that must NEVER reference the recaps table

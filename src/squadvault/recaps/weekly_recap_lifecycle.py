@@ -607,7 +607,6 @@ def generate_weekly_recap_draft(
     # NOTE: This must not modify selection, ordering, or facts. It only constrains expression.
     included_count = None
     # Read canonical_ids_json from recap_runs for deterministic included_count.
-    # SV_DEFECT1_EAL_FALLBACK_COUNT: fall back to canonical_events table if NULL.
     with DatabaseSession(db_path) as _eal_con:
         _eal_row = _eal_con.execute(
             "SELECT canonical_ids_json FROM recap_runs WHERE league_id=? AND season=? AND week_index=?",
@@ -620,22 +619,6 @@ def generate_weekly_recap_draft(
                     included_count = len(_ids)
             except (ValueError, TypeError):
                 pass
-        # Fallback: if canonical_ids_json is NULL but window bounds are known,
-        # count canonical events directly. The data exists in the DB — the
-        # recap_runs column just wasn't populated for this week.
-        if included_count is None and window_start and window_end:
-            _fallback_row = _eal_con.execute(
-                "SELECT COUNT(*) FROM canonical_events"
-                " WHERE league_id=? AND season=?"
-                " AND occurred_at IS NOT NULL"
-                " AND occurred_at >= ? AND occurred_at < ?",
-                (league_id, int(season), window_start, window_end),
-            ).fetchone()
-            # SV_DEFECT1_ZERO_COUNT_FIX: COUNT(*)=0 is valid (quiet week).
-            # Previous condition `_fallback_row[0] and int(...) > 0` excluded
-            # zero because 0 is falsy — gave None instead of 0.
-            if _fallback_row is not None:
-                included_count = int(_fallback_row[0])
     meta = EALMeta(
         has_selection_set=True,
         has_window=True,

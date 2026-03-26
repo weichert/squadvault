@@ -25,88 +25,11 @@ def _fresh_db(tmp_path, name="test.sqlite"):
     return db_path
 
 
-# ── Defect 1: EAL fallback count ────────────────────────────────────
+# ── Defect 1: EAL included_count derivation ─────────────────────────
 
-class TestEALFallbackCount:
-    """When canonical_ids_json is NULL, EAL should fall back to counting
-    canonical_events directly instead of defaulting to LOW_CONFIDENCE_RESTRAINT."""
-
-    def test_fallback_uses_canonical_events_count(self, tmp_path):
-        """If canonical_ids_json is empty but canonical_events has data in the
-        window, included_count should reflect the canonical event count."""
-        db_path = _fresh_db(tmp_path)
-        con = sqlite3.connect(db_path)
-
-        window_start = "2024-10-14T00:00:00Z"
-        window_end = "2024-10-21T00:00:00Z"
-
-        # Insert a recap_run with empty canonical_ids_json (real-world scenario:
-        # weeks processed before this column was reliably populated get "")
-        con.execute(
-            """INSERT INTO recap_runs
-               (league_id, season, week_index, state, selection_fingerprint,
-                canonical_ids_json, counts_by_type_json,
-                window_start, window_end)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("L1", 2024, 6, "ELIGIBLE", "fp1",
-             "", "{}", window_start, window_end),
-        )
-
-        # Insert memory_events + canonical_events with occurred_at inside the window
-        for i in range(5):
-            con.execute(
-                """INSERT INTO memory_events
-                   (league_id, season, external_source, external_id, event_type,
-                    occurred_at, ingested_at, payload_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                ("L1", 2024, "test", f"e{i}",
-                 "WEEKLY_MATCHUP_RESULT",
-                 f"2024-10-15T{10+i:02d}:00:00Z",
-                 "2024-10-15T12:00:00Z",
-                 json.dumps({"game": i})),
-            )
-            me_id = i + 1  # sqlite autoincrement starts at 1
-            con.execute(
-                """INSERT INTO canonical_events
-                   (league_id, season, event_type, action_fingerprint,
-                    best_memory_event_id, best_score, updated_at, occurred_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                ("L1", 2024, "WEEKLY_MATCHUP_RESULT",
-                 f"fp_match_{i}", me_id, 100,
-                 "2024-10-15T12:00:00Z",
-                 f"2024-10-15T{10+i:02d}:00:00Z"),
-            )
-        con.commit()
-
-        # Test the EAL fallback logic directly (mirrors weekly_recap_lifecycle.py)
-        from squadvault.core.storage.session import DatabaseSession
-
-        included_count = None
-        with DatabaseSession(db_path) as _eal_con:
-            _eal_row = _eal_con.execute(
-                "SELECT canonical_ids_json FROM recap_runs"
-                " WHERE league_id=? AND season=? AND week_index=?",
-                ("L1", 2024, 6),
-            ).fetchone()
-            if _eal_row and _eal_row[0]:
-                _ids = json.loads(_eal_row[0])
-                if isinstance(_ids, list):
-                    included_count = len(_ids)
-            # Fallback: count canonical events in window
-            if included_count is None and window_start and window_end:
-                _fallback_row = _eal_con.execute(
-                    "SELECT COUNT(*) FROM canonical_events"
-                    " WHERE league_id=? AND season=?"
-                    " AND occurred_at IS NOT NULL"
-                    " AND occurred_at >= ? AND occurred_at < ?",
-                    ("L1", 2024, window_start, window_end),
-                ).fetchone()
-                # SV_DEFECT1_ZERO_COUNT_FIX: 0 is a valid count.
-                if _fallback_row is not None:
-                    included_count = int(_fallback_row[0])
-
-        assert included_count == 5, f"Expected 5 from fallback, got {included_count}"
-        con.close()
+class TestEALIncludedCount:
+    """included_count is derived solely from canonical_ids_json in recap_runs.
+    The legacy fallback that counted canonical_events directly has been removed."""
 
     def test_included_count_from_canonical_ids_json(self, tmp_path):
         """When canonical_ids_json IS populated, it should be used directly."""
@@ -138,82 +61,52 @@ class TestEALFallbackCount:
 
         assert included_count == 3
 
-
-    def test_fallback_zero_count_gives_zero_not_none(self, tmp_path):
-        """When canonical_ids_json is empty and canonical_events has 0 rows in
-        the window, included_count should be 0 (not None).
-
-        This is the root cause of the EAL confidence bug: 0 is falsy in Python,
-        so the old condition `_fallback_row[0] and int(...) > 0` left
-        included_count=None, producing LOW_CONFIDENCE_RESTRAINT instead of
-        AMBIGUITY_PREFER_SILENCE.
-        """
+    def test_null_canonical_ids_gives_none(self, tmp_path):
+        """When canonical_ids_json is NULL/empty, included_count is None.
+        EAL treats None as neutral — no fallback counting is performed."""
         db_path = _fresh_db(tmp_path)
         con = sqlite3.connect(db_path)
 
-        window_start = "2024-10-14T00:00:00Z"
-        window_end = "2024-10-21T00:00:00Z"
-
-        # Insert a recap_run with empty canonical_ids_json (real-world scenario:
-        # weeks processed before this column was reliably populated get "")
         con.execute(
             """INSERT INTO recap_runs
                (league_id, season, week_index, state, selection_fingerprint,
                 canonical_ids_json, counts_by_type_json,
                 window_start, window_end)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("L1", 2024, 7, "ELIGIBLE", "fp_empty",
-             "", "{}", window_start, window_end),
+            ("L1", 2024, 6, "ELIGIBLE", "fp1",
+             "", "{}", "2024-10-14T00:00:00Z", "2024-10-21T00:00:00Z"),
         )
-        # No canonical_events inserted — zero events in window
         con.commit()
+        con.close()
 
         from squadvault.core.storage.session import DatabaseSession
 
         included_count = None
         with DatabaseSession(db_path) as _eal_con:
             _eal_row = _eal_con.execute(
-                "SELECT canonical_ids_json FROM recap_runs"
-                " WHERE league_id=? AND season=? AND week_index=?",
-                ("L1", 2024, 7),
+                "SELECT canonical_ids_json FROM recap_runs WHERE league_id=? AND season=? AND week_index=?",
+                ("L1", 2024, 6),
             ).fetchone()
             if _eal_row and _eal_row[0]:
                 _ids = json.loads(_eal_row[0])
                 if isinstance(_ids, list):
                     included_count = len(_ids)
-            # Fallback: count canonical events in window
-            if included_count is None and window_start and window_end:
-                _fallback_row = _eal_con.execute(
-                    "SELECT COUNT(*) FROM canonical_events"
-                    " WHERE league_id=? AND season=?"
-                    " AND occurred_at IS NOT NULL"
-                    " AND occurred_at >= ? AND occurred_at < ?",
-                    ("L1", 2024, window_start, window_end),
-                ).fetchone()
-                # SV_DEFECT1_ZERO_COUNT_FIX: 0 is a valid count.
-                if _fallback_row is not None:
-                    included_count = int(_fallback_row[0])
 
-        assert included_count == 0, (
-            f"Expected included_count=0 for quiet week, got {included_count!r}"
+        assert included_count is None, (
+            f"Expected None when canonical_ids_json is empty, got {included_count!r}"
         )
 
-        # Verify this produces the correct EAL directive
-        from squadvault.core.eal.editorial_attunement_v1 import (
-            EALMeta,
-            evaluate_editorial_attunement_v1,
-            EAL_AMBIGUITY_PREFER_SILENCE,
+    def test_eal_fallback_removed_from_lifecycle(self):
+        """Lifecycle should no longer contain the canonical_events COUNT fallback."""
+        import pathlib
+        lifecycle = pathlib.Path(SCHEMA_PATH).parent.parent / "recaps" / "weekly_recap_lifecycle.py"
+        text = lifecycle.read_text(encoding="utf-8")
+        assert "SV_DEFECT1_EAL_FALLBACK_COUNT" not in text, (
+            "EAL fallback marker still present in lifecycle — should have been removed"
         )
-        meta = EALMeta(
-            has_selection_set=True,
-            has_window=True,
-            included_count=included_count,
+        assert "SV_DEFECT1_ZERO_COUNT_FIX" not in text, (
+            "EAL zero-count fix marker still present in lifecycle — fallback was removed"
         )
-        directive = evaluate_editorial_attunement_v1(meta)
-        assert directive == EAL_AMBIGUITY_PREFER_SILENCE, (
-            f"Quiet week (0 events) should get AMBIGUITY_PREFER_SILENCE, got {directive}"
-        )
-        con.close()
 
 
 # ── Defect 2: use_canonical default ──────────────────────────────────
@@ -277,9 +170,7 @@ class TestLegacyRecapsDeprecation:
         consumer_dir = pathlib.Path(SCHEMA_PATH).parent.parent.parent / "consumers"
         legacy_consumers = [
             "recap_week_init.py",
-            "recap_week_selection_check.py",
             "recap_week_write_artifact.py",
-            "recap_week_materialize_version.py",
         ]
         for name in legacy_consumers:
             path = consumer_dir / name
@@ -287,4 +178,20 @@ class TestLegacyRecapsDeprecation:
             text = path.read_text(encoding="utf-8")
             assert "SV_DEFECT4_LEGACY_CONSUMER" in text, (
                 f"{name} missing SV_DEFECT4_LEGACY_CONSUMER deprecation marker"
+            )
+
+    def test_retired_legacy_consumers_deleted(self):
+        """Legacy consumers that have been retired should no longer exist."""
+        import pathlib
+        consumer_dir = pathlib.Path(SCHEMA_PATH).parent.parent.parent / "consumers"
+        retired = [
+            "recap_week_status.py",
+            "recap_week_render_facts.py",
+            "recap_week_selection_check.py",
+            "recap_week_materialize_version.py",
+        ]
+        for name in retired:
+            path = consumer_dir / name
+            assert not path.exists(), (
+                f"{name} should have been deleted (legacy recaps table consumer)"
             )
