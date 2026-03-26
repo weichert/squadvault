@@ -149,49 +149,42 @@ class TestCanonicalDefault:
             )
 
 
-# ── Defect 4: Legacy recaps table deprecation ────────────────────────
+# ── Defect 4: Legacy recaps table retired ─────────────────────────────
 
-class TestLegacyRecapsDeprecation:
-    """The recaps table should be marked deprecated in schema.sql
-    and all legacy consumers should carry deprecation markers."""
+class TestLegacyRecapsRetired:
+    """The recaps table and all its consumers have been fully retired."""
 
-    def test_deprecation_marker_present(self):
-        """schema.sql must contain the deprecation marker."""
+    def test_recaps_table_removed_from_schema(self):
+        """schema.sql must not contain the recaps table."""
         schema_text = open(SCHEMA_PATH, encoding="utf-8").read()
-        assert "SV_DEFECT4_LEGACY_RECAPS_DEPRECATED" in schema_text, (
-            "Deprecation marker not found in schema.sql"
+        # The table DDL and deprecation marker should both be gone
+        assert "SV_DEFECT4_LEGACY_RECAPS_DEPRECATED" not in schema_text, (
+            "Deprecation marker still present — recaps table should be fully removed"
         )
-        assert "DEPRECATED" in schema_text
 
-    def test_legacy_consumers_have_deprecation_markers(self):
-        """All consumer files that import from recap_store must have
-        the SV_DEFECT4_LEGACY_CONSUMER marker."""
-        import pathlib
-        consumer_dir = pathlib.Path(SCHEMA_PATH).parent.parent.parent / "consumers"
-        legacy_consumers = [
-            "recap_week_init.py",
-            "recap_week_write_artifact.py",
-        ]
-        for name in legacy_consumers:
-            path = consumer_dir / name
-            assert path.exists(), f"{name} not found at {path}"
-            text = path.read_text(encoding="utf-8")
-            assert "SV_DEFECT4_LEGACY_CONSUMER" in text, (
-                f"{name} missing SV_DEFECT4_LEGACY_CONSUMER deprecation marker"
-            )
-
-    def test_retired_legacy_consumers_deleted(self):
-        """Legacy consumers that have been retired should no longer exist."""
+    def test_all_legacy_consumers_deleted(self):
+        """All legacy consumer files must have been deleted."""
         import pathlib
         consumer_dir = pathlib.Path(SCHEMA_PATH).parent.parent.parent / "consumers"
         retired = [
+            "recap_week_init.py",
+            "recap_week_write_artifact.py",
             "recap_week_status.py",
             "recap_week_render_facts.py",
             "recap_week_selection_check.py",
             "recap_week_materialize_version.py",
+            "recap_generate_weeks.py",
         ]
         for name in retired:
             path = consumer_dir / name
             assert not path.exists(), (
                 f"{name} should have been deleted (legacy recaps table consumer)"
             )
+
+    def test_recap_store_deleted(self):
+        """recap_store.py (the legacy CRUD bridge) must have been deleted."""
+        import pathlib
+        store_path = pathlib.Path(SCHEMA_PATH).parent / "recap_store.py"
+        assert not store_path.exists(), (
+            "recap_store.py should have been deleted — no active importers remain"
+        )

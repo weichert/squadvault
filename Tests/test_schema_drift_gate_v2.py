@@ -191,20 +191,6 @@ class TestFreshDbUsable:
         con.close()
         assert count == 1
 
-    def test_can_insert_legacy_recap(self, schema_db):
-        """Legacy recaps table must work on a fresh DB."""
-        con = sqlite3.connect(schema_db)
-        con.execute(
-            """INSERT INTO recaps
-               (league_id, season, week_index, recap_version, selection_fingerprint, status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            ("L1", 2024, 1, 1, "fp1", "ACTIVE", "2024-10-01T00:00:00Z"),
-        )
-        con.commit()
-        count = con.execute("SELECT COUNT(*) FROM recaps").fetchone()[0]
-        con.close()
-        assert count == 1
-
     def test_canonical_ids_json_readable_for_eal(self, schema_db):
         """The EAL included_count fix reads canonical_ids_json — this must work on fresh DB."""
         import json

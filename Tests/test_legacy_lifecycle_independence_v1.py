@@ -55,11 +55,8 @@ def db_no_recaps_data(tmp_path):
         reason=None,
     ))
 
-    # Verify: legacy recaps table is empty
-    con = sqlite3.connect(db_path)
-    count = con.execute("SELECT COUNT(*) FROM recaps").fetchone()[0]
-    con.close()
-    assert count == 0, "Precondition: recaps table must be empty"
+    # The legacy recaps table no longer exists in schema.sql —
+    # lifecycle independence is guaranteed by architecture.
 
     return db_path
 

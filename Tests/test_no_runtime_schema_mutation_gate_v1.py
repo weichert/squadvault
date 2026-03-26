@@ -153,7 +153,6 @@ class TestNoRuntimeSchemaMutation:
             "recap_artifacts",
             "recap_runs",
             "recap_selections",
-            "recaps",
             "recap_verdicts",
             "editorial_actions",
         }

@@ -164,28 +164,10 @@ def ensure_draft_exists(
     """Ensure a draft recap JSON exists on disk."""
     latest = find_latest_recap_json(base_dir, league_id, season, week_index)
     if latest is None:
-        # Create draft artifact on disk (existing consumer)
-        py = "src/squadvault/consumers/recap_week_write_artifact.py"
-        rc = run_script(
-            py,
-            [
-                "--db",
-                db,
-                "--league-id",
-                league_id,
-                "--season",
-                str(season),
-                "--week-index",
-                str(week_index),
-                "--base-dir",
-                base_dir,
-            ],
+        raise RuntimeError(
+            f"No draft recap JSON found for week {week_index}. "
+            f"Use './scripts/recap.sh regen' to generate a draft first."
         )
-        if rc != 0:
-            raise RuntimeError(f"Failed to create draft via {py} (rc={rc})")
-        latest = find_latest_recap_json(base_dir, league_id, season, week_index)
-        if latest is None:
-            raise RuntimeError("Draft still not found after write_artifact")
     payload = parse_recap_json(latest)
     return latest, payload
 

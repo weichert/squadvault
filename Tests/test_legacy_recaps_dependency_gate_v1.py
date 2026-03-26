@@ -1,12 +1,7 @@
-"""Phase 3 Gate — Legacy Recaps Table Dependency Tracker.
+"""Gate — Legacy Recaps Table Fully Retired.
 
-Tracks which source files still reference the legacy `recaps` table.
-The canonical lifecycle (generate_weekly_recap_draft, approve, etc.)
-must NOT depend on the recaps table.
-
-Legacy consumers that still read from recaps are enumerated here.
-As they are retired (Phase 3C), they should be removed from the
-KNOWN_LEGACY_CONSUMERS set until it is empty.
+The legacy `recaps` table has been removed from schema.sql and all consumers deleted.
+No source file should contain SQL referencing it.
 """
 from __future__ import annotations
 
@@ -27,25 +22,17 @@ RECAPS_TABLE_PATTERNS = [
     re.compile(r"\bDELETE\s+FROM\s+recaps\b", re.IGNORECASE),
 ]
 
-# Files that are KNOWN to still reference the legacy recaps table.
-# As each is retired, remove it from this set.
-# When this set is empty, the recaps table can be dropped.
-KNOWN_LEGACY_CONSUMERS = {
-    "core/recaps/recap_store.py",         # Full CRUD bridge (deprecated, no active importers)
-}
-
-# Files that must NEVER reference the recaps table
-CANONICAL_LIFECYCLE_FILES = {
-    "core/recaps/recap_artifacts.py",
-    "core/recaps/recap_runs.py",
-    "core/recaps/selection/recap_selection_store.py",
-    "core/recaps/selection/weekly_selection_v1.py",
-    "core/recaps/render/render_recap_text_v1.py",
-    "core/recaps/render/render_deterministic_facts_block_v1.py",
-    "core/recaps/render/deterministic_bullets_v1.py",
-    "core/eal/editorial_attunement_v1.py",
-    "core/eal/eal_calibration_v1.py",
-}
+# Legacy files that have been deleted — gate verifies they stay deleted
+RETIRED_FILES = [
+    "core/recaps/recap_store.py",
+    "consumers/recap_week_init.py",
+    "consumers/recap_week_write_artifact.py",
+    "consumers/recap_week_status.py",
+    "consumers/recap_week_render_facts.py",
+    "consumers/recap_week_selection_check.py",
+    "consumers/recap_week_materialize_version.py",
+    "consumers/recap_generate_weeks.py",
+]
 
 
 def _py_files_in(root: str) -> list[str]:
@@ -69,48 +56,49 @@ def _has_recaps_table_reference(filepath: str) -> bool:
     return False
 
 
-class TestLegacyRecapsTableDependencies:
-    """Track and enforce boundaries around legacy recaps table usage."""
+class TestLegacyRecapsTableRetired:
+    """The recaps table is fully retired. No source file should reference it."""
 
-    def test_canonical_lifecycle_never_queries_recaps_table(self):
-        """Core lifecycle files must never contain SQL against the recaps table."""
-        violations = []
-        for rel_path in CANONICAL_LIFECYCLE_FILES:
-            full_path = os.path.join(SRC, rel_path)
-            if not os.path.exists(full_path):
-                continue
-            if _has_recaps_table_reference(full_path):
-                violations.append(rel_path)
-
-        assert violations == [], (
-            "Canonical lifecycle files must not reference the legacy recaps table.\n"
-            f"Violations: {violations}"
-        )
-
-    def test_no_new_legacy_consumers(self):
-        """No file outside KNOWN_LEGACY_CONSUMERS should reference the recaps table."""
+    def test_no_source_file_references_recaps_table(self):
+        """No Python file in src/ should contain SQL against the recaps table."""
         violations = []
         for filepath in _py_files_in(SRC):
             rel = os.path.relpath(filepath, SRC)
-            if rel in KNOWN_LEGACY_CONSUMERS:
-                continue
             if _has_recaps_table_reference(filepath):
                 violations.append(rel)
 
         assert violations == [], (
-            "New legacy recaps table dependency detected. These files are NOT "
-            "in KNOWN_LEGACY_CONSUMERS:\n" +
+            "Legacy recaps table reference detected — this table has been "
+            "removed from schema.sql:\n" +
             "\n".join(f"  {v}" for v in violations)
         )
 
-    def test_known_legacy_consumers_still_exist(self):
-        """Each known legacy consumer should still exist (or be removed from the set)."""
-        stale = []
-        for rel_path in KNOWN_LEGACY_CONSUMERS:
-            full_path = os.path.join(SRC, rel_path)
-            if not os.path.exists(full_path):
-                stale.append(rel_path)
+    def test_recaps_table_not_in_schema(self):
+        """schema.sql must not define the legacy recaps table."""
+        schema_path = os.path.join(SRC, "core", "storage", "schema.sql")
+        with open(schema_path, encoding="utf-8") as f:
+            schema_text = f.read()
 
-        assert stale == [], (
-            f"Stale entries in KNOWN_LEGACY_CONSUMERS (files no longer exist): {stale}"
+        # Look for CREATE TABLE ... recaps that isn't recap_artifacts/recap_runs/etc.
+        for line in schema_text.split("\n"):
+            lower = line.strip().lower()
+            if not lower.startswith("create table"):
+                continue
+            # Only flag bare "recaps" — not recap_artifacts, recap_runs, etc.
+            if " recaps " in lower or " recaps(" in lower or lower.endswith(" recaps"):
+                pytest.fail(
+                    f"schema.sql still defines the legacy recaps table: {line.strip()}"
+                )
+
+    def test_retired_files_stay_deleted(self):
+        """Legacy consumer files must not reappear."""
+        reappeared = []
+        for rel_path in RETIRED_FILES:
+            full_path = os.path.join(SRC, rel_path)
+            if os.path.exists(full_path):
+                reappeared.append(rel_path)
+
+        assert reappeared == [], (
+            "Retired legacy files have reappeared:\n" +
+            "\n".join(f"  {v}" for v in reappeared)
         )
