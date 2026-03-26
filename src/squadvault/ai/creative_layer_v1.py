@@ -112,6 +112,7 @@ _EAL_GUIDANCE = {
     "LOW_CONFIDENCE_RESTRAINT": (
         "Minimal, restrained prose. State what happened, note one or two details. "
         "The data this week is thin. Say less, not more. "
+        "Skip callbacks and historical references — just cover what happened. "
         "Two to three short paragraphs maximum."
     ),
 }
@@ -132,6 +133,8 @@ def _build_system_prompt(tone_preset: str = "") -> str:
 
     The tone preset modifies the voice but never overrides the hard rules.
     If no preset is provided, the base system prompt is used as-is (POINTED voice).
+    Hard rules are always positioned last in the system prompt to maximize
+    compliance — models give higher weight to recency.
     """
     if not tone_preset or tone_preset == "POINTED":
         # POINTED is the default voice baked into the base system prompt
@@ -139,7 +142,13 @@ def _build_system_prompt(tone_preset: str = "") -> str:
 
     from squadvault.core.tone.tone_profile_v1 import get_voice_directive
     directive = get_voice_directive(tone_preset)
-    # Inject the tone directive between the voice rules and hard rules
+    # Insert tone directive before hard rules so hard rules are always last.
+    # Models give higher weight to recency — safety constraints belong at the end.
+    _hr_marker = "\nHard rules (non-negotiable):"
+    if _hr_marker in _SYSTEM_PROMPT:
+        _voice, _hard = _SYSTEM_PROMPT.split(_hr_marker, 1)
+        return _voice.rstrip() + "\n\n" + directive + _hr_marker + _hard
+    # Fallback: append (should not happen if prompt is well-formed)
     return _SYSTEM_PROMPT.rstrip() + "\n\n" + directive + "\n"
 
 
@@ -155,6 +164,7 @@ def _build_user_prompt(
     narrative_angles: str = "",
     writer_room_context: str = "",
     tone_preset: str = "",
+    seasons_count: int = 0,
 ) -> str:
     """Build the user-turn prompt with full context feed.
 
@@ -186,7 +196,12 @@ def _build_user_prompt(
 
     if narrative_angles:
         parts.append("=== NARRATIVE ANGLES (detected story hooks — USE THESE) ===")
-        parts.append("IMPORTANT: The angles below are pre-computed from 16 seasons of data.")
+        if seasons_count > 1:
+            parts.append(f"IMPORTANT: The angles below are pre-computed from {seasons_count} seasons of data.")
+        elif seasons_count == 1:
+            parts.append("IMPORTANT: The angles below are pre-computed from this season's data only.")
+        else:
+            parts.append("IMPORTANT: The angles below are pre-computed from available league data.")
         parts.append("Work the HEADLINE and NOTABLE angles into your prose naturally.")
         parts.append("These are the hooks that make the recap feel historically informed.")
         parts.append(narrative_angles.strip())
@@ -233,6 +248,7 @@ def draft_narrative_v1(
     narrative_angles: str = "",
     writer_room_context: str = "",
     tone_preset: str = "",
+    seasons_count: int = 0,
 ) -> Optional[str]:
     """Attempt to produce a governed prose narrative draft.
 
@@ -297,6 +313,7 @@ def draft_narrative_v1(
         narrative_angles=narrative_angles,
         writer_room_context=writer_room_context,
         tone_preset=tone_preset,
+        seasons_count=seasons_count,
     )
 
     # EAL-modulated temperature

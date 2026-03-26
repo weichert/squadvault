@@ -113,3 +113,22 @@ class TestSystemPromptBuilding:
         result = _build_system_prompt("FRIENDLY")
         assert "TONE PRESET: FRIENDLY" in result
         assert "Encouraging and celebratory" in result
+
+    def test_hard_rules_after_tone_directive(self):
+        """Hard rules must always be last in the system prompt."""
+        result = _build_system_prompt("TRASH_TALK")
+        tone_pos = result.index("TONE PRESET: TRASH TALK")
+        hard_pos = result.index("Hard rules (non-negotiable):")
+        assert tone_pos < hard_pos, (
+            "Tone directive must appear before hard rules — "
+            "models give higher weight to recency"
+        )
+
+    def test_hard_rules_last_for_all_presets(self):
+        """Every non-POINTED preset puts hard rules after tone."""
+        for preset in ("TRASH_TALK", "BALANCED", "FRIENDLY"):
+            result = _build_system_prompt(preset)
+            tone_marker = f"TONE PRESET: {preset.replace('_', ' ')}"
+            assert result.index(tone_marker) < result.index("Hard rules"), (
+                f"Preset {preset}: tone should precede hard rules"
+            )

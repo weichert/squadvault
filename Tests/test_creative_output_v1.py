@@ -47,9 +47,40 @@ class TestHistoricalCallbacks:
             season=2024,
             week_index=1,
             narrative_angles="[HEADLINE] Test angle",
+            seasons_count=16,
         )
         assert "USE THESE" in prompt
         assert "16 seasons" in prompt
+
+    def test_single_season_angles_instruction(self):
+        """Single-season data should not claim multi-season depth."""
+        from squadvault.ai.creative_layer_v1 import _build_user_prompt
+        prompt = _build_user_prompt(
+            facts_bullets=["test"],
+            eal_directive="MODERATE_CONFIDENCE_ONLY",
+            league_id="70985",
+            season=2024,
+            week_index=1,
+            narrative_angles="[HEADLINE] Test angle",
+            seasons_count=1,
+        )
+        assert "this season" in prompt.lower()
+        assert "16 seasons" not in prompt
+
+    def test_zero_seasons_angles_instruction(self):
+        """Unknown seasons count should not claim specific depth."""
+        from squadvault.ai.creative_layer_v1 import _build_user_prompt
+        prompt = _build_user_prompt(
+            facts_bullets=["test"],
+            eal_directive="MODERATE_CONFIDENCE_ONLY",
+            league_id="70985",
+            season=2024,
+            week_index=1,
+            narrative_angles="[HEADLINE] Test angle",
+            seasons_count=0,
+        )
+        assert "available league data" in prompt
+        assert "16 seasons" not in prompt
 
 
 class TestNoWebSearch:

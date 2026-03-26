@@ -173,6 +173,25 @@ class TestDraftNarrativeV1SuccessPath(unittest.TestCase):
             self.assertIn(bullet, user_content)
 
 
+class TestEALGuidanceContent(unittest.TestCase):
+    def test_low_confidence_skips_callbacks(self) -> None:
+        prompt = _build_user_prompt(
+            facts_bullets=_SAMPLE_BULLETS,
+            eal_directive="LOW_CONFIDENCE_RESTRAINT",
+            league_id="L1", season=2024, week_index=6,
+            narrative_angles="[HEADLINE] Some angle",
+        )
+        self.assertIn("Skip callbacks", prompt)
+
+    def test_high_confidence_permits_full_voice(self) -> None:
+        prompt = _build_user_prompt(
+            facts_bullets=_SAMPLE_BULLETS,
+            eal_directive="HIGH_CONFIDENCE_ALLOWED",
+            league_id="L1", season=2024, week_index=6,
+        )
+        self.assertIn("Full voice", prompt)
+
+
 class TestBuildUserPromptDeterminism(unittest.TestCase):
     def test_identical_inputs_produce_identical_output(self) -> None:
         kw = dict(facts_bullets=_SAMPLE_BULLETS, eal_directive=_PERMITTED_DIRECTIVE,

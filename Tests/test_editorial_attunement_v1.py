@@ -6,6 +6,7 @@ from squadvault.core.eal.editorial_attunement_v1 import (
     EALMeta,
     evaluate_editorial_attunement_v1,
     EAL_AMBIGUITY_PREFER_SILENCE,
+    EAL_HIGH_CONFIDENCE_ALLOWED,
     EAL_LOW_CONFIDENCE_RESTRAINT,
     EAL_MODERATE_CONFIDENCE_ONLY,
 )
@@ -31,6 +32,18 @@ class TestEditorialAttunementV1(unittest.TestCase):
     def test_normal_included_is_moderate(self) -> None:
         meta = EALMeta(has_selection_set=True, has_window=True, included_count=5)
         self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_MODERATE_CONFIDENCE_ONLY)
+
+    def test_moderate_boundary_below_high(self) -> None:
+        meta = EALMeta(has_selection_set=True, has_window=True, included_count=7)
+        self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_MODERATE_CONFIDENCE_ONLY)
+
+    def test_high_included_is_high_confidence(self) -> None:
+        meta = EALMeta(has_selection_set=True, has_window=True, included_count=8)
+        self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_HIGH_CONFIDENCE_ALLOWED)
+
+    def test_very_high_included_is_high_confidence(self) -> None:
+        meta = EALMeta(has_selection_set=True, has_window=True, included_count=30)
+        self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_HIGH_CONFIDENCE_ALLOWED)
 
     def test_determinism(self) -> None:
         meta = EALMeta(has_selection_set=True, has_window=True, included_count=5)

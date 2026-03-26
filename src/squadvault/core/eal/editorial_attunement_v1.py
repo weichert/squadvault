@@ -48,6 +48,7 @@ def evaluate_editorial_attunement_v1(meta: EALMeta) -> str:
         return EAL_AMBIGUITY_PREFER_SILENCE
     if n <= 2:
         return EAL_LOW_CONFIDENCE_RESTRAINT
+    if n >= 8:
+        return EAL_HIGH_CONFIDENCE_ALLOWED
 
-    # Conservative default. Reserve HIGH_CONFIDENCE for explicit, deterministic completeness markers.
     return EAL_MODERATE_CONFIDENCE_ONLY

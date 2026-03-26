@@ -619,6 +619,10 @@ def generate_weekly_recap_draft(
                     included_count = len(_ids)
             except (ValueError, TypeError):
                 pass
+        elif _eal_row is not None:
+            # Row exists but canonical_ids_json is empty string or NULL —
+            # week was processed but has no canonical events.
+            included_count = 0
     meta = EALMeta(
         has_selection_set=True,
         has_window=True,
@@ -756,6 +760,10 @@ def generate_weekly_recap_draft(
         narrative_angles=_narrative_angles_text,
         writer_room_context=_writer_room_text,
         tone_preset=_cl_tone_preset,
+        seasons_count=(
+            len(_cl_history_ctx.seasons_available)
+            if _cl_history_ctx is not None else 0
+        ),
     )
     if _narrative_draft:
         rendered_text = (
