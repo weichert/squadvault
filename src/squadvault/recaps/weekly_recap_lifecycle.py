@@ -619,10 +619,10 @@ def generate_weekly_recap_draft(
                     included_count = len(_ids)
             except (ValueError, TypeError):
                 pass
-        elif _eal_row is not None:
-            # Row exists but canonical_ids_json is empty string or NULL —
-            # week was processed but has no canonical events.
-            included_count = 0
+        # If canonical_ids_json is NULL or empty string, included_count stays None
+        # (unknown). This is distinct from "[]" which parses to 0 (zero events selected).
+        # None → EAL_LOW_CONFIDENCE_RESTRAINT (restrained but not silenced).
+        # 0 → EAL_AMBIGUITY_PREFER_SILENCE (silenced).
     meta = EALMeta(
         has_selection_set=True,
         has_window=True,
