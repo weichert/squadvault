@@ -24,6 +24,9 @@ def http_request_with_retries(
 ) -> requests.Response:
     """
     Small, deterministic retry wrapper for transient failures.
+
+    Uses longer backoff for 429 rate limiting (5s base) vs server
+    errors (1.5s base).
     """
     last_exc: Exception | None = None
     for attempt in range(1, max_retries + 1):
@@ -33,7 +36,9 @@ def http_request_with_retries(
             if resp.status_code in (429, 500, 502, 503, 504):
                 logger.warning("HTTP %s %s -> %s (attempt %s/%s)", method, url, resp.status_code, attempt, max_retries)
                 if attempt < max_retries:
-                    time.sleep(backoff_seconds * attempt)
+                    # Longer backoff for 429 rate limiting
+                    wait = (5.0 if resp.status_code == 429 else backoff_seconds) * attempt
+                    time.sleep(wait)
                     continue
             return resp
         except Exception as e:

@@ -136,6 +136,46 @@ class MflClient:
         resp.raise_for_status()
         return resp.json(), url
 
+    def get_league_info(self, year: int) -> tuple[Dict[str, Any], str]:
+        """
+        Fetch TYPE=league export for franchise info and league metadata.
+
+        v1 behavior: same auth pattern as get_transactions.
+        """
+        url = self.export_url(year, "league")
+        resp = http_request_with_retries(self.session, "GET", url)
+
+        if resp.status_code != 200 and self.username and self.password:
+            logger.info(
+                "MFL unauthenticated request failed (%s); attempting login then retry.",
+                resp.status_code,
+            )
+            self._login(year)
+            resp = http_request_with_retries(self.session, "GET", url)
+
+        resp.raise_for_status()
+        return resp.json(), url
+
+    def get_players(self, year: int) -> tuple[Dict[str, Any], str]:
+        """
+        Fetch TYPE=players export for player directory.
+
+        v1 behavior: same auth pattern as get_transactions.
+        """
+        url = self.export_url(year, "players")
+        resp = http_request_with_retries(self.session, "GET", url)
+
+        if resp.status_code != 200 and self.username and self.password:
+            logger.info(
+                "MFL unauthenticated request failed (%s); attempting login then retry.",
+                resp.status_code,
+            )
+            self._login(year)
+            resp = http_request_with_retries(self.session, "GET", url)
+
+        resp.raise_for_status()
+        return resp.json(), url
+
     def _login(self, year: int) -> None:
         """
         Best-effort login for leagues requiring authentication.
