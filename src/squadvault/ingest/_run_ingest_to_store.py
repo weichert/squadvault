@@ -7,7 +7,6 @@ load_dotenv(".env")
 from collections import Counter
 from pathlib import Path
 import os
-import sqlite3
 
 from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.mfl.client import MflClient

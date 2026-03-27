@@ -2,7 +2,6 @@
 """Recap run tracking: workflow state and selection trace persistence."""
 
 import json
-import sqlite3
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Any
 from squadvault.core.storage.session import DatabaseSession
@@ -212,7 +211,7 @@ def sync_recap_run_state_from_artifacts(
     _v, latest_state = latest
 
     if latest_state == "DRAFT":
-        new_state = "REVIEW_REQUIRED"
+        new_state: str | None = "REVIEW_REQUIRED"
     elif latest_state == "WITHHELD":
         new_state = "WITHHELD"
     else:

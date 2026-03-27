@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import html as html_mod
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Optional
 
 
 @dataclass(frozen=True)

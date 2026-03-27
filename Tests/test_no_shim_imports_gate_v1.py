@@ -85,14 +85,11 @@ class TestNoShimImports:
                         violations.append(f"{rel}: imports '{imp}' -> use '{canonical}'")
         assert violations == [], "Test files importing through deprecated shim paths:\n" + "\n".join(f"  {v}" for v in violations)
 
-    def test_shim_files_contain_deprecation_warning(self):
-        missing_warning = []
+    def test_shim_files_removed(self):
+        """Shim files should no longer exist — they have been removed entirely."""
+        still_exists = []
         for shimpath in SHIM_FILES:
-            if not os.path.exists(shimpath):
-                continue
-            with open(shimpath, encoding="utf-8") as f:
-                content = f.read()
-            if "DeprecationWarning" not in content and "DEPRECATED" not in content:
+            if os.path.exists(shimpath):
                 rel = os.path.relpath(shimpath, os.path.join(SRC, ".."))
-                missing_warning.append(rel)
-        assert missing_warning == [], f"Shim files missing deprecation warning: {missing_warning}"
+                still_exists.append(rel)
+        assert still_exists == [], f"Shim files should have been removed but still exist: {still_exists}"

@@ -2,7 +2,6 @@
 """Render full recap text from enriched facts artifacts with name resolution."""
 
 import json
-import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
 
 from squadvault.core.storage.db_utils import norm_id as _norm_id
@@ -172,7 +171,7 @@ def _render_deterministic_bullets_from_facts_v1(
 
         # Prefer normalized ids (deterministic) for add/drop
         add_ids = _as_list(norm.get("add_player_ids"))
-        drop_ids = _as_list(norm.get("drop_player_ids"))
+        _drop_ids = _as_list(norm.get("drop_player_ids"))
 
         # Free agent
         if et == "TRANSACTION_FREE_AGENT":
@@ -235,11 +234,6 @@ def render_recap_from_facts_v1(artifact: Dict[str, Any], *, db_path: Optional[st
 
     mode = _get(artifact, "window", "mode")
     reason = _get(artifact, "window", "reason")
-    if mode and mode != "LOCK_TO_LOCK":
-        if reason:
-            lines.append(f"Window mode: {mode} ({reason})")
-        else:
-            lines.append(f"Window mode: {mode}")
 
     sel = artifact.get("selection", {}) or {}
     fingerprint = sel.get("fingerprint")
@@ -247,6 +241,12 @@ def render_recap_from_facts_v1(artifact: Dict[str, Any], *, db_path: Optional[st
     facts = artifact.get("facts", []) or []
 
     lines: List[str] = []
+
+    if mode and mode != "LOCK_TO_LOCK":
+        if reason:
+            lines.append(f"Window mode: {mode} ({reason})")
+        else:
+            lines.append(f"Window mode: {mode}")
 
     # NEW: deterministic headline bullets (requires db_path)
     if db_path and league_id is not None and season is not None:

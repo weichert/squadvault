@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sqlite3
 
 from squadvault.recaps.weekly_recap_lifecycle import approve_latest_weekly_recap
 from squadvault.core.storage.session import DatabaseSession

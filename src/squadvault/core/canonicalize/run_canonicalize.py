@@ -9,11 +9,11 @@ load_dotenv(".env")
 import os
 import hashlib
 import json
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+
 from squadvault.core.storage.session import DatabaseSession
 
 
@@ -327,8 +327,7 @@ def canonicalize(league_id: str, season: int, db_path: str | Path | None = None)
     if not resolved_db.exists():
         raise FileNotFoundError(f"SQLite DB not found at {resolved_db.resolve()}")
 
-    conn = sqlite3.connect(str(resolved_db))
-    try:
+    with DatabaseSession(str(resolved_db)) as conn:
         conn.execute("PRAGMA foreign_keys = ON;")
 
         # ---------------------------------------------------------------------
@@ -430,7 +429,7 @@ def canonicalize(league_id: str, season: int, db_path: str | Path | None = None)
                         row.occurred_at,
                     ),
                 )
-                canonical_id = int(cur.lastrowid)
+                canonical_id = int(cur.lastrowid or 0)
                 created += 1
             else:
                 canonical_id, best_id, best_score = existing
@@ -490,16 +489,6 @@ def canonicalize(league_id: str, season: int, db_path: str | Path | None = None)
             (league_id, season),
         ).fetchall()
         print("canonical_by_type =", {et: int(n) for (et, n) in totals})
-
-    except Exception:
-        # Ensure we don't leave a transaction open on error
-        try:
-            conn.execute("ROLLBACK;")
-        except Exception:
-            pass
-        raise
-    finally:
-        conn.close()
 
 
 if __name__ == "__main__":

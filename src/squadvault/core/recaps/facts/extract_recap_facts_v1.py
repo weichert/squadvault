@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from squadvault.core.storage.session import DatabaseSession
 
 
@@ -260,9 +259,9 @@ def _extract_trade_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> Dict[
         out["comments"] = str(raw.get("comments"))
     if isinstance(raw, dict) and raw.get("expires") is not None:
         try:
-            out["expires_timestamp"] = int(raw.get("expires"))
+            out["expires_timestamp"] = int(raw["expires"])
         except (ValueError, TypeError):
-            out["expires_timestamp"] = raw.get("expires")
+            out["expires_timestamp"] = raw["expires"]
 
     # Timestamp
     ts = raw.get("timestamp") if isinstance(raw, dict) else None

@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from hashlib import sha256
 import json
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional
 
 
 # ----------------------------
@@ -244,7 +244,6 @@ def sha256_of_canonical_json(obj: Any) -> str:
 # NOTE: These are deterministic helpers used by tests and higher-level callers.
 # They do not change schema; they provide canonical hashing recipes.
 
-from hashlib import sha256
 
 def _sha256_hex(s: str) -> str:
     """Compute SHA-256 hex digest of a string."""

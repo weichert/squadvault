@@ -6,7 +6,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from squadvault.core.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
 from squadvault.errors import RecapNotFoundError, RecapStateError, RecapDataError
 from squadvault.core.recaps.render.render_recap_text_v1 import (

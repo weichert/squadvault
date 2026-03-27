@@ -14,8 +14,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
 
 from squadvault.recaps.writing_room.selection_set_schema_v1 import (
     SelectionSetV1,
@@ -356,7 +356,7 @@ def build_selection_set_v1(*args: Any, **kwargs: Any) -> SelectionSetV1:
         withheld = True
         withheld_reason = WithheldReasonCode.NO_ELIGIBLE_SIGNALS
 
-    
+
     groupings = None
     grouping_extractor = kwargs.get('grouping_extractor')
     if grouping_extractor is not None:

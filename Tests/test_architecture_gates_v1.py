@@ -45,15 +45,9 @@ def _py_files(subdir: str) -> list[str]:
 
 class TestLayerBoundaries:
     def test_core_does_not_import_ingest(self):
-        """core/ must never import from squadvault.ingest.
-
-        Re-export shims are excluded — they exist for backward compat only.
-        """
-        SHIM_BASENAMES = {"run_ingest_then_canonicalize.py"}
+        """core/ must never import from squadvault.ingest."""
         violations = []
         for f in _py_files("core"):
-            if os.path.basename(f) in SHIM_BASENAMES:
-                continue
             for imp in _get_imports(f):
                 if "squadvault.ingest" in imp:
                     violations.append(f"{f}: {imp}")
@@ -69,15 +63,9 @@ class TestLayerBoundaries:
         assert violations == [], f"core→consumers violations: {violations}"
 
     def test_no_circular_core_recaps_to_recaps(self):
-        """core.recaps must not import from squadvault.recaps (circular dep).
-
-        Re-export shims are excluded — they exist for backward compat only.
-        """
-        SHIM_BASENAMES = {"weekly_recap_lifecycle.py"}
+        """core.recaps must not import from squadvault.recaps (circular dep)."""
         violations = []
         for f in _py_files("core/recaps"):
-            if os.path.basename(f) in SHIM_BASENAMES:
-                continue
             for imp in _get_imports(f):
                 if imp.startswith("squadvault.recaps"):
                     violations.append(f"{f}: {imp}")
@@ -111,16 +99,15 @@ class TestNoBareConnect:
                 for i, line in enumerate(fh, 1):
                     if "sqlite3.connect(" in line and not line.strip().startswith("#"):
                         violations.append(f"{f}:{i}")
-        # Baseline: 11 bare connects (2 core exceptions, 9 consumer/CLI).
-        # Core: run_canonicalize.py (explicit transactions), approved_rivalry_chronicle_export_v1.py (read-only URI).
-        # Consumer: complex CLI main() functions with multi-path error handling.
-        assert len(violations) <= 15, (
+        # Only migrate.py and sqlite_store.py (in ALLOWED_BASENAMES) may contain bare connects.
+        # All other files must use DatabaseSession.
+        assert len(violations) <= 10, (
             f"Bare sqlite3.connect call count increased ({len(violations)}). "
-            f"Expected <=15. Violations:\n" + "\n".join(violations[:10])
+            f"Expected <=10. Violations:\n" + "\n".join(violations[:10])
         )
 
     def test_core_minimal_bare_connects(self):
-        """Core modules should have at most 2 bare connects (complex transaction patterns only)."""
+        """Core modules must have zero bare connects outside allowed files."""
         violations = []
         files = glob.glob(os.path.join(SRC, "squadvault", "core", "**", "*.py"), recursive=True)
         for f in files:
@@ -130,9 +117,9 @@ class TestNoBareConnect:
                 for i, line in enumerate(fh, 1):
                     if "sqlite3.connect(" in line and not line.strip().startswith("#"):
                         violations.append(f"{f}:{i}")
-        assert len(violations) <= 3, (
-            f"Core bare sqlite3.connect count too high ({len(violations)}). "
-            f"Expected <=3. Violations:\n" + "\n".join(violations)
+        assert len(violations) == 0, (
+            f"Core bare sqlite3.connect calls must be zero outside allowed files. "
+            f"Found {len(violations)}:\n" + "\n".join(violations)
         )
 
 

@@ -15,7 +15,6 @@ Env vars:
 from dotenv import load_dotenv
 load_dotenv(".env")
 
-from collections import Counter
 from pathlib import Path
 import os
 
@@ -98,7 +97,7 @@ def main() -> None:
 
         print(f"  Week {week:2d}: {len(events)} matchups → {inserted} inserted, {skipped} skipped")
 
-    print(f"\n=== Summary ===")
+    print("\n=== Summary ===")
     print(f"events_prepared = {total_events}")
     print(f"inserted = {total_inserted}")
     print(f"skipped = {total_skipped}")

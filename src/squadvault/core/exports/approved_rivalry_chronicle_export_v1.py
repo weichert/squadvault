@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import os
-import sqlite3
+import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Set
 
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
 from squadvault.core.storage.db_utils import table_columns as _table_columns
-from squadvault.errors import SchemaError, RecapNotFoundError
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.errors import SchemaError, RecapNotFoundError
+
+
+def _pick_first(existing: Set[str], candidates: List[str]) -> str | None:
+    """Return first column name from candidates that exists in cols, or None."""
+    for c in candidates:
+        if c in existing:
+            return c
+    return None
 
 
 @dataclass(frozen=True)
@@ -25,22 +33,6 @@ class ApprovedRivalryChronicleArtifactV1:
     rendered_text: str
 
 
-def _connect_ro(db_path: str) -> sqlite3.Connection:
-    """Open a read-only sqlite3 connection."""
-    uri = f"file:{db_path}?mode=ro"
-    con = sqlite3.connect(uri, uri=True)
-    con.row_factory = sqlite3.Row
-    return con
-
-
-def _pick_first(existing: Set[str], candidates: List[str]) -> str | None:
-    """Return first column name from candidates that exists in cols, or None."""
-    for c in candidates:
-        if c in existing:
-            return c
-    return None
-
-
 def fetch_latest_approved_rivalry_chronicle_v1(db_path: str) -> ApprovedRivalryChronicleArtifactV1:
     """
     Projection-only fetch of the latest APPROVED Rivalry Chronicle v1 artifact.
@@ -51,8 +43,7 @@ def fetch_latest_approved_rivalry_chronicle_v1(db_path: str) -> ApprovedRivalryC
     """
     debug = os.environ.get("SV_DEBUG") == "1"
 
-    con = _connect_ro(db_path)
-    try:
+    with DatabaseSession(db_path) as con:
         cols = _table_columns(con, "recap_artifacts")
 
         # Required columns for this exporter.
@@ -123,9 +114,9 @@ def fetch_latest_approved_rivalry_chronicle_v1(db_path: str) -> ApprovedRivalryC
             print(
                 f"SV_DEBUG=1: fetched APPROVED {ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1} "
                 f"league={row['league_id']} season={row['season']} week_index={row['week_index']} v{row['version']}",
-                file=os.sys.stderr,
+                file=sys.stderr,
             )
-            print(f"SV_DEBUG=1: provenance_keys={sorted(provenance.keys())}", file=os.sys.stderr)
+            print(f"SV_DEBUG=1: provenance_keys={sorted(provenance.keys())}", file=sys.stderr)
 
         rendered_text = row["rendered_text"] or ""
 
@@ -139,5 +130,3 @@ def fetch_latest_approved_rivalry_chronicle_v1(db_path: str) -> ApprovedRivalryC
             provenance=provenance,
             rendered_text=str(rendered_text),
         )
-    finally:
-        con.close()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -117,9 +118,9 @@ def export_latest_approved_rivalry_chronicle_v1(
         # Debug-only sanity: ensure we didn't introduce canonical markers in the MD.
         txt = md_path.read_text(encoding="utf-8")
         has_marker = CANONICAL_MARKER_PREFIX in txt
-        print(f"SV_DEBUG=1: export out_dir={outp}", file=os.sys.stderr)
-        print(f"SV_DEBUG=1: wrote md={md_path} json={json_path}", file=os.sys.stderr)
-        print(f"SV_DEBUG=1: md_has_canonical_marker={has_marker}", file=os.sys.stderr)
+        print(f"SV_DEBUG=1: export out_dir={outp}", file=sys.stderr)
+        print(f"SV_DEBUG=1: wrote md={md_path} json={json_path}", file=sys.stderr)
+        print(f"SV_DEBUG=1: md_has_canonical_marker={has_marker}", file=sys.stderr)
 
     return RivalryChronicleExportResultV1(
         out_dir=str(outp),

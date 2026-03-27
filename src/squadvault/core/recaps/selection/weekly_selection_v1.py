@@ -17,9 +17,8 @@ Safety:
 from __future__ import annotations
 
 import hashlib
-import sqlite3
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from squadvault.core.recaps.selection.weekly_windows_v1 import WeeklyWindow, window_for_week_index
 from squadvault.core.storage.session import DatabaseSession

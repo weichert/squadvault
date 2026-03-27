@@ -22,9 +22,8 @@ Angle categories:
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from squadvault.core.recaps.context.season_context_v1 import SeasonContextV1
 from squadvault.core.recaps.context.league_history_v1 import (

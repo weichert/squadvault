@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sqlite3
 from typing import List, Sequence
 
 from squadvault.chronicle.input_contract_v1 import ApprovedRecapRefV1

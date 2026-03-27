@@ -23,11 +23,10 @@ import argparse
 import json
 import re
 import sqlite3
-import sys
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from squadvault.core.storage.session import DatabaseSession
 
 

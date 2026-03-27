@@ -9,7 +9,7 @@ import hashlib
 import json
 import sqlite3
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 from squadvault.chronicle.approved_recap_refs_v1 import load_latest_approved_recap_refs_v1
 from squadvault.chronicle.format_rivalry_chronicle_v1 import (
@@ -23,7 +23,6 @@ from squadvault.chronicle.input_contract_v1 import (
     RivalryChronicleInputV1,
 )
 from squadvault.chronicle.matchup_facts_v1 import (
-    MatchupFactV1,
     query_head_to_head_matchups_v1,
     facts_block_hash_v1,
 )

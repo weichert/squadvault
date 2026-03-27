@@ -4,7 +4,6 @@ import argparse
 import json
 import sqlite3
 from collections import Counter, defaultdict
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -602,7 +601,7 @@ def main() -> int:
                 and getattr(args, "allow_incomplete_canonical", False)
             ):
                 _print_header("MINIMAL MODE (CANONICAL GAP OVERRIDE) — Recap still WITHHELD")
-                print(f"Status     : WITHHELD")
+                print("Status     : WITHHELD")
                 print(f"Reason     : {preflight.reason_code.value if preflight.reason_code else None}")
                 print(f"Evidence   : {preflight.evidence}")
                 print()
@@ -634,7 +633,7 @@ def main() -> int:
                     et = _e.get("event_type") or ""
                     by_type.setdefault(et, []).append(_e)
 
-                
+
                 omit_reasons = Counter()
                 printed_by_type = Counter()
                 seen_keys: set[str] = set()
@@ -790,7 +789,7 @@ def main() -> int:
                 return 0
 
             _print_header("Recap withheld (Do Not Generate)")
-            print(f"Status     : WITHHELD")
+            print("Status     : WITHHELD")
             print(f"Reason     : {preflight.reason_code.value if preflight.reason_code else None}")
             print(f"Evidence   : {preflight.evidence}")
             return 0

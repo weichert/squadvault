@@ -27,3 +27,37 @@ pythonpath = ["src"]
 
 [tool.setuptools.package-data]
 squadvault = ["core/storage/schema.sql", "core/storage/migrations/*.sql"]
+
+[tool.ruff]
+line-length = 120
+exclude = [
+    "scripts/",
+    "_archive/",
+    "_graveyard/",
+    "_retired/",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]  # Line length: most violations are SQL strings, error messages, and signatures
+
+[tool.ruff.lint.per-file-ignores]
+# Files with legitimate late imports (function definitions before standard imports)
+"src/squadvault/consumers/recap_export_narrative_assemblies_approved.py" = ["E402", "E741"]
+"src/squadvault/chronicle/input_contract_v1.py" = ["E402"]
+"src/squadvault/core/canonicalize/run_canonicalize.py" = ["E402"]
+"src/squadvault/ingest/_run_ingest_to_store.py" = ["E402"]
+"src/squadvault/ingest/_run_matchup_results.py" = ["E402"]
+"src/squadvault/recaps/writing_room/selection_set_schema_v1.py" = ["E402"]
+# Ambiguous variable names in comprehensions (contextually clear)
+"src/squadvault/core/recaps/context/narrative_angles_v1.py" = ["E741"]
+"src/squadvault/core/recaps/context/season_context_v1.py" = ["E741"]
+"src/squadvault/core/recaps/render/deterministic_bullets_v1.py" = ["E741"]
+
+[tool.mypy]
+mypy_path = "src"
+packages = ["squadvault.core"]
+ignore_missing_imports = true
+disallow_untyped_defs = false
+warn_return_any = true
+warn_unused_configs = true

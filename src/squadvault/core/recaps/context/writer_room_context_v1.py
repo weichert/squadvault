@@ -232,8 +232,9 @@ def render_writer_room_context_for_prompt(
     if deltas_with_data:
         lines.append("Week-over-week scoring changes:")
         # Sort by absolute delta descending (biggest swings first)
-        sorted_deltas = sorted(deltas_with_data, key=lambda d: -abs(d.delta))
+        sorted_deltas = sorted(deltas_with_data, key=lambda d: -abs(d.delta or 0.0))
         for d in sorted_deltas:
+            assert d.delta is not None  # guaranteed by has_delta filter
             name = _name(d.franchise_id)
             direction = "+" if d.delta >= 0 else ""
             lines.append(

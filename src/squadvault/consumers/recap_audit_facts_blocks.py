@@ -17,7 +17,7 @@ import argparse
 import sqlite3
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
 

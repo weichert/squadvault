@@ -87,7 +87,9 @@ def _is_semver_like(v: Any) -> bool:
     if len(parts) < 3:
         return False
     try:
-        int(parts[0]); int(parts[1]); int(parts[2])
+        int(parts[0])
+        int(parts[1])
+        int(parts[2])
         return True
     except (ValueError, TypeError):
         return False

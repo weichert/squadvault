@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sqlite3
 import subprocess
 import os
 import sys
@@ -160,7 +159,7 @@ def main(argv: List[str]) -> int:
     meta_path = out_dir / f"variants_pack_v{lifecycle_version:02d}.metadata.json"
 
     header = [
-        f"# SquadVault Voice Variant Pack (Approved)",
+        "# SquadVault Voice Variant Pack (Approved)",
         "",
         f"- League: {args.league_id}",
         f"- Season: {args.season}",

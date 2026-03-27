@@ -55,7 +55,7 @@ def _latest_artifact_row_any_state(
     season: int,
     week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[sqlite3.Row]:
     """Return latest artifact row regardless of state, or None."""
-    return con.execute(
+    row = con.execute(
         """
         SELECT version, state, selection_fingerprint
         FROM recap_artifacts
@@ -65,6 +65,7 @@ def _latest_artifact_row_any_state(
         """,
         (league_id, season, week_index, artifact_type),
     ).fetchone()
+    return row  # type: ignore[no-any-return]
 
 
 def _latest_artifact_version_any_state(
@@ -310,7 +311,7 @@ def approve_recap_artifact(
         _assert_transition(str(row[0]), "APPROVED")
 
         cur = con.execute(
-            f"""
+            """
             UPDATE recap_artifacts
             SET state='APPROVED',
                 approved_at = ?,

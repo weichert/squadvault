@@ -9,10 +9,8 @@ provenance-based format for backward compatibility.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from typing import List, Sequence
 
 from squadvault.chronicle.matchup_facts_v1 import MatchupFactV1, facts_block_hash_v1
 

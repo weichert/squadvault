@@ -16,11 +16,9 @@ Notes:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from squadvault.recaps.writing_room.selection_set_schema_v1 import (
-    canonical_json,
     sha256_of_canonical_json,
 )
 

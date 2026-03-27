@@ -1,7 +1,6 @@
 """Withhold a recap artifact via the canonical lifecycle."""
 
 import argparse
-import sqlite3
 
 from squadvault.core.recaps.recap_runs import sync_recap_run_state_from_artifacts
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_WEEKLY_RECAP, withhold_recap_artifact

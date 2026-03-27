@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
-import sqlite3
 
 from squadvault.core.recaps.selection.weekly_selection_v1 import SelectionResult
 from squadvault.core.storage.session import DatabaseSession

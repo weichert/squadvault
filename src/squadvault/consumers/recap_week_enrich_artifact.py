@@ -342,9 +342,7 @@ def build_deterministic_facts_block_v1(
     - If min_events_for_facts is provided, overrides the threshold deterministically.
     """
     from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-        CanonicalEventRow,
         QUIET_WEEK_MIN_EVENTS,
-        render_deterministic_bullets_v1,
     )
 
     # Hard safety gate: never write facts under UNSAFE/nonstandard windows.

@@ -559,7 +559,6 @@ def compute_franchise_tenures(
     2023 — that's the franchise SLOT's record, not the current owner's.
     """
     # Step 1: get the current (most recent) name for each franchise
-    current_names: Dict[str, str] = {}
     all_names: Dict[str, List[Tuple[int, str]]] = {}  # fid -> [(season, name), ...]
 
     with DatabaseSession(db_path) as con:

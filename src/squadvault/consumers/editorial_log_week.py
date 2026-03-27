@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sqlite3
 import sys
 
 from squadvault.consumers.editorial_actions import fetch_editorial_log

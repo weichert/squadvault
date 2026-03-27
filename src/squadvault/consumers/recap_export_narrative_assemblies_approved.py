@@ -58,7 +58,6 @@ def _effective_selection_fp(conn, league_id: str, season: int, week_index: int, 
 import argparse
 from collections import Counter
 import json
-import sqlite3
 import subprocess
 import os
 import sys
@@ -291,14 +290,15 @@ def _safe_get_list(d: Dict[str, Any], k: str) -> list:
     return []
 
 
-def _summarize_selection_set_v1(data: Dict[str, Any]) -> str:
+def _summarize_selection_set_v1(data: Dict[str, Any], db_path: str, league_id: str, season: int, week_index: int) -> str:
     """
     Deterministic, non-volatile summary.
     - No timestamps emitted.
     - Derived counters sorted lexicographically.
     """
     selection_set_id = str(data.get("selection_set_id") or "")
-    selection_fp = _effective_selection_fp(conn, league_id, season, week_index, str(data.get("selection_fingerprint") or ""))
+    with DatabaseSession(db_path) as conn:
+        selection_fp = _effective_selection_fp(conn, league_id, season, week_index, str(data.get("selection_fingerprint") or ""))
     # SV_PATCH_EXPORT_ASSEMBLIES_FORCE_DATA_SELECTION_FP_V2
     # Force real selection_fingerprint back into data for all downstream render paths.
     data['selection_fingerprint'] = selection_fp
@@ -337,7 +337,7 @@ def _summarize_selection_set_v1(data: Dict[str, Any]) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
-def load_writing_room_block_or_not_available(base: str, league_id: str, season: int, week_index: int) -> str:
+def load_writing_room_block_or_not_available(base: str, league_id: str, season: int, week_index: int, *, db_path: str = "") -> str:
     """
     Non-blocking: never fails export. Always returns a deterministic block.
     """
@@ -348,7 +348,7 @@ def load_writing_room_block_or_not_available(base: str, league_id: str, season: 
         data = json.loads(p.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             return "Not available\n"
-        return _summarize_selection_set_v1(data)
+        return _summarize_selection_set_v1(data, db_path=db_path, league_id=league_id, season=season, week_index=week_index)
     except Exception:
         return "Not available\n"
 
@@ -458,6 +458,7 @@ def main(argv: list[str]) -> int:
         approved.league_id,
         approved.season,
         approved.week_index,
+        db_path=args.db,
     )
 
     out_plain = assemble_plain_v1(approved, blocks, writing_room_block=writing_room_block)

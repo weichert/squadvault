@@ -127,8 +127,8 @@ def validate_tone_config_schema_v1(cfg: Dict[str, Any]) -> List[str]:
     tone_config_id = req("tone_config_id", str)
     group_id = req("group_id", str)
     formality_level = req("formality_level", str)
-    humor_permitted = req("humor_permitted", bool)
-    profanity_permitted = req("profanity_permitted", bool)
+    _humor_permitted = req("humor_permitted", bool)
+    _profanity_permitted = req("profanity_permitted", bool)
     ceremonial_weight = req("ceremonial_weight", str)
     approved_at = req("approved_at", str)
 

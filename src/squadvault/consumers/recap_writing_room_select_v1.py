@@ -22,7 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 from squadvault.recaps.writing_room.artifact_io_v1 import write_selection_set_v1
 from squadvault.recaps.writing_room.identity_recipes_v1 import (

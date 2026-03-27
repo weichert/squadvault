@@ -28,7 +28,7 @@ class ResolvedChronicleInputV1:
     approved_recaps: Any
 
 from enum import Enum
-from typing import Optional, Sequence, Tuple, Any
+from typing import Optional, Tuple, Any
 
 
 class MissingWeeksPolicy(str, Enum):
@@ -131,14 +131,14 @@ class ChronicleInputResolverV1:
         """Resolve requested weeks into latest APPROVED recap refs and enforce missing-week policy."""
         weeks = inp.normalized_week_indices()
         weeks_t = tuple(int(w) for w in weeks)
-    
+
         # Load approved refs unless explicitly provided.
         if inp.approved_recaps is None:
             loaded = self._load_approved(int(inp.league_id), int(inp.season), weeks_t)
             approved_all = tuple(loaded)
         else:
             approved_all = tuple(inp.approved_recaps)
-    
+
         # Select latest approved recap per requested week (by max version).
         latest_by_week: dict[int, ApprovedRecapRefV1] = {}
         want = set(weeks_t)
@@ -149,15 +149,15 @@ class ChronicleInputResolverV1:
             cur = latest_by_week.get(w)
             if cur is None or int(ref.version) > int(cur.version):
                 latest_by_week[w] = ref
-    
+
         approved = tuple(latest_by_week[w] for w in weeks_t if w in latest_by_week)
         present = set(latest_by_week.keys())
         missing = tuple(w for w in weeks_t if w not in present)
-    
+
         policy = inp.missing_weeks_policy
         if missing and policy == MissingWeeksPolicy.REFUSE:
             raise ValueError(f"Missing approved weeks: {missing}")
-    
+
         return ResolvedChronicleInputV1(
             league_id=int(inp.league_id),
             season=int(inp.season),

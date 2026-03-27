@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
-from typing import Optional
 
 
 def _run(cmd: list[str]) -> int:

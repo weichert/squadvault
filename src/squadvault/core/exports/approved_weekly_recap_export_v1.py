@@ -79,7 +79,8 @@ def _payload_from_row(row: sqlite3.Row, cols: set[str], rendered_text: str) -> d
         if c in cols and row[c]:
             raw = row[c]
             try:
-                return json.loads(raw)
+                parsed = json.loads(raw)
+                return dict(parsed) if isinstance(parsed, dict) else {"_parsed": parsed}
             except (ValueError, TypeError):
                 return {"_raw_payload": raw, "_raw_payload_column": c}
 

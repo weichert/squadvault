@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import sys
 from pathlib import Path
 
 from squadvault.core.canonicalize.run_canonicalize import canonicalize
@@ -156,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  DB       : {db_path}")
     print(f"  League   : {league_id}")
     if args.use_history_chain:
-        print(f"  Mode     : history-chain (automatic league ID resolution)")
+        print("  Mode     : history-chain (automatic league ID resolution)")
     else:
         print(f"  Range    : {args.start_year}--{args.end_year}")
     print(f"  Server   : {args.known_server}")
@@ -164,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.categories:
         print(f"  Categories: {', '.join(args.categories)}")
     else:
-        print(f"  Categories: ALL")
+        print("  Categories: ALL")
     print()
 
     # -- Phase 1: Discovery ------------------------------------------------

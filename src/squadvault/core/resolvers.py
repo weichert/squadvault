@@ -5,9 +5,8 @@ previously duplicated/embedded in consumer files.
 """
 from __future__ import annotations
 
-import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 
 from squadvault.core.storage.session import DatabaseSession
 

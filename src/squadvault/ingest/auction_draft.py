@@ -4,16 +4,8 @@ from __future__ import annotations
 
 import json
 import hashlib
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from squadvault.notion.properties import (
-    prop_date_iso,
-    prop_number,
-    prop_relation,
-    prop_rich_text,
-    prop_title,
-    prop_url,
-)
 from squadvault.utils.time import unix_seconds_to_iso_z
 
 
@@ -124,71 +116,6 @@ def _stable_external_id(*parts: str) -> str:
     """Deterministic ID for dedupe. Avoids relying on MFL having a clean unique id."""
     raw = "|".join([p or "" for p in parts])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
-
-def derive_auction_rows_from_transactions(
-    year: int,
-    transactions: List[Dict[str, Any]],
-    season_page_id: str,
-    franchise_season_id_lookup: Callable[[str], str],
-    source_url: str,
-    raw_json_truncate_chars: int,
-) -> List[Dict[str, Any]]:
-    """
-    v1 mapping: derive Auction Draft Results rows from MFL transactions export.
-
-    Notes:
-    - We keep a conservative "only auction/draft-like types" gate.
-    - For your league, type == AUCTION_WON and player+bid are embedded in the
-      pipe-delimited "transaction" field: "playerId|bid|".
-    - This function returns Notion page payloads (key + properties) ready for upsert.
-    """
-    rows: List[Dict[str, Any]] = []
-
-    for idx, txn in enumerate(transactions):
-        t = _extract_type(txn).upper()
-
-        # Conservative heuristic: only treat explicitly auction/draft-like types as auction rows.
-        if "AUCTION" not in t and "DRAFT" not in t:
-            continue
-
-        ts_unix = _extract_timestamp_unix(txn)
-        ts_iso = unix_seconds_to_iso_z(ts_unix) if ts_unix is not None else None
-
-        franchise_id = _extract_franchise_id(txn)
-        player_id = _extract_player_id(txn)
-        bid_amount = _extract_bid_amount(txn)
-
-        # Deterministic key (NOW unique once player_id is parsed)
-        ts_part = str(ts_unix) if ts_unix is not None else f"idx{idx}"
-        key = f"{year}-AD-{franchise_id}-{player_id}-{ts_part}"
-
-        fs_page_id: Optional[str] = None
-        if franchise_id:
-            try:
-                fs_page_id = franchise_season_id_lookup(franchise_id)
-            except Exception:
-                fs_page_id = None
-
-        raw_json = _truncate_raw_json(
-            json.dumps(txn, separators=(",", ":"), sort_keys=True),
-            raw_json_truncate_chars,
-        )
-
-        props = {
-            "Key": prop_title(key),
-            "Season": prop_relation([season_page_id]),
-            "Franchise Season": prop_relation([fs_page_id] if fs_page_id else []),
-            "Franchise ID": prop_rich_text(franchise_id),
-            "Player ID": prop_rich_text(player_id),
-            "Winning Bid Amount": prop_number(bid_amount),
-            "Winning Bid Timestamp": prop_date_iso(ts_iso),
-            "Raw MFL JSON": prop_rich_text(raw_json),
-            "Raw Source URL": prop_url(source_url),
-        }
-
-        rows.append({"key": key, "properties": props})
-
-    return rows
 
 
 def derive_auction_event_envelopes_from_transactions(

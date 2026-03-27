@@ -79,7 +79,7 @@ def get_tone_preset(db_path: str, league_id: str) -> str:
                 (league_id,),
             ).fetchone()
             if row and row[0] in VALID_PRESETS:
-                return row[0]
+                return str(row[0])
     except (_sqlite3.OperationalError, _sqlite3.DatabaseError):
         logger.debug("tone_profile_v1: failed to read tone profile, using default")
     return DEFAULT_PRESET

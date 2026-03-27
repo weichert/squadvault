@@ -99,7 +99,8 @@ class TestEALIncludedCount:
     def test_eal_fallback_removed_from_lifecycle(self):
         """Lifecycle should no longer contain the canonical_events COUNT fallback."""
         import pathlib
-        lifecycle = pathlib.Path(SCHEMA_PATH).parent.parent / "recaps" / "weekly_recap_lifecycle.py"
+        # Canonical lifecycle path (not the deprecated core/recaps shim)
+        lifecycle = pathlib.Path(SCHEMA_PATH).parent.parent.parent / "recaps" / "weekly_recap_lifecycle.py"
         text = lifecycle.read_text(encoding="utf-8")
         assert "SV_DEFECT1_EAL_FALLBACK_COUNT" not in text, (
             "EAL fallback marker still present in lifecycle — should have been removed"

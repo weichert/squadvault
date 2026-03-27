@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 from squadvault.mfl.discovery import discover_mfl_league, discover_mfl_league_via_history
@@ -92,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     print("=== SquadVault MFL Discovery ===")
     print(f"League  : {args.league_id}")
     if args.use_history_chain:
-        print(f"Mode    : history-chain (automatic league ID resolution)")
+        print("Mode    : history-chain (automatic league ID resolution)")
     else:
         print(f"Range   : {args.start_year}–{args.end_year}")
     print(f"Server  : {args.known_server}")
