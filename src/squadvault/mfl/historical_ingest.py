@@ -354,6 +354,7 @@ def ingest_mfl_season(
     server: str,
     db_path: str,
     *,
+    mfl_league_id: Optional[str] = None,
     categories: Optional[List[str]] = None,
     max_weeks: int = 18,
     request_delay_s: float = 2.5,
@@ -365,13 +366,15 @@ def ingest_mfl_season(
     Ingest one MFL season across selected data categories.
 
     Follows the recommended ingestion sequence:
-        FRANCHISE_INFO → MATCHUP_RESULTS → TRANSACTIONS + FAAB_BIDS + DRAFT_PICKS → PLAYER_INFO
+        FRANCHISE_INFO -> MATCHUP_RESULTS -> TRANSACTIONS + FAAB_BIDS + DRAFT_PICKS -> PLAYER_INFO
 
     Args:
-        league_id: MFL league identifier
+        league_id: SquadVault league identifier (used for storage)
         season: Season year to ingest
         server: Resolved MFL server hostname for this season
         db_path: Path to the SQLite database
+        mfl_league_id: MFL league ID for API calls (defaults to league_id if not set).
+            Historical seasons may have different MFL IDs than the current season.
         categories: Which categories to ingest (default: all)
         max_weeks: Maximum weeks to probe for matchup results
         request_delay_s: Delay between API calls
@@ -379,6 +382,9 @@ def ingest_mfl_season(
         password: MFL password (optional, for private leagues)
         league_json: Cached TYPE=league response from discovery (optional)
     """
+    # MFL league ID for API calls may differ from SquadVault league ID
+    api_league_id = mfl_league_id or league_id
+
     if categories is None:
         categories = list(_ALL_CATEGORIES)
 
@@ -388,7 +394,7 @@ def ingest_mfl_season(
 
     client = MflClient(
         server=server,
-        league_id=league_id,
+        league_id=api_league_id,
         username=username,
         password=password,
     )
@@ -470,11 +476,15 @@ def ingest_mfl_seasons(
     Ingest multiple MFL seasons using a discovery report.
 
     Processes seasons in chronological order.
-    Uses discovered servers per season.
+    Uses discovered servers and MFL league IDs per season.
     Reuses cached franchise data from discovery when available.
 
+    For leagues with historical league ID changes (common on MFL),
+    the discovery report provides the correct MFL league ID per season.
+    All events are stored under the canonical SquadVault league_id.
+
     Args:
-        league_id: MFL league identifier
+        league_id: SquadVault league identifier (used for storage)
         discovery: Discovery report with resolved servers per season
         db_path: Path to the SQLite database
         seasons: Which seasons to ingest (default: all discovered)
@@ -495,6 +505,9 @@ def ingest_mfl_seasons(
             logger.warning("No server found for season %d, skipping", season)
             continue
 
+        # Get MFL league ID for this season (may differ from SquadVault league_id)
+        mfl_league_id = discovery.mfl_league_id_for_season(season)
+
         # Find cached franchise data from discovery
         disc_season = next(
             (s for s in discovery.seasons if s.season == season), None
@@ -507,8 +520,11 @@ def ingest_mfl_seasons(
                 }
             }
 
+        mfl_id_note = ""
+        if mfl_league_id and mfl_league_id != league_id:
+            mfl_id_note = f"  [MFL ID: {mfl_league_id}]"
         print(f"\n{'='*60}")
-        print(f"  Season {season} — server: {server}")
+        print(f"  Season {season} -- server: {server}{mfl_id_note}")
         print(f"{'='*60}")
 
         season_result = ingest_mfl_season(
@@ -516,6 +532,7 @@ def ingest_mfl_seasons(
             season=season,
             server=server,
             db_path=db_path,
+            mfl_league_id=mfl_league_id,
             categories=categories,
             max_weeks=max_weeks,
             request_delay_s=request_delay_s,

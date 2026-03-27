@@ -61,6 +61,7 @@ class SeasonAvailability:
     server: str  # resolved MFL hostname (e.g. "www44.myfantasyleague.com")
     franchise_count: int
     categories: List[str]  # available data category names
+    mfl_league_id: Optional[str] = None  # MFL league ID for this season (may differ from current)
     league_name: Optional[str] = None
     raw_franchises: List[Dict[str, Any]] = field(default_factory=list)
     suspect: bool = False  # True if franchise count doesn't match expected
@@ -91,24 +92,34 @@ class DiscoveryReport:
                 return s.server
         return None
 
+    def mfl_league_id_for_season(self, season: int) -> Optional[str]:
+        """Look up the MFL league ID for a given season."""
+        for s in self.seasons:
+            if s.season == season:
+                return s.mfl_league_id
+        return None
+
     def print_summary(self) -> None:
         """Print a human-readable discovery summary."""
         good = [s for s in self.seasons if not s.suspect]
         suspect = [s for s in self.seasons if s.suspect]
 
-        print(f"\n{'='*60}")
+        print(f"\n{'='*70}")
         print(f"  MFL Discovery Report -- League {self.league_id}")
         print(f"  Probed: {self.probed_range[0]}--{self.probed_range[1]}")
         print(f"  Active seasons: {len(good)}")
         if suspect:
             print(f"  Suspect (wrong league?): {len(suspect)}")
-        print(f"{'='*60}")
+        print(f"{'='*70}")
         for s in self.seasons:
             flag = "  ** SUSPECT" if s.suspect else ""
             name_str = f'  "{s.league_name}"' if s.league_name else ""
+            mfl_id_str = ""
+            if s.mfl_league_id and s.mfl_league_id != self.league_id:
+                mfl_id_str = f"  [MFL ID: {s.mfl_league_id}]"
             print(
                 f"  {s.season}  server={s.server:<35s}"
-                f"  franchises={s.franchise_count}{name_str}{flag}"
+                f"  franchises={s.franchise_count}{mfl_id_str}{name_str}{flag}"
             )
         if self.errors:
             print(f"\n  Errors ({len(self.errors)}):")
@@ -337,5 +348,190 @@ def discover_mfl_league(
         # Be polite to MFL
         if year < end_year:
             time.sleep(request_delay_s)
+
+    return report
+
+
+# -- History-chain discovery -------------------------------------------
+
+
+@dataclass
+class HistoryEntry:
+    """One entry from MFL's history.league array."""
+    year: int
+    server: str
+    mfl_league_id: str
+
+
+def _extract_league_history(data: dict) -> List[HistoryEntry]:
+    """Extract the history chain from an MFL TYPE=league JSON response.
+
+    MFL stores prior season links in:
+      {"league": {"history": {"league": [
+          {"year": "2009", "url": "https://www48.myfantasyleague.com/2009/home/50536"},
+          ...
+      ]}}}
+
+    Returns sorted list of HistoryEntry (by year).
+    """
+    league = data.get("league")
+    if not isinstance(league, dict):
+        return []
+
+    history = league.get("history")
+    if not isinstance(history, dict):
+        return []
+
+    entries = history.get("league", [])
+    if isinstance(entries, dict):
+        entries = [entries]
+    if not isinstance(entries, list):
+        return []
+
+    result: List[HistoryEntry] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+
+        year_str = entry.get("year")
+        url = entry.get("url")
+        if not year_str or not url:
+            continue
+
+        try:
+            year = int(year_str)
+        except (ValueError, TypeError):
+            continue
+
+        # Parse URL: https://www48.myfantasyleague.com/2009/home/50536
+        try:
+            parsed = urlparse(url)
+            server = parsed.hostname or ""
+            # League ID is the last path segment
+            path_parts = [p for p in (parsed.path or "").split("/") if p]
+            mfl_id = path_parts[-1] if path_parts else ""
+        except Exception:
+            continue
+
+        if not server or not mfl_id:
+            continue
+
+        result.append(HistoryEntry(year=year, server=server, mfl_league_id=mfl_id))
+
+    return sorted(result, key=lambda e: e.year)
+
+
+def discover_mfl_league_via_history(
+    league_id: str,
+    *,
+    known_server: str = "www44.myfantasyleague.com",
+    current_year: int = 2024,
+    request_delay_s: float = 2.5,
+    timeout_s: int = 30,
+    max_retries: int = 3,
+    retry_backoff_s: float = 3.0,
+) -> DiscoveryReport:
+    """
+    Discover all seasons for an MFL league using the history chain.
+
+    Makes ONE API call to TYPE=league for the current year, extracts the
+    history.league array, and then probes each historical season using
+    the exact server + league ID from the chain.
+
+    This is dramatically more efficient and accurate than blind probing:
+    - No wrong-league collisions (each entry has the correct league ID)
+    - No server guessing (each entry has the correct server)
+    - Only N+1 API calls for N historical seasons
+
+    Args:
+        league_id: Current MFL league identifier (e.g. "70985")
+        known_server: Server hosting the current league
+        current_year: Which year to fetch the history from
+        request_delay_s: Delay between API calls (politeness)
+        timeout_s: HTTP timeout per request
+        max_retries: Retry attempts per probe
+        retry_backoff_s: Base backoff between retries
+    """
+    report = DiscoveryReport(league_id=league_id)
+
+    session = requests.Session()
+    session.headers.update(
+        {
+            "User-Agent": "SquadVault/0.1 (+https://squadvault.local)",
+            "Accept": "application/json",
+        }
+    )
+
+    # Step 1: Fetch current league to get history chain
+    print(f"  Fetching history chain from {known_server} (league {league_id}, year {current_year})...")
+    current_url = (
+        f"https://{known_server}/{current_year}/export"
+        f"?TYPE=league&L={league_id}&JSON=1"
+    )
+
+    resp = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = session.get(current_url, timeout=timeout_s, allow_redirects=True)
+            break
+        except Exception as e:
+            if attempt < max_retries:
+                time.sleep(retry_backoff_s * attempt)
+            else:
+                report.errors.append(f"Failed to fetch current league: {e}")
+                return report
+
+    if resp is None or resp.status_code != 200:
+        report.errors.append(f"HTTP {resp.status_code if resp else 'no response'} fetching current league")
+        return report
+
+    try:
+        current_data = resp.json()
+    except Exception:
+        report.errors.append("Invalid JSON from current league")
+        return report
+
+    # Step 2: Extract history chain
+    history_entries = _extract_league_history(current_data)
+    if not history_entries:
+        report.errors.append("No history chain found in TYPE=league response")
+        return report
+
+    print(f"  Found {len(history_entries)} seasons in history chain")
+
+    # Build year range from history
+    years = [e.year for e in history_entries]
+    report.probed_range = (min(years), max(years))
+
+    # Step 3: Probe each season using exact server + league ID from history
+    for entry in history_entries:
+        print(f"  Probing {entry.year} (MFL ID: {entry.mfl_league_id} on {entry.server})...", end=" ", flush=True)
+
+        result = _probe_season(
+            session=session,
+            league_id=entry.mfl_league_id,
+            season=entry.year,
+            start_server=entry.server,
+            timeout_s=timeout_s,
+            max_retries=max_retries,
+            retry_backoff_s=retry_backoff_s,
+        )
+
+        if result:
+            result.mfl_league_id = entry.mfl_league_id
+            report.seasons.append(result)
+            print(
+                f"ACTIVE ({result.franchise_count} franchises)"
+                + (f'  "{result.league_name}"' if result.league_name else "")
+                + (f"  [MFL ID: {entry.mfl_league_id}]" if entry.mfl_league_id != league_id else "")
+            )
+        else:
+            print("not found")
+            report.errors.append(
+                f"Season {entry.year}: history chain points to"
+                f" {entry.server}/L={entry.mfl_league_id} but probe failed"
+            )
+
+        time.sleep(request_delay_s)
 
     return report

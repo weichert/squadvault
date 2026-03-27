@@ -17,8 +17,10 @@ import pytest
 
 from squadvault.mfl.discovery import (
     DiscoveryReport,
+    HistoryEntry,
     SeasonAvailability,
     _extract_franchises_from_league_json,
+    _extract_league_history,
     _extract_league_name,
     _probe_season,
     _resolve_server_from_response,
@@ -652,3 +654,179 @@ class TestAllZeroScoresGuard:
         # all() on empty iterator returns True, but the matchup ingest
         # has a separate "if not events: continue" check before this.
         assert all_zero is True
+
+
+# ── History chain extraction ─────────────────────────────────────────
+
+
+class TestExtractLeagueHistory:
+    """Test parsing of MFL's history.league array."""
+
+    def test_full_history_chain(self):
+        """Parse a realistic MFL history chain."""
+        data = {
+            "league": {
+                "name": "PFL Buddies",
+                "history": {
+                    "league": [
+                        {"year": "2024", "url": "https://www44.myfantasyleague.com/2024/home/70985"},
+                        {"year": "2009", "url": "https://www48.myfantasyleague.com/2009/home/50536"},
+                        {"year": "2017", "url": "http://www44.myfantasyleague.com/2017/home/70985"},
+                    ]
+                }
+            }
+        }
+        entries = _extract_league_history(data)
+        assert len(entries) == 3
+        # Sorted by year
+        assert entries[0].year == 2009
+        assert entries[1].year == 2017
+        assert entries[2].year == 2024
+
+    def test_parses_server_and_league_id(self):
+        data = {
+            "league": {
+                "history": {
+                    "league": [
+                        {"year": "2009", "url": "https://www48.myfantasyleague.com/2009/home/50536"},
+                    ]
+                }
+            }
+        }
+        entries = _extract_league_history(data)
+        assert len(entries) == 1
+        assert entries[0].server == "www48.myfantasyleague.com"
+        assert entries[0].mfl_league_id == "50536"
+        assert entries[0].year == 2009
+
+    def test_handles_http_urls(self):
+        """MFL uses http for older seasons."""
+        data = {
+            "league": {
+                "history": {
+                    "league": [
+                        {"year": "2016", "url": "http://www44.myfantasyleague.com/2016/home/47199"},
+                    ]
+                }
+            }
+        }
+        entries = _extract_league_history(data)
+        assert len(entries) == 1
+        assert entries[0].server == "www44.myfantasyleague.com"
+        assert entries[0].mfl_league_id == "47199"
+
+    def test_single_entry_as_dict(self):
+        """MFL may return a single history entry as a dict instead of list."""
+        data = {
+            "league": {
+                "history": {
+                    "league": {"year": "2024", "url": "https://www44.myfantasyleague.com/2024/home/70985"}
+                }
+            }
+        }
+        entries = _extract_league_history(data)
+        assert len(entries) == 1
+        assert entries[0].year == 2024
+        assert entries[0].mfl_league_id == "70985"
+
+    def test_empty_history(self):
+        data = {"league": {"history": {}}}
+        assert _extract_league_history(data) == []
+
+    def test_no_history_key(self):
+        data = {"league": {"name": "Test League"}}
+        assert _extract_league_history(data) == []
+
+    def test_no_league_key(self):
+        data = {}
+        assert _extract_league_history(data) == []
+
+    def test_skips_malformed_entries(self):
+        """Entries without year or url are skipped."""
+        data = {
+            "league": {
+                "history": {
+                    "league": [
+                        {"year": "2024", "url": "https://www44.myfantasyleague.com/2024/home/70985"},
+                        {"year": "2023"},  # missing url
+                        {"url": "https://www44.myfantasyleague.com/2022/home/70985"},  # missing year
+                        {"year": "bad", "url": "https://www44.myfantasyleague.com/2021/home/70985"},  # non-int year
+                    ]
+                }
+            }
+        }
+        entries = _extract_league_history(data)
+        assert len(entries) == 1
+        assert entries[0].year == 2024
+
+    def test_real_pfl_buddies_chain(self):
+        """Verify parsing of the actual PFL Buddies history shape."""
+        data = {
+            "league": {
+                "name": "PFL Buddies",
+                "history": {
+                    "league": [
+                        {"year": "2009", "url": "https://www48.myfantasyleague.com/2009/home/50536"},
+                        {"year": "2010", "url": "https://www46.myfantasyleague.com/2010/home/78078"},
+                        {"year": "2015", "url": "https://www44.myfantasyleague.com/2015/home/26884"},
+                        {"year": "2017", "url": "http://www44.myfantasyleague.com/2017/home/70985"},
+                        {"year": "2024", "url": "https://www44.myfantasyleague.com/2024/home/70985"},
+                    ]
+                }
+            }
+        }
+        entries = _extract_league_history(data)
+        assert len(entries) == 5
+
+        # Different league IDs for different years
+        by_year = {e.year: e for e in entries}
+        assert by_year[2009].mfl_league_id == "50536"
+        assert by_year[2009].server == "www48.myfantasyleague.com"
+        assert by_year[2010].mfl_league_id == "78078"
+        assert by_year[2010].server == "www46.myfantasyleague.com"
+        assert by_year[2015].mfl_league_id == "26884"
+        assert by_year[2017].mfl_league_id == "70985"
+        assert by_year[2024].mfl_league_id == "70985"
+
+
+class TestHistoryEntry:
+    def test_basic_creation(self):
+        entry = HistoryEntry(year=2009, server="www48.myfantasyleague.com", mfl_league_id="50536")
+        assert entry.year == 2009
+        assert entry.server == "www48.myfantasyleague.com"
+        assert entry.mfl_league_id == "50536"
+
+
+# ── Discovery report with mfl_league_id ──────────────────────────────
+
+
+class TestDiscoveryReportMflLeagueId:
+    def test_mfl_league_id_for_season(self):
+        report = DiscoveryReport(league_id="70985")
+        report.seasons = [
+            SeasonAvailability(
+                season=2009, server="www48", franchise_count=10,
+                categories=[], mfl_league_id="50536",
+            ),
+            SeasonAvailability(
+                season=2024, server="www44", franchise_count=10,
+                categories=[], mfl_league_id="70985",
+            ),
+        ]
+        assert report.mfl_league_id_for_season(2009) == "50536"
+        assert report.mfl_league_id_for_season(2024) == "70985"
+        assert report.mfl_league_id_for_season(2015) is None
+
+    def test_season_availability_mfl_league_id_field(self):
+        sa = SeasonAvailability(
+            season=2009, server="www48", franchise_count=10,
+            categories=[], mfl_league_id="50536",
+        )
+        assert sa.mfl_league_id == "50536"
+
+    def test_season_availability_mfl_league_id_default_none(self):
+        sa = SeasonAvailability(
+            season=2024, server="www44", franchise_count=10,
+            categories=[],
+        )
+        assert sa.mfl_league_id is None

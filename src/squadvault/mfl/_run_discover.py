@@ -24,7 +24,7 @@ import json
 import sys
 from pathlib import Path
 
-from squadvault.mfl.discovery import discover_mfl_league
+from squadvault.mfl.discovery import discover_mfl_league, discover_mfl_league_via_history
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -38,16 +38,22 @@ def main(argv: list[str] | None = None) -> int:
         help="MFL league identifier (e.g. 70985)",
     )
     ap.add_argument(
+        "--use-history-chain",
+        action="store_true",
+        help="Use MFL's built-in history chain (recommended). "
+        "One API call resolves all prior seasons with correct league IDs and servers.",
+    )
+    ap.add_argument(
         "--start-year",
         type=int,
         default=2009,
-        help="First year to probe (default: 2009)",
+        help="First year to probe (default: 2009, ignored with --use-history-chain)",
     )
     ap.add_argument(
         "--end-year",
         type=int,
         default=2025,
-        help="Last year to probe (default: 2025)",
+        help="Last year to probe (default: 2025, used as current_year with --use-history-chain)",
     )
     ap.add_argument(
         "--known-server",
@@ -85,7 +91,10 @@ def main(argv: list[str] | None = None) -> int:
 
     print("=== SquadVault MFL Discovery ===")
     print(f"League  : {args.league_id}")
-    print(f"Range   : {args.start_year}–{args.end_year}")
+    if args.use_history_chain:
+        print(f"Mode    : history-chain (automatic league ID resolution)")
+    else:
+        print(f"Range   : {args.start_year}–{args.end_year}")
     print(f"Server  : {args.known_server}")
     if args.expected_franchises:
         print(f"Expected franchises: {args.expected_franchises}")
@@ -93,16 +102,24 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Expected name: {args.expected_name}")
     print()
 
-    report = discover_mfl_league(
-        league_id=args.league_id,
-        start_year=args.start_year,
-        end_year=args.end_year,
-        known_server=args.known_server,
-        request_delay_s=args.delay,
-        expected_franchise_count=args.expected_franchises,
-        expected_league_name=args.expected_name,
-        max_retries=args.retries,
-    )
+    if args.use_history_chain:
+        report = discover_mfl_league_via_history(
+            league_id=args.league_id,
+            known_server=args.known_server,
+            current_year=args.end_year,
+            request_delay_s=args.delay,
+        )
+    else:
+        report = discover_mfl_league(
+            league_id=args.league_id,
+            start_year=args.start_year,
+            end_year=args.end_year,
+            known_server=args.known_server,
+            request_delay_s=args.delay,
+            expected_franchise_count=args.expected_franchises,
+            expected_league_name=args.expected_name,
+            max_retries=args.retries,
+        )
 
     report.print_summary()
 

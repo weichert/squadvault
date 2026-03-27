@@ -5,28 +5,25 @@ SquadVault: MFL Historical Ingestion
 Discovers available seasons and ingests historical data into the SquadVault
 memory ledger. Combines discovery + multi-season ingestion into one operator flow.
 
-Usage (full historical ingest):
+Usage (recommended — uses MFL history chain for automatic league ID resolution):
   ./scripts/py -u src/squadvault/mfl/_run_historical_ingest.py \
     --db .local_squadvault.sqlite \
     --league-id 70985 \
-    --start-year 2009 \
-    --end-year 2024 \
-    --known-server www44.myfantasyleague.com
+    --use-history-chain
 
-Usage (single season):
+Usage (manual range — probes each year on the same server):
   ./scripts/py -u src/squadvault/mfl/_run_historical_ingest.py \
     --db .local_squadvault.sqlite \
     --league-id 70985 \
-    --start-year 2015 \
-    --end-year 2015 \
-    --known-server www44.myfantasyleague.com
+    --start-year 2017 \
+    --end-year 2023 \
+    --expected-franchises 10
 
 Usage (specific categories only):
   ./scripts/py -u src/squadvault/mfl/_run_historical_ingest.py \
     --db .local_squadvault.sqlite \
     --league-id 70985 \
-    --start-year 2009 \
-    --end-year 2024 \
+    --use-history-chain \
     --categories FRANCHISE_INFO MATCHUP_RESULTS
 """
 
@@ -40,7 +37,7 @@ from pathlib import Path
 from squadvault.core.canonicalize.run_canonicalize import canonicalize
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.storage.sqlite_store import SQLiteStore
-from squadvault.mfl.discovery import discover_mfl_league
+from squadvault.mfl.discovery import discover_mfl_league, discover_mfl_league_via_history
 from squadvault.mfl.historical_ingest import ingest_mfl_seasons
 
 
@@ -121,6 +118,13 @@ def main(argv: list[str] | None = None) -> int:
         help="Run discovery only, do not ingest",
     )
     ap.add_argument(
+        "--use-history-chain",
+        action="store_true",
+        help="Use MFL's built-in history chain for discovery (recommended). "
+        "Automatically resolves league IDs and servers for all prior seasons "
+        "with a single API call. Ignores --start-year/--end-year.",
+    )
+    ap.add_argument(
         "--expected-franchises",
         type=int,
         default=None,
@@ -146,12 +150,15 @@ def main(argv: list[str] | None = None) -> int:
     db_path = Path(args.db)
     league_id = str(args.league_id)
 
-    print("=" * 60)
+    print("=" * 70)
     print("  SquadVault MFL Historical Ingestion")
-    print("=" * 60)
+    print("=" * 70)
     print(f"  DB       : {db_path}")
     print(f"  League   : {league_id}")
-    print(f"  Range    : {args.start_year}–{args.end_year}")
+    if args.use_history_chain:
+        print(f"  Mode     : history-chain (automatic league ID resolution)")
+    else:
+        print(f"  Range    : {args.start_year}--{args.end_year}")
     print(f"  Server   : {args.known_server}")
     print(f"  Delay    : {args.delay}s")
     if args.categories:
@@ -160,20 +167,28 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  Categories: ALL")
     print()
 
-    # ── Phase 1: Discovery ──────────────────────────────────────────
+    # -- Phase 1: Discovery ------------------------------------------------
 
     print("Phase 1: Discovery")
     print("-" * 40)
 
-    report = discover_mfl_league(
-        league_id=league_id,
-        start_year=args.start_year,
-        end_year=args.end_year,
-        known_server=args.known_server,
-        request_delay_s=args.delay,
-        expected_franchise_count=args.expected_franchises,
-        expected_league_name=args.expected_name,
-    )
+    if args.use_history_chain:
+        report = discover_mfl_league_via_history(
+            league_id=league_id,
+            known_server=args.known_server,
+            current_year=args.end_year,
+            request_delay_s=args.delay,
+        )
+    else:
+        report = discover_mfl_league(
+            league_id=league_id,
+            start_year=args.start_year,
+            end_year=args.end_year,
+            known_server=args.known_server,
+            request_delay_s=args.delay,
+            expected_franchise_count=args.expected_franchises,
+            expected_league_name=args.expected_name,
+        )
 
     report.print_summary()
 
