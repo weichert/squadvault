@@ -7,7 +7,7 @@ Per the Platform Adapter Contract Card (v1.0):
 - All adapter behavior is operator-initiated
 
 Recommended ingestion sequence per season:
-    FRANCHISE_INFO → MATCHUP_RESULTS → TRANSACTIONS + FAAB_BIDS + DRAFT_PICKS → PLAYER_INFO
+    FRANCHISE_INFO → MATCHUP_RESULTS → TRANSACTIONS + FAAB_BIDS + DRAFT_PICKS → PLAYER_INFO → PLAYER_SCORES
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from squadvault.ingest.franchises._run_franchises_ingest import (
     _upsert_rows as _upsert_franchise_rows,
 )
 from squadvault.ingest.matchup_results import derive_matchup_result_envelopes
+from squadvault.ingest.player_scores import derive_player_score_envelopes
 from squadvault.ingest.players._run_players_ingest import (
     _parse_players_json,
     _upsert_players,
@@ -335,6 +336,109 @@ def _ingest_player_info(
     return result
 
 
+def _ingest_player_scores(
+    client: MflClient,
+    store: SQLiteStore,
+    league_id: str,
+    season: int,
+    max_weeks: int = 18,
+    request_delay_s: float = 3.0,
+) -> CategoryResult:
+    """Ingest per-player weekly scores for a season.
+
+    Uses the weeklyResults endpoint (same as matchup results) which
+    includes per-player scoring and lineup status within each franchise.
+    Follows the same probing and rate-limit adaptation pattern as
+    _ingest_matchup_results.
+    """
+    result = CategoryResult(category="PLAYER_SCORES")
+    consecutive_empty = 0
+    current_delay = request_delay_s
+
+    try:
+        for week in range(1, max_weeks + 1):
+            if week > 1:
+                time.sleep(current_delay)
+
+            try:
+                raw_json, source_url = client.get_weekly_results(
+                    year=season, week=week
+                )
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str:
+                    current_delay = min(current_delay * 2, 30.0)
+                    print(
+                        f"      week {week:2d}: 429 rate limited"
+                        f" (delay now {current_delay:.1f}s)"
+                    )
+                    time.sleep(current_delay)
+                else:
+                    logger.debug("Week %d weeklyResults fetch failed: %s", week, e)
+
+                consecutive_empty += 1
+                if consecutive_empty >= 3:
+                    logger.info(
+                        "Season %d: 3 consecutive failures at week %d (playerScores), stopping",
+                        season, week,
+                    )
+                    break
+                continue
+
+            events = derive_player_score_envelopes(
+                year=season,
+                week=week,
+                league_id=league_id,
+                weekly_results_json=raw_json,
+                source_url=source_url,
+                occurred_at=None,
+            )
+
+            if not events:
+                consecutive_empty += 1
+                if consecutive_empty >= 3:
+                    logger.info(
+                        "Season %d: 3 consecutive empty weeks at week %d (playerScores), stopping",
+                        season, week,
+                    )
+                    break
+                continue
+
+            # Check if all scores are 0.0 — likely means week hasn't been played
+            all_zero = all(
+                e["payload"].get("score") == 0.0
+                for e in events
+            )
+            if all_zero:
+                logger.info(
+                    "Season %d week %d: all player scores 0.0, skipping (unplayed)",
+                    season, week,
+                )
+                consecutive_empty += 1
+                if consecutive_empty >= 3:
+                    break
+                continue
+
+            # Valid data — reset counters
+            consecutive_empty = 0
+            current_delay = max(request_delay_s, current_delay * 0.8)
+
+            ins, skip = store.append_events(events)
+            result.inserted += ins
+            result.skipped += skip
+
+            label = "new" if ins > 0 else "exists"
+            print(f"      week {week:2d}: {len(events)} player scores ({label})")
+
+    except Exception as e:
+        result.error = str(e)
+        logger.error(
+            "PLAYER_SCORES ingest failed for season %d: %s", season, e
+        )
+
+    return result
+
+
 # ── Public API ───────────────────────────────────────────────────────
 
 
@@ -345,6 +449,7 @@ _ALL_CATEGORIES = [
     "FAAB_BIDS",
     "DRAFT_PICKS",
     "PLAYER_INFO",
+    "PLAYER_SCORES",
 ]
 
 
@@ -366,7 +471,7 @@ def ingest_mfl_season(
     Ingest one MFL season across selected data categories.
 
     Follows the recommended ingestion sequence:
-        FRANCHISE_INFO -> MATCHUP_RESULTS -> TRANSACTIONS + FAAB_BIDS + DRAFT_PICKS -> PLAYER_INFO
+        FRANCHISE_INFO -> MATCHUP_RESULTS -> TRANSACTIONS + FAAB_BIDS + DRAFT_PICKS -> PLAYER_INFO -> PLAYER_SCORES
 
     Args:
         league_id: SquadVault league identifier (used for storage)
@@ -445,6 +550,20 @@ def ingest_mfl_season(
     if "PLAYER_INFO" in categories:
         cat_result = _ingest_player_info(
             client, db_path, league_id, season
+        )
+        result.categories.append(cat_result)
+        _log_category(season, cat_result)
+
+    # 5. PLAYER_SCORES (uses weeklyResults endpoint — same as matchup results
+    #    but extracts per-player scoring and lineup status)
+    if "PLAYER_SCORES" in categories:
+        cat_result = _ingest_player_scores(
+            client,
+            store,
+            league_id,
+            season,
+            max_weeks=max_weeks,
+            request_delay_s=request_delay_s,
         )
         result.categories.append(cat_result)
         _log_category(season, cat_result)

@@ -48,6 +48,7 @@ ignore = ["E501"]  # Line length: most violations are SQL strings, error message
 "src/squadvault/core/canonicalize/run_canonicalize.py" = ["E402"]
 "src/squadvault/ingest/_run_ingest_to_store.py" = ["E402"]
 "src/squadvault/ingest/_run_matchup_results.py" = ["E402"]
+"src/squadvault/ingest/_run_player_scores.py" = ["E402"]
 "src/squadvault/recaps/writing_room/selection_set_schema_v1.py" = ["E402"]
 # Ambiguous variable names in comprehensions (contextually clear)
 "src/squadvault/core/recaps/context/narrative_angles_v1.py" = ["E741"]

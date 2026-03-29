@@ -49,6 +49,7 @@ ALL_CATEGORIES = [
     "FAAB_BIDS",
     "DRAFT_PICKS",
     "PLAYER_INFO",
+    "PLAYER_SCORES",
 ]
 
 

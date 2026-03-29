@@ -266,6 +266,15 @@ def action_fingerprint(row: MemoryEventRow, payload: dict[str, Any]) -> str:
         return f"{et}:{row.league_id}:{row.season}:W{week}:{sorted_ids[0]}:{sorted_ids[1]}"
 
     # -------------------------
+    # WEEKLY_PLAYER_SCORE
+    # -------------------------
+    if et == "WEEKLY_PLAYER_SCORE":
+        week = norm(payload.get("week"))
+        franchise_id = norm(payload.get("franchise_id"))
+        player_id = norm(payload.get("player_id"))
+        return f"{et}:{row.league_id}:{row.season}:W{week}:{franchise_id}:{player_id}"
+
+    # -------------------------
     # Default safe rollout
     # -------------------------
     return f"{et}:{row.league_id}:{row.season}:MEMORY_EVENT_ID:{row.id}"
