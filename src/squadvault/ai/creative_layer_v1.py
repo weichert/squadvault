@@ -74,6 +74,10 @@ Voice rules:
   End when you've covered the matchups — don't force a closing flourish.
 - Length: aim for 3-5 paragraphs depending on how much happened. A quiet week gets \
   a tighter recap. Say less when less happened.
+- When player-level data is available in the PLAYER HIGHLIGHTS section, mention \
+  the individual performances that drove the result. Name the players who carried \
+  a team or let them down. This is what makes the recap feel like it was written \
+  by someone who watched the games.
 
 Hard rules (non-negotiable):
 - NEVER claim "all-time," "league history," or "league record" when the context \
@@ -99,6 +103,9 @@ Hard rules (non-negotiable):
   as if they are still playing. Do NOT say "regular season title" — say \
   "championship" or the appropriate playoff round. Teams not in this week's \
   matchups have been eliminated. Focus only on the teams playing.
+- NEVER invent player scores or individual performances not present in the \
+  PLAYER HIGHLIGHTS data. If player data is not available for a week, do not \
+  fabricate it.
 """
 
 # ---------------------------------------------------------------------------
@@ -170,6 +177,7 @@ def _build_user_prompt(
     league_history: str = "",
     narrative_angles: str = "",
     writer_room_context: str = "",
+    player_highlights: str = "",
     tone_preset: str = "",
     seasons_count: int = 0,
 ) -> str:
@@ -219,6 +227,12 @@ def _build_user_prompt(
         parts.append(writer_room_context.strip())
         parts.append("")
 
+    # Player highlights block — between WRITER ROOM and VERIFIED FACTS
+    if player_highlights and player_highlights.strip():
+        parts.append("=== PLAYER HIGHLIGHTS (individual player performances — USE THESE) ===")
+        parts.append(player_highlights.strip())
+        parts.append("")
+
     # Facts block — always present, always authoritative
     facts_block = "\n".join(f"- {b}" for b in facts_bullets) if facts_bullets else "(no facts)"
     parts.append("=== VERIFIED FACTS (canonical, authoritative — these are your source of truth) ===")
@@ -254,6 +268,7 @@ def draft_narrative_v1(
     league_history: str = "",
     narrative_angles: str = "",
     writer_room_context: str = "",
+    player_highlights: str = "",
     tone_preset: str = "",
     seasons_count: int = 0,
 ) -> Optional[str]:
@@ -270,6 +285,7 @@ def draft_narrative_v1(
     - league_history: rendered cross-season longitudinal context text
     - narrative_angles: rendered detected story hooks text
     - writer_room_context: rendered scoring deltas + FAAB spending text
+    - player_highlights: rendered per-franchise player scoring context text
 
     Callers must treat None as 'use deterministic facts-only output.'
     This function never raises — all failures return None.
@@ -319,6 +335,7 @@ def draft_narrative_v1(
         league_history=league_history,
         narrative_angles=narrative_angles,
         writer_room_context=writer_room_context,
+        player_highlights=player_highlights,
         tone_preset=tone_preset,
         seasons_count=seasons_count,
     )

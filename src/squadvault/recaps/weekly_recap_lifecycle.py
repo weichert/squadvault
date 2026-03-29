@@ -45,6 +45,10 @@ from squadvault.core.recaps.context.writer_room_context_v1 import (
     derive_faab_spending,
     render_writer_room_context_for_prompt,
 )
+from squadvault.core.recaps.context.player_week_context_v1 import (
+    derive_player_week_context_v1,
+    render_player_highlights_for_prompt,
+)
 
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
@@ -743,6 +747,36 @@ def generate_weekly_recap_draft(
     except Exception:
         pass
 
+    # --- Player highlights (derived from WEEKLY_PLAYER_SCORE events, silence if absent) ---
+    _player_highlights_text = ""
+    try:
+        _cl_player_ctx = derive_player_week_context_v1(
+            db_path=db_path, league_id=league_id, season=season, week=week_index,
+        )
+        if _cl_player_ctx.has_data:
+            _cl_ph_pres = PlayerResolver(db_path, league_id, season)
+            _cl_ph_fres = FranchiseResolver(db_path, league_id, season)
+            # Collect all player/franchise IDs from the player context
+            _ph_pids: set[str] = set()
+            _ph_fids: set[str] = set()
+            for _fc in _cl_player_ctx.franchises:
+                _ph_fids.add(_fc.franchise_id)
+                for _ps in _fc.starters:
+                    _ph_pids.add(_ps.player_id)
+                for _ps in _fc.bench:
+                    _ph_pids.add(_ps.player_id)
+            if _ph_pids:
+                _cl_ph_pres.load_for_ids(_ph_pids)
+            if _ph_fids:
+                _cl_ph_fres.load_for_ids(_ph_fids)
+            _player_highlights_text = render_player_highlights_for_prompt(
+                _cl_player_ctx,
+                team_resolver=_cl_ph_fres.one,
+                player_resolver=_cl_ph_pres.one,
+            )
+    except Exception:
+        _player_highlights_text = ""
+
     # Read governed tone preset (commissioner-configured, defaults to POINTED)
     try:
         _cl_tone_preset = get_tone_preset(db_path, league_id)
@@ -759,6 +793,7 @@ def generate_weekly_recap_draft(
         league_history=_league_history_text,
         narrative_angles=_narrative_angles_text,
         writer_room_context=_writer_room_text,
+        player_highlights=_player_highlights_text,
         tone_preset=_cl_tone_preset,
         seasons_count=(
             len(_cl_history_ctx.seasons_available)
