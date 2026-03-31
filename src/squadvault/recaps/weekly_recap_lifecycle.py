@@ -26,6 +26,7 @@ from squadvault.core.recaps.recap_artifacts import latest_approved_version
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.ai.creative_layer_v1 import draft_narrative_v1
 from squadvault.core.tone.tone_profile_v1 import get_tone_preset
+from squadvault.core.tone.voice_profile_v1 import get_voice_profile
 from squadvault.core.recaps.context.season_context_v1 import (
     derive_season_context_v1,
     render_season_context_for_prompt,
@@ -890,6 +891,13 @@ def generate_weekly_recap_draft(
     except Exception:
         _cl_tone_preset = ""
 
+    # Read commissioner-approved voice profile (league-specific cultural guidance)
+    _cl_voice_profile = ""
+    try:
+        _cl_voice_profile = get_voice_profile(db_path, league_id) or ""
+    except Exception:
+        pass
+
     _narrative_draft = draft_narrative_v1(
         facts_bullets=_creative_bullets,
         eal_directive=editorial_attunement_v1,
@@ -901,6 +909,7 @@ def generate_weekly_recap_draft(
         narrative_angles=_narrative_angles_text,
         writer_room_context=_writer_room_text,
         tone_preset=_cl_tone_preset,
+        voice_profile=_cl_voice_profile,
         seasons_count=(
             len(_cl_history_ctx.seasons_available)
             if _cl_history_ctx is not None else 0

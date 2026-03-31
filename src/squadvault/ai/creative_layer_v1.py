@@ -142,28 +142,34 @@ _EAL_TEMPERATURE = {
 }
 
 
-def _build_system_prompt(tone_preset: str = "") -> str:
-    """Build the system prompt with optional tone preset directive.
+def _build_system_prompt(tone_preset: str = "", voice_profile: str = "") -> str:
+    """Build the system prompt with optional tone preset and voice profile.
 
     The tone preset modifies the voice but never overrides the hard rules.
-    If no preset is provided, the base system prompt is used as-is (POINTED voice).
-    Hard rules are always positioned last in the system prompt to maximize
-    compliance — models give higher weight to recency.
+    The voice profile adds league-specific cultural guidance (commissioner-approved).
+    Both are injected before hard rules — hard rules are always last to maximize
+    compliance (models give higher weight to recency).
     """
-    if not tone_preset or tone_preset == "POINTED":
-        # POINTED is the default voice baked into the base system prompt
+    directives: list[str] = []
+
+    # Tone preset directive (unless default POINTED)
+    if tone_preset and tone_preset != "POINTED":
+        from squadvault.core.tone.tone_profile_v1 import get_voice_directive
+        directives.append(get_voice_directive(tone_preset))
+
+    # Voice profile (commissioner-approved cultural guidance)
+    if voice_profile:
+        directives.append(voice_profile.strip())
+
+    if not directives:
         return _SYSTEM_PROMPT
 
-    from squadvault.core.tone.tone_profile_v1 import get_voice_directive
-    directive = get_voice_directive(tone_preset)
-    # Insert tone directive before hard rules so hard rules are always last.
-    # Models give higher weight to recency — safety constraints belong at the end.
+    combined = "\n\n".join(directives)
     _hr_marker = "\nHard rules (non-negotiable):"
     if _hr_marker in _SYSTEM_PROMPT:
         _voice, _hard = _SYSTEM_PROMPT.split(_hr_marker, 1)
-        return _voice.rstrip() + "\n\n" + directive + _hr_marker + _hard
-    # Fallback: append (should not happen if prompt is well-formed)
-    return _SYSTEM_PROMPT.rstrip() + "\n\n" + directive + "\n"
+        return _voice.rstrip() + "\n\n" + combined + _hr_marker + _hard
+    return _SYSTEM_PROMPT.rstrip() + "\n\n" + combined + "\n"
 
 
 def _build_user_prompt(
@@ -270,6 +276,7 @@ def draft_narrative_v1(
     writer_room_context: str = "",
     player_highlights: str = "",
     tone_preset: str = "",
+    voice_profile: str = "",
     seasons_count: int = 0,
 ) -> Optional[str]:
     """Attempt to produce a governed prose narrative draft.
@@ -347,7 +354,7 @@ def draft_narrative_v1(
         import anthropic  # local import: optional dependency
 
         client = anthropic.Anthropic(api_key=api_key)
-        system_prompt = _build_system_prompt(tone_preset)
+        system_prompt = _build_system_prompt(tone_preset, voice_profile=voice_profile)
         # SV_NO_WEB_SEARCH: Web search removed to prevent unverified NFL
         # commentary from being injected into league recaps. The creative
         # layer must work only with league-sourced data. Per governance:

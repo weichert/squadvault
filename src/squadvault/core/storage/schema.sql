@@ -320,3 +320,16 @@ CREATE TABLE IF NOT EXISTS league_scoring_rules (
   updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   PRIMARY KEY (league_id, season)
 );
+
+-- =========================
+-- League voice profiles (commissioner-approved cultural guidance)
+-- =========================
+
+CREATE TABLE IF NOT EXISTS league_voice_profiles (
+  league_id     TEXT    NOT NULL,
+  profile_text  TEXT    NOT NULL,
+  approved_by   TEXT    NOT NULL DEFAULT 'commissioner',
+  approved_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (league_id)
+);
