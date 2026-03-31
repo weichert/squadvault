@@ -469,6 +469,35 @@ def _ingest_nfl_bye_weeks(
     return result
 
 
+def _ingest_scoring_rules(
+    client: MflClient,
+    db_path: str,
+    league_id: str,
+    season: int,
+) -> CategoryResult:
+    """Ingest league scoring rules for a season.
+
+    Uses the league-specific rules endpoint. One API call per season.
+    """
+    result = CategoryResult(category="SCORING_RULES")
+
+    try:
+        from squadvault.ingest.scoring_rules import ingest_scoring_rules_from_mfl
+        raw_json, _ = client.get_rules(year=season)
+        count = ingest_scoring_rules_from_mfl(
+            db_path=db_path, league_id=league_id, season=season,
+            raw_json=raw_json,
+        )
+        result.inserted = count
+    except Exception as e:
+        result.error = str(e)
+        logger.error(
+            "SCORING_RULES ingest failed for season %d: %s", season, e
+        )
+
+    return result
+
+
 # ── Public API ───────────────────────────────────────────────────────
 
 
@@ -601,6 +630,14 @@ def ingest_mfl_season(
     # 6. NFL_BYE_WEEKS (NFL-wide data from api.myfantasyleague.com)
     if "NFL_BYE_WEEKS" in categories:
         cat_result = _ingest_nfl_bye_weeks(
+            client, db_path, league_id, season,
+        )
+        result.categories.append(cat_result)
+        _log_category(season, cat_result)
+
+    # 7. SCORING_RULES (league configuration metadata)
+    if "SCORING_RULES" in categories:
+        cat_result = _ingest_scoring_rules(
             client, db_path, league_id, season,
         )
         result.categories.append(cat_result)

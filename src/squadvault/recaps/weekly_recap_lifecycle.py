@@ -52,6 +52,9 @@ from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
 from squadvault.core.recaps.context.bye_week_context_v1 import (
     detect_bye_week_angles_v1,
 )
+from squadvault.core.recaps.context.league_rules_context_v1 import (
+    detect_scoring_rules_angles_v1,
+)
 from squadvault.core.recaps.context.writer_room_context_v1 import (
     derive_scoring_deltas,
     derive_faab_spending,
@@ -796,6 +799,15 @@ def generate_weekly_recap_draft(
                 all_matchups=_cl_all_matchups,
             )
             _all_detected_angles.extend(_bye_angles)
+        except Exception:
+            pass
+
+        # Module 6: Scoring rules context (Dimension 11 — week 1 only)
+        try:
+            _rules_angles = detect_scoring_rules_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+            )
+            _all_detected_angles.extend(_rules_angles)
         except Exception:
             pass
 

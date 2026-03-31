@@ -51,6 +51,7 @@ ALL_CATEGORIES = [
     "PLAYER_INFO",
     "PLAYER_SCORES",
     "NFL_BYE_WEEKS",
+    "SCORING_RULES",
 ]
 
 
