@@ -138,8 +138,16 @@ def _load_all_auction_picks(
 def _load_player_season_scoring(
     db_path: str,
     league_id: str,
+    *,
+    current_season: int = 0,
+    target_week: int = 99,
 ) -> Dict[Tuple[int, str, str], _PlayerSeasonScoring]:
     """Load aggregated player scoring per (season, franchise_id, player_id).
+
+    When current_season and target_week are specified, scores for the
+    current season are filtered to week <= target_week. Prior seasons
+    use full data (they're complete). This ensures angles reflect
+    week-appropriate stats instead of full-season retrospective numbers.
 
     Returns dict keyed by (season, franchise_id, player_id).
     """
@@ -167,6 +175,15 @@ def _load_player_season_scoring(
             continue
         if not isinstance(p, dict):
             continue
+
+        # Week-scope the current season
+        if current_season and season == current_season:
+            try:
+                week = int(p.get("week", 99))
+            except (ValueError, TypeError):
+                week = 99
+            if week > target_week:
+                continue
 
         franchise_id = str(p.get("franchise_id", "")).strip()
         player_id = str(p.get("player_id", "")).strip()
@@ -824,7 +841,10 @@ def detect_auction_draft_angles_v1(
     if not all_picks:
         return []
 
-    scoring = _load_player_season_scoring(db_path, league_id)
+    scoring = _load_player_season_scoring(
+        db_path, league_id,
+        current_season=season, target_week=week,
+    )
 
     all_angles: List[NarrativeAngle] = []
 
