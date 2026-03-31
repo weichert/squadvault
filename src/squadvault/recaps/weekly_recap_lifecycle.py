@@ -37,17 +37,22 @@ from squadvault.core.recaps.context.league_history_v1 import (
     render_league_history_for_prompt,
 )
 from squadvault.core.recaps.context.narrative_angles_v1 import (
+    NarrativeAngle,
     detect_narrative_angles_v1,
-    render_angles_for_prompt,
+)
+from squadvault.core.recaps.context.player_narrative_angles_v1 import (
+    detect_player_narrative_angles_v1,
+)
+from squadvault.core.recaps.context.auction_draft_angles_v1 import (
+    detect_auction_draft_angles_v1,
+)
+from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
+    detect_franchise_deep_angles_v1,
 )
 from squadvault.core.recaps.context.writer_room_context_v1 import (
     derive_scoring_deltas,
     derive_faab_spending,
     render_writer_room_context_for_prompt,
-)
-from squadvault.core.recaps.context.player_week_context_v1 import (
-    derive_player_week_context_v1,
-    render_player_highlights_for_prompt,
 )
 
 
@@ -694,6 +699,24 @@ def generate_weekly_recap_draft(
     except Exception:
         _cl_name_map = {}
 
+    # Player name map for angle rendering (player_id -> display name)
+    _cl_player_name_map: dict[str, str] = {}
+    try:
+        with DatabaseSession(db_path) as _pn_con:
+            _pn_rows = _pn_con.execute(
+                """SELECT player_id, name FROM player_directory
+                   WHERE league_id = ?
+                   ORDER BY season DESC""",
+                (str(league_id),),
+            ).fetchall()
+        for _pn_row in _pn_rows:
+            _pid = str(_pn_row[0]).strip()
+            _pname = str(_pn_row[1]).strip() if _pn_row[1] else ""
+            if _pid and _pname and _pid not in _cl_player_name_map:
+                _cl_player_name_map[_pid] = _pname
+    except Exception:
+        pass
+
     try:
         _cl_season_ctx = derive_season_context_v1(
             db_path=db_path, league_id=league_id, season=season, week_index=week_index,
@@ -719,6 +742,12 @@ def generate_weekly_recap_draft(
         _cl_all_matchups = None
 
     try:
+        # ── Unified narrative angle detection across all modules ──
+        # Collect angles from all modules into one list, then apply
+        # a unified budget (spec: 3 HEADLINE + 6 NOTABLE + 4 MINOR = ~13).
+        _all_detected_angles: list[NarrativeAngle] = []
+
+        # Module 1: Franchise-level angles (existing — upsets, streaks, records, rivalry)
         if _cl_season_ctx is not None:
             _cl_angles = detect_narrative_angles_v1(
                 season_ctx=_cl_season_ctx,
@@ -726,9 +755,85 @@ def generate_weekly_recap_draft(
                 all_matchups=_cl_all_matchups,
                 tenure_map=_cl_tenure_map,
             )
-            _narrative_angles_text = render_angles_for_prompt(
-                _cl_angles, name_map=_cl_name_map,
+            _all_detected_angles.extend(_cl_angles.angles)
+
+        # Module 2: Player narrative angles (Dimensions 1-5)
+        try:
+            _player_angles = detect_player_narrative_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+                tenure_map=_cl_tenure_map,
             )
+            _all_detected_angles.extend(_player_angles)
+        except Exception:
+            pass
+
+        # Module 3: Auction draft angles (Dimension 6)
+        try:
+            _auction_angles = detect_auction_draft_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+            )
+            _all_detected_angles.extend(_auction_angles)
+        except Exception:
+            pass
+
+        # Module 4: Franchise deep angles (Dimensions 7-9)
+        try:
+            _deep_angles = detect_franchise_deep_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+                tenure_map=_cl_tenure_map,
+            )
+            _all_detected_angles.extend(_deep_angles)
+        except Exception:
+            pass
+
+        # Unified sort: strength desc, category asc, headline asc
+        _all_detected_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))
+
+        # Tiered angle budget (per scope doc):
+        #   HEADLINE (strength 3): always included, cap at 3
+        #   NOTABLE (strength 2): included up to 6
+        #   MINOR (strength 1): included up to 4, only if total < 12
+        #   Total cap: 15
+        if _all_detected_angles:
+            _budgeted: list[NarrativeAngle] = []
+            _headline_count = 0
+            _notable_count = 0
+            _minor_count = 0
+            for _a in _all_detected_angles:
+                if _a.strength >= 3 and _headline_count < 3:
+                    _budgeted.append(_a)
+                    _headline_count += 1
+                elif _a.strength == 2 and _notable_count < 6:
+                    _budgeted.append(_a)
+                    _notable_count += 1
+                elif _a.strength <= 1 and _minor_count < 4 and len(_budgeted) < 12:
+                    _budgeted.append(_a)
+                    _minor_count += 1
+
+            _angle_lines: list[str] = []
+            _angle_lines.append(f"Narrative angles for Week {week_index} (what's interesting):")
+            for _a in _budgeted:
+                _slabel = {3: "HEADLINE", 2: "NOTABLE", 1: "MINOR"}.get(_a.strength, "")
+                _headline = _a.headline
+                _detail = _a.detail
+                if _cl_name_map:
+                    for _fid, _fname in _cl_name_map.items():
+                        _headline = _headline.replace(_fid, _fname)
+                        if _detail:
+                            _detail = _detail.replace(_fid, _fname)
+                if _cl_player_name_map:
+                    for _pid, _pname in _cl_player_name_map.items():
+                        _headline = _headline.replace(_pid, _pname)
+                        if _detail:
+                            _detail = _detail.replace(_pid, _pname)
+                _line = f"  [{_slabel}] {_headline}"
+                if _detail:
+                    _line += f" — {_detail}"
+                _angle_lines.append(_line)
+            _remaining = len(_all_detected_angles) - len(_budgeted)
+            if _remaining > 0:
+                _angle_lines.append(f"  (+ {_remaining} minor angles omitted)")
+            _narrative_angles_text = "\n".join(_angle_lines) + "\n"
     except Exception:
         pass
 
@@ -747,36 +852,6 @@ def generate_weekly_recap_draft(
     except Exception:
         pass
 
-    # --- Player highlights (derived from WEEKLY_PLAYER_SCORE events, silence if absent) ---
-    _player_highlights_text = ""
-    try:
-        _cl_player_ctx = derive_player_week_context_v1(
-            db_path=db_path, league_id=league_id, season=season, week=week_index,
-        )
-        if _cl_player_ctx.has_data:
-            _cl_ph_pres = PlayerResolver(db_path, league_id, season)
-            _cl_ph_fres = FranchiseResolver(db_path, league_id, season)
-            # Collect all player/franchise IDs from the player context
-            _ph_pids: set[str] = set()
-            _ph_fids: set[str] = set()
-            for _fc in _cl_player_ctx.franchises:
-                _ph_fids.add(_fc.franchise_id)
-                for _ps in _fc.starters:
-                    _ph_pids.add(_ps.player_id)
-                for _ps in _fc.bench:
-                    _ph_pids.add(_ps.player_id)
-            if _ph_pids:
-                _cl_ph_pres.load_for_ids(_ph_pids)
-            if _ph_fids:
-                _cl_ph_fres.load_for_ids(_ph_fids)
-            _player_highlights_text = render_player_highlights_for_prompt(
-                _cl_player_ctx,
-                team_resolver=_cl_ph_fres.one,
-                player_resolver=_cl_ph_pres.one,
-            )
-    except Exception:
-        _player_highlights_text = ""
-
     # Read governed tone preset (commissioner-configured, defaults to POINTED)
     try:
         _cl_tone_preset = get_tone_preset(db_path, league_id)
@@ -793,7 +868,6 @@ def generate_weekly_recap_draft(
         league_history=_league_history_text,
         narrative_angles=_narrative_angles_text,
         writer_room_context=_writer_room_text,
-        player_highlights=_player_highlights_text,
         tone_preset=_cl_tone_preset,
         seasons_count=(
             len(_cl_history_ctx.seasons_available)
