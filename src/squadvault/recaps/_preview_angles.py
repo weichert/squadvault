@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from collections import Counter
 
@@ -215,9 +216,10 @@ def render_angle(
         if detail:
             detail = detail.replace(fid, fname)
     for pid, pname in player_name_map.items():
-        headline = headline.replace(pid, pname)
+        pat = r'(?<!\d)' + re.escape(pid) + r'(?!\d)'
+        headline = re.sub(pat, pname, headline)
         if detail:
-            detail = detail.replace(pid, pname)
+            detail = re.sub(pat, pname, detail)
     line = f"  [{label}] {headline}"
     if detail:
         line += f" — {detail}"

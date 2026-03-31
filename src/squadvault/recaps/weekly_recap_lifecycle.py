@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
@@ -848,9 +849,11 @@ def generate_weekly_recap_draft(
                             _detail = _detail.replace(_fid, _fname)
                 if _cl_player_name_map:
                     for _pid, _pname in _cl_player_name_map.items():
-                        _headline = _headline.replace(_pid, _pname)
+                        # Use digit-boundary regex to prevent "985.8" matching ID "985"
+                        _pat = r'(?<!\d)' + re.escape(_pid) + r'(?!\d)'
+                        _headline = re.sub(_pat, _pname, _headline)
                         if _detail:
-                            _detail = _detail.replace(_pid, _pname)
+                            _detail = re.sub(_pat, _pname, _detail)
                 _line = f"  [{_slabel}] {_headline}"
                 if _detail:
                     _line += f" — {_detail}"
