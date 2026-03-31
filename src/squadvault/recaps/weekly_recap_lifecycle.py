@@ -49,6 +49,9 @@ from squadvault.core.recaps.context.auction_draft_angles_v1 import (
 from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
     detect_franchise_deep_angles_v1,
 )
+from squadvault.core.recaps.context.bye_week_context_v1 import (
+    detect_bye_week_angles_v1,
+)
 from squadvault.core.recaps.context.writer_room_context_v1 import (
     derive_scoring_deltas,
     derive_faab_spending,
@@ -783,6 +786,16 @@ def generate_weekly_recap_draft(
                 tenure_map=_cl_tenure_map,
             )
             _all_detected_angles.extend(_deep_angles)
+        except Exception:
+            pass
+
+        # Module 5: Bye week angles (Dimension 10 — requires nfl_bye_weeks data)
+        try:
+            _bye_angles = detect_bye_week_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+                all_matchups=_cl_all_matchups,
+            )
+            _all_detected_angles.extend(_bye_angles)
         except Exception:
             pass
 

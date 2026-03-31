@@ -224,6 +224,65 @@ class MflClient:
         resp.raise_for_status()
         return resp.json(), url
 
+    # ----------------------------
+    # NFL-wide API calls (api.myfantasyleague.com)
+    # ----------------------------
+
+    def _api_export_url(self, year: int, export_type: str) -> str:
+        """Build MFL export URL for NFL-wide data (not league-specific).
+
+        NFL-wide endpoints (nflByeWeeks, nflSchedule) must go to
+        api.myfantasyleague.com, not the league shard.
+        """
+        return (
+            f"https://api.myfantasyleague.com/{year}/export"
+            f"?TYPE={export_type}&JSON=1"
+        )
+
+    def get_nfl_bye_weeks(self, year: int) -> tuple[Dict[str, Any], str]:
+        """
+        Fetch TYPE=nflByeWeeks from api.myfantasyleague.com.
+
+        Returns bye week assignments for all 32 NFL teams.
+        One API call per season. NFL-wide data, not league-specific.
+        No authentication required.
+
+        Response shape:
+          {"nflByeWeeks": {"year": "2024", "team": [
+            {"id": "KCC", "bye_week": "6"}, ...]}}
+        """
+        url = self._api_export_url(year, "nflByeWeeks")
+        resp = http_request_with_retries(self.session, "GET", url)
+        resp.raise_for_status()
+        return resp.json(), url
+
+    # ----------------------------
+    # League-specific metadata
+    # ----------------------------
+
+    def get_rules(self, year: int) -> tuple[Dict[str, Any], str]:
+        """
+        Fetch TYPE=rules export for a given year.
+
+        Returns the league's scoring rules configuration.
+        One API call per season. League configuration metadata.
+
+        Used by Dimension 11 (Scoring Rules Context) of Narrative Angles v2.
+        """
+        url = self.export_url(year, "rules")
+        resp = http_request_with_retries(self.session, "GET", url)
+
+        if resp.status_code != 200 and self.username and self.password:
+            logger.info(
+                "MFL unauthenticated request failed (%s); attempting login then retry.",
+                resp.status_code,
+            )
+            self._login(year)
+            resp = http_request_with_retries(self.session, "GET", url)
+
+        resp.raise_for_status()
+        return resp.json(), url
+
     def _login(self, year: int) -> None:
         """
         Best-effort login for leagues requiring authentication.

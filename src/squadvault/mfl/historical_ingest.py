@@ -439,6 +439,36 @@ def _ingest_player_scores(
     return result
 
 
+def _ingest_nfl_bye_weeks(
+    client: MflClient,
+    db_path: str,
+    league_id: str,
+    season: int,
+) -> CategoryResult:
+    """Ingest NFL bye week data for a season.
+
+    Uses the nflByeWeeks endpoint on api.myfantasyleague.com (not the
+    league shard). One API call per season. Reference metadata only.
+    """
+    result = CategoryResult(category="NFL_BYE_WEEKS")
+
+    try:
+        from squadvault.ingest.nfl_bye_weeks import ingest_nfl_bye_weeks_from_mfl
+        raw_json, _ = client.get_nfl_bye_weeks(year=season)
+        count = ingest_nfl_bye_weeks_from_mfl(
+            db_path=db_path, league_id=league_id, season=season,
+            raw_json=raw_json,
+        )
+        result.inserted = count
+    except Exception as e:
+        result.error = str(e)
+        logger.error(
+            "NFL_BYE_WEEKS ingest failed for season %d: %s", season, e
+        )
+
+    return result
+
+
 # ── Public API ───────────────────────────────────────────────────────
 
 
@@ -564,6 +594,14 @@ def ingest_mfl_season(
             season,
             max_weeks=max_weeks,
             request_delay_s=request_delay_s,
+        )
+        result.categories.append(cat_result)
+        _log_category(season, cat_result)
+
+    # 6. NFL_BYE_WEEKS (NFL-wide data from api.myfantasyleague.com)
+    if "NFL_BYE_WEEKS" in categories:
+        cat_result = _ingest_nfl_bye_weeks(
+            client, db_path, league_id, season,
         )
         result.categories.append(cat_result)
         _log_category(season, cat_result)

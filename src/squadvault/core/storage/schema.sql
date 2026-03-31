@@ -299,3 +299,24 @@ CREATE TABLE IF NOT EXISTS league_tone_profiles (
   created_at TEXT NOT NULL,
   UNIQUE (league_id)
 );
+
+-- =========================
+-- NFL metadata (reference data for Narrative Angles v2)
+-- =========================
+
+CREATE TABLE IF NOT EXISTS nfl_bye_weeks (
+  league_id   TEXT    NOT NULL,
+  season      INTEGER NOT NULL,
+  nfl_team    TEXT    NOT NULL,
+  bye_week    INTEGER NOT NULL,
+  updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (league_id, season, nfl_team)
+);
+
+CREATE TABLE IF NOT EXISTS league_scoring_rules (
+  league_id   TEXT    NOT NULL,
+  season      INTEGER NOT NULL,
+  rules_json  TEXT    NOT NULL,
+  updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (league_id, season)
+);

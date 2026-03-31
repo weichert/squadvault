@@ -50,6 +50,7 @@ ALL_CATEGORIES = [
     "DRAFT_PICKS",
     "PLAYER_INFO",
     "PLAYER_SCORES",
+    "NFL_BYE_WEEKS",
 ]
 
 
