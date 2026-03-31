@@ -61,10 +61,16 @@ def main() -> None:
         from squadvault.core.recaps.selection.weekly_windows_v1 import window_for_week_index
         for w in range(1, MAX_WEEKS + 1):
             win = window_for_week_index(str(DB_PATH), LEAGUE_ID, YEAR, w)
-            if win.mode == "LOCK_TO_LOCK" and win.window_start:
+            if win.mode != "UNSAFE" and win.window_start:
                 week_occurred_at[w] = win.window_start
     except Exception as e:
         print(f"  WARNING: Could not load lock timestamps — occurred_at will be None: {e}")
+
+    if week_occurred_at:
+        print(f"  Lock timestamps resolved for {len(week_occurred_at)}/{MAX_WEEKS} weeks")
+    else:
+        print("  WARNING: No lock timestamps found — all matchup events will have NULL occurred_at.")
+        print("  Ensure transaction ingestion + canonicalization runs BEFORE matchup results.")
 
     total_inserted = 0
     total_skipped = 0
