@@ -849,8 +849,12 @@ def generate_weekly_recap_draft(
                             _detail = _detail.replace(_fid, _fname)
                 if _cl_player_name_map:
                     for _pid, _pname in _cl_player_name_map.items():
-                        # Use digit-boundary regex to prevent "985.8" matching ID "985"
-                        _pat = r'(?<!\d)' + re.escape(_pid) + r'(?!\d)'
+                        # Skip short IDs (< 5 chars) — they collide with
+                        # scores/prices in angle text (e.g. "986 career pts")
+                        if len(_pid) < 5:
+                            continue
+                        # Decimal-aware boundary: prevent "985.8" matching ID "9858"
+                        _pat = r'(?<![.\d])' + re.escape(_pid) + r'(?![.\d])'
                         _headline = re.sub(_pat, _pname, _headline)
                         if _detail:
                             _detail = re.sub(_pat, _pname, _detail)

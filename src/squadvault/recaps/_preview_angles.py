@@ -216,7 +216,9 @@ def render_angle(
         if detail:
             detail = detail.replace(fid, fname)
     for pid, pname in player_name_map.items():
-        pat = r'(?<!\d)' + re.escape(pid) + r'(?!\d)'
+        if len(pid) < 5:
+            continue
+        pat = r'(?<![.\d])' + re.escape(pid) + r'(?![.\d])'
         headline = re.sub(pat, pname, headline)
         if detail:
             detail = re.sub(pat, pname, detail)
