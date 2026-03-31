@@ -164,14 +164,17 @@ class TestByeWeekPipeline:
         _insert_player_directory(con, league_id=LEAGUE, season=SEASON,
                                   player_id="P4", name="Hurts", position="QB", team="PHI")
 
-        # Week 6: F1 has KC + BUF starters (both on bye), F2 has SF + PHI (neither on bye)
-        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=6,
-                              franchise_id="F1", player_id="P1", score=0.0)
-        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=6,
-                              franchise_id="F1", player_id="P2", score=0.0)
-        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=6,
+        # Week 5 starters: the detector uses prior-week roster to identify
+        # who is affected by this week's byes (players on bye don't have
+        # WEEKLY_PLAYER_SCORE records for the bye week itself).
+        # F1 has KC + BUF starters (both on bye week 6), F2 has SF + PHI (not on bye week 6)
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=5,
+                              franchise_id="F1", player_id="P1", score=25.0)
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=5,
+                              franchise_id="F1", player_id="P2", score=20.0)
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=5,
                               franchise_id="F2", player_id="P3", score=25.0)
-        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=6,
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=5,
                               franchise_id="F2", player_id="P4", score=22.0)
 
         con.commit()

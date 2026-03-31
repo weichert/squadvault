@@ -233,9 +233,10 @@ def detect_franchise_bye_week_record(
         return []
 
     # For each week through target_week, compute bye counts per franchise
+    # Use prior week's starters — players on bye don't have score records
     franchise_bye_weeks: Dict[str, List[int]] = {}  # fid -> [week numbers with bye conflicts]
-    for wk in range(1, target_week + 1):
-        wk_starters = _load_week_starters(db_path, league_id, season, wk)
+    for wk in range(2, target_week + 1):
+        wk_starters = _load_week_starters(db_path, league_id, season, wk - 1)
         wk_bye_counts = _count_starters_on_bye(wk_starters, player_teams, bye_map, wk)
         for fid, count in wk_bye_counts.items():
             if count >= min_on_bye:
@@ -289,8 +290,15 @@ def detect_bye_week_angles_v1(
 ) -> List[NarrativeAngle]:
     """Detect all Dimension 10 bye week angles for a given week.
 
+    Uses the previous week's starters to determine who is affected by
+    this week's byes, since players on bye don't have WEEKLY_PLAYER_SCORE
+    records for the bye week itself.
+
     Returns empty list if no bye week data exists (silence over fabrication).
     """
+    if week < 2:
+        return []  # no prior roster to check in week 1
+
     bye_map = _load_bye_weeks(db_path, league_id, season)
     if not bye_map:
         return []
@@ -299,7 +307,8 @@ def detect_bye_week_angles_v1(
     if not player_teams:
         return []
 
-    starters = _load_week_starters(db_path, league_id, season, week)
+    # Use prior week's starters — players on bye don't have score records
+    starters = _load_week_starters(db_path, league_id, season, week - 1)
     if not starters:
         return []
 
