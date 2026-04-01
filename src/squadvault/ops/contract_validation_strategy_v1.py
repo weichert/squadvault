@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Sequence
 
 
 class ContractValidationError(ValueError):
@@ -28,7 +28,7 @@ class Outcome(str, Enum):
 @dataclass(frozen=True)
 class InvariantSpec:
     invariant_id: str
-    invariant_type: Optional[str]  # allow None/unknown to test "default to Type A"
+    invariant_type: str | None  # allow None/unknown to test "default to Type A"
     has_validation: bool
 
 
@@ -55,7 +55,7 @@ def _require_nonempty(label: str, value: str) -> None:
         raise ContractValidationError(f"{label} is required")
 
 
-def normalize_invariant_type(maybe: Optional[str]) -> InvariantType:
+def normalize_invariant_type(maybe: str | None) -> InvariantType:
     """
     CVS-A2: Ambiguous/missing classification defaults to Type A (blocking).
     CVS-A1: Closed enum (A/B/C only).
@@ -78,8 +78,8 @@ def decide_outcome(
     invariant: InvariantSpec,
     contract_name: str,
     contract_version: str,
-    validation_passed: Optional[bool],
-    waiver: Optional[WaiverRecord] = None,
+    validation_passed: bool | None,
+    waiver: WaiverRecord | None = None,
 ) -> ValidationResult:
     """
     Core semantics from Contract Validation Strategy v1.0:

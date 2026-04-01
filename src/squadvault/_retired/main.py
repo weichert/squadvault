@@ -7,12 +7,13 @@ import logging
 import sys
 from pathlib import Path
 
-from squadvault.config import load_config
-from squadvault.mfl.client import MflClient
 from squadvault.notion.client import NotionClient
 from squadvault.notion.schema_specs import build_schema_specs
 from squadvault.notion.schema_validator import validate_all_databases
+
+from squadvault.config import load_config
 from squadvault.ingest.transactions import ingest_transactions_for_year
+from squadvault.mfl.client import MflClient
 
 
 def _parse_years(value: str) -> list[int]:

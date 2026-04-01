@@ -1,12 +1,11 @@
 """Render deterministic recap text from artifact JSON with voice framing."""
 
 from __future__ import annotations
-from typing import Optional
-from squadvault.core.eal.consume_v1 import EALDirectivesV1
 
 import json
-from typing import Any, Dict
+from typing import Any
 
+from squadvault.core.eal.consume_v1 import EALDirectivesV1
 from squadvault.core.recaps.render.voice_variants_v1 import get_voice_spec
 
 
@@ -40,7 +39,7 @@ def _apply_voice_framing_v1(*, voice_id: str, rendered_text: str) -> str:
     return rendered_text
 
 
-def render_recap_text_v1(artifact: Dict[str, Any], *, voice_id: str = "neutral") -> str:
+def render_recap_text_v1(artifact: dict[str, Any], *, voice_id: str = "neutral") -> str:
     """
     Deterministic, non-hallucinated recap text.
     This does NOT infer details not present in the artifact.
@@ -114,11 +113,11 @@ def render_recap_text_from_path_v1(
     path: str,
     *,
     voice_id: str = "neutral",
-    eal_directives: Optional[EALDirectivesV1] = None,
+    eal_directives: EALDirectivesV1 | None = None,
 ) -> str:
     """Load artifact JSON from path and render recap text."""
     _ = eal_directives  # EAL v1: accepted but not applied at render layer
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         artifact = json.load(f)
     return render_recap_text_v1(artifact, voice_id=voice_id)
 

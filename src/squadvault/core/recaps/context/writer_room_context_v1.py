@@ -17,11 +17,10 @@ from a 82-point dud to drop 145 — a 63-point swing."
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
 
 from squadvault.core.storage.session import DatabaseSession
-
 
 # ── Scoring Deltas ───────────────────────────────────────────────────
 
@@ -31,8 +30,8 @@ class ScoringDelta:
     """Week-over-week scoring change for a single franchise."""
     franchise_id: str
     this_week_score: float
-    last_week_score: Optional[float]  # None if no prior week data
-    delta: Optional[float]            # this_week - last_week, or None
+    last_week_score: float | None  # None if no prior week data
+    delta: float | None            # this_week - last_week, or None
 
     @property
     def has_delta(self) -> bool:
@@ -46,14 +45,14 @@ def derive_scoring_deltas(
     league_id: str,
     season: int,
     week_index: int,
-) -> Tuple[ScoringDelta, ...]:
+) -> tuple[ScoringDelta, ...]:
     """Compute scoring deltas (this week vs last week) for all teams.
 
     Returns a tuple of ScoringDelta, one per franchise that played this week.
     If the franchise didn't play last week, delta is None.
     """
-    this_week_scores: Dict[str, float] = {}
-    last_week_scores: Dict[str, float] = {}
+    this_week_scores: dict[str, float] = {}
+    last_week_scores: dict[str, float] = {}
 
     with DatabaseSession(db_path) as con:
         # This week's scores
@@ -98,7 +97,7 @@ def derive_scoring_deltas(
             if loser_id:
                 last_week_scores[str(loser_id).strip()] = loser_score
 
-    deltas: List[ScoringDelta] = []
+    deltas: list[ScoringDelta] = []
     for fid, score in sorted(this_week_scores.items()):
         last = last_week_scores.get(fid)
         delta = round(score - last, 2) if last is not None else None
@@ -121,9 +120,9 @@ class FaabSpending:
     franchise_id: str
     total_spent: float
     num_acquisitions: int
-    budget: Optional[float]           # league budget if provided
-    remaining: Optional[float]        # budget - total_spent, or None
-    pct_spent: Optional[float]        # total_spent / budget, or None
+    budget: float | None           # league budget if provided
+    remaining: float | None        # budget - total_spent, or None
+    pct_spent: float | None        # total_spent / budget, or None
 
 
 def derive_faab_spending(
@@ -132,9 +131,9 @@ def derive_faab_spending(
     league_id: str,
     season: int,
     week_index: int,
-    faab_budget: Optional[float] = None,
-    through_occurred_at: Optional[str] = None,
-) -> Tuple[FaabSpending, ...]:
+    faab_budget: float | None = None,
+    through_occurred_at: str | None = None,
+) -> tuple[FaabSpending, ...]:
     """Compute cumulative FAAB spending per franchise through a given week.
 
     Reads all WAIVER_BID_AWARDED canonical events for the season and sums
@@ -145,8 +144,8 @@ def derive_faab_spending(
 
     faab_budget: if provided, computes remaining budget and % spent.
     """
-    spending: Dict[str, float] = {}
-    counts: Dict[str, int] = {}
+    spending: dict[str, float] = {}
+    counts: dict[str, int] = {}
 
     sql = """SELECT payload_json FROM v_canonical_best_events
                WHERE league_id = ? AND season = ?
@@ -187,7 +186,7 @@ def derive_faab_spending(
         spending[fid] = spending.get(fid, 0.0) + bid_val
         counts[fid] = counts.get(fid, 0) + 1
 
-    results: List[FaabSpending] = []
+    results: list[FaabSpending] = []
     for fid in sorted(spending.keys()):
         total = round(spending[fid], 2)
         n = counts[fid]
@@ -215,7 +214,7 @@ def render_writer_room_context_for_prompt(
     *,
     deltas: Sequence[ScoringDelta],
     faab: Sequence[FaabSpending],
-    name_map: Optional[Dict[str, str]] = None,
+    name_map: dict[str, str] | None = None,
 ) -> str:
     """Render scoring deltas and FAAB spending for the creative layer."""
 
@@ -225,7 +224,7 @@ def render_writer_room_context_for_prompt(
             return name_map[fid]
         return fid
 
-    lines: List[str] = []
+    lines: list[str] = []
 
     # Scoring deltas
     deltas_with_data = [d for d in deltas if d.has_delta]

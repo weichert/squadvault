@@ -3,17 +3,17 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from dotenv import load_dotenv
 
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.queries.franchise_queries import (
     draft_picks_for_franchise,
-    waiver_awards_for_franchise,
     free_agent_moves_for_franchise,
     trades_for_franchise,
+    waiver_awards_for_franchise,
 )
+from squadvault.core.storage.sqlite_store import SQLiteStore
 
 load_dotenv(".env")
 
@@ -32,7 +32,7 @@ fa = free_agent_moves_for_franchise(store, league_id=LEAGUE_ID, season=SEASON, f
 trades = trades_for_franchise(store, league_id=LEAGUE_ID, season=SEASON, franchise_id=FRANCHISE_ID)
 
 
-def _score_waiver_award(e: Dict[str, Any]) -> Tuple[int, str]:
+def _score_waiver_award(e: dict[str, Any]) -> tuple[int, str]:
     """
     Prefer waiver award events that have richer parsed payload fields.
     Score:
@@ -48,7 +48,7 @@ def _score_waiver_award(e: Dict[str, Any]) -> Tuple[int, str]:
     return score, ingested_at
 
 
-def best_waiver_award(events: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def best_waiver_award(events: list[dict[str, Any]]) -> dict[str, Any] | None:
     """Find the highest FAAB bid awarded in the dataset."""
     if not events:
         return None

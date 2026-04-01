@@ -20,12 +20,13 @@ Reuses the NarrativeAngle dataclass from narrative_angles_v1.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any
 
 from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.storage.session import DatabaseSession
 
-
+logger = logging.getLogger(__name__)
 # ── Data loading ─────────────────────────────────────────────────────
 
 
@@ -33,7 +34,7 @@ def _load_scoring_rules(
     db_path: str,
     league_id: str,
     season: int,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Load parsed scoring rules from league_scoring_rules table.
 
     Returns the parsed JSON dict, or None if no data.
@@ -46,9 +47,10 @@ def _load_scoring_rules(
                 (str(league_id), int(season)),
             ).fetchone()
         if row and row[0]:
-            parsed: Dict[str, Any] = json.loads(row[0])
+            parsed: dict[str, Any] = json.loads(row[0])
             return parsed
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         pass
     return None
 
@@ -58,14 +60,14 @@ def _compute_positional_scoring_pct(
     league_id: str,
     season: int,
     target_week: int,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compute percentage of total starter scoring per position.
 
     Returns dict: position -> percentage (0.0 to 1.0).
     Requires player_directory for position lookup.
     """
     # Position lookup
-    positions: Dict[str, str] = {}
+    positions: dict[str, str] = {}
     with DatabaseSession(db_path) as con:
         rows = con.execute(
             """SELECT player_id, position FROM player_directory
@@ -79,7 +81,7 @@ def _compute_positional_scoring_pct(
         return {}
 
     # Aggregate starter scoring by position
-    pos_totals: Dict[str, float] = {}
+    pos_totals: dict[str, float] = {}
     grand_total = 0.0
 
     with DatabaseSession(db_path) as con:
@@ -132,7 +134,7 @@ def detect_scoring_structure_context(
     league_id: str,
     season: int,
     target_week: int,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect notable scoring rule deviations from standard fantasy.
 
     Surfaces when the league's rules create a measurable positional shift.
@@ -156,7 +158,7 @@ def detect_scoring_structure_context(
     # Compute actual positional scoring distribution
     pos_pcts = _compute_positional_scoring_pct(db_path, league_id, season, target_week)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     # Key deviation: passing TD points
     passing_td = key_rules.get("passing_td_pts")
@@ -223,7 +225,7 @@ def detect_scoring_rules_angles_v1(
     league_id: str,
     season: int,
     week: int,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect Dimension 11 scoring rules context angles.
 
     Returns empty list if no scoring rules data exists.

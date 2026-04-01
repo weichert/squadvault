@@ -22,12 +22,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sqlite3
 import sys
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
-from squadvault.core.storage.db_utils import norm_id as _norm_id, row_to_dict as _row_to_dict
+from squadvault.core.storage.db_utils import norm_id as _norm_id
+from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
 from squadvault.core.storage.session import DatabaseSession
+
+logger = logging.getLogger(__name__)
 
 
 # -------------------------
@@ -46,7 +51,8 @@ def _safe_str(v: Any, default: str = "") -> str:
         return default
     try:
         return str(v)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return default
 
 
@@ -110,8 +116,8 @@ class DirLookup:
         self.db_path = db_path
         self.league_id = league_id
         self.season = season
-        self._fr_cache: Dict[str, str] = {}
-        self._pl_cache: Dict[str, str] = {}
+        self._fr_cache: dict[str, str] = {}
+        self._pl_cache: dict[str, str] = {}
 
     def franchise(self, fid_raw: Any) -> str:
         """Resolve franchise ID to display name with caching."""
@@ -161,7 +167,7 @@ class DirLookup:
         self._pl_cache[key] = out
         return out
 
-    def _query_one(self, sql: str, params: Tuple[Any, ...]) -> str:
+    def _query_one(self, sql: str, params: tuple[Any, ...]) -> str:
         """Execute a single-row query and return first column value."""
         with DatabaseSession(self.db_path) as conn:
             row = conn.execute(sql, params).fetchone()
@@ -179,14 +185,14 @@ def _fetch_canonical_rows_by_ids(
     db_path: str,
     league_id: str,
     season: int,
-    canonical_ids: List[str],
-) -> List[Dict[str, Any]]:
+    canonical_ids: list[str],
+) -> list[dict[str, Any]]:
     """Fetch canonical event rows by IDs in chunked batches."""
     if not canonical_ids:
         return []
 
     CHUNK = 500
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     with DatabaseSession(db_path) as conn:
         cur = conn.cursor()
 
@@ -214,14 +220,14 @@ def _fetch_canonical_rows_by_ids(
 
 def _fetch_memory_payloads_by_ids(
     db_path: str,
-    memory_event_ids: List[int],
-) -> Dict[int, Dict[str, Any]]:
+    memory_event_ids: list[int],
+) -> dict[int, dict[str, Any]]:
     """Fetch and parse memory event payloads by IDs in chunks."""
     if not memory_event_ids:
         return {}
 
     CHUNK = 500
-    out: Dict[int, Dict[str, Any]] = {}
+    out: dict[int, dict[str, Any]] = {}
     with DatabaseSession(db_path) as conn:
         cur = conn.cursor()
 
@@ -239,12 +245,13 @@ def _fetch_memory_payloads_by_ids(
             for r in cur.fetchall():
                 d = _row_to_dict(r)
                 raw = d.get("payload_json") or ""
-                payload: Dict[str, Any] = {}
+                payload: dict[str, Any] = {}
                 if isinstance(raw, str) and raw.strip():
                     try:
                         val = json.loads(raw)
                         payload = val if isinstance(val, dict) else {}
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("%s", exc)
                         payload = {}
                 out[int(d["id"])] = payload
 
@@ -255,7 +262,7 @@ def _fetch_memory_payloads_by_ids(
 # Artifact read/update
 # -------------------------
 
-def _recap_artifacts_columns(conn: sqlite3.Connection) -> List[str]:
+def _recap_artifacts_columns(conn: sqlite3.Connection) -> list[str]:
     """Return set of column names for recap_artifacts table."""
     cur = conn.cursor()
     cur.execute("PRAGMA table_info(recap_artifacts);")
@@ -268,7 +275,7 @@ def _fetch_latest_weekly_recap_artifact_row(
     league_id: str,
     season: int,
     week_index: int,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Fetch latest WEEKLY_RECAP artifact row for a week."""
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -328,9 +335,9 @@ def build_deterministic_facts_block_v1(
     db_path: str,
     league_id: str,
     season: int,
-    canonical_ids: List[str],
+    canonical_ids: list[str],
     sel: Any,
-    min_events_for_facts: Optional[int] = None,
+    min_events_for_facts: int | None = None,
 ) -> str:
     """
     Deterministic 'What happened (facts)' block.
@@ -362,7 +369,7 @@ def build_deterministic_facts_block_v1(
     if facts_bullets:
         facts_bullets = [_ascii_punct(b) for b in facts_bullets]
         prov = _facts_provenance_line(sel)
-        lines: List[str] = [FACTS_HEADER, prov]
+        lines: list[str] = [FACTS_HEADER, prov]
         lines.extend([f"- {b}" for b in facts_bullets])
         return "\n".join(lines) + "\n\n"
 
@@ -597,4 +604,4 @@ if __name__ == "__main__":
         raise
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from e

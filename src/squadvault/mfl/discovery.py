@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import requests
@@ -33,7 +33,7 @@ def _extract_franchises_from_league_json(data: dict) -> list:
     return _extract_franchises(data)
 
 
-def _extract_league_name(data: dict) -> Optional[str]:
+def _extract_league_name(data: dict) -> str | None:
     """Extract the league name from an MFL TYPE=league JSON response.
 
     The name appears in:
@@ -60,10 +60,10 @@ class SeasonAvailability:
     season: int
     server: str  # resolved MFL hostname (e.g. "www44.myfantasyleague.com")
     franchise_count: int
-    categories: List[str]  # available data category names
-    mfl_league_id: Optional[str] = None  # MFL league ID for this season (may differ from current)
-    league_name: Optional[str] = None
-    raw_franchises: List[Dict[str, Any]] = field(default_factory=list)
+    categories: list[str]  # available data category names
+    mfl_league_id: str | None = None  # MFL league ID for this season (may differ from current)
+    league_name: str | None = None
+    raw_franchises: list[dict[str, Any]] = field(default_factory=list)
     suspect: bool = False  # True if franchise count doesn't match expected
 
 
@@ -73,26 +73,26 @@ class DiscoveryReport:
 
     league_id: str
     platform: str = "MFL"
-    seasons: List[SeasonAvailability] = field(default_factory=list)
+    seasons: list[SeasonAvailability] = field(default_factory=list)
     probed_range: tuple = (0, 0)
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
-    def available_seasons(self) -> List[int]:
+    def available_seasons(self) -> list[int]:
         """Return sorted list of discovered active seasons (excluding suspect)."""
         return sorted(s.season for s in self.seasons if not s.suspect)
 
-    def all_discovered_seasons(self) -> List[int]:
+    def all_discovered_seasons(self) -> list[int]:
         """Return sorted list of all discovered seasons including suspect."""
         return sorted(s.season for s in self.seasons)
 
-    def server_for_season(self, season: int) -> Optional[str]:
+    def server_for_season(self, season: int) -> str | None:
         """Look up the resolved server for a given season."""
         for s in self.seasons:
             if s.season == season:
                 return s.server
         return None
 
-    def mfl_league_id_for_season(self, season: int) -> Optional[str]:
+    def mfl_league_id_for_season(self, season: int) -> str | None:
         """Look up the MFL league ID for a given season."""
         for s in self.seasons:
             if s.season == season:
@@ -137,7 +137,8 @@ def _resolve_server_from_response(resp: requests.Response, fallback: str) -> str
         parsed = urlparse(resp.url)
         if parsed.hostname and "myfantasyleague.com" in parsed.hostname:
             return str(parsed.hostname)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         pass
     return fallback
 
@@ -164,7 +165,7 @@ def _probe_season(
     timeout_s: int = 30,
     max_retries: int = 3,
     retry_backoff_s: float = 3.0,
-) -> Optional[SeasonAvailability]:
+) -> SeasonAvailability | None:
     """
     Probe a single season via TYPE=league.
 
@@ -243,8 +244,8 @@ def discover_mfl_league(
     known_server: str = "www44.myfantasyleague.com",
     request_delay_s: float = 2.5,
     timeout_s: int = 30,
-    expected_franchise_count: Optional[int] = None,
-    expected_league_name: Optional[str] = None,
+    expected_franchise_count: int | None = None,
+    expected_league_name: str | None = None,
     max_retries: int = 3,
     retry_backoff_s: float = 3.0,
 ) -> DiscoveryReport:
@@ -307,7 +308,7 @@ def discover_mfl_league(
         if result:
             # Check for wrong-league collision
             suspect = False
-            suspect_reasons: List[str] = []
+            suspect_reasons: list[str] = []
 
             if expected_franchise_count is not None:
                 if result.franchise_count != expected_franchise_count:
@@ -363,7 +364,7 @@ class HistoryEntry:
     mfl_league_id: str
 
 
-def _extract_league_history(data: dict) -> List[HistoryEntry]:
+def _extract_league_history(data: dict) -> list[HistoryEntry]:
     """Extract the history chain from an MFL TYPE=league JSON response.
 
     MFL stores prior season links in:
@@ -388,7 +389,7 @@ def _extract_league_history(data: dict) -> List[HistoryEntry]:
     if not isinstance(entries, list):
         return []
 
-    result: List[HistoryEntry] = []
+    result: list[HistoryEntry] = []
     for entry in entries:
         if not isinstance(entry, dict):
             continue
@@ -410,7 +411,8 @@ def _extract_league_history(data: dict) -> List[HistoryEntry]:
             # League ID is the last path segment
             path_parts = [p for p in (parsed.path or "").split("/") if p]
             mfl_id = path_parts[-1] if path_parts else ""
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             continue
 
         if not server or not mfl_id:
@@ -487,7 +489,8 @@ def discover_mfl_league_via_history(
 
     try:
         current_data = resp.json()
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         report.errors.append("Invalid JSON from current league")
         return report
 

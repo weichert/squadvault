@@ -21,15 +21,16 @@ Reuses the NarrativeAngle dataclass from narrative_angles_v1.
 from __future__ import annotations
 
 import json
-from typing import Dict, List, Optional, Sequence
+import logging
+from collections.abc import Sequence
 
-from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.recaps.context.league_history_v1 import HistoricalMatchup
+from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
+from squadvault.core.resolvers import NameFn
+from squadvault.core.resolvers import identity as _identity
 from squadvault.core.storage.session import DatabaseSession
 
-from squadvault.core.resolvers import NameFn, identity as _identity
-
-
+logger = logging.getLogger(__name__)
 # ── Data loading ─────────────────────────────────────────────────────
 
 
@@ -37,12 +38,12 @@ def _load_bye_weeks(
     db_path: str,
     league_id: str,
     season: int,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Load bye week assignments: nfl_team -> bye_week number.
 
     Returns empty dict if no data exists (silence over fabrication).
     """
-    bye_map: Dict[str, int] = {}
+    bye_map: dict[str, int] = {}
     try:
         with DatabaseSession(db_path) as con:
             rows = con.execute(
@@ -55,8 +56,9 @@ def _load_bye_weeks(
             week = int(row[1])
             if team and week > 0:
                 bye_map[team] = week
-    except Exception:
-        pass  # table may not exist yet — silence
+    except Exception as exc:
+        logger.debug("%s", exc)
+        pass
     return bye_map
 
 
@@ -64,9 +66,9 @@ def _load_player_nfl_teams(
     db_path: str,
     league_id: str,
     season: int,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Load player_id -> nfl_team from player_directory."""
-    teams: Dict[str, str] = {}
+    teams: dict[str, str] = {}
     with DatabaseSession(db_path) as con:
         rows = con.execute(
             """SELECT player_id, team FROM player_directory
@@ -86,12 +88,12 @@ def _load_week_starters(
     league_id: str,
     season: int,
     week: int,
-) -> Dict[str, List[str]]:
+) -> dict[str, list[str]]:
     """Load starters per franchise for a given week: franchise_id -> [player_ids].
 
     Only starters (is_starter=True).
     """
-    starters: Dict[str, List[str]] = {}
+    starters: dict[str, list[str]] = {}
     with DatabaseSession(db_path) as con:
         rows = con.execute(
             """SELECT payload_json FROM v_canonical_best_events
@@ -126,16 +128,16 @@ def _load_week_starters(
 
 
 def _count_starters_on_bye(
-    starters: Dict[str, List[str]],
-    player_teams: Dict[str, str],
-    bye_map: Dict[str, int],
+    starters: dict[str, list[str]],
+    player_teams: dict[str, str],
+    bye_map: dict[str, int],
     week: int,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Count how many starters per franchise are on NFL bye this week.
 
     Returns franchise_id -> count of starters on bye.
     """
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for fid, player_ids in starters.items():
         on_bye = 0
         for pid in player_ids:
@@ -151,16 +153,16 @@ def _count_starters_on_bye(
 
 
 def detect_bye_week_impact(
-    bye_counts: Dict[str, int],
+    bye_counts: dict[str, int],
     *,
     min_on_bye: int = 2,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect franchises with multiple starters on bye this week.
 
     Flags when a franchise has min_on_bye+ starters on NFL bye weeks.
     """
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(bye_counts.keys()):
         count = bye_counts[fid]
         if count >= min_on_bye:
@@ -180,10 +182,10 @@ def detect_bye_week_impact(
 
 
 def detect_bye_week_conflict(
-    bye_counts: Dict[str, int],
+    bye_counts: dict[str, int],
     *,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect the franchise with the most bye week conflicts this week."""
     if not bye_counts:
         return []
@@ -223,7 +225,7 @@ def detect_franchise_bye_week_record(
     min_on_bye: int = 2,
     min_bye_weeks: int = 3,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect franchise historical record in weeks with 2+ starters on bye.
 
     Looks across the current season for weeks where a franchise had
@@ -240,7 +242,7 @@ def detect_franchise_bye_week_record(
 
     # For each week through target_week, compute bye counts per franchise
     # Use prior week's starters — players on bye don't have score records
-    franchise_bye_weeks: Dict[str, List[int]] = {}  # fid -> [week numbers with bye conflicts]
+    franchise_bye_weeks: dict[str, list[int]] = {}  # fid -> [week numbers with bye conflicts]
     for wk in range(2, target_week + 1):
         wk_starters = _load_week_starters(db_path, league_id, season, wk - 1)
         wk_bye_counts = _count_starters_on_bye(wk_starters, player_teams, bye_map, wk)
@@ -251,7 +253,7 @@ def detect_franchise_bye_week_record(
                 franchise_bye_weeks[fid].append(wk)
 
     # Build W-L per franchise in their bye-heavy weeks
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(franchise_bye_weeks.keys()):
         bye_wks = franchise_bye_weeks[fid]
         if len(bye_wks) < min_bye_weeks:
@@ -292,9 +294,9 @@ def detect_bye_week_angles_v1(
     league_id: str,
     season: int,
     week: int,
-    all_matchups: Optional[Sequence[HistoricalMatchup]] = None,
+    all_matchups: Sequence[HistoricalMatchup] | None = None,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect all Dimension 10 bye week angles for a given week.
 
     Uses the previous week's starters to determine who is affected by
@@ -321,7 +323,7 @@ def detect_bye_week_angles_v1(
 
     bye_counts = _count_starters_on_bye(starters, player_teams, bye_map, week)
 
-    all_angles: List[NarrativeAngle] = []
+    all_angles: list[NarrativeAngle] = []
 
     # Detector 51: Bye week impact
     all_angles.extend(detect_bye_week_impact(bye_counts, fname=fname))

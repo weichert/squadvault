@@ -8,7 +8,6 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 
@@ -16,8 +16,8 @@ def http_request_with_retries(
     method: str,
     url: str,
     *,
-    json: Optional[Dict[str, Any]] = None,
-    data: Optional[Dict[str, Any]] = None,
+    json: dict[str, Any] | None = None,
+    data: dict[str, Any] | None = None,
     timeout_seconds: int = 30,
     max_retries: int = 3,
     backoff_seconds: float = 1.5,

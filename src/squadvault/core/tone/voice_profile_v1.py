@@ -26,14 +26,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from squadvault.core.storage.session import DatabaseSession
 
 logger = logging.getLogger(__name__)
 
 
-def get_voice_profile(db_path: str, league_id: str) -> Optional[str]:
+def get_voice_profile(db_path: str, league_id: str) -> str | None:
     """Load the approved voice profile for a league.
 
     Returns the profile text if one exists, or None.

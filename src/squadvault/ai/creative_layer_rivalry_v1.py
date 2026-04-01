@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from squadvault.chronicle.matchup_facts_v1 import MatchupFactV1
 from squadvault.core.eal.editorial_attunement_v1 import EAL_AMBIGUITY_PREFER_SILENCE
@@ -143,7 +143,7 @@ def draft_rivalry_narrative_v1(
     league_id: int,
     season: int,
     eal_directive: str | None = None,
-) -> Optional[str]:
+) -> str | None:
     """Attempt to produce governed narrative prose for a rivalry chronicle.
 
     Returns a narrative string if successful, or None if:

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Union
 import os
 import re
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 
 class SignalTaxonomyTypeAError(ValueError):
@@ -21,16 +22,16 @@ class Rejection:
 
 @dataclass(frozen=True)
 class TypeAResult:
-    accepted: List[Dict[str, Any]]
-    rejected: List[Rejection]
+    accepted: list[dict[str, Any]]
+    rejected: list[Rejection]
 
     @property
-    def accepted_ids(self) -> List[str]:
+    def accepted_ids(self) -> list[str]:
         """Return set of accepted signal IDs."""
         return sorted([str(s.get("signal_id", "")) for s in self.accepted])
 
     @property
-    def rejected_ids(self) -> List[str]:
+    def rejected_ids(self) -> list[str]:
         """Return set of rejected signal IDs."""
         return sorted([r.signal_id for r in self.rejected])
 
@@ -50,7 +51,7 @@ def _repo_root_from_here() -> Path:
 
 def _find_unique_under(root: Path, filename: str) -> Path:
     """Find a unique file matching a pattern under a directory."""
-    matches: List[Path] = []
+    matches: list[Path] = []
     for dirpath, dirs, files in os.walk(root):
         dirs.sort()
         files.sort()
@@ -66,13 +67,13 @@ def _find_unique_under(root: Path, filename: str) -> Path:
 _ENUM_TOKEN_RE = re.compile(r"^[A-Z][A-Z0-9_]+$")
 
 
-def _parse_enum_tokens(md_text: str) -> List[str]:
+def _parse_enum_tokens(md_text: str) -> list[str]:
     """
     Conservative enum parsing:
     - Accept tokens that look like ENUM_CASE.
     - Ignore bracketed placeholder lines like "[Enum lock content ...]".
     """
-    tokens: List[str] = []
+    tokens: list[str] = []
     for raw in md_text.splitlines():
         line = raw.strip()
         if not line:
@@ -87,7 +88,7 @@ def _parse_enum_tokens(md_text: str) -> List[str]:
     return sorted(set(tokens))
 
 
-def _parse_categories_by_type(md_text: str) -> Dict[str, str]:
+def _parse_categories_by_type(md_text: str) -> dict[str, str]:
     """
     Minimal type->category mapping parsing from taxonomy contract markdown.
 
@@ -102,8 +103,8 @@ def _parse_categories_by_type(md_text: str) -> Dict[str, str]:
 
     Any ambiguity (same type in multiple categories) is a hard error.
     """
-    type_to_category: Dict[str, str] = {}
-    current_category: Optional[str] = None
+    type_to_category: dict[str, str] = {}
+    current_category: str | None = None
 
     for raw in md_text.splitlines():
         line = raw.strip()
@@ -160,10 +161,10 @@ class SignalTaxonomyTypeAEnforcerV1:
     def __init__(
         self,
         *,
-        signal_taxonomy_contract_path: Optional[Union[str, Path]] = None,
-        signal_type_enum_path: Optional[Union[str, Path]] = None,
-        tier1_input_contracts_path: Optional[Union[str, Path]] = None,
-        tier1_derivation_specs_path: Optional[Union[str, Path]] = None,
+        signal_taxonomy_contract_path: str | Path | None = None,
+        signal_type_enum_path: str | Path | None = None,
+        tier1_input_contracts_path: str | Path | None = None,
+        tier1_derivation_specs_path: str | Path | None = None,
     ) -> None:
         repo_root = _repo_root_from_here()
         canon_root = repo_root / "canon"
@@ -192,12 +193,12 @@ class SignalTaxonomyTypeAEnforcerV1:
         self._valid_types = self._load_valid_types()
         self._category_by_type = self._load_category_by_type()
 
-    def _load_valid_types(self) -> List[str]:
+    def _load_valid_types(self) -> list[str]:
         """Load the set of valid signal types from taxonomy."""
         enum_text = _read_text(self._signal_type_enum_path)
         return _parse_enum_tokens(enum_text)  # empty => fail-closed later
 
-    def _load_category_by_type(self) -> Dict[str, str]:
+    def _load_category_by_type(self) -> dict[str, str]:
         """Load category mapping for signal types."""
         contract_text = _read_text(self._signal_taxonomy_contract_path)
         mapping = _parse_categories_by_type(contract_text)
@@ -207,10 +208,10 @@ class SignalTaxonomyTypeAEnforcerV1:
             )
         return mapping
 
-    def enforce(self, signals: Iterable[Dict[str, Any]]) -> TypeAResult:
+    def enforce(self, signals: Iterable[dict[str, Any]]) -> TypeAResult:
         """Enforce signal taxonomy constraints on a set of signals."""
-        accepted: List[Dict[str, Any]] = []
-        rejected: List[Rejection] = []
+        accepted: list[dict[str, Any]] = []
+        rejected: list[Rejection] = []
 
         for s in signals:
             sid = str(s.get("signal_id") or "").strip() or "<missing_signal_id>"
@@ -224,7 +225,7 @@ class SignalTaxonomyTypeAEnforcerV1:
         rejected = sorted(rejected, key=lambda r: r.signal_id)
         return TypeAResult(accepted=accepted, rejected=rejected)
 
-    def _validate_one(self, s: Dict[str, Any]) -> Optional[str]:
+    def _validate_one(self, s: dict[str, Any]) -> str | None:
         # Signal vs Event boundary
         """Validate a single signal against taxonomy rules."""
         if "event_type" in s or "memory_event_type" in s or "event_id" in s:
@@ -248,7 +249,7 @@ class SignalTaxonomyTypeAEnforcerV1:
 
         # Exactly-one category
         category_val = s.get("taxonomy_category", s.get("category"))
-        categories: List[str] = []
+        categories: list[str] = []
         if isinstance(category_val, str):
             if category_val.strip():
                 categories = [category_val.strip()]

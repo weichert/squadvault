@@ -1,17 +1,18 @@
 
 """Render full recap text from enriched facts artifacts with name resolution."""
 
-from typing import Any, Dict, List, Optional, Tuple
+import logging
+from typing import Any
 
 from squadvault.core.storage.db_utils import norm_id as _norm_id
 from squadvault.core.storage.session import DatabaseSession
 
-
+logger = logging.getLogger(__name__)
 QUIET_WEEK_MIN_EVENTS = 3
 MAX_BULLETS = 20
 
 
-def _get(d: Dict[str, Any], *keys: str) -> Optional[Any]:
+def _get(d: dict[str, Any], *keys: str) -> Any | None:
     """Safely get a nested dict value or return default."""
     cur: Any = d
     for k in keys:
@@ -21,7 +22,7 @@ def _get(d: Dict[str, Any], *keys: str) -> Optional[Any]:
     return cur
 
 
-def _as_list(v: Any) -> List[str]:
+def _as_list(v: Any) -> list[str]:
     """Coerce value to list, or return empty list."""
     if v is None:
         return []
@@ -30,7 +31,7 @@ def _as_list(v: Any) -> List[str]:
     return [str(v)]
 
 
-def _fmt_ids(ids: List[str]) -> str:
+def _fmt_ids(ids: list[str]) -> str:
     """Format a list of IDs as comma-separated chunks."""
     if not ids:
         return "(none)"
@@ -43,7 +44,8 @@ def _safe_str(v: Any, default: str = "?") -> str:
         return default
     try:
         return str(v)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return default
 
 
@@ -60,8 +62,8 @@ class _DirLookup:
         self.db_path = db_path
         self.league_id = league_id
         self.season = season
-        self._fr_cache: Dict[str, str] = {}
-        self._pl_cache: Dict[str, str] = {}
+        self._fr_cache: dict[str, str] = {}
+        self._pl_cache: dict[str, str] = {}
 
     def franchise(self, fid_raw: Any) -> str:
         """Resolve franchise ID to name, with caching and normalized fallback."""
@@ -111,7 +113,7 @@ class _DirLookup:
         self._pl_cache[key] = out
         return out
 
-    def _query_one(self, sql: str, params: Tuple[Any, ...]) -> str:
+    def _query_one(self, sql: str, params: tuple[Any, ...]) -> str:
         """Execute a single-row query and return the first column value."""
         with DatabaseSession(self.db_path) as conn:
             row = conn.execute(sql, params).fetchone()
@@ -126,7 +128,7 @@ def _render_deterministic_bullets_from_facts_v1(
     db_path: str,
     league_id: str,
     season: int,
-    facts: List[Dict[str, Any]],
+    facts: list[dict[str, Any]],
 ) -> str:
     """
     Deterministic 'headline bullets' derived from already-enriched facts.
@@ -142,7 +144,7 @@ def _render_deterministic_bullets_from_facts_v1(
     lookup = _DirLookup(db_path=db_path, league_id=league_id, season=season)
 
     # Stable ordering: occurred_at, event_type, canonical_id
-    def _k(f: Dict[str, Any]) -> Tuple[str, str, str]:
+    def _k(f: dict[str, Any]) -> tuple[str, str, str]:
         """Build a cache key from table, ID column value, and name column."""
         return (
             _safe_str(f.get("occurred_at"), "UNKNOWN_TIME"),
@@ -152,7 +154,7 @@ def _render_deterministic_bullets_from_facts_v1(
 
     ordered = sorted(facts, key=_k)
 
-    bullets: List[str] = []
+    bullets: list[str] = []
     for f in ordered[:MAX_BULLETS]:
         et = _safe_str(f.get("event_type"), "UNKNOWN")
         norm = _get(f, "details", "normalized") or {}
@@ -220,7 +222,7 @@ def _render_deterministic_bullets_from_facts_v1(
     return "What happened (facts)\n" + "\n".join(f"- {b}" for b in bullets) + "\n\n"
 
 
-def render_recap_from_facts_v1(artifact: Dict[str, Any], *, db_path: Optional[str] = None) -> str:
+def render_recap_from_facts_v1(artifact: dict[str, Any], *, db_path: str | None = None) -> str:
     """Render full recap text from an enriched facts artifact dict."""
     league_id = artifact.get("league_id")
     season = artifact.get("season")
@@ -239,7 +241,7 @@ def render_recap_from_facts_v1(artifact: Dict[str, Any], *, db_path: Optional[st
 
     facts = artifact.get("facts", []) or []
 
-    lines: List[str] = []
+    lines: list[str] = []
 
     if mode and mode != "LOCK_TO_LOCK":
         if reason:
@@ -259,7 +261,8 @@ def render_recap_from_facts_v1(artifact: Dict[str, Any], *, db_path: Optional[st
             if bullet_block:
                 lines.append(bullet_block.rstrip("\n"))
                 lines.append("")
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             # Debug/audit renderer should never die due to bullet enrichment
             pass
 

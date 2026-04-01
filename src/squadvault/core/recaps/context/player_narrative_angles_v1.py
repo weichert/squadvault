@@ -43,13 +43,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
+from squadvault.core.resolvers import NameFn
+from squadvault.core.resolvers import identity as _identity
 from squadvault.core.storage.session import DatabaseSession
-
-from squadvault.core.resolvers import NameFn, identity as _identity
-
 
 # ── Data loading ─────────────────────────────────────────────────────
 
@@ -68,12 +66,12 @@ def _load_season_player_scores(
     db_path: str,
     league_id: str,
     season: int,
-) -> List[_PlayerWeekRecord]:
+) -> list[_PlayerWeekRecord]:
     """Load all WEEKLY_PLAYER_SCORE events for a season.
 
     Returns records sorted by (week, franchise_id, player_id) for determinism.
     """
-    records: List[_PlayerWeekRecord] = []
+    records: list[_PlayerWeekRecord] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -186,13 +184,13 @@ class _CrossSeasonRecord:
 def _load_all_seasons_player_scores(
     db_path: str,
     league_id: str,
-) -> List[_CrossSeasonRecord]:
+) -> list[_CrossSeasonRecord]:
     """Load all WEEKLY_PLAYER_SCORE events across all seasons.
 
     Returns records sorted by (season, week, franchise_id, player_id) for determinism.
     Used by Dimension 2 detectors for cross-season analysis.
     """
-    records: List[_CrossSeasonRecord] = []
+    records: list[_CrossSeasonRecord] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -253,14 +251,14 @@ def _load_all_seasons_player_scores(
 def _load_all_matchup_opponents(
     db_path: str,
     league_id: str,
-) -> Dict[Tuple[int, int, str], str]:
+) -> dict[tuple[int, int, str], str]:
     """Load all WEEKLY_MATCHUP_RESULT events and build an opponent index.
 
     Returns dict: (season, week, franchise_id) -> opponent_franchise_id.
     Each matchup produces two entries (one per franchise).
     Used by Dimension 3 detectors to link player scores with opponents.
     """
-    opponents: Dict[Tuple[int, int, str], str] = {}
+    opponents: dict[tuple[int, int, str], str] = {}
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -308,8 +306,8 @@ class _TradeMove:
     """One side of a trade: which franchise added/dropped which players."""
     season: int
     franchise_id: str
-    players_added: Tuple[str, ...]
-    players_dropped: Tuple[str, ...]
+    players_added: tuple[str, ...]
+    players_dropped: tuple[str, ...]
     occurred_at: str
 
 
@@ -326,7 +324,7 @@ def _load_season_trades(
     db_path: str,
     league_id: str,
     season: int,
-) -> List[Tuple[_TradeMove, _TradeMove]]:
+) -> list[tuple[_TradeMove, _TradeMove]]:
     """Load TRANSACTION_TRADE events for a season and pair them.
 
     Returns list of trade pairs. Each pair is two _TradeMove records
@@ -334,7 +332,7 @@ def _load_season_trades(
     Unpaired trade records are discarded (data integrity issue, silence over
     fabrication).
     """
-    moves: List[_TradeMove] = []
+    moves: list[_TradeMove] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -363,7 +361,7 @@ def _load_season_trades(
         added_raw = p.get("players_added_ids", "")
         dropped_raw = p.get("players_dropped_ids", "")
 
-        def _split_ids(val) -> Tuple[str, ...]:
+        def _split_ids(val) -> tuple[str, ...]:
             if isinstance(val, list):
                 return tuple(str(x).strip() for x in val if str(x).strip())
             if isinstance(val, str) and val.strip():
@@ -385,13 +383,13 @@ def _load_season_trades(
         ))
 
     # Pair trades by occurred_at timestamp
-    by_timestamp: Dict[str, List[_TradeMove]] = {}
+    by_timestamp: dict[str, list[_TradeMove]] = {}
     for m in moves:
         if m.occurred_at not in by_timestamp:
             by_timestamp[m.occurred_at] = []
         by_timestamp[m.occurred_at].append(m)
 
-    pairs: List[Tuple[_TradeMove, _TradeMove]] = []
+    pairs: list[tuple[_TradeMove, _TradeMove]] = []
     for ts in sorted(by_timestamp.keys()):
         group = by_timestamp[ts]
         if len(group) == 2:
@@ -407,13 +405,13 @@ def _load_season_drops(
     db_path: str,
     league_id: str,
     season: int,
-) -> List[_PlayerDrop]:
+) -> list[_PlayerDrop]:
     """Load all transactions that dropped players in a season.
 
     Returns _PlayerDrop records for every player in players_dropped_ids
     across all TRANSACTION_* events (trades, free agent swaps, waivers).
     """
-    drops: List[_PlayerDrop] = []
+    drops: list[_PlayerDrop] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -473,13 +471,13 @@ def _load_season_faab_acquisitions(
     db_path: str,
     league_id: str,
     season: int,
-) -> List[_FaabAcquisition]:
+) -> list[_FaabAcquisition]:
     """Load WAIVER_BID_AWARDED events for a season.
 
     Returns _FaabAcquisition records for each awarded bid.
     Only awards — never losing bids (per FAAB Outcome Insight contract).
     """
-    acquisitions: List[_FaabAcquisition] = []
+    acquisitions: list[_FaabAcquisition] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -536,12 +534,12 @@ def _load_season_drafted_players(
     db_path: str,
     league_id: str,
     season: int,
-) -> Dict[str, set]:
+) -> dict[str, set]:
     """Load DRAFT_PICK events for a season and return drafted players per franchise.
 
     Returns dict: franchise_id -> set of player_ids drafted by that franchise.
     """
-    drafted: Dict[str, set] = {}
+    drafted: dict[str, set] = {}
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -576,14 +574,14 @@ def _load_season_drafted_players(
 
 
 def _build_player_franchise_weeks(
-    records: List[_PlayerWeekRecord],
+    records: list[_PlayerWeekRecord],
     through_week: int,
-) -> Dict[Tuple[str, str], List[_PlayerWeekRecord]]:
+) -> dict[tuple[str, str], list[_PlayerWeekRecord]]:
     """Group records by (franchise_id, player_id), filtered to <= through_week.
 
     Returns dict keyed by (franchise_id, player_id) with records sorted by week asc.
     """
-    index: Dict[Tuple[str, str], List[_PlayerWeekRecord]] = {}
+    index: dict[tuple[str, str], list[_PlayerWeekRecord]] = {}
     for r in records:
         if r.week > through_week:
             continue
@@ -600,9 +598,9 @@ def _build_player_franchise_weeks(
 
 
 def _build_week_scores(
-    records: List[_PlayerWeekRecord],
+    records: list[_PlayerWeekRecord],
     week: int,
-) -> List[_PlayerWeekRecord]:
+) -> list[_PlayerWeekRecord]:
     """Extract all records for a specific week."""
     return [r for r in records if r.week == week]
 
@@ -611,20 +609,20 @@ def _build_week_scores(
 
 
 def detect_player_hot_streak(
-    records: List[_PlayerWeekRecord],
+    records: list[_PlayerWeekRecord],
     target_week: int,
     *,
     threshold: float = 25.0,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect players scoring above threshold for consecutive weeks ending at target_week.
 
     Thresholds: 3 weeks = MINOR, 4 = NOTABLE, 5+ = HEADLINE.
     Only counts weeks where the player was a starter.
     """
     index = _build_player_franchise_weeks(records, target_week)
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for (franchise_id, player_id), player_records in sorted(index.items()):
         # Only consider starters — a hot streak is a starter phenomenon
@@ -673,20 +671,20 @@ def detect_player_hot_streak(
 
 
 def detect_player_cold_streak(
-    records: List[_PlayerWeekRecord],
+    records: list[_PlayerWeekRecord],
     target_week: int,
     *,
     threshold: float = 8.0,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect starters scoring below threshold for consecutive weeks ending at target_week.
 
     Thresholds: 3 weeks = NOTABLE, 4+ = HEADLINE.
     Only starters — a cold streak for a benched player is not newsworthy.
     """
     index = _build_player_franchise_weeks(records, target_week)
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for (franchise_id, player_id), player_records in sorted(index.items()):
         starter_records = [r for r in player_records if r.is_starter]
@@ -725,12 +723,12 @@ def detect_player_cold_streak(
 
 
 def detect_player_season_high(
-    records: List[_PlayerWeekRecord],
+    records: list[_PlayerWeekRecord],
     target_week: int,
     *,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect if a player posted the highest individual score of the season this week.
 
     Only starters. Compares the highest score in target_week against
@@ -751,7 +749,7 @@ def detect_player_season_high(
     prior_best = max((r.score for r in prior_weeks), default=0.0)
 
     if best_this_week.score > prior_best and best_this_week.score > 0.0:
-        angles: List[NarrativeAngle] = []
+        angles: list[NarrativeAngle] = []
 
         # Week 1 edge case: no prior data, so every score is the season high.
         # Only flag if there are prior weeks to compare against.
@@ -780,7 +778,7 @@ def detect_player_season_high(
 
 
 def detect_player_boom_bust(
-    records: List[_PlayerWeekRecord],
+    records: list[_PlayerWeekRecord],
     target_week: int,
     *,
     boom_multiplier: float = 2.0,
@@ -788,7 +786,7 @@ def detect_player_boom_bust(
     min_prior_weeks: int = 4,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect starters who dramatically outperformed or underperformed their recent average.
 
     Boom: score >= boom_multiplier × 4-week average.
@@ -796,7 +794,7 @@ def detect_player_boom_bust(
     Requires min_prior_weeks of starter data before target_week. Fewer = silence.
     """
     index = _build_player_franchise_weeks(records, target_week)
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for (franchise_id, player_id), player_records in sorted(index.items()):
         # Target week must be a starter appearance
@@ -856,20 +854,20 @@ def detect_player_boom_bust(
 
 
 def detect_player_breakout(
-    records: List[_PlayerWeekRecord],
+    records: list[_PlayerWeekRecord],
     target_week: int,
     *,
     breakout_threshold: float = 20.0,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect first time a player exceeds a scoring threshold on this franchise.
 
     Only starters. If a player scores 20+ for the first time on this franchise
     in this season, flag it.
     """
     index = _build_player_franchise_weeks(records, target_week)
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for (franchise_id, player_id), player_records in sorted(index.items()):
         # Target week must be a starter appearance over the threshold
@@ -911,13 +909,13 @@ def detect_player_breakout(
 
 
 def detect_zero_point_starter(
-    records: List[_PlayerWeekRecord],
+    records: list[_PlayerWeekRecord],
     target_week: int,
     *,
-    alltime_zero_count: Optional[int] = None,
+    alltime_zero_count: int | None = None,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect starters who scored exactly 0.00 points this week.
 
     alltime_zero_count: if provided, adds historical context
@@ -928,7 +926,7 @@ def detect_zero_point_starter(
         if r.week == target_week and r.is_starter and r.score == 0.0
     ]
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for r in sorted(this_week, key=lambda r: (r.franchise_id, r.player_id)):
         detail_parts = [f"Week {target_week} starter."]
         if alltime_zero_count is not None and alltime_zero_count > 0:
@@ -963,13 +961,13 @@ def _ordinal(n: int) -> str:
 
 
 def detect_player_alltime_high(
-    all_records: List[_CrossSeasonRecord],
+    all_records: list[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
     *,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect if a player posted the highest individual score in league history.
 
     Only starters. Only surfaces when history depth > 1 season (per spec).
@@ -1031,14 +1029,14 @@ def detect_player_alltime_high(
 
 
 def detect_player_franchise_record(
-    all_records: List[_CrossSeasonRecord],
+    all_records: list[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
     *,
-    tenure_map: Optional[Dict[str, int]] = None,
+    tenure_map: dict[str, int] | None = None,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect if a player set a new single-week scoring record for their franchise.
 
     Scoped to current owner's tenure (via tenure_map). Only starters.
@@ -1052,10 +1050,10 @@ def detect_player_franchise_record(
     if not this_week:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     # Group this week's records by franchise
-    franchises_this_week: Dict[str, List[_CrossSeasonRecord]] = {}
+    franchises_this_week: dict[str, list[_CrossSeasonRecord]] = {}
     for r in this_week:
         if r.franchise_id not in franchises_this_week:
             franchises_this_week[r.franchise_id] = []
@@ -1118,20 +1116,20 @@ _CAREER_MILESTONES = [2000, 1500, 1000, 500]  # checked high to low
 
 
 def detect_career_milestone(
-    all_records: List[_CrossSeasonRecord],
+    all_records: list[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
     *,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect if a player crossed a career scoring milestone on a franchise.
 
     Milestones: 500, 1000, 1500, 2000 career points on the same franchise.
     Only checks when the milestone was crossed THIS week (not previously).
     """
     # Group all records by (franchise_id, player_id) up through target week
-    career_index: Dict[Tuple[str, str], List[_CrossSeasonRecord]] = {}
+    career_index: dict[tuple[str, str], list[_CrossSeasonRecord]] = {}
     for r in all_records:
         if r.season < current_season or (r.season == current_season and r.week <= target_week):
             key = (r.franchise_id, r.player_id)
@@ -1139,7 +1137,7 @@ def detect_career_milestone(
                 career_index[key] = []
             career_index[key].append(r)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for (franchise_id, player_id), records in sorted(career_index.items()):
         # Total career points on this franchise
@@ -1173,13 +1171,13 @@ def detect_career_milestone(
 
 
 def detect_player_franchise_tenure(
-    all_records: List[_CrossSeasonRecord],
+    all_records: list[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
     *,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect players on the same franchise for 3+ consecutive seasons.
 
     Only surfaces once per season (when target_week == 1) to avoid
@@ -1189,7 +1187,7 @@ def detect_player_franchise_tenure(
         return []
 
     # Build: (franchise_id, player_id) -> set of seasons they appeared
-    roster_seasons: Dict[Tuple[str, str], set] = {}
+    roster_seasons: dict[tuple[str, str], set] = {}
     for r in all_records:
         if r.season <= current_season:
             key = (r.franchise_id, r.player_id)
@@ -1197,11 +1195,11 @@ def detect_player_franchise_tenure(
                 roster_seasons[key] = set()
             roster_seasons[key].add(r.season)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     # Find longest active consecutive streak ending at current_season
     # Also find league-wide max for "longest active tenure" claim
-    tenure_data: List[Tuple[str, str, int]] = []  # (franchise_id, player_id, streak)
+    tenure_data: list[tuple[str, str, int]] = []  # (franchise_id, player_id, streak)
 
     for (franchise_id, player_id), seasons in sorted(roster_seasons.items()):
         if current_season not in seasons:
@@ -1246,13 +1244,13 @@ def detect_player_franchise_tenure(
 
 
 def detect_player_journey(
-    all_records: List[_CrossSeasonRecord],
+    all_records: list[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
     *,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect players rostered by 3+ different franchises in their league career.
 
     Only surfaces for players who scored this week (active and relevant).
@@ -1271,14 +1269,14 @@ def detect_player_journey(
         return []
 
     # Build: player_id -> set of franchise_ids across all seasons
-    player_franchises: Dict[str, set] = {}
+    player_franchises: dict[str, set] = {}
     for r in all_records:
         if r.season <= current_season:
             if r.player_id not in player_franchises:
                 player_franchises[r.player_id] = set()
             player_franchises[r.player_id].add(r.franchise_id)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for player_id in sorted(active_this_week):
         franchises = player_franchises.get(player_id, set())
@@ -1307,16 +1305,16 @@ def detect_player_journey(
 
 
 def detect_player_vs_opponent(
-    all_records: List[_CrossSeasonRecord],
+    all_records: list[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
-    opponent_index: Dict[Tuple[int, int, str], str],
+    opponent_index: dict[tuple[int, int, str], str],
     *,
     threshold: float = 30.0,
     min_meetings: int = 3,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect players who consistently dominate a specific opposing franchise.
 
     Looks at all prior meetings where the player was on the same franchise
@@ -1331,7 +1329,7 @@ def detect_player_vs_opponent(
     if not this_week:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for r in sorted(this_week, key=lambda x: (x.franchise_id, x.player_id)):
         opponent_id = opponent_index.get((current_season, target_week, r.franchise_id))
@@ -1340,7 +1338,7 @@ def detect_player_vs_opponent(
 
         # Find all prior meetings where this player was on this franchise
         # and the franchise played this same opponent
-        prior_scores: List[float] = []
+        prior_scores: list[float] = []
         for hr in all_records:
             if hr.player_id != r.player_id or hr.franchise_id != r.franchise_id:
                 continue
@@ -1377,15 +1375,15 @@ def detect_player_vs_opponent(
 
 
 def detect_revenge_game(
-    all_records: List[_CrossSeasonRecord],
+    all_records: list[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
-    opponent_index: Dict[Tuple[int, int, str], str],
+    opponent_index: dict[tuple[int, int, str], str],
     *,
     min_score: float = 15.0,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect a player scoring against a franchise they were previously on.
 
     A revenge game requires:
@@ -1406,14 +1404,14 @@ def detect_revenge_game(
         return []
 
     # Build lookup: player_id -> set of franchise_ids they've been on (prior history)
-    player_prior_franchises: Dict[str, set] = {}
+    player_prior_franchises: dict[str, set] = {}
     for r in all_records:
         if r.season < current_season or (r.season == current_season and r.week < target_week):
             if r.player_id not in player_prior_franchises:
                 player_prior_franchises[r.player_id] = set()
             player_prior_franchises[r.player_id].add(r.franchise_id)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for r in sorted(this_week, key=lambda x: (x.franchise_id, x.player_id)):
         opponent_id = opponent_index.get((current_season, target_week, r.franchise_id))
@@ -1440,15 +1438,15 @@ def detect_revenge_game(
 
 
 def detect_player_duel(
-    all_records: List[_CrossSeasonRecord],
+    all_records: list[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
-    opponent_index: Dict[Tuple[int, int, str], str],
+    opponent_index: dict[tuple[int, int, str], str],
     *,
     min_meetings: int = 3,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect two players on opposing franchises who have met head-to-head multiple times.
 
     A duel requires:
@@ -1470,19 +1468,19 @@ def detect_player_duel(
         return []
 
     # Group this week's starters by franchise
-    by_franchise: Dict[str, List[_CrossSeasonRecord]] = {}
+    by_franchise: dict[str, list[_CrossSeasonRecord]] = {}
     for r in this_week:
         if r.franchise_id not in by_franchise:
             by_franchise[r.franchise_id] = []
         by_franchise[r.franchise_id].append(r)
 
     # Build index: (season, week, franchise_id, player_id) -> score
-    score_index: Dict[Tuple[int, int, str, str], float] = {}
+    score_index: dict[tuple[int, int, str, str], float] = {}
     for r in all_records:
         if r.is_starter:
             score_index[(r.season, r.week, r.franchise_id, r.player_id)] = r.score
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     seen_pairs: set = set()  # avoid duplicate duel angles (A vs B == B vs A)
 
     for franchise_a in sorted(by_franchise.keys()):
@@ -1498,7 +1496,7 @@ def detect_player_duel(
             continue
 
         # Find all prior weeks where franchise_a and franchise_b played each other
-        prior_meeting_weeks: List[Tuple[int, int]] = []  # (season, week)
+        prior_meeting_weeks: list[tuple[int, int]] = []  # (season, week)
         for (s, w, fid), opp in opponent_index.items():
             if fid == franchise_a and opp == franchise_b:
                 if s < current_season or (s == current_season and w < target_week):
@@ -1567,8 +1565,8 @@ def detect_player_duel(
 
 
 def detect_trade_outcome(
-    all_records: List[_CrossSeasonRecord],
-    trade_pairs: List[Tuple[_TradeMove, _TradeMove]],
+    all_records: list[_CrossSeasonRecord],
+    trade_pairs: list[tuple[_TradeMove, _TradeMove]],
     current_season: int,
     target_week: int,
     *,
@@ -1576,7 +1574,7 @@ def detect_trade_outcome(
     min_point_gap: float = 20.0,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Retrospective scoring comparison after a trade.
 
     For each trade pair, computes total post-trade scoring for the key
@@ -1593,7 +1591,7 @@ def detect_trade_outcome(
     if not trade_pairs:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for side_a, side_b in trade_pairs:
         # Key player for each side: the primary added player
@@ -1666,8 +1664,8 @@ def detect_trade_outcome(
 
 
 def detect_the_one_that_got_away(
-    all_records: List[_CrossSeasonRecord],
-    drops: List[_PlayerDrop],
+    all_records: list[_CrossSeasonRecord],
+    drops: list[_PlayerDrop],
     current_season: int,
     target_week: int,
     *,
@@ -1675,7 +1673,7 @@ def detect_the_one_that_got_away(
     min_post_drop_weeks: int = 3,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect dropped players who scored well on another franchise.
 
     A player dropped by franchise F1 who has scored min_post_drop_points+
@@ -1688,14 +1686,14 @@ def detect_the_one_that_got_away(
         return []
 
     # Build index: player_id -> list of (season, week, franchise_id, score)
-    player_history: Dict[str, List[_CrossSeasonRecord]] = {}
+    player_history: dict[str, list[_CrossSeasonRecord]] = {}
     for r in all_records:
         if r.season == current_season and r.week <= target_week:
             if r.player_id not in player_history:
                 player_history[r.player_id] = []
             player_history[r.player_id].append(r)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     seen_players: set = set()  # avoid duplicate angles for same player dropped multiple times
 
     for drop in drops:
@@ -1755,8 +1753,8 @@ def detect_the_one_that_got_away(
 
 
 def detect_faab_roi(
-    all_records: List[_CrossSeasonRecord],
-    faab_acquisitions: List[_FaabAcquisition],
+    all_records: list[_CrossSeasonRecord],
+    faab_acquisitions: list[_FaabAcquisition],
     current_season: int,
     target_week: int,
     *,
@@ -1764,7 +1762,7 @@ def detect_faab_roi(
     min_weeks: int = 3,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect FAAB acquisitions whose total points exceed min_roi_multiplier × bid.
 
     Only current-season FAAB pickups. The player must have at least
@@ -1773,7 +1771,7 @@ def detect_faab_roi(
     if not faab_acquisitions:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for acq in faab_acquisitions:
         if acq.season != current_season:
@@ -1815,13 +1813,13 @@ def detect_faab_roi(
 
 
 def detect_faab_franchise_efficiency(
-    all_records: List[_CrossSeasonRecord],
-    faab_acquisitions: List[_FaabAcquisition],
+    all_records: list[_CrossSeasonRecord],
+    faab_acquisitions: list[_FaabAcquisition],
     current_season: int,
     target_week: int,
     *,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect franchises whose FAAB pickups significantly outproduce the league average.
 
     Computes total scoring from FAAB acquisitions per franchise.
@@ -1837,7 +1835,7 @@ def detect_faab_franchise_efficiency(
         return []
 
     # Build franchise -> total FAAB pickup scoring
-    franchise_faab_pts: Dict[str, float] = {}
+    franchise_faab_pts: dict[str, float] = {}
     for acq in current_faab:
         player_scores = [
             r for r in all_records
@@ -1879,14 +1877,14 @@ def detect_faab_franchise_efficiency(
 
 
 def detect_waiver_dependency(
-    all_records: List[_CrossSeasonRecord],
-    drafted_players: Dict[str, set],
+    all_records: list[_CrossSeasonRecord],
+    drafted_players: dict[str, set],
     current_season: int,
     target_week: int,
     *,
     dependency_threshold: float = 0.30,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect franchises where 30%+ of scoring comes from non-drafted players.
 
     A player is "non-drafted" if they don't appear in the franchise's
@@ -1900,8 +1898,8 @@ def detect_waiver_dependency(
         return []
 
     # Current season scoring per franchise, split by drafted/non-drafted
-    franchise_totals: Dict[str, float] = {}
-    franchise_nondrafted: Dict[str, float] = {}
+    franchise_totals: dict[str, float] = {}
+    franchise_nondrafted: dict[str, float] = {}
 
     for r in all_records:
         if r.season != current_season or r.week > target_week:
@@ -1916,7 +1914,7 @@ def detect_waiver_dependency(
         if r.player_id not in drafted_set:
             franchise_nondrafted[fid] = franchise_nondrafted.get(fid, 0.0) + r.score
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for fid in sorted(franchise_totals.keys()):
         total = franchise_totals[fid]
@@ -1951,10 +1949,10 @@ def detect_player_narrative_angles_v1(
     league_id: str,
     season: int,
     week: int,
-    tenure_map: Optional[Dict[str, int]] = None,
+    tenure_map: dict[str, int] | None = None,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect all Dimension 1-5 player narrative angles for a given week.
 
     Dimension 1 (detectors 1-6): current-season player scores only.
@@ -1982,7 +1980,7 @@ def detect_player_narrative_angles_v1(
     if not target_week_data:
         return []
 
-    all_angles: List[NarrativeAngle] = []
+    all_angles: list[NarrativeAngle] = []
 
     # ── Dimension 1: Short-horizon (current season only) ──
 

@@ -26,11 +26,11 @@ Governance:
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
-
 
 # ── Data classes ─────────────────────────────────────────────────────
 
@@ -52,7 +52,7 @@ class HistoricalMatchup:
 class AllTimeRecord:
     """All-time W-L-T record for a franchise across all seasons."""
     franchise_id: str
-    seasons_active: Tuple[int, ...]
+    seasons_active: tuple[int, ...]
     total_wins: int
     total_losses: int
     total_ties: int
@@ -80,7 +80,7 @@ class HeadToHeadRecord:
     a_wins: int
     b_wins: int
     ties: int
-    meetings: Tuple[HistoricalMatchup, ...]  # chronological
+    meetings: tuple[HistoricalMatchup, ...]  # chronological
 
     @property
     def total_meetings(self) -> int:
@@ -129,24 +129,24 @@ class LeagueHistoryContextV1:
     Together they feed the creative layer everything it needs.
     """
     league_id: str
-    seasons_available: Tuple[int, ...]   # all seasons with data, sorted
+    seasons_available: tuple[int, ...]   # all seasons with data, sorted
     total_matchups_all_time: int
 
     # All-time records per franchise, sorted by total wins desc
-    all_time_records: Tuple[AllTimeRecord, ...]
+    all_time_records: tuple[AllTimeRecord, ...]
 
     # All-time scoring records
-    all_time_high: Optional[ScoringRecord]
-    all_time_low: Optional[ScoringRecord]
-    all_time_avg_score: Optional[float]
+    all_time_high: ScoringRecord | None
+    all_time_low: ScoringRecord | None
+    all_time_avg_score: float | None
 
     # Longest streaks in league history
-    longest_win_streak: Optional[StreakRecord]
-    longest_loss_streak: Optional[StreakRecord]
+    longest_win_streak: StreakRecord | None
+    longest_loss_streak: StreakRecord | None
 
     # Best and worst single-season records
-    best_season_record: Optional[SeasonRecord]
-    worst_season_record: Optional[SeasonRecord]
+    best_season_record: SeasonRecord | None
+    worst_season_record: SeasonRecord | None
 
     @property
     def has_history(self) -> bool:
@@ -162,7 +162,7 @@ class LeagueHistoryContextV1:
 # ── Loading ──────────────────────────────────────────────────────────
 
 
-def _parse_matchup(payload_json: str, season: int, fallback_week: int) -> Optional[HistoricalMatchup]:
+def _parse_matchup(payload_json: str, season: int, fallback_week: int) -> HistoricalMatchup | None:
     """Parse a WEEKLY_MATCHUP_RESULT payload into a HistoricalMatchup."""
     try:
         p = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
@@ -205,12 +205,12 @@ def _parse_matchup(payload_json: str, season: int, fallback_week: int) -> Option
     )
 
 
-def load_all_matchups(db_path: str, league_id: str) -> List[HistoricalMatchup]:
+def load_all_matchups(db_path: str, league_id: str) -> list[HistoricalMatchup]:
     """Load ALL WEEKLY_MATCHUP_RESULT events across all seasons.
 
     Returns parsed list sorted by (season, week, winner_id, loser_id).
     """
-    matchups: List[HistoricalMatchup] = []
+    matchups: list[HistoricalMatchup] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -237,14 +237,14 @@ def load_all_matchups(db_path: str, league_id: str) -> List[HistoricalMatchup]:
 
 def _compute_all_time_records(
     matchups: Sequence[HistoricalMatchup],
-) -> Dict[str, AllTimeRecord]:
+) -> dict[str, AllTimeRecord]:
     """Compute all-time W-L-T records for every franchise."""
-    wins: Dict[str, int] = {}
-    losses: Dict[str, int] = {}
-    ties: Dict[str, int] = {}
-    pf: Dict[str, float] = {}
-    pa: Dict[str, float] = {}
-    seasons: Dict[str, set] = {}
+    wins: dict[str, int] = {}
+    losses: dict[str, int] = {}
+    ties: dict[str, int] = {}
+    pf: dict[str, float] = {}
+    pa: dict[str, float] = {}
+    seasons: dict[str, set] = {}
 
     for m in matchups:
         for fid in (m.winner_id, m.loser_id):
@@ -271,7 +271,7 @@ def _compute_all_time_records(
             pf[m.loser_id] += m.loser_score
             pa[m.loser_id] += m.winner_score
 
-    records: Dict[str, AllTimeRecord] = {}
+    records: dict[str, AllTimeRecord] = {}
     for fid in wins:
         records[fid] = AllTimeRecord(
             franchise_id=fid,
@@ -299,7 +299,7 @@ def compute_head_to_head(
     a_wins = 0
     b_wins = 0
     t = 0
-    meetings: List[HistoricalMatchup] = []
+    meetings: list[HistoricalMatchup] = []
 
     for m in matchups:
         pair = {m.winner_id, m.loser_id}
@@ -330,13 +330,13 @@ def compute_head_to_head(
 
 def _compute_longest_streaks(
     matchups: Sequence[HistoricalMatchup],
-) -> Tuple[Optional[StreakRecord], Optional[StreakRecord]]:
+) -> tuple[StreakRecord | None, StreakRecord | None]:
     """Find the longest win streak and longest loss streak in league history.
 
     Streaks span across seasons. A tie ends any active streak.
     """
     # Build per-franchise game logs in chronological order
-    game_log: Dict[str, List[Tuple[str, int, int]]] = {}  # fid -> [(result, season, week)]
+    game_log: dict[str, list[tuple[str, int, int]]] = {}  # fid -> [(result, season, week)]
 
     sorted_matchups = sorted(matchups, key=lambda m: (m.season, m.week))
     for m in sorted_matchups:
@@ -349,8 +349,8 @@ def _compute_longest_streaks(
             game_log[m.winner_id].append(("W", m.season, m.week))
             game_log[m.loser_id].append(("L", m.season, m.week))
 
-    best_win: Optional[StreakRecord] = None
-    best_loss: Optional[StreakRecord] = None
+    best_win: StreakRecord | None = None
+    best_loss: StreakRecord | None = None
 
     for fid, log in game_log.items():
         if not log:
@@ -420,9 +420,9 @@ def _compute_longest_streaks(
 
 def _compute_scoring_records(
     matchups: Sequence[HistoricalMatchup],
-) -> Tuple[Optional[ScoringRecord], Optional[ScoringRecord], Optional[float]]:
+) -> tuple[ScoringRecord | None, ScoringRecord | None, float | None]:
     """Find all-time scoring high, low, and league average."""
-    scores: List[Tuple[str, int, int, float]] = []  # (fid, season, week, score)
+    scores: list[tuple[str, int, int, float]] = []  # (fid, season, week, score)
 
     for m in matchups:
         scores.append((m.winner_id, m.season, m.week, m.winner_score))
@@ -451,10 +451,10 @@ def _compute_scoring_records(
 
 def _compute_season_records(
     matchups: Sequence[HistoricalMatchup],
-) -> Tuple[Optional[SeasonRecord], Optional[SeasonRecord]]:
+) -> tuple[SeasonRecord | None, SeasonRecord | None]:
     """Find the best and worst single-season records in league history."""
     # Accumulate per (franchise, season)
-    key_data: Dict[Tuple[str, int], Dict[str, Any]] = {}
+    key_data: dict[tuple[str, int], dict[str, Any]] = {}
 
     for m in matchups:
         for fid, is_winner in [(m.winner_id, True), (m.loser_id, False)]:
@@ -473,7 +473,7 @@ def _compute_season_records(
     if not key_data:
         return None, None
 
-    records: List[SeasonRecord] = []
+    records: list[SeasonRecord] = []
     for (fid, season), d in key_data.items():
         records.append(SeasonRecord(
             franchise_id=fid,
@@ -525,7 +525,7 @@ def build_cross_season_name_resolver(
 
     Returns a dict suitable for use as a lookup or wrapped in a lambda.
     """
-    name_map: Dict[str, str] = {}
+    name_map: dict[str, str] = {}
     with DatabaseSession(db_path) as con:
         rows = con.execute(
             """SELECT franchise_id, name, season FROM franchise_directory
@@ -548,7 +548,7 @@ def build_cross_season_name_resolver(
 def compute_franchise_tenures(
     db_path: str,
     league_id: str,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Compute when each franchise's CURRENT name first appeared.
 
     Returns dict of franchise_id -> first_season_with_current_name.
@@ -559,7 +559,7 @@ def compute_franchise_tenures(
     2023 — that's the franchise SLOT's record, not the current owner's.
     """
     # Step 1: get the current (most recent) name for each franchise
-    all_names: Dict[str, List[Tuple[int, str]]] = {}  # fid -> [(season, name), ...]
+    all_names: dict[str, list[tuple[int, str]]] = {}  # fid -> [(season, name), ...]
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -579,7 +579,7 @@ def compute_franchise_tenures(
         all_names[fid].append((season, name))
 
     # Step 2: for each franchise, find when the current name first appeared
-    tenures: Dict[str, int] = {}
+    tenures: dict[str, int] = {}
     for fid, seasons_names in all_names.items():
         if not seasons_names:
             continue
@@ -658,8 +658,8 @@ def derive_league_history_v1(
 def render_league_history_for_prompt(
     ctx: LeagueHistoryContextV1,
     *,
-    name_map: Optional[Dict[str, str]] = None,
-    tenure_map: Optional[Dict[str, int]] = None,
+    name_map: dict[str, str] | None = None,
+    tenure_map: dict[str, int] | None = None,
 ) -> str:
     """Render league history as a text block for the creative layer prompt.
 
@@ -675,7 +675,7 @@ def render_league_history_for_prompt(
             return name_map[fid]
         return fid
 
-    lines: List[str] = []
+    lines: list[str] = []
 
     season_str = ", ".join(str(s) for s in ctx.seasons_available)
     lines.append(f"League history ({len(ctx.seasons_available)} season(s): {season_str}):")

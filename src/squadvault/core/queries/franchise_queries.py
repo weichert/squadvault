@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, List, Set
+from collections.abc import Iterable
+from typing import Any
 
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.queries.event_queries import fetch_all_events
 from squadvault.core.queries.narrative_filters import filter_events_for_narrative
+from squadvault.core.storage.sqlite_store import SQLiteStore
 
 
-def _franchise_ids_from_payload(event: Dict[str, Any]) -> Set[str]:
+def _franchise_ids_from_payload(event: dict[str, Any]) -> set[str]:
     """
     Extract all franchise IDs involved in an event.
 
@@ -18,7 +19,7 @@ def _franchise_ids_from_payload(event: Dict[str, Any]) -> Set[str]:
     - Also parses raw_mfl_json for keys like franchise2, franchise3 (trades)
     """
     payload = event.get("payload") or {}
-    out: Set[str] = set()
+    out: set[str] = set()
 
     fid = payload.get("franchise_id")
     if isinstance(fid, str) and fid:
@@ -47,7 +48,7 @@ def events_for_franchise(
     franchise_id: str,
     narrative_only: bool = True,
     limit: int = 10000,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Fetch all events involving a specific franchise."""
     events = fetch_all_events(store, league_id=league_id, season=season, limit=limit)
 
@@ -57,7 +58,7 @@ def events_for_franchise(
     return [e for e in events if franchise_id in _franchise_ids_from_payload(e)]
 
 
-def _filter_type(events: Iterable[Dict[str, Any]], event_type: str) -> List[Dict[str, Any]]:
+def _filter_type(events: Iterable[dict[str, Any]], event_type: str) -> list[dict[str, Any]]:
     """Filter event list to only those matching event_type prefix."""
     return [e for e in events if e.get("event_type") == event_type]
 
@@ -68,7 +69,7 @@ def draft_picks_for_franchise(
     league_id: str,
     season: int,
     franchise_id: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Fetch draft pick events for a specific franchise."""
     return _filter_type(
         events_for_franchise(store, league_id=league_id, season=season, franchise_id=franchise_id),
@@ -82,7 +83,7 @@ def waiver_awards_for_franchise(
     league_id: str,
     season: int,
     franchise_id: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Fetch waiver award events for a specific franchise."""
     return _filter_type(
         events_for_franchise(store, league_id=league_id, season=season, franchise_id=franchise_id),
@@ -96,7 +97,7 @@ def free_agent_moves_for_franchise(
     league_id: str,
     season: int,
     franchise_id: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Fetch free agent events for a specific franchise."""
     return _filter_type(
         events_for_franchise(store, league_id=league_id, season=season, franchise_id=franchise_id),
@@ -110,7 +111,7 @@ def trades_for_franchise(
     league_id: str,
     season: int,
     franchise_id: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Fetch trade events involving a specific franchise."""
     return _filter_type(
         events_for_franchise(store, league_id=league_id, season=season, franchise_id=franchise_id),

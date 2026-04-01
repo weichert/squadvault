@@ -4,15 +4,15 @@ import argparse
 import hashlib
 import json
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.recaps.dng_reasons import DNGReason
-
 
 # =========================
 # Verdict model (Phase 2C)
@@ -26,8 +26,8 @@ class VerdictStatus(str, Enum):
 @dataclass(frozen=True)
 class GenerationVerdict:
     status: VerdictStatus
-    reason_code: Optional[DNGReason] = None
-    evidence: Optional[Dict[str, Any]] = None
+    reason_code: DNGReason | None = None
+    evidence: dict[str, Any] | None = None
 
 
 # =========================
@@ -57,7 +57,7 @@ def _ledger_count_in_range(
     return int(row[0] or 0)
 
 
-def _inputs_hash(payload: Dict[str, Any]) -> str:
+def _inputs_hash(payload: dict[str, Any]) -> str:
     """Compute deterministic hash of generation inputs."""
     raw = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
@@ -70,7 +70,7 @@ def recap_generation_verdict(
     season: int,
     start: str,
     end: str,
-    canonical_events: List[Dict[str, Any]],
+    canonical_events: list[dict[str, Any]],
 ) -> GenerationVerdict:
     """
     Phase 2C promotion rules (LOCKED):
@@ -154,7 +154,7 @@ def persist_verdict(
     season: int,
     start: str,
     end: str,
-    verdict_payload: Dict[str, Any],
+    verdict_payload: dict[str, Any],
 ) -> None:
     """Persist a generation verdict to the database."""
     ensure_verdict_table(conn, table)
@@ -202,7 +202,7 @@ def persist_verdict(
 # main
 # =========================
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint: generate recaps for a date range."""
     parser = argparse.ArgumentParser(description="Recap Generator (Phase 2C gated)")
     parser.add_argument("--db", required=True)

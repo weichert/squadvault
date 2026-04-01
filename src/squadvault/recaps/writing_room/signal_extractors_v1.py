@@ -19,21 +19,19 @@ Enhancement:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List, Optional
-
 import sqlite3
+from dataclasses import dataclass
+
 from squadvault.core.storage.db_utils import table_columns as _table_columns
 from squadvault.core.storage.session import DatabaseSession
-
 
 
 def _redundancy_key_for_row(
     *,
     event_type: str,
-    occurred_at: Optional[str],
-    action_fingerprint: Optional[str],
-) -> Optional[str]:
+    occurred_at: str | None,
+    action_fingerprint: str | None,
+) -> str | None:
     """
     Deterministic redundancy keys.
 
@@ -70,7 +68,7 @@ class CanonicalEventsSignalExtractorV1:
         season: int,
         window_start: str,
         window_end: str,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """Extract canonical signals from DB for a league/season/week."""
         with DatabaseSession(db_path) as con:
             con.row_factory = sqlite3.Row
@@ -95,7 +93,7 @@ class CanonicalEventsSignalExtractorV1:
                 (league_id, season, window_start, window_end),
             ).fetchall()
 
-            signals: List[dict] = []
+            signals: list[dict] = []
             for r in rows:
                 sid = f"ce:{r['id']}"
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import List, Sequence
 
 from squadvault.core.storage.session import DatabaseSession
 
@@ -51,7 +51,7 @@ def query_head_to_head_matchups_v1(
     team_a_id: str,
     team_b_id: str,
     week_indices: Sequence[int] | None = None,
-) -> List[MatchupFactV1]:
+) -> list[MatchupFactV1]:
     """Query canonical WEEKLY_MATCHUP_RESULT events for a specific team pair.
 
     Returns matchup facts ordered by week (chronological).
@@ -91,7 +91,7 @@ def query_head_to_head_matchups_v1(
             (str(league_id), int(season)),
         ).fetchall()
 
-        facts: List[MatchupFactV1] = []
+        facts: list[MatchupFactV1] = []
         for row in rows:
             payload = json.loads(row["payload_json"])
             winner_fid = str(payload.get("winner_franchise_id", ""))

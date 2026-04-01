@@ -3,9 +3,10 @@
 # src/squadvault/recaps/preflight.py
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional, Sequence
+from typing import Any
 
 from .dng_reasons import DNGReason
 
@@ -18,8 +19,8 @@ class PreflightVerdictType(str, Enum):
 @dataclass(frozen=True)
 class PreflightVerdict:
     verdict: PreflightVerdictType
-    reason_code: Optional[DNGReason] = None
-    evidence: Optional[dict[str, Any]] = None
+    reason_code: DNGReason | None = None
+    evidence: dict[str, Any] | None = None
 
     def __post_init__(self):
         # dataclasses + frozen: use object.__setattr__

@@ -3,31 +3,30 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-    CanonicalEventRow,
     QUIET_WEEK_MIN_EVENTS,
+    CanonicalEventRow,
     render_deterministic_bullets_v1,
 )
+from squadvault.core.storage.db_utils import norm_id as _norm_id
+from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
 from squadvault.core.storage.session import DatabaseSession
-from squadvault.core.storage.db_utils import norm_id as _norm_id, row_to_dict as _row_to_dict
-
-
 
 
 def _fetch_canonical_events_by_ids(
     db_path: str,
     league_id: str,
     season: int,
-    canonical_ids: List[int],
-) -> List[Dict[str, Any]]:
+    canonical_ids: list[int],
+) -> list[dict[str, Any]]:
     """Fetch canonical event rows by IDs in chunked batches."""
     if not canonical_ids:
         return []
 
     CHUNK = 500
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     with DatabaseSession(db_path) as conn:
         cur = conn.cursor()
 
@@ -55,14 +54,14 @@ def _fetch_canonical_events_by_ids(
 
 def _fetch_memory_payloads_by_ids(
     db_path: str,
-    memory_event_ids: List[int],
-) -> Dict[int, Dict[str, Any]]:
+    memory_event_ids: list[int],
+) -> dict[int, dict[str, Any]]:
     """Fetch and parse memory event payloads by IDs in chunks."""
     if not memory_event_ids:
         return {}
 
     CHUNK = 500
-    out: Dict[int, Dict[str, Any]] = {}
+    out: dict[int, dict[str, Any]] = {}
 
     with DatabaseSession(db_path) as conn:
         cur = conn.cursor()
@@ -81,7 +80,7 @@ def _fetch_memory_payloads_by_ids(
             for r in cur.fetchall():
                 d = _row_to_dict(r)
                 raw = d.get("payload_json") or ""
-                payload: Dict[str, Any] = {}
+                payload: dict[str, Any] = {}
                 if isinstance(raw, str) and raw.strip():
                     try:
                         val = json.loads(raw)
@@ -104,8 +103,8 @@ class _NameLookup:
         self.db_path = db_path
         self.league_id = league_id
         self.season = season
-        self._player_cache: Dict[str, str] = {}
-        self._franchise_cache: Dict[str, str] = {}
+        self._player_cache: dict[str, str] = {}
+        self._franchise_cache: dict[str, str] = {}
 
     def franchise_name(self, fid_raw: Any) -> str:
         """Resolve franchise ID to display name with normalized fallback."""
@@ -181,7 +180,7 @@ def build_deterministic_facts_block_v1(
     db_path: str,
     league_id: str,
     season: int,
-    canonical_ids: List[int],
+    canonical_ids: list[int],
 ) -> str:
     """
     Returns a deterministic bullet block or "".

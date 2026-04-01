@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from squadvault.notion.client import NotionClient
 from squadvault.notion.schema_specs import DatabaseSpec
@@ -16,13 +16,13 @@ def _fail(msg: str) -> None:
     raise RuntimeError(msg)
 
 
-def _get_prop(db_json: Dict[str, Any], prop_name: str) -> Dict[str, Any] | None:
+def _get_prop(db_json: dict[str, Any], prop_name: str) -> dict[str, Any] | None:
     """Get a property definition from a database schema."""
     props = db_json.get("properties", {})
     return props.get(prop_name)
 
 
-def _notion_type(prop_json: Dict[str, Any]) -> str:
+def _notion_type(prop_json: dict[str, Any]) -> str:
     """Extract the Notion property type string."""
     return prop_json.get("type", "")
 
@@ -34,7 +34,7 @@ def _normalize_uuid(uuid_str: str | None) -> str:
     return uuid_str.replace("-", "").lower()
 
 
-def _validate_relation_target(prop_json: Dict[str, Any], expected_target_db_id: str) -> None:
+def _validate_relation_target(prop_json: dict[str, Any], expected_target_db_id: str) -> None:
     """Validate a relation property points to the expected database."""
     rel = prop_json.get("relation") or {}
     actual_target = rel.get("database_id")
@@ -84,7 +84,7 @@ EXPECTED_DATABASE_NAMES = frozenset([
 ])
 
 
-def validate_all_databases(notion: NotionClient, specs: Dict[str, DatabaseSpec]) -> None:
+def validate_all_databases(notion: NotionClient, specs: dict[str, DatabaseSpec]) -> None:
     """Validate all required Notion databases."""
     logger.info("Validating Notion schemas for %d databases...", len(specs))
 

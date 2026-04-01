@@ -13,19 +13,22 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
+from typing import Any
 
+from squadvault.core.storage.db_utils import now_utc_iso as _now_utc_iso
 from squadvault.recaps.writing_room.selection_set_schema_v1 import (
-    SelectionSetV1,
     ExcludedSignal,
-    ReasonDetailKV,
     ExclusionReasonCode,
+    ReasonDetailKV,
+    SelectionSetV1,
     WithheldReasonCode,
     build_signal_groupings_v1,
 )
-from squadvault.core.storage.db_utils import now_utc_iso as _now_utc_iso
+
+logger = logging.getLogger(__name__)
 
 def _details_one(k: str, v: object) -> list[ReasonDetailKV]:
     """Create a single-entry ReasonDetailKV list."""
@@ -33,7 +36,7 @@ def _details_one(k: str, v: object) -> list[ReasonDetailKV]:
 
 
 
-def _parse_iso_utc(s: str) -> Optional[datetime]:
+def _parse_iso_utc(s: str) -> datetime | None:
     """Parse ISO-8601 UTC string to datetime, or None."""
     if not s or not isinstance(s, str):
         return None
@@ -43,7 +46,8 @@ def _parse_iso_utc(s: str) -> Optional[datetime]:
             s2 = s[:-1] + "+00:00"
             return datetime.fromisoformat(s2)
         return datetime.fromisoformat(s)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return None
 
 
@@ -80,7 +84,7 @@ class IntakeContextV1:
     created_at_utc: str = "1970-01-01T00:00:00Z"
 
 
-def _normalize_ctx_signals_args(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Tuple[IntakeContextV1, List[Dict[str, Any]], Dict[str, Any]]:
+def _normalize_ctx_signals_args(args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[IntakeContextV1, list[dict[str, Any]], dict[str, Any]]:
     """
     Normalize *any* calling convention into:
       (ctx, signals_list_of_dicts, remaining_kwargs)
@@ -150,7 +154,7 @@ def _normalize_ctx_signals_args(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -
         signals = list(signals)
 
     # Ensure list-of-dict
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for s in signals:
         if isinstance(s, dict):
             out.append(s)
@@ -164,28 +168,29 @@ def _normalize_ctx_signals_args(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -
     return ctx, out, kw
 
 
-def _signal_id(sig: Dict[str, Any]) -> str:
+def _signal_id(sig: dict[str, Any]) -> str:
     """Extract signal_id from a signal dict."""
     return str(sig.get("signal_id") or sig.get("id") or "")
 
 
-def _occurred_at(sig: Dict[str, Any]) -> str:
+def _occurred_at(sig: dict[str, Any]) -> str:
     """Extract occurred_at timestamp from a signal dict."""
     return str(sig.get("occurred_at_utc") or sig.get("occurred_at") or sig.get("timestamp_utc") or "")
 
 
-def _confidence(sig: Dict[str, Any]) -> Optional[float]:
+def _confidence(sig: dict[str, Any]) -> float | None:
     """Extract confidence grade from a signal dict."""
     c = sig.get("confidence")
     if c is None:
         return None
     try:
         return float(c)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return None
 
 
-def _sensitive(sig: Dict[str, Any]) -> bool:
+def _sensitive(sig: dict[str, Any]) -> bool:
     # tolerate multiple field names
     """Return True if signal is marked as sensitive."""
     if "is_sensitive" in sig:
@@ -197,7 +202,7 @@ def _sensitive(sig: Dict[str, Any]) -> bool:
     return False
 
 
-def _has_context(sig: Dict[str, Any]) -> bool:
+def _has_context(sig: dict[str, Any]) -> bool:
     # tolerate multiple names
     """Return True if signal has sufficient context fields."""
     for k in ("has_sufficient_context", "sufficient_context", "context_ok", "has_context"):
@@ -207,7 +212,7 @@ def _has_context(sig: Dict[str, Any]) -> bool:
     return True
 
 
-def _redundancy_key(sig: Dict[str, Any]) -> Optional[str]:
+def _redundancy_key(sig: dict[str, Any]) -> str | None:
     """Compute a key for detecting redundant signals."""
     rk = sig.get("redundancy_key") or sig.get("redundancy_group") or sig.get("dedupe_key")
     if rk is None:
@@ -351,7 +356,7 @@ def build_selection_set_v1(*args: Any, **kwargs: Any) -> SelectionSetV1:
     excluded = sorted(excluded, key=lambda e: e.signal_id)
 
     withheld = None
-    withheld_reason: Optional[WithheldReasonCode] = None
+    withheld_reason: WithheldReasonCode | None = None
     if not included_ids:
         withheld = True
         withheld_reason = WithheldReasonCode.NO_ELIGIBLE_SIGNALS

@@ -5,11 +5,14 @@ previously duplicated/embedded in consumer files.
 """
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Set
+from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
 
+logger = logging.getLogger(__name__)
 # Lightweight name-resolver type used by angle detectors.
 # Takes an ID string, returns a display name (or the ID itself).
 NameFn = Callable[[str], str]
@@ -20,7 +23,7 @@ def identity(x: str) -> str:
     return x
 
 
-def _csv_ids(s: Any) -> List[str]:
+def _csv_ids(s: Any) -> list[str]:
     """Split a CSV string or list into stripped, non-empty ID strings."""
     if s is None:
         return []
@@ -45,7 +48,7 @@ class PlayerResolver:
         self.db_path = Path(db_path)
         self.league_id = str(league_id)
         self.season = int(season)
-        self._map: Dict[str, str] = {}
+        self._map: dict[str, str] = {}
         self._loaded = False
         self._requested = 0
         self._resolved = 0
@@ -60,7 +63,7 @@ class PlayerResolver:
         """Return count of IDs successfully resolved."""
         return self._resolved
 
-    def load_for_ids(self, player_ids: Set[str]) -> None:
+    def load_for_ids(self, player_ids: set[str]) -> None:
         """Bulk-load name resolutions for a set of IDs from the database."""
         if self._loaded:
             return
@@ -118,7 +121,8 @@ class PlayerResolver:
             self._resolved = len(self._map)
             self._loaded = True
 
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             self._loaded = True
 
     def one(self, player_id: Any) -> str:
@@ -128,7 +132,7 @@ class PlayerResolver:
             return "<?>"
         return self._map.get(pid, pid)
 
-    def many(self, ids: Any) -> List[str]:
+    def many(self, ids: Any) -> list[str]:
         """Resolve a list of IDs to display names."""
         return [self.one(pid) for pid in _csv_ids(ids)]
 
@@ -143,7 +147,7 @@ class FranchiseResolver:
         self.db_path = Path(db_path)
         self.league_id = str(league_id)
         self.season = int(season)
-        self._map: Dict[str, str] = {}
+        self._map: dict[str, str] = {}
         self._loaded = False
         self._requested = 0
         self._resolved = 0
@@ -158,7 +162,7 @@ class FranchiseResolver:
         """Return count of franchise IDs successfully resolved."""
         return self._resolved
 
-    def load_for_ids(self, franchise_ids: Set[str]) -> None:
+    def load_for_ids(self, franchise_ids: set[str]) -> None:
         """Bulk-load franchise name resolutions from franchise_directory."""
         if self._loaded:
             return
@@ -206,7 +210,8 @@ class FranchiseResolver:
             self._resolved = len(self._map)
             self._loaded = True
 
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             self._loaded = True
 
     def one(self, franchise_id: Any) -> str:
@@ -220,14 +225,14 @@ class FranchiseResolver:
 # ── Lightweight name-map builders ────────────────────────────────────
 
 
-def build_player_name_map(db_path: str, league_id: str) -> Dict[str, str]:
+def build_player_name_map(db_path: str, league_id: str) -> dict[str, str]:
     """Build a player_id -> display name map from player_directory.
 
     Returns a dict mapping MFL player IDs to their most recent known name.
     ORDER BY season DESC ensures the latest name wins when a player appears
     across multiple seasons. First occurrence is kept (most recent season).
     """
-    name_map: Dict[str, str] = {}
+    name_map: dict[str, str] = {}
     with DatabaseSession(str(db_path)) as con:
         rows = con.execute(
             """SELECT player_id, name FROM player_directory

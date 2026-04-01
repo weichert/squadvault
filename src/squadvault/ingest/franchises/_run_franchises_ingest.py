@@ -26,7 +26,8 @@ import sqlite3
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from squadvault.core.storage.session import DatabaseSession
 
 
@@ -49,7 +50,7 @@ def _clean_html(s: Any) -> str:
     return txt.strip()
 
 
-def _http_get_json(url: str, timeout_s: int = 30) -> Dict[str, Any]:
+def _http_get_json(url: str, timeout_s: int = 30) -> dict[str, Any]:
     """Fetch JSON from a URL with error handling."""
     req = urllib.request.Request(
         url,
@@ -65,7 +66,7 @@ def _http_get_json(url: str, timeout_s: int = 30) -> Dict[str, Any]:
     return obj if isinstance(obj, dict) else {}
 
 
-def _extract_franchises(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _extract_franchises(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """
     MFL TYPE=league franchise list is commonly nested under:
       payload["league"]["franchises"]["franchise"]
@@ -75,7 +76,7 @@ def _extract_franchises(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
       B) {"league": {"franchises": {"franchise": [...]}}}
     """
 
-    def from_container(container: Any) -> List[Dict[str, Any]]:
+    def from_container(container: Any) -> list[dict[str, Any]]:
         """Extract franchise records from MFL API container response."""
         if isinstance(container, dict):
             f = container.get("franchise")
@@ -108,7 +109,7 @@ class Row:
     raw_json: str
 
 
-def _normalize_row(fr: Dict[str, Any]) -> Optional[Row]:
+def _normalize_row(fr: dict[str, Any]) -> Row | None:
     """Normalize a raw franchise record to standard fields."""
     fid = fr.get("id")
     if fid is None:
@@ -136,7 +137,7 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
     pass
 
 
-def _upsert_rows(conn: sqlite3.Connection, league_id: str, season: int, rows: List[Row]) -> int:
+def _upsert_rows(conn: sqlite3.Connection, league_id: str, season: int, rows: list[Row]) -> int:
     """Upsert franchise records into the directory table."""
     sql = """
     INSERT INTO franchise_directory (
@@ -185,7 +186,7 @@ def main() -> int:
     franchises = _extract_franchises(payload)
     print(f"Parsed franchises (JSON): {len(franchises)}")
 
-    rows: List[Row] = []
+    rows: list[Row] = []
     for fr in franchises:
         r = _normalize_row(fr)
         if r:

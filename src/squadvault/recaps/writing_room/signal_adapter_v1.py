@@ -14,7 +14,7 @@ Sprint 1 / T3:
 
 from __future__ import annotations
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 
 class SignalAdapterV1(Protocol):
@@ -62,7 +62,7 @@ class SignalAdapterV1(Protocol):
         """Return True if signal is flagged as ambiguous."""
         ...
 
-    def redundancy_key(self, signal: Any) -> Optional[str]:
+    def redundancy_key(self, signal: Any) -> str | None:
         """
         Signals returning the same non-null redundancy_key are considered redundant.
         """
@@ -109,7 +109,7 @@ class DictSignalAdapter:
         """Return True if signal is flagged as ambiguous."""
         return bool(signal.get("ambiguous", False))
 
-    def redundancy_key(self, signal: dict) -> Optional[str]:
+    def redundancy_key(self, signal: dict) -> str | None:
         """Return a key for detecting redundant signals."""
         return signal.get("redundancy_key")
 

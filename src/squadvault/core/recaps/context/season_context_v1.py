@@ -21,11 +21,11 @@ Governance:
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
-
 
 # ── Data classes (all frozen for determinism) ────────────────────────
 
@@ -75,8 +75,8 @@ class WeekMatchupContext:
     loser_score: float
     margin: float
     is_tie: bool
-    winner_record_after: Optional[TeamRecord]  # record INCLUDING this game
-    loser_record_after: Optional[TeamRecord]
+    winner_record_after: TeamRecord | None  # record INCLUDING this game
+    loser_record_after: TeamRecord | None
 
 
 @dataclass(frozen=True)
@@ -97,11 +97,11 @@ class PlayoffInfo:
     When matchup count drops, it's playoffs.
     """
     is_playoff: bool
-    playoff_round: Optional[str]  # "QUARTERFINAL", "SEMIFINAL", "CHAMPIONSHIP", None
-    playoff_round_label: Optional[str]  # human-readable, e.g. "Championship"
+    playoff_round: str | None  # "QUARTERFINAL", "SEMIFINAL", "CHAMPIONSHIP", None
+    playoff_round_label: str | None  # human-readable, e.g. "Championship"
     regular_season_matchup_count: int  # e.g. 5 for a 10-team league
     last_regular_season_week: int  # last week with full matchup count
-    teams_remaining: Optional[int]  # 2 * matchups_this_week during playoffs
+    teams_remaining: int | None  # 2 * matchups_this_week during playoffs
 
 
 @dataclass(frozen=True)
@@ -116,28 +116,28 @@ class SeasonContextV1:
     through_week: int  # context computed through (and including) this week
 
     # Standings ordered by: wins desc, then points_for desc (tiebreaker)
-    standings: Tuple[TeamRecord, ...]
+    standings: tuple[TeamRecord, ...]
 
     # This week's matchups with context
-    week_matchups: Tuple[WeekMatchupContext, ...]
+    week_matchups: tuple[WeekMatchupContext, ...]
 
     # This week's scoring highlights
-    week_high_scorer: Optional[Tuple[str, float]]     # (franchise_id, score)
-    week_low_scorer: Optional[Tuple[str, float]]
-    week_closest_game: Optional[Tuple[str, str, float]]  # (winner, loser, margin)
-    week_biggest_blowout: Optional[Tuple[str, str, float]]
+    week_high_scorer: tuple[str, float] | None     # (franchise_id, score)
+    week_low_scorer: tuple[str, float] | None
+    week_closest_game: tuple[str, str, float] | None  # (winner, loser, margin)
+    week_biggest_blowout: tuple[str, str, float] | None
 
     # Season-level milestones (through this week)
-    season_high: Optional[ScoringMilestone]
-    season_low: Optional[ScoringMilestone]
-    season_avg_score: Optional[float]
+    season_high: ScoringMilestone | None
+    season_low: ScoringMilestone | None
+    season_avg_score: float | None
 
     # Metadata
     total_matchups_through_week: int
     matchups_this_week: int
 
     # Playoff detection (derived from matchup count progression)
-    playoff_info: Optional[PlayoffInfo] = None
+    playoff_info: PlayoffInfo | None = None
 
     @property
     def has_matchup_data(self) -> bool:
@@ -177,7 +177,7 @@ def _empty_context(league_id: str, season: int, week: int) -> SeasonContextV1:
 # ── Core derivation ─────────────────────────────────────────────────
 
 
-def _parse_matchup(payload_json: str, fallback_week: int) -> Optional[MatchupResult]:
+def _parse_matchup(payload_json: str, fallback_week: int) -> MatchupResult | None:
     """Parse a WEEKLY_MATCHUP_RESULT payload into a MatchupResult.
 
     Returns None if the payload is malformed or missing required fields.
@@ -228,12 +228,12 @@ def _load_matchups(
     db_path: str,
     league_id: str,
     season: int,
-) -> List[MatchupResult]:
+) -> list[MatchupResult]:
     """Load all WEEKLY_MATCHUP_RESULT events from canonical_events.
 
     Returns parsed MatchupResult list sorted by (week, winner_id, loser_id).
     """
-    matchups: List[MatchupResult] = []
+    matchups: list[MatchupResult] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -258,7 +258,7 @@ def _load_matchups(
 def _detect_playoff_info(
     all_matchups: Sequence[MatchupResult],
     week_index: int,
-) -> Optional[PlayoffInfo]:
+) -> PlayoffInfo | None:
     """Detect whether a week is regular season or playoffs.
 
     Detection is purely data-driven: count matchups per week across the
@@ -335,7 +335,7 @@ def _detect_playoff_info(
 def _compute_records(
     matchups: Sequence[MatchupResult],
     through_week: int,
-) -> Dict[str, TeamRecord]:
+) -> dict[str, TeamRecord]:
     """Compute W-L-T records and streaks for all teams through a given week.
 
     Streak logic: walk games in chronological order per team.
@@ -343,13 +343,13 @@ def _compute_records(
     Ties reset the streak to 0.
     """
     # Accumulators per franchise
-    wins: Dict[str, int] = {}
-    losses: Dict[str, int] = {}
-    ties: Dict[str, int] = {}
-    pf: Dict[str, float] = {}
-    pa: Dict[str, float] = {}
+    wins: dict[str, int] = {}
+    losses: dict[str, int] = {}
+    ties: dict[str, int] = {}
+    pf: dict[str, float] = {}
+    pa: dict[str, float] = {}
     # Game log per franchise for streak computation: list of 'W', 'L', 'T'
-    game_log: Dict[str, List[str]] = {}
+    game_log: dict[str, list[str]] = {}
 
     for m in matchups:
         if m.week > through_week:
@@ -383,7 +383,7 @@ def _compute_records(
             game_log[m.loser_id].append("L")
 
     # Compute streaks from game logs
-    def _streak(log: List[str]) -> int:
+    def _streak(log: list[str]) -> int:
         """Compute current streak from game log. Positive=wins, negative=losses."""
         if not log:
             return 0
@@ -398,7 +398,7 @@ def _compute_records(
                 break
         return count if last == "W" else -count
 
-    records: Dict[str, TeamRecord] = {}
+    records: dict[str, TeamRecord] = {}
     for fid in wins:
         records[fid] = TeamRecord(
             franchise_id=fid,
@@ -415,18 +415,18 @@ def _compute_records(
 
 def _week_scoring_highlights(
     week_matchups: Sequence[MatchupResult],
-) -> Tuple[
-    Optional[Tuple[str, float]],  # high scorer
-    Optional[Tuple[str, float]],  # low scorer
-    Optional[Tuple[str, str, float]],  # closest game
-    Optional[Tuple[str, str, float]],  # biggest blowout
+) -> tuple[
+    tuple[str, float] | None,  # high scorer
+    tuple[str, float] | None,  # low scorer
+    tuple[str, str, float] | None,  # closest game
+    tuple[str, str, float] | None,  # biggest blowout
 ]:
     """Derive this week's scoring highlights from matchup results."""
     if not week_matchups:
         return None, None, None, None
 
     # Collect all individual scores this week
-    scores: List[Tuple[str, float]] = []
+    scores: list[tuple[str, float]] = []
     for m in week_matchups:
         scores.append((m.winner_id, m.winner_score))
         scores.append((m.loser_id, m.loser_score))
@@ -454,9 +454,9 @@ def _week_scoring_highlights(
 def _season_milestones(
     matchups: Sequence[MatchupResult],
     through_week: int,
-) -> Tuple[Optional[ScoringMilestone], Optional[ScoringMilestone], Optional[float]]:
+) -> tuple[ScoringMilestone | None, ScoringMilestone | None, float | None]:
     """Derive season-level scoring milestones through a given week."""
-    scores: List[Tuple[str, int, float]] = []  # (franchise_id, week, score)
+    scores: list[tuple[str, int, float]] = []  # (franchise_id, week, score)
 
     for m in matchups:
         if m.week > through_week:
@@ -526,7 +526,7 @@ def derive_season_context_v1(
     ))
 
     # Week matchups with post-game records
-    week_matchup_contexts: List[WeekMatchupContext] = []
+    week_matchup_contexts: list[WeekMatchupContext] = []
     for m in this_week:
         week_matchup_contexts.append(WeekMatchupContext(
             winner_id=m.winner_id,
@@ -587,7 +587,7 @@ def derive_season_context_v1(
 def render_season_context_for_prompt(
     ctx: SeasonContextV1,
     *,
-    team_resolver: Optional[Any] = None,
+    team_resolver: Any | None = None,
 ) -> str:
     """Render season context as a text block for the creative layer prompt.
 
@@ -620,17 +620,16 @@ def render_season_context_for_prompt(
             return f"L{abs(s)}"
         return "-"
 
-    lines: List[str] = []
+    lines: list[str] = []
 
     # Playoff context — CRITICAL for creative layer to know what kind of week this is
     pi = ctx.playoff_info
     if pi and pi.is_playoff:
         lines.append("*** WEEK TYPE: PLAYOFF ***")
         lines.append("This is a PLAYOFF week, not regular season.")
-        lines.append("Round: %s" % (pi.playoff_round_label or "Playoff"))
-        lines.append("Teams remaining: %d (only %d matchup(s) this week)"
-                      % (pi.teams_remaining or 0, ctx.matchups_this_week))
-        lines.append("Regular season ended after Week %d." % pi.last_regular_season_week)
+        lines.append(f"Round: {pi.playoff_round_label or 'Playoff'}")
+        lines.append(f"Teams remaining: {pi.teams_remaining or 0} (only {ctx.matchups_this_week} matchup(s) this week)")
+        lines.append(f"Regular season ended after Week {pi.last_regular_season_week}.")
         lines.append("Teams NOT playing this week have been ELIMINATED.")
         lines.append("Do NOT reference eliminated teams' records or streaks as ongoing.")
         lines.append("Do NOT say 'regular season' — this is the postseason.")
@@ -640,9 +639,9 @@ def render_season_context_for_prompt(
 
     # Standings
     if pi and pi.is_playoff:
-        lines.append("Final regular season standings (through Week %d):" % pi.last_regular_season_week)
+        lines.append(f"Final regular season standings (through Week {pi.last_regular_season_week}):")
     else:
-        lines.append("Season standings through Week %d:" % ctx.through_week)
+        lines.append(f"Season standings through Week {ctx.through_week}:")
     for i, rec in enumerate(ctx.standings, 1):
         name = _name(rec.franchise_id)
         record = f"{rec.wins}-{rec.losses}"

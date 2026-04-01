@@ -16,7 +16,8 @@ Notes:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from squadvault.recaps.writing_room.selection_set_schema_v1 import (
     sha256_of_canonical_json,
@@ -30,7 +31,7 @@ def selection_set_id_payload_v1(
     week_index: int,
     window_id: str,
     version: str = "v1.0",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Build a canonical payload for selection_set_id derivation.
 
@@ -55,9 +56,9 @@ def selection_fingerprint_payload_v1(
     *,
     included_signal_ids: Iterable[str],
     excluded_signal_ids: Iterable[str],
-    excluded_reason_codes: Optional[Iterable[str]] = None,
+    excluded_reason_codes: Iterable[str] | None = None,
     version: str = "v1.0",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Build a canonical payload for selection_fingerprint derivation.
 
@@ -68,7 +69,7 @@ def selection_fingerprint_payload_v1(
     Determinism:
     - We sort all arrays lexicographically in the payload itself.
     """
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "type": "selection_fingerprint",
         "version": version,
         "included_signal_ids": sorted(list(included_signal_ids)),
@@ -79,7 +80,7 @@ def selection_fingerprint_payload_v1(
     return payload
 
 
-def compute_sha256_hex_from_payload_v1(payload: Dict[str, Any]) -> str:
+def compute_sha256_hex_from_payload_v1(payload: dict[str, Any]) -> str:
     """
     Compute sha256(canonical_json(payload)).
     """

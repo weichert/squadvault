@@ -17,7 +17,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.storage.sqlite_store import SQLiteStore
@@ -27,6 +27,8 @@ from squadvault.ingest.auction_draft import (
 from squadvault.ingest.franchises._run_franchises_ingest import (
     _extract_franchises,
     _normalize_row,
+)
+from squadvault.ingest.franchises._run_franchises_ingest import (
     _upsert_rows as _upsert_franchise_rows,
 )
 from squadvault.ingest.matchup_results import derive_matchup_result_envelopes
@@ -55,7 +57,7 @@ class CategoryResult:
     category: str
     inserted: int = 0
     skipped: int = 0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -65,7 +67,7 @@ class SeasonIngestResult:
     league_id: str
     season: int
     server: str
-    categories: List[CategoryResult] = field(default_factory=list)
+    categories: list[CategoryResult] = field(default_factory=list)
 
     @property
     def total_inserted(self) -> int:
@@ -84,7 +86,7 @@ def _ingest_franchise_info(
     db_path: str,
     league_id: str,
     season: int,
-    league_json: Optional[Dict[str, Any]] = None,
+    league_json: dict[str, Any] | None = None,
 ) -> CategoryResult:
     """Ingest franchise directory for a season.
 
@@ -518,13 +520,13 @@ def ingest_mfl_season(
     server: str,
     db_path: str,
     *,
-    mfl_league_id: Optional[str] = None,
-    categories: Optional[List[str]] = None,
+    mfl_league_id: str | None = None,
+    categories: list[str] | None = None,
     max_weeks: int = 18,
     request_delay_s: float = 2.5,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-    league_json: Optional[Dict[str, Any]] = None,
+    username: str | None = None,
+    password: str | None = None,
+    league_json: dict[str, Any] | None = None,
 ) -> SeasonIngestResult:
     """
     Ingest one MFL season across selected data categories.
@@ -659,13 +661,13 @@ def ingest_mfl_seasons(
     discovery: DiscoveryReport,
     db_path: str,
     *,
-    seasons: Optional[List[int]] = None,
-    categories: Optional[List[str]] = None,
+    seasons: list[int] | None = None,
+    categories: list[str] | None = None,
     max_weeks: int = 18,
     request_delay_s: float = 1.5,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-) -> List[SeasonIngestResult]:
+    username: str | None = None,
+    password: str | None = None,
+) -> list[SeasonIngestResult]:
     """
     Ingest multiple MFL seasons using a discovery report.
 
@@ -691,7 +693,7 @@ def ingest_mfl_seasons(
     if seasons is None:
         seasons = discovery.available_seasons()
 
-    results: List[SeasonIngestResult] = []
+    results: list[SeasonIngestResult] = []
 
     for season in sorted(seasons):
         server = discovery.server_for_season(season)

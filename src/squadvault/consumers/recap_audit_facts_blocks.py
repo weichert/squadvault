@@ -17,10 +17,10 @@ import argparse
 import sqlite3
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
-from squadvault.core.storage.session import DatabaseSession
-from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
+from typing import Any
 
+from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
+from squadvault.core.storage.session import DatabaseSession
 
 FACTS_HEADER = "What happened (facts)"
 
@@ -32,7 +32,7 @@ def _fetch_latest_weekly_recap_artifact(
     league_id: str,
     season: int,
     week_index: int,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Fetch latest WEEKLY_RECAP artifact for a week."""
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -63,7 +63,7 @@ def _has_facts_block(rendered_text: str) -> bool:
 @dataclass(frozen=True)
 class WeekAudit:
     week_index: int
-    version: Optional[int]
+    version: int | None
     selected_events: int
     has_facts: bool
     expected_has_facts: bool
@@ -93,13 +93,13 @@ def main() -> int:
     args = ap.parse_args()
 
     # Import here so PYTHONPATH=src works and we stay aligned with the live selection logic.
-    from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
     from squadvault.core.recaps.render.deterministic_bullets_v1 import QUIET_WEEK_MIN_EVENTS
+    from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
     threshold = QUIET_WEEK_MIN_EVENTS if args.min_events_for_facts is None else int(args.min_events_for_facts)
 
     with DatabaseSession(args.db) as conn:
 
-        audits: List[WeekAudit] = []
+        audits: list[WeekAudit] = []
         mismatch_count = 0
         no_artifact_count = 0
 

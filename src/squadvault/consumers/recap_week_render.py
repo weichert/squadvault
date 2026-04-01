@@ -6,13 +6,11 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
+from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.errors import RecapDataError
-from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
-
-
 
 
 def _fetch_latest_weekly_recap_artifact(
@@ -20,7 +18,7 @@ def _fetch_latest_weekly_recap_artifact(
     league_id: str,
     season: int,
     week_index: int,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Fetch latest WEEKLY_RECAP artifact row for a week."""
     with DatabaseSession(db_path) as conn:
         row = conn.execute(
@@ -45,7 +43,7 @@ def _fetch_weekly_recap_artifact_by_version(
     season: int,
     week_index: int,
     version: int,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Fetch a specific WEEKLY_RECAP artifact version."""
     with DatabaseSession(db_path) as conn:
         row = conn.execute(
@@ -69,7 +67,7 @@ def _fetch_approved_weekly_recap_artifact(
     league_id: str,
     season: int,
     week_index: int,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Fetch latest approved WEEKLY_RECAP artifact for a week."""
     with DatabaseSession(db_path) as conn:
         row = conn.execute(
@@ -90,7 +88,7 @@ def _fetch_approved_weekly_recap_artifact(
 
 
 
-def _print_rendered_text_or_die(artifact: Dict[str, Any]) -> None:
+def _print_rendered_text_or_die(artifact: dict[str, Any]) -> None:
     """Print artifact rendered_text, or raise error if missing."""
     rendered = artifact.get("rendered_text")
     if not rendered:
@@ -206,4 +204,4 @@ if __name__ == "__main__":
         raise
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from e

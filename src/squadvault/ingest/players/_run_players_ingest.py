@@ -34,18 +34,19 @@ import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple
+
 from squadvault.core.storage.session import DatabaseSession
 
 
 @dataclass(frozen=True)
 class PlayerRow:
     player_id: str
-    name: Optional[str]
-    position: Optional[str]
-    team: Optional[str]
-    raw_json: Optional[str]
+    name: str | None
+    position: str | None
+    team: str | None
+    raw_json: str | None
 
 
 def _now_iso_z() -> str:
@@ -75,7 +76,7 @@ def _fetch_url(url: str, timeout_s: int = 30) -> bytes:
         return bytes(resp.read())
 
 
-def _parse_players_json(payload: bytes) -> List[PlayerRow]:
+def _parse_players_json(payload: bytes) -> list[PlayerRow]:
     """Parse players from MFL JSON API response."""
     data = json.loads(payload.decode("utf-8", errors="replace"))
 
@@ -95,7 +96,7 @@ def _parse_players_json(payload: bytes) -> List[PlayerRow]:
     if not isinstance(player_list, list):
         raise ValueError(f"JSON parse: unexpected player_list type: {type(player_list)}")
 
-    out: List[PlayerRow] = []
+    out: list[PlayerRow] = []
     for p in player_list:
         if not isinstance(p, dict):
             continue
@@ -125,11 +126,11 @@ def _parse_players_json(payload: bytes) -> List[PlayerRow]:
     return out
 
 
-def _parse_players_xml(payload: bytes) -> List[PlayerRow]:
+def _parse_players_xml(payload: bytes) -> list[PlayerRow]:
     """Parse players from MFL XML export."""
     root = ET.fromstring(payload.decode("utf-8", errors="replace"))
 
-    out: List[PlayerRow] = []
+    out: list[PlayerRow] = []
     for el in root.findall(".//player"):
         pid = (el.get("id") or el.get("player_id") or "").strip()
         if not pid:
@@ -163,7 +164,7 @@ def _upsert_players(
     league_id: str,
     season: int,
     players: Iterable[PlayerRow],
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Upsert player records into the directory table."""
     now = _now_iso_z()
 
@@ -193,7 +194,7 @@ def _upsert_players(
     return (len(rows), len(rows))
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint: ingest player directory from MFL."""
     ap = argparse.ArgumentParser(description="Ingest MFL TYPE=players into player_directory (SQLite).")
     ap.add_argument("--db", required=True, help="Path to SQLite DB (e.g. .local_squadvault.sqlite)")
@@ -221,7 +222,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         url_json = _build_players_url(server, season, league_id, json_mode=True)
         url_plain = _build_players_url(server, season, league_id, json_mode=False)
 
-        players: List[PlayerRow] = []
+        players: list[PlayerRow] = []
 
         # Try JSON first
         try:

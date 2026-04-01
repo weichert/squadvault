@@ -22,18 +22,17 @@ Angle categories:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
 
-from squadvault.core.recaps.context.season_context_v1 import SeasonContextV1
 from squadvault.core.recaps.context.league_history_v1 import (
-    LeagueHistoryContextV1,
     HistoricalMatchup,
+    LeagueHistoryContextV1,
     compute_head_to_head,
 )
-
-from squadvault.core.resolvers import NameFn, identity as _identity
-
+from squadvault.core.recaps.context.season_context_v1 import SeasonContextV1
+from squadvault.core.resolvers import NameFn
+from squadvault.core.resolvers import identity as _identity
 
 # ── Angle data class ─────────────────────────────────────────────────
 
@@ -52,7 +51,7 @@ class NarrativeAngle:
     headline: str
     detail: str
     strength: int  # 1=minor, 2=notable, 3=headline
-    franchise_ids: Tuple[str, ...]
+    franchise_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -61,7 +60,7 @@ class WeekAnglesV1:
     league_id: str
     season: int
     week: int
-    angles: Tuple[NarrativeAngle, ...]
+    angles: tuple[NarrativeAngle, ...]
 
     @property
     def has_angles(self) -> bool:
@@ -69,12 +68,12 @@ class WeekAnglesV1:
         return len(self.angles) > 0
 
     @property
-    def headline_angles(self) -> Tuple[NarrativeAngle, ...]:
+    def headline_angles(self) -> tuple[NarrativeAngle, ...]:
         """Only strength-3 angles."""
         return tuple(a for a in self.angles if a.strength >= 3)
 
     @property
-    def notable_angles(self) -> Tuple[NarrativeAngle, ...]:
+    def notable_angles(self) -> tuple[NarrativeAngle, ...]:
         """Strength 2+ angles."""
         return tuple(a for a in self.angles if a.strength >= 2)
 
@@ -82,7 +81,7 @@ class WeekAnglesV1:
 # ── Angle detectors ──────────────────────────────────────────────────
 
 
-def _detect_upsets(ctx: SeasonContextV1) -> List[NarrativeAngle]:
+def _detect_upsets(ctx: SeasonContextV1) -> list[NarrativeAngle]:
     """Detect when a lower-ranked team beats a higher-ranked team."""
     if not ctx.has_this_week_data or len(ctx.standings) < 4:
         return []
@@ -92,7 +91,7 @@ def _detect_upsets(ctx: SeasonContextV1) -> List[NarrativeAngle]:
     # Actually, standings include this week's results. We approximate "upset"
     # by checking if winner had fewer wins than loser coming into this week.
     # Since standings include this game, we adjust: winner had (wins-1) before.
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     rank_map = {r.franchise_id: i + 1 for i, r in enumerate(ctx.standings)}
     n_teams = len(ctx.standings)
@@ -134,9 +133,9 @@ def _detect_upsets(ctx: SeasonContextV1) -> List[NarrativeAngle]:
     return angles
 
 
-def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> List[NarrativeAngle]:
+def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> list[NarrativeAngle]:
     """Detect notable streak milestones."""
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for rec in ctx.standings:
         streak = rec.current_streak
@@ -177,16 +176,16 @@ def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> List[
     return angles
 
 
-def _detect_scoring_anomalies(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> List[NarrativeAngle]:
+def _detect_scoring_anomalies(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> list[NarrativeAngle]:
     """Detect scores significantly above or below league average."""
     if not ctx.has_this_week_data or ctx.season_avg_score is None:
         return []
 
     avg = ctx.season_avg_score
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     # Collect all individual scores this week
-    scores: List[Tuple[str, float]] = []
+    scores: list[tuple[str, float]] = []
     for wm in ctx.week_matchups:
         scores.append((wm.winner_id, wm.winner_score))
         scores.append((wm.loser_id, wm.loser_score))
@@ -240,12 +239,12 @@ def _detect_scoring_anomalies(ctx: SeasonContextV1, *, fname: NameFn = _identity
     return angles
 
 
-def _detect_margin_stories(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> List[NarrativeAngle]:
+def _detect_margin_stories(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> list[NarrativeAngle]:
     """Detect blowouts and nail-biters relative to this week's matchups."""
     if not ctx.has_this_week_data:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     if ctx.week_biggest_blowout:
         w, l, margin = ctx.week_biggest_blowout
@@ -290,11 +289,11 @@ def _detect_margin_stories(ctx: SeasonContextV1, *, fname: NameFn = _identity) -
 
 def _detect_season_records(
     ctx: SeasonContextV1,
-    history: Optional[LeagueHistoryContextV1],
+    history: LeagueHistoryContextV1 | None,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect when this week set a new season or all-time scoring record."""
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     if not ctx.has_this_week_data:
         return []
@@ -343,11 +342,11 @@ def _detect_season_records(
 
 def _detect_rivalry_angles(
     ctx: SeasonContextV1,
-    history: Optional[LeagueHistoryContextV1],
-    all_matchups: Optional[Sequence[HistoricalMatchup]],
-    tenure_map: Optional[Dict[str, int]] = None,
+    history: LeagueHistoryContextV1 | None,
+    all_matchups: Sequence[HistoricalMatchup] | None,
+    tenure_map: dict[str, int] | None = None,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect notable rivalry angles when this week's opponents have history.
 
     Tenure-aware: if either franchise changed ownership recently, only
@@ -362,7 +361,7 @@ def _detect_rivalry_angles(
     if not history.is_multi_season:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for wm in ctx.week_matchups:
         # Determine tenure-filtered matchups for this specific pair
@@ -428,9 +427,9 @@ def _detect_rivalry_angles(
 
 def _detect_streak_records(
     ctx: SeasonContextV1,
-    history: Optional[LeagueHistoryContextV1],
+    history: LeagueHistoryContextV1 | None,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect when a current streak matches or approaches the league record.
 
     Suppressed entirely when only a single season is ingested: with one
@@ -445,7 +444,7 @@ def _detect_streak_records(
     if not history.is_multi_season:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for rec in ctx.standings:
         streak = rec.current_streak
@@ -489,9 +488,9 @@ def _detect_streak_records(
 def detect_narrative_angles_v1(
     *,
     season_ctx: SeasonContextV1,
-    history_ctx: Optional[LeagueHistoryContextV1] = None,
-    all_matchups: Optional[Sequence[HistoricalMatchup]] = None,
-    tenure_map: Optional[Dict[str, int]] = None,
+    history_ctx: LeagueHistoryContextV1 | None = None,
+    all_matchups: Sequence[HistoricalMatchup] | None = None,
+    tenure_map: dict[str, int] | None = None,
     fname: NameFn = _identity,
 ) -> WeekAnglesV1:
     """Detect all narrative angles for a given week.
@@ -503,7 +502,7 @@ def detect_narrative_angles_v1(
     Returns WeekAnglesV1 with angles sorted by strength (highest first),
     then by category for determinism.
     """
-    all_angles: List[NarrativeAngle] = []
+    all_angles: list[NarrativeAngle] = []
 
     all_angles.extend(_detect_upsets(season_ctx))
     all_angles.extend(_detect_streaks(season_ctx, fname=fname))

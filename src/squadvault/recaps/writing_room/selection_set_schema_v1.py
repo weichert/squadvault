@@ -17,12 +17,11 @@ DO NOT INVENT:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from hashlib import sha256
-import json
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # ----------------------------
 # Enums (locked)
@@ -70,7 +69,7 @@ class ReasonDetailKV:
     k: str
     v: str
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Convert dataclass instance to a plain dict."""
         return {"k": self.k, "v": self.v}
 
@@ -79,11 +78,11 @@ class ReasonDetailKV:
 class ExcludedSignal:
     signal_id: str
     reason_code: ExclusionReasonCode
-    details: Optional[List[ReasonDetailKV]] = None
+    details: list[ReasonDetailKV] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert dataclass instance to a plain dict."""
-        d: Dict[str, Any] = {
+        d: dict[str, Any] = {
             "signal_id": self.signal_id,
             "reason_code": self.reason_code.value,
         }
@@ -98,12 +97,12 @@ class ExcludedSignal:
 class SignalGrouping:
     group_id: str
     group_basis: GroupBasisCode
-    signal_ids: List[str]
-    group_label: Optional[str] = None
+    signal_ids: list[str]
+    group_label: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert dataclass instance to a plain dict."""
-        d: Dict[str, Any] = {
+        d: dict[str, Any] = {
             "group_id": self.group_id,
             "group_basis": self.group_basis.value,
             # Determinism: sort lexicographically
@@ -117,11 +116,11 @@ class SignalGrouping:
 @dataclass(frozen=True, slots=True)
 class SelectionNote:
     note_code: SelectionNoteCode
-    note_kv: Optional[List[ReasonDetailKV]] = None
+    note_kv: list[ReasonDetailKV] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert dataclass instance to a plain dict."""
-        d: Dict[str, Any] = {"note_code": self.note_code.value}
+        d: dict[str, Any] = {"note_code": self.note_code.value}
         if self.note_kv:
             # Determinism: sort KVs lexicographically by (k, v)
             nkv = sorted((kv.to_dict() for kv in self.note_kv), key=lambda x: (x["k"], x["v"]))
@@ -152,20 +151,20 @@ class SelectionSetV1:
     created_at_utc: str = ""         # ISO-8601 UTC
 
     # Contents
-    included_signal_ids: List[str] = field(default_factory=list)        # deterministic order
-    excluded: List[ExcludedSignal] = field(default_factory=list)
-    groupings: Optional[List[SignalGrouping]] = None
-    notes: Optional[List[SelectionNote]] = None
-    withheld: Optional[bool] = None
-    withheld_reason: Optional[WithheldReasonCode] = None  # required if withheld=True
+    included_signal_ids: list[str] = field(default_factory=list)        # deterministic order
+    excluded: list[ExcludedSignal] = field(default_factory=list)
+    groupings: list[SignalGrouping] | None = None
+    notes: list[SelectionNote] | None = None
+    withheld: bool | None = None
+    withheld_reason: WithheldReasonCode | None = None  # required if withheld=True
 
-    def to_canonical_dict(self) -> Dict[str, Any]:
+    def to_canonical_dict(self) -> dict[str, Any]:
         """
         Canonical dict representation:
         - Arrays sorted lexicographically (schema determinism rule).
         - Enums serialized by value string.
         """
-        d: Dict[str, Any] = {
+        d: dict[str, Any] = {
             "selection_set_id": self.selection_set_id,
             "version": self.version,
             "league_id": self.league_id,
@@ -256,7 +255,7 @@ def build_selection_fingerprint(
     week_index: int,
     window_id: str,
     included_signal_ids: list[str],
-    excluded: list["ExcludedSignal"],
+    excluded: list[ExcludedSignal],
 ) -> str:
     """
     Deterministic fingerprint recipe:
@@ -276,7 +275,7 @@ def build_selection_set_id(selection_fingerprint: str) -> str:
     """Generate a deterministic selection set ID."""
     return _sha256_hex(selection_fingerprint)
 
-def build_group_id(*, group_basis: "GroupBasisCode", signal_ids: list[str]) -> str:
+def build_group_id(*, group_basis: GroupBasisCode, signal_ids: list[str]) -> str:
     """Generate a deterministic signal group ID."""
     payload = group_basis.value + "|" + "|".join(sorted(signal_ids))
     return _sha256_hex(payload)
@@ -289,11 +288,11 @@ def deterministic_sort_str(values: list[str]) -> list[str]:
     """Return a function that sorts by a string field."""
     return sorted(values)
 
-def deterministic_sort_excluded(values: list["ExcludedSignal"]) -> list["ExcludedSignal"]:
+def deterministic_sort_excluded(values: list[ExcludedSignal]) -> list[ExcludedSignal]:
     """Sort excluded signals deterministically."""
     return sorted(values, key=lambda x: (x.signal_id, x.reason_code.value))
 
-def deterministic_sort_reason_kv(values: list["ReasonDetailKV"]) -> list["ReasonDetailKV"]:
+def deterministic_sort_reason_kv(values: list[ReasonDetailKV]) -> list[ReasonDetailKV]:
     """Sort reason detail key-value pairs deterministically."""
     return sorted(values, key=lambda x: (x.k, x.v))
 
@@ -324,8 +323,9 @@ __all__ = [
 # SignalGrouping generation (v1)
 # -----------------------------
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable, Iterable
+
 
 @dataclass(frozen=True)
 class SignalGroupingExtractorV1:
@@ -354,7 +354,7 @@ def _group_id_v1(group_basis: str, scope_key: str, subject_key: str, fact_basis_
 def build_signal_groupings_v1(
     included_signals: list[object],
     extractor: SignalGroupingExtractorV1,
-) -> list["SignalGrouping"]:
+) -> list[SignalGrouping]:
     """
     Deterministic grouping v1:
       - eligibility: SAME_SCOPE + SAME_SUBJECT + SHARED_FACT_BASIS

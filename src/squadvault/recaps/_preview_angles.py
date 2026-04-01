@@ -25,10 +25,29 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from collections import Counter
 
+from squadvault.core.recaps.context.auction_draft_angles_v1 import (
+    detect_auction_draft_angles_v1,
+)
+from squadvault.core.recaps.context.bye_week_context_v1 import (
+    detect_bye_week_angles_v1,
+)
+from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
+    detect_franchise_deep_angles_v1,
+)
+from squadvault.core.recaps.context.league_history_v1 import (
+    build_cross_season_name_resolver,
+    compute_franchise_tenures,
+    derive_league_history_v1,
+    load_all_matchups,
+)
+from squadvault.core.recaps.context.league_rules_context_v1 import (
+    detect_scoring_rules_angles_v1,
+)
 from squadvault.core.recaps.context.narrative_angles_v1 import (
     NarrativeAngle,
     detect_narrative_angles_v1,
@@ -36,29 +55,14 @@ from squadvault.core.recaps.context.narrative_angles_v1 import (
 from squadvault.core.recaps.context.player_narrative_angles_v1 import (
     detect_player_narrative_angles_v1,
 )
-from squadvault.core.recaps.context.auction_draft_angles_v1 import (
-    detect_auction_draft_angles_v1,
-)
-from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
-    detect_franchise_deep_angles_v1,
-)
-from squadvault.core.recaps.context.bye_week_context_v1 import (
-    detect_bye_week_angles_v1,
-)
-from squadvault.core.recaps.context.league_rules_context_v1 import (
-    detect_scoring_rules_angles_v1,
-)
 from squadvault.core.recaps.context.season_context_v1 import (
     derive_season_context_v1,
 )
-from squadvault.core.recaps.context.league_history_v1 import (
-    compute_franchise_tenures,
-    derive_league_history_v1,
-    load_all_matchups,
-    build_cross_season_name_resolver,
-)
+from squadvault.core.resolvers import build_player_name_map
+from squadvault.core.resolvers import identity as _identity
 from squadvault.core.storage.session import DatabaseSession
-from squadvault.core.resolvers import identity as _identity, build_player_name_map
+
+logger = logging.getLogger(__name__)
 
 
 def detect_all_angles(
@@ -81,24 +85,28 @@ def detect_all_angles(
     # Shared context
     try:
         tenure_map = compute_franchise_tenures(db_path, league_id)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         tenure_map = None
 
     try:
         season_ctx = derive_season_context_v1(
             db_path=db_path, league_id=league_id, season=season, week_index=week,
         )
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         season_ctx = None
 
     try:
         history_ctx = derive_league_history_v1(db_path=db_path, league_id=league_id)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         history_ctx = None
 
     try:
         all_matchups = load_all_matchups(db_path, league_id)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         all_matchups = None
 
     all_angles: list[NarrativeAngle] = []

@@ -9,10 +9,10 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
-from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
 from squadvault.chronicle.generate_rivalry_chronicle_v1 import generate_rivalry_chronicle_v1
+from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
 from squadvault.chronicle.persist_rivalry_chronicle_v1 import persist_rivalry_chronicle_v1
 
 

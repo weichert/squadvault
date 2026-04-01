@@ -1,6 +1,7 @@
 """Rivalry chronicle input contract: validate and normalize generation inputs."""
 
 from __future__ import annotations
+
 # SV_PATCH_RC_INPUT_CONTRACT_FIX_RESOLVE_V4: replace resolve() block (brace-escaped)
 # SV_PATCH_RC_INPUT_CONTRACT_DELETE_ALL_IMPORT_TIME_BAD_BLOCKS_V1: delete all import-time bad blocks (inp/resolved)
 # SV_PATCH_RC_INPUT_CONTRACT_DELETE_ALL_IMPORT_TIME_INP_BLOCKS_V1: delete all import-time inp blocks
@@ -14,6 +15,7 @@ from __future__ import annotations
 # SV_PATCH_RC_INPUT_CONTRACT_SCRUB_TOPLEVEL_INDENT_V6: remove unexpected top-level indentation (paren-aware)
 # SV_PATCH_RC_RESOLVED_INPUT_ADD_MISSING_WEEKS_V3: add missing_weeks field + pass it in resolve()
 from dataclasses import dataclass
+
 # SV_PATCH_RC_INPUT_CONTRACT_DATACLASS_IMPORT_TOP_V1: ensure dataclass import appears before first @dataclass
 
 
@@ -28,7 +30,7 @@ class ResolvedChronicleInputV1:
     approved_recaps: Any
 
 from enum import Enum
-from typing import Optional, Tuple, Any
+from typing import Any
 
 
 class MissingWeeksPolicy(str, Enum):
@@ -54,13 +56,13 @@ class RivalryChronicleInputV1:
     season: int
 
     # Exactly one of these must be provided:
-    week_indices: Optional[Tuple[int, ...]] = None
-    week_range: Optional[Tuple[int, int]] = None  # inclusive
+    week_indices: tuple[int, ...] | None = None
+    week_range: tuple[int, int] | None = None  # inclusive
 
     missing_weeks_policy: MissingWeeksPolicy = MissingWeeksPolicy.REFUSE
 
     # Optional explicit refs (still validated). If None, resolver loads from DB.
-    approved_recaps: Optional[Tuple[ApprovedRecapRefV1, ...]] = None
+    approved_recaps: tuple[ApprovedRecapRefV1, ...] | None = None
 
     def normalized_week_indices(self) -> list[int]:
         # SV_PATCH_RC_INPUT_CONTRACT_WEEK_EXCLUSIVITY_RESILIENT_V2: normalized_week_indices prefers week_indices; signature-resilient replacement
@@ -99,14 +101,14 @@ class RivalryChronicleInputV1:
             try:
                 a, b = wr
             except Exception:
-                raise ValueError('week_range must be a 2-tuple (start,end)')
+                raise ValueError('week_range must be a 2-tuple (start,end)') from None
             start, end = int(a), int(b)
 
         if start > end:
             start, end = end, start
         return list(range(start, end + 1))
 
-    def missing_weeks(self) -> Tuple[int, ...]:
+    def missing_weeks(self) -> tuple[int, ...]:
         """Return list of weeks in scope that lack approved recap references."""
         recaps = self.approved_recaps or ()
         weeks = self.week_indices or ()

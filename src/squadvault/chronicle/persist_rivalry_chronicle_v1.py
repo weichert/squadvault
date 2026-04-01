@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
-from squadvault.errors import SchemaError
-from squadvault.core.storage.db_utils import table_columns as _table_columns
-from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
 from squadvault.chronicle.generate_rivalry_chronicle_v1 import (
     RivalryChronicleGeneratedV1,
     generate_rivalry_chronicle_v1,
 )
 from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
+from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
+from squadvault.core.storage.db_utils import table_columns as _table_columns
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.errors import SchemaError
 
 
 def _insert_recap_artifact_row_schema_resilient(
@@ -90,7 +89,7 @@ class PersistedChronicleV1:
 
 def _latest_approved_chronicle_row(
     conn: sqlite3.Connection, league_id: int, season: int, anchor_week_index: int
-) -> Optional[sqlite3.Row]:
+) -> sqlite3.Row | None:
     """Return the latest approved rivalry chronicle artifact row, or None."""
     conn.row_factory = sqlite3.Row
     row = conn.execute(
@@ -132,8 +131,8 @@ def persist_rivalry_chronicle_v1(
     db_path: str,
     league_id: int,
     season: int,
-    week_indices: Tuple[int, ...] | None,
-    week_range: Tuple[int, int] | None,
+    week_indices: tuple[int, ...] | None,
+    week_range: tuple[int, int] | None,
     missing_weeks_policy: MissingWeeksPolicy,
     created_at_utc: str,
     team_a_id: str | None = None,

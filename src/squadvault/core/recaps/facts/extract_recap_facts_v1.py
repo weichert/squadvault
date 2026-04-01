@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from squadvault.core.storage.session import DatabaseSession
 
 
@@ -12,9 +13,9 @@ from squadvault.core.storage.session import DatabaseSession
 class EventFact:
     canonical_id: int
     event_type: str
-    occurred_at: Optional[str]
+    occurred_at: str | None
     # Minimal common fields; everything else goes in details.
-    details: Dict[str, Any]
+    details: dict[str, Any]
 
 
 _SQL = """
@@ -32,7 +33,7 @@ ORDER BY me.occurred_at ASC, ce.event_type ASC, ce.id ASC;
 """
 
 
-def _json_load(payload: str) -> Dict[str, Any]:
+def _json_load(payload: str) -> dict[str, Any]:
     """Parse JSON string, returning None on failure."""
     try:
         obj = json.loads(payload) if payload else {}
@@ -41,7 +42,7 @@ def _json_load(payload: str) -> Dict[str, Any]:
         return {"_parse_error": True, "_raw": payload}
 
 
-def _parse_raw_mfl_json(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _parse_raw_mfl_json(payload: dict[str, Any]) -> dict[str, Any]:
     """Parse possibly double-encoded MFL JSON payload."""
     raw = payload.get("raw_mfl_json")
     if not raw or not isinstance(raw, str):
@@ -53,7 +54,7 @@ def _parse_raw_mfl_json(payload: Dict[str, Any]) -> Dict[str, Any]:
         return {"_parse_error": True, "_raw": raw}
 
 
-def _extract_bbid_waiver_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_bbid_waiver_fields(raw: dict[str, Any]) -> dict[str, Any]:
     """
     raw example:
       {"franchise":"0004","timestamp":"1726102800","transaction":"14138,|0.50|16149,","type":"BBID_WAIVER"}
@@ -63,7 +64,7 @@ def _extract_bbid_waiver_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
     - middle chunk is bid amount if parseable float
     - left/right chunks contain comma-separated player ids (may include trailing commas)
     """
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
 
     tx = raw.get("transaction")
     if isinstance(tx, str) and tx:
@@ -93,7 +94,7 @@ def _extract_bbid_waiver_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def _extract_details(event_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_details(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     """
     v2 extraction:
     - always include source_url, franchise_id, mfl_type when present
@@ -101,7 +102,7 @@ def _extract_details(event_type: str, payload: Dict[str, Any]) -> Dict[str, Any]
     - add event-type specific normalized fields
     - keep full payload for audit under payload
     """
-    d: Dict[str, Any] = {}
+    d: dict[str, Any] = {}
 
     # Common stable fields if present
     for key in ("source_url", "franchise_id", "player_id", "mfl_type"):
@@ -139,8 +140,8 @@ def extract_recap_facts_v1(
     db_path: str,
     league_id: str,
     season: int,
-    canonical_ids: List[int],
-) -> List[EventFact]:
+    canonical_ids: list[int],
+) -> list[EventFact]:
     """Extract structured facts from canonical events for a given week."""
     if not canonical_ids:
         return []
@@ -148,12 +149,12 @@ def extract_recap_facts_v1(
     placeholders = ",".join(["?"] * len(canonical_ids))
     sql = _SQL.format(placeholders=placeholders)
 
-    params: List[Any] = [league_id, season, *canonical_ids]
+    params: list[Any] = [league_id, season, *canonical_ids]
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(sql, params).fetchall()
 
-    facts: List[EventFact] = []
+    facts: list[EventFact] = []
     for canonical_id, event_type, occurred_at, payload_json in rows:
         payload = _json_load(payload_json)
         details = _extract_details(str(event_type), payload)
@@ -167,9 +168,9 @@ def extract_recap_facts_v1(
         )
     return facts
 
-def _extract_waiver_bid_awarded_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_waiver_bid_awarded_fields(payload: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
     """Extract waiver bid fields from a canonical event payload."""
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
 
     # Prefer already-normalized payload fields if present
     if "bid_amount" in payload:
@@ -196,9 +197,9 @@ def _extract_waiver_bid_awarded_fields(payload: Dict[str, Any], raw: Dict[str, A
 
     return out
 
-def _extract_free_agent_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_free_agent_fields(payload: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
     """Extract free agent transaction fields from a canonical event payload."""
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
 
     # Prefer already-normalized payload lists
     adds = payload.get("players_added_ids")
@@ -226,7 +227,7 @@ def _extract_free_agent_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> 
 
     return out
 
-def _split_csv_ids(s: Any) -> List[str]:
+def _split_csv_ids(s: Any) -> list[str]:
     """Split a comma-separated ID string into a list of non-empty strings."""
     if s is None:
         return []
@@ -236,9 +237,9 @@ def _split_csv_ids(s: Any) -> List[str]:
     return [p for p in parts if p]
 
 
-def _extract_trade_fields(payload: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_trade_fields(payload: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
     """Extract trade fields from a canonical event payload."""
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
 
     f1 = raw.get("franchise") if isinstance(raw, dict) else None
     f2 = raw.get("franchise2") if isinstance(raw, dict) else None

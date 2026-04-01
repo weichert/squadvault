@@ -8,7 +8,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -16,7 +15,7 @@ class SquadVaultConfig:
     """Immutable configuration loaded from environment variables."""
 
     db_path: str = ".local_squadvault.sqlite"
-    league_id: Optional[str] = None
+    league_id: str | None = None
     season: int = 2024
     debug: bool = False
 

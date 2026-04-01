@@ -16,8 +16,9 @@ from __future__ import annotations
 import argparse
 import inspect
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, cast
+from typing import Any, cast
 
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
 from squadvault.core.storage.session import DatabaseSession
@@ -37,7 +38,7 @@ def _latest_version_and_state(
     season: int,
     week_index: int,
     artifact_type: str,
-) -> tuple[Optional[int], Optional[str]]:
+) -> tuple[int | None, str | None]:
     """Return (version, state) of latest rivalry chronicle artifact."""
     row = con.execute(
         """
@@ -62,7 +63,7 @@ def _latest_draft_version(
     season: int,
     week_index: int,
     artifact_type: str,
-) -> Optional[int]:
+) -> int | None:
     """
     Return latest DRAFT version for this key. If none exists, return None.
     """
@@ -113,7 +114,7 @@ class ApproveRequest:
     season: int
     week_index: int
     approved_by: str
-    approved_at_utc: Optional[str] = None
+    approved_at_utc: str | None = None
     require_draft: bool = False
 def approve_latest(req: ApproveRequest) -> int:
     """Approve the latest DRAFT rivalry chronicle artifact."""
@@ -260,7 +261,7 @@ def approve_latest(req: ApproveRequest) -> int:
         return 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint: approve a rivalry chronicle."""
     ap = argparse.ArgumentParser(description="Approve latest Rivalry Chronicle v1 draft (lifecycle-aligned).")
     ap.add_argument("--db", required=True)

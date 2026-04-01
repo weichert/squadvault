@@ -41,23 +41,22 @@ Reuses the NarrativeAngle dataclass from narrative_angles_v1.
 from __future__ import annotations
 
 import json
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
-from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.recaps.context.league_history_v1 import HistoricalMatchup
+from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
+from squadvault.core.resolvers import NameFn
+from squadvault.core.resolvers import identity as _identity
 from squadvault.core.storage.session import DatabaseSession
-
-from squadvault.core.resolvers import NameFn, identity as _identity
-
 
 # ── Data loading (lightweight, module-local) ─────────────────────────
 
 
 def _load_season_player_scores_flat(
     db_path: str, league_id: str, season: int,
-) -> List[Dict]:
+) -> list[dict]:
     """Load WEEKLY_PLAYER_SCORE payloads for a season. Returns raw dicts."""
-    out: List[Dict] = []
+    out: list[dict] = []
     with DatabaseSession(db_path) as con:
         rows = con.execute(
             """SELECT payload_json FROM v_canonical_best_events
@@ -76,9 +75,9 @@ def _load_season_player_scores_flat(
 
 def _load_player_positions(
     db_path: str, league_id: str, season: int,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Load player_id -> position from player_directory."""
-    positions: Dict[str, str] = {}
+    positions: dict[str, str] = {}
     with DatabaseSession(db_path) as con:
         rows = con.execute(
             """SELECT player_id, position FROM player_directory
@@ -95,7 +94,7 @@ def _load_player_positions(
 
 def _load_all_matchups_flat(
     db_path: str, league_id: str,
-) -> List[HistoricalMatchup]:
+) -> list[HistoricalMatchup]:
     """Load all WEEKLY_MATCHUP_RESULT events. Reuses league_history_v1 pattern."""
     from squadvault.core.recaps.context.league_history_v1 import load_all_matchups
     return load_all_matchups(db_path, league_id)
@@ -103,9 +102,9 @@ def _load_all_matchups_flat(
 
 def _load_season_transaction_counts(
     db_path: str, league_id: str, season: int,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Count TRANSACTION_* events per franchise for a season."""
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     with DatabaseSession(db_path) as con:
         rows = con.execute(
             """SELECT payload_json FROM v_canonical_best_events
@@ -128,15 +127,15 @@ def _load_season_transaction_counts(
 
 
 def detect_scoring_concentration(
-    score_payloads: List[Dict], target_week: int,
+    score_payloads: list[dict], target_week: int,
     *, threshold: float = 0.35,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 29: One player accounts for 35%+ of franchise starter scoring."""
     # Aggregate starter scoring per (franchise, player) through target_week
-    franchise_player: Dict[Tuple[str, str], float] = {}
-    franchise_total: Dict[str, float] = {}
+    franchise_player: dict[tuple[str, str], float] = {}
+    franchise_total: dict[str, float] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -154,7 +153,7 @@ def detect_scoring_concentration(
             franchise_player[(fid, pid)] = franchise_player.get((fid, pid), 0.0) + score
             franchise_total[fid] = franchise_total.get(fid, 0.0) + score
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for (fid, pid), pts in sorted(franchise_player.items()):
         total = franchise_total.get(fid, 0.0)
         if total < 1.0:
@@ -172,12 +171,12 @@ def detect_scoring_concentration(
 
 
 def detect_scoring_volatility(
-    score_payloads: List[Dict], target_week: int,
+    score_payloads: list[dict], target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 30: Unusually consistent or volatile week-to-week scoring."""
     # Weekly totals per franchise (starters only)
-    franchise_weeks: Dict[str, List[float]] = {}
+    franchise_weeks: dict[str, list[float]] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -197,8 +196,8 @@ def detect_scoring_volatility(
                 franchise_weeks[fid][week] = franchise_weeks[fid][week] + score
 
     # Need at least 4 weeks of data
-    angles: List[NarrativeAngle] = []
-    ranges: List[Tuple[str, float]] = []
+    angles: list[NarrativeAngle] = []
+    ranges: list[tuple[str, float]] = []
     for fid, weekly in sorted(franchise_weeks.items()):
         active = [w for i, w in enumerate(weekly) if i >= 1 and w > 0]
         if len(active) < 4:
@@ -230,13 +229,13 @@ def detect_scoring_volatility(
 
 
 def detect_star_explosion_count(
-    score_payloads: List[Dict], target_week: int,
+    score_payloads: list[dict], target_week: int,
     *, explosion_threshold: float = 40.0,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 31: Franchise with disproportionately many 40+ point performances."""
-    franchise_explosions: Dict[str, int] = {}
+    franchise_explosions: dict[str, int] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -273,12 +272,12 @@ def detect_star_explosion_count(
 
 
 def detect_positional_strength(
-    score_payloads: List[Dict], positions: Dict[str, str], target_week: int,
+    score_payloads: list[dict], positions: dict[str, str], target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 32: Franchise with disproportionate production from a position."""
     # Aggregate by (franchise, position)
-    fid_pos_pts: Dict[Tuple[str, str], float] = {}
+    fid_pos_pts: dict[tuple[str, str], float] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -302,13 +301,13 @@ def detect_positional_strength(
         return []
 
     # For each position, find the league leader
-    pos_leaders: Dict[str, Tuple[str, float]] = {}  # pos -> (best_fid, total)
+    pos_leaders: dict[str, tuple[str, float]] = {}  # pos -> (best_fid, total)
     for (fid, pos), pts in fid_pos_pts.items():
         current = pos_leaders.get(pos)
         if current is None or pts > current[1]:
             pos_leaders[pos] = (fid, pts)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for pos in sorted(pos_leaders.keys()):
         fid, pts = pos_leaders[pos]
         # Only report major positions
@@ -327,14 +326,14 @@ def detect_positional_strength(
 
 
 def detect_bench_cost_game(
-    score_payloads: List[Dict],
+    score_payloads: list[dict],
     matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 33: Lost by fewer points than left on bench."""
     # Bench points where should_start=True per (franchise, week)
-    bench_pts: Dict[Tuple[str, int], List[Tuple[str, float]]] = {}  # (fid, week) -> [(pid, score)]
+    bench_pts: dict[tuple[str, int], list[tuple[str, float]]] = {}  # (fid, week) -> [(pid, score)]
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -362,7 +361,7 @@ def detect_bench_cost_game(
         if m.season == current_season and m.week == target_week and not m.is_tie
     ]
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for m in week_matchups:
         loser = m.loser_id
         margin = m.margin
@@ -383,13 +382,13 @@ def detect_bench_cost_game(
 
 
 def detect_chronic_bench_mismanagement(
-    score_payloads: List[Dict], target_week: int,
+    score_payloads: list[dict], target_week: int,
     *, bench_threshold: float = 15.0, min_weeks: int = 3,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 34: Franchise leaves 15+ bench points on table in 3+ weeks."""
     # Per franchise per week: total should_start bench points
-    fid_week_bench: Dict[Tuple[str, int], float] = {}
+    fid_week_bench: dict[tuple[str, int], float] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -409,12 +408,12 @@ def detect_chronic_bench_mismanagement(
             fid_week_bench[key] = fid_week_bench.get(key, 0.0) + score
 
     # Count weeks per franchise where bench > threshold
-    fid_bad_weeks: Dict[str, int] = {}
+    fid_bad_weeks: dict[str, int] = {}
     for (fid, _), pts in fid_week_bench.items():
         if pts >= bench_threshold:
             fid_bad_weeks[fid] = fid_bad_weeks.get(fid, 0) + 1
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(fid_bad_weeks.keys()):
         if fid_bad_weeks[fid] >= min_weeks:
             angles.append(NarrativeAngle(
@@ -429,12 +428,12 @@ def detect_chronic_bench_mismanagement(
 
 
 def detect_perfect_lineup_week(
-    score_payloads: List[Dict], target_week: int,
+    score_payloads: list[dict], target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 35: Actual lineup matched optimal — zero bench regrets."""
     # Per franchise this week: check if every should_start=True player is also is_starter=True
-    franchise_players: Dict[str, List[Dict]] = {}
+    franchise_players: dict[str, list[dict]] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -448,7 +447,7 @@ def detect_perfect_lineup_week(
                 franchise_players[fid] = []
             franchise_players[fid].append(p)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(franchise_players.keys()):
         players = franchise_players[fid]
         if len(players) < 2:
@@ -476,14 +475,14 @@ def detect_close_game_record(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     *, margin_threshold: float = 5.0,
-    tenure_map: Optional[Dict[str, int]] = None,
+    tenure_map: dict[str, int] | None = None,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 36: All-time record in close games (< 5 pts)."""
     # Filter to tenure scope and through current week
     filtered = _tenure_filter(all_matchups, current_season, target_week, tenure_map)
-    close_wins: Dict[str, int] = {}
-    close_losses: Dict[str, int] = {}
+    close_wins: dict[str, int] = {}
+    close_losses: dict[str, int] = {}
     for m in filtered:
         if m.margin < margin_threshold and not m.is_tie:
             close_wins[m.winner_id] = close_wins.get(m.winner_id, 0) + 1
@@ -523,10 +522,10 @@ def detect_season_trajectory_match(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 37: Current W-L matches a historical season at same week."""
     # Current season records through target_week
-    current_records: Dict[str, Tuple[int, int]] = {}  # fid -> (wins, losses)
+    current_records: dict[str, tuple[int, int]] = {}  # fid -> (wins, losses)
     for m in all_matchups:
         if m.season == current_season and m.week <= target_week and not m.is_tie:
             current_records[m.winner_id] = (
@@ -539,7 +538,7 @@ def detect_season_trajectory_match(
             )
 
     # Historical records at same week
-    hist_records: Dict[Tuple[str, int], Tuple[int, int]] = {}  # (fid, season) -> (w, l)
+    hist_records: dict[tuple[str, int], tuple[int, int]] = {}  # (fid, season) -> (w, l)
     for m in all_matchups:
         if m.season < current_season and m.week <= target_week and not m.is_tie:
             key = (m.winner_id, m.season)
@@ -547,7 +546,7 @@ def detect_season_trajectory_match(
             key2 = (m.loser_id, m.season)
             hist_records[key2] = (hist_records.get(key2, (0, 0))[0], hist_records.get(key2, (0, 0))[1] + 1)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid, (cw, cl) in sorted(current_records.items()):
         if cw + cl < 4:
             continue
@@ -577,12 +576,12 @@ def detect_lucky_record(
     current_season: int, target_week: int,
     *, luck_threshold: float = 30.0,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 42: W-L significantly deviates from point differential."""
-    wins: Dict[str, int] = {}
-    losses: Dict[str, int] = {}
-    pf: Dict[str, float] = {}
-    pa: Dict[str, float] = {}
+    wins: dict[str, int] = {}
+    losses: dict[str, int] = {}
+    pf: dict[str, float] = {}
+    pa: dict[str, float] = {}
     for m in all_matchups:
         if m.season != current_season or m.week > target_week or m.is_tie:
             continue
@@ -597,7 +596,7 @@ def detect_lucky_record(
     if len(all_fids) < 3:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(all_fids):
         w = wins.get(fid, 0)
         lo = losses.get(fid, 0)
@@ -626,14 +625,14 @@ def detect_lucky_record(
 
 
 def detect_the_bridesmaid(
-    score_payloads: List[Dict],
+    score_payloads: list[dict],
     matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 46: Second-highest score in the league this week but lost."""
     # Get franchise totals this week
-    fid_totals: Dict[str, float] = {}
+    fid_totals: dict[str, float] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -671,9 +670,9 @@ def detect_the_bridesmaid(
 
 
 def detect_transaction_volume_identity(
-    transaction_counts: Dict[str, int],
+    transaction_counts: dict[str, int],
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 41: Roster move volume as franchise personality."""
     if len(transaction_counts) < 3:
         return []
@@ -697,10 +696,10 @@ def detect_scoring_momentum_in_streak(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 49: Growing or shrinking margins during a win streak."""
     # Find current win streaks
-    fid_results: Dict[str, List[Tuple[int, float]]] = {}  # fid -> [(week, margin)]
+    fid_results: dict[str, list[tuple[int, float]]] = {}  # fid -> [(week, margin)]
     for m in all_matchups:
         if m.season != current_season or m.week > target_week or m.is_tie:
             continue
@@ -709,7 +708,7 @@ def detect_scoring_momentum_in_streak(
         fid_results[m.winner_id].append((m.week, m.margin))
 
     # Build full week results per franchise (W/L)
-    fid_weekly: Dict[str, Dict[int, Tuple[bool, float]]] = {}
+    fid_weekly: dict[str, dict[int, tuple[bool, float]]] = {}
     for m in all_matchups:
         if m.season != current_season or m.week > target_week or m.is_tie:
             continue
@@ -720,11 +719,11 @@ def detect_scoring_momentum_in_streak(
                 fid_weekly[fid] = {}
             fid_weekly[fid][m.week] = (won, margin)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(fid_weekly.keys()):
         weekly = fid_weekly[fid]
         # Walk backwards from target_week to find current win streak
-        streak_margins: List[float] = []
+        streak_margins: list[float] = []
         wk = target_week
         while wk >= 1 and wk in weekly:
             won, margin = weekly[wk]
@@ -754,10 +753,10 @@ def detect_scoring_momentum_in_streak(
 
 
 def detect_second_half_surge_collapse(
-    score_payloads: List[Dict], target_week: int,
+    score_payloads: list[dict], target_week: int,
     *, change_threshold: float = 0.15,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 38: Scoring avg drops/rises 15%+ between season halves."""
     if target_week < 8:
         return []  # need enough weeks for a meaningful split
@@ -765,7 +764,7 @@ def detect_second_half_surge_collapse(
     midpoint = target_week // 2
 
     # Franchise weekly totals (starters only)
-    fid_weeks: Dict[str, Dict[int, float]] = {}
+    fid_weeks: dict[str, dict[int, float]] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -783,7 +782,7 @@ def detect_second_half_surge_collapse(
                 fid_weeks[fid] = {}
             fid_weeks[fid][week] = fid_weeks[fid].get(week, 0.0) + score
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(fid_weeks.keys()):
         first_half = [s for w, s in fid_weeks[fid].items() if 1 <= w <= midpoint and s > 0]
         second_half = [s for w, s in fid_weeks[fid].items() if midpoint < w <= target_week and s > 0]
@@ -826,16 +825,16 @@ def detect_second_half_surge_collapse(
 def detect_franchise_alltime_scoring(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
-    *, tenure_map: Optional[Dict[str, int]] = None,
+    *, tenure_map: dict[str, int] | None = None,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 40: Total franchise scoring across seasons (tenure-scoped)."""
     filtered = _tenure_filter(all_matchups, current_season, target_week, tenure_map)
     if len({m.season for m in filtered}) < 2:
         return []
 
     # Sum points-for per franchise
-    pf: Dict[str, float] = {}
+    pf: dict[str, float] = {}
     for m in filtered:
         pf[m.winner_id] = pf.get(m.winner_id, 0.0) + m.winner_score
         pf[m.loser_id] = pf.get(m.loser_id, 0.0) + m.loser_score
@@ -863,13 +862,13 @@ def detect_franchise_alltime_scoring(
 
 
 def detect_weekly_scoring_rank_dominance(
-    score_payloads: List[Dict], target_week: int,
+    score_payloads: list[dict], target_week: int,
     *, min_weeks_on_top: int = 4,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 43: Franchise finishes as top or bottom scorer unusually often."""
     # Weekly franchise totals (starters)
-    fid_weeks: Dict[str, Dict[int, float]] = {}
+    fid_weeks: dict[str, dict[int, float]] = {}
     for p in score_payloads:
         try:
             week = int(p.get("week", -1))
@@ -891,7 +890,7 @@ def detect_weekly_scoring_rank_dominance(
         return []
 
     # Count top-scorer finishes per franchise
-    top_counts: Dict[str, int] = {fid: 0 for fid in fid_weeks}
+    top_counts: dict[str, int] = {fid: 0 for fid in fid_weeks}
     all_weeks: set = set()
     for fid in fid_weeks:
         all_weeks.update(fid_weeks[fid].keys())
@@ -906,7 +905,7 @@ def detect_weekly_scoring_rank_dominance(
     best_count = top_counts[best_fid]
     others_max = max((c for f, c in top_counts.items() if f != best_fid), default=0)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     if best_count >= min_weeks_on_top and best_count >= others_max * 2:
         angles.append(NarrativeAngle(
             category="WEEKLY_SCORING_RANK_DOMINANCE",
@@ -927,11 +926,11 @@ def detect_schedule_strength(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 44: Opponents' combined winning percentage."""
     # Current season W-L
-    wins: Dict[str, int] = {}
-    losses: Dict[str, int] = {}
+    wins: dict[str, int] = {}
+    losses: dict[str, int] = {}
     for m in all_matchups:
         if m.season != current_season or m.week > target_week or m.is_tie:
             continue
@@ -948,7 +947,7 @@ def detect_schedule_strength(
         return w / (w + lo) if (w + lo) > 0 else 0.5
 
     # Opponents per franchise
-    opponents: Dict[str, List[str]] = {}
+    opponents: dict[str, list[str]] = {}
     for m in all_matchups:
         if m.season != current_season or m.week > target_week or m.is_tie:
             continue
@@ -960,7 +959,7 @@ def detect_schedule_strength(
         opponents[m.loser_id].append(m.winner_id)
 
     # Compute opponent strength per franchise
-    opp_strength: Dict[str, float] = {}
+    opp_strength: dict[str, float] = {}
     for fid, opps in opponents.items():
         if not opps:
             continue
@@ -972,7 +971,7 @@ def detect_schedule_strength(
     toughest_fid = max(opp_strength, key=lambda f: opp_strength[f])
     easiest_fid = min(opp_strength, key=lambda f: opp_strength[f])
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     if opp_strength[toughest_fid] - opp_strength[easiest_fid] >= 0.10:
         angles.append(NarrativeAngle(
             category="SCHEDULE_STRENGTH",
@@ -994,10 +993,10 @@ def detect_points_against_luck(
     current_season: int, target_week: int,
     *, min_times: int = 3,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 47: Franchise faced opponent's season-high unusually often."""
     # Find each franchise's season-high score
-    season_highs: Dict[str, float] = {}
+    season_highs: dict[str, float] = {}
     for m in all_matchups:
         if m.season != current_season or m.week > target_week:
             continue
@@ -1006,7 +1005,7 @@ def detect_points_against_luck(
                 season_highs[fid] = score
 
     # Count how many times each franchise faced an opponent's season-high
-    faced_high: Dict[str, int] = {}
+    faced_high: dict[str, int] = {}
     for m in all_matchups:
         if m.season != current_season or m.week > target_week or m.is_tie:
             continue
@@ -1016,7 +1015,7 @@ def detect_points_against_luck(
         if season_highs.get(m.loser_id) == m.loser_score:
             faced_high[m.winner_id] = faced_high.get(m.winner_id, 0) + 1
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(faced_high.keys()):
         if faced_high[fid] >= min_times:
             angles.append(NarrativeAngle(
@@ -1039,21 +1038,21 @@ def detect_repeat_matchup_pattern(
     current_season: int, target_week: int,
     *, high_combined_threshold: float = 230.0, min_meetings: int = 4,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 48: Two franchises consistently produce high combined scores."""
     # Group meetings by franchise pair (all-time)
-    pair_scores: Dict[Tuple[str, str], List[float]] = {}
+    pair_scores: dict[tuple[str, str], list[float]] = {}
     for m in all_matchups:
         if m.season > current_season or (m.season == current_season and m.week > target_week):
             continue
         ids = sorted([m.winner_id, m.loser_id])
-        pair: Tuple[str, str] = (ids[0], ids[1])
+        pair: tuple[str, str] = (ids[0], ids[1])
         combined = m.winner_score + m.loser_score
         if pair not in pair_scores:
             pair_scores[pair] = []
         pair_scores[pair].append(combined)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for pair, scores in sorted(pair_scores.items()):
         if len(scores) < min_meetings:
             continue
@@ -1079,7 +1078,7 @@ def detect_championship_history(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 39: Playoff and championship appearance counts.
 
     Only surfaces during playoff weeks of the current season.
@@ -1096,8 +1095,8 @@ def detect_championship_history(
         return []  # not a playoff week
 
     # Count championship appearances per franchise across all completed seasons
-    champ_appearances: Dict[str, int] = {}
-    playoff_appearances: Dict[str, int] = {}
+    champ_appearances: dict[str, int] = {}
+    playoff_appearances: dict[str, int] = {}
     completed_seasons = {m.season for m in all_matchups if m.season < current_season}
 
     for s in completed_seasons:
@@ -1118,7 +1117,7 @@ def detect_championship_history(
 
         # Championship: the week with the fewest matchups (usually 1)
         if playoff_weeks:
-            week_counts: Dict[int, int] = {}
+            week_counts: dict[int, int] = {}
             for m in playoff_weeks:
                 week_counts[m.week] = week_counts.get(m.week, 0) + 1
             champ_week = min(week_counts, key=lambda w: (week_counts[w], -w))
@@ -1130,7 +1129,7 @@ def detect_championship_history(
     if not champ_appearances:
         return []
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     # Report franchises with most championship appearances
     best_fid = max(champ_appearances, key=lambda f: champ_appearances[f])
     best_count = champ_appearances[best_fid]
@@ -1170,7 +1169,7 @@ def detect_regular_season_vs_playoff(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 45: Regular season vs playoff record diverges.
 
     Only surfaces during playoff weeks.
@@ -1184,10 +1183,10 @@ def detect_regular_season_vs_playoff(
         return []
 
     # Split all historical matchups into regular season vs playoff
-    reg_wins: Dict[str, int] = {}
-    reg_losses: Dict[str, int] = {}
-    playoff_wins: Dict[str, int] = {}
-    playoff_losses: Dict[str, int] = {}
+    reg_wins: dict[str, int] = {}
+    reg_losses: dict[str, int] = {}
+    playoff_wins: dict[str, int] = {}
+    playoff_losses: dict[str, int] = {}
 
     completed_seasons = {m.season for m in all_matchups if m.season < current_season}
     for s in completed_seasons:
@@ -1205,7 +1204,7 @@ def detect_regular_season_vs_playoff(
                 playoff_wins[m.winner_id] = playoff_wins.get(m.winner_id, 0) + 1
                 playoff_losses[m.loser_id] = playoff_losses.get(m.loser_id, 0) + 1
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     all_fids = set(reg_wins.keys()) | set(reg_losses.keys())
 
     for fid in sorted(all_fids):
@@ -1239,7 +1238,7 @@ def detect_the_almost(
     current_season: int, target_week: int,
     *, min_times: int = 3,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detector 50: Finished one game out of the playoffs multiple times.
 
     Only surfaces during playoff weeks. Identifies franchises that were
@@ -1259,12 +1258,12 @@ def detect_the_almost(
     playoff_cutoff = num_teams // 2
 
     completed_seasons = {m.season for m in all_matchups if m.season < current_season}
-    almost_counts: Dict[str, int] = {}
+    almost_counts: dict[str, int] = {}
 
     for s in completed_seasons:
         s_regular = _regular_season_matchup_count(all_matchups, s)
         # Build regular season standings
-        wins: Dict[str, int] = {}
+        wins: dict[str, int] = {}
         for m in all_matchups:
             if m.season != s or m.is_tie:
                 continue
@@ -1284,7 +1283,7 @@ def detect_the_almost(
             if just_missed[1] == cutoff_wins - 1:
                 almost_counts[just_missed[0]] = almost_counts.get(just_missed[0], 0) + 1
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
     for fid in sorted(almost_counts.keys()):
         if almost_counts[fid] >= min_times:
             angles.append(NarrativeAngle(
@@ -1310,14 +1309,14 @@ def _regular_season_matchup_count(
     In a 10-team league this is 5. Weeks with fewer matchups are playoffs.
     Returns 0 if no data.
     """
-    week_counts: Dict[int, int] = {}
+    week_counts: dict[int, int] = {}
     for m in matchups:
         if m.season == season:
             week_counts[m.week] = week_counts.get(m.week, 0) + 1
     if not week_counts:
         return 0
     # Mode: most common count
-    count_freq: Dict[int, int] = {}
+    count_freq: dict[int, int] = {}
     for cnt in week_counts.values():
         count_freq[cnt] = count_freq.get(cnt, 0) + 1
     return max(count_freq, key=lambda c: count_freq[c])
@@ -1326,8 +1325,8 @@ def _regular_season_matchup_count(
 def _tenure_filter(
     matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
-    tenure_map: Optional[Dict[str, int]],
-) -> List[HistoricalMatchup]:
+    tenure_map: dict[str, int] | None,
+) -> list[HistoricalMatchup]:
     """Filter matchups to tenure scope and through current week."""
     out = []
     for m in matchups:
@@ -1345,7 +1344,7 @@ def _tenure_filter(
 
 def _season_final_record(
     matchups: Sequence[HistoricalMatchup], franchise_id: str, season: int,
-) -> Optional[Tuple[int, int]]:
+) -> tuple[int, int] | None:
     """Get final W-L record for a franchise in a season."""
     wins = losses = 0
     for m in matchups:
@@ -1369,10 +1368,10 @@ def detect_franchise_deep_angles_v1(
     league_id: str,
     season: int,
     week: int,
-    tenure_map: Optional[Dict[str, int]] = None,
+    tenure_map: dict[str, int] | None = None,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect all Dimension 7-9 franchise deep angles for a given week.
 
     Returns angles sorted by strength descending then category ascending.
@@ -1382,7 +1381,7 @@ def detect_franchise_deep_angles_v1(
     all_matchups = _load_all_matchups_flat(db_path, league_id)
     positions = _load_player_positions(db_path, league_id, season)
 
-    all_angles: List[NarrativeAngle] = []
+    all_angles: list[NarrativeAngle] = []
 
     # ── Dimension 7: Franchise Scoring Patterns ──
     if score_payloads:

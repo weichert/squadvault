@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from squadvault.utils.time import unix_seconds_to_iso_z
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------
 
-def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
+def _safe_get(d: dict[str, Any], *keys: str) -> Any:
     """Safely get a value from a dict with fallback."""
     for k in keys:
         if k in d:
@@ -37,26 +37,27 @@ def _truncate_raw_json(text: str, limit: int) -> str:
     return text[:limit] + "...(truncated)"
 
 
-def _extract_type(txn: Dict[str, Any]) -> str:
+def _extract_type(txn: dict[str, Any]) -> str:
     """Extract MFL transaction type from raw data."""
     return str(_safe_get(txn, "@type", "type") or "").upper().strip()
 
 
-def _extract_franchise_id(txn: Dict[str, Any]) -> str:
+def _extract_franchise_id(txn: dict[str, Any]) -> str:
     """Extract franchise ID from raw transaction data."""
     return str(_safe_get(txn, "@franchise", "franchise") or "")
 
 
-def _extract_timestamp_unix(txn: Dict[str, Any]) -> Optional[int]:
+def _extract_timestamp_unix(txn: dict[str, Any]) -> int | None:
     """Extract and validate Unix timestamp from raw data."""
     v = _safe_get(txn, "@timestamp", "timestamp")
     try:
         return int(v) if v is not None else None
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return None
 
 
-def _extract_bid_amount(txn: Dict[str, Any]) -> Optional[float]:
+def _extract_bid_amount(txn: dict[str, Any]) -> float | None:
     """Extract bid amount from raw transaction data."""
     for k in ("@bid", "bid", "@amount", "amount", "@bbid", "bbid"):
         v = txn.get(k)
@@ -64,12 +65,13 @@ def _extract_bid_amount(txn: Dict[str, Any]) -> Optional[float]:
             continue
         try:
             return float(v)
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             pass
     return None
 
 
-def _parse_mfl_transaction_field(txn: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+def _parse_mfl_transaction_field(txn: dict[str, Any]) -> tuple[list[str], list[str]]:
     """
     Parses compact MFL transaction strings.
 
@@ -83,7 +85,7 @@ def _parse_mfl_transaction_field(txn: Dict[str, Any]) -> Tuple[List[str], List[s
 
     parts = raw.split("|")
 
-    def split_ids(s: str) -> List[str]:
+    def split_ids(s: str) -> list[str]:
         """Split comma-separated ID string into list of non-empty strings."""
         return [x for x in s.split(",") if x]
 
@@ -101,10 +103,10 @@ def derive_transaction_event_envelopes(
     *,
     year: int,
     league_id: str,
-    transactions: List[Dict[str, Any]],
+    transactions: list[dict[str, Any]],
     source_url: str,
     raw_json_truncate_chars: int = 2000,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Produces canonical TRANSACTION_* event envelopes.
 
@@ -113,7 +115,7 @@ def derive_transaction_event_envelopes(
       league + season + type + franchise + timestamp + raw transaction string
     - Parsing improvements will never create duplicates again.
     """
-    events: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
 
     # Handled elsewhere
     EXCLUDE_TYPES = {"AUCTION_WON", "BBID_WAIVER", "BBID_WAIVER_REQUEST"}

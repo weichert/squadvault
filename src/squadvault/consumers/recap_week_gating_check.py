@@ -18,20 +18,19 @@ from __future__ import annotations
 import argparse
 import sqlite3
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
-from squadvault.core.canonicalize.run_canonicalize import action_fingerprint, safe_json_loads, MemoryEventRow
+from squadvault.core.canonicalize.run_canonicalize import MemoryEventRow, action_fingerprint, safe_json_loads
 from squadvault.core.recaps.recap_runs import (
     RecapRunRecord,
     get_recap_run_state,
-    upsert_recap_run,
     update_recap_run_state,
+    upsert_recap_run,
 )
 from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.recaps.dng_reasons import DNGReason
-
 
 SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
 
@@ -47,8 +46,8 @@ class VerdictStatus:
 @dataclass(frozen=True)
 class Verdict:
     status: str
-    reason: Optional[str]
-    evidence: Dict[str, Any]
+    reason: str | None
+    evidence: dict[str, Any]
 
 
 def _fetch_memory_rows_in_range(
@@ -57,7 +56,7 @@ def _fetch_memory_rows_in_range(
     season: int,
     start: str,
     end: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Fetch minimal memory_events fields needed for action_fingerprint().
     """
@@ -83,7 +82,7 @@ def _fetch_memory_rows_in_range(
         (league_id, season, start, end),
     ).fetchall()
 
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for r in rows:
         out.append(
             {
@@ -113,7 +112,7 @@ def _ledger_unique_actions_in_range(
     logic as canonicalization. Prevents false "data gap" when ledger duplicates exist.
     """
     rows = _fetch_memory_rows_in_range(conn, league_id, season, start, end)
-    fps: Set[str] = set()
+    fps: set[str] = set()
 
     for d in rows:
         payload = safe_json_loads(d["payload_json"])
@@ -195,7 +194,7 @@ def generation_verdict_unique_actions(
     )
 
 
-def _is_safe_window(mode: Optional[str], start: Optional[str], end: Optional[str]) -> bool:
+def _is_safe_window(mode: str | None, start: str | None, end: str | None) -> bool:
     """Return True if window has valid mode, start, and end."""
     return (mode in SAFE_WINDOW_MODES) and bool(start) and bool(end)
 

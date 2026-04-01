@@ -16,7 +16,7 @@ MFL response shape:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
 
@@ -24,14 +24,14 @@ logger = logging.getLogger(__name__)
 
 
 def parse_nfl_bye_weeks(
-    raw_json: Dict[str, Any],
-) -> List[Tuple[str, int]]:
+    raw_json: dict[str, Any],
+) -> list[tuple[str, int]]:
     """Parse MFL nflByeWeeks response into (nfl_team, bye_week) tuples.
 
     Returns a sorted list of (team_id, bye_week_number) tuples.
     Silently skips malformed entries.
     """
-    entries: List[Tuple[str, int]] = []
+    entries: list[tuple[str, int]] = []
 
     root = raw_json.get("nflByeWeeks", {})
     teams = root.get("team", [])
@@ -66,7 +66,7 @@ def upsert_nfl_bye_weeks(
     db_path: str,
     league_id: str,
     season: int,
-    bye_weeks: List[Tuple[str, int]],
+    bye_weeks: list[tuple[str, int]],
 ) -> int:
     """Upsert bye week data into nfl_bye_weeks table.
 
@@ -99,7 +99,7 @@ def ingest_nfl_bye_weeks_from_mfl(
     db_path: str,
     league_id: str,
     season: int,
-    raw_json: Dict[str, Any],
+    raw_json: dict[str, Any],
 ) -> int:
     """Full pipeline: parse MFL response and upsert into DB.
 

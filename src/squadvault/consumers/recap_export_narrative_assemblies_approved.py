@@ -2,8 +2,11 @@
 
 #!/usr/bin/env python3
 from __future__ import annotations
+
 import re
+
 from squadvault.core.storage.session import DatabaseSession
+
 
 # SV_PATCH_EXPORT_ASSEMBLIES_EMBED_REAL_SELECTION_FP_V1
 # Ensure exported narrative assemblies embed the REAL selection_fingerprint for the week.
@@ -42,7 +45,8 @@ def _fetch_latest_approved_weekly_recap_fp(conn, league_id: str, season: int, we
         return ""
     try:
         val = row["selection_fingerprint"]
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         val = row[0]
     return str(val or "")
 
@@ -56,14 +60,17 @@ def _effective_selection_fp(conn, league_id: str, season: int, week_index: int, 
 
 
 import argparse
-from collections import Counter
 import json
-import subprocess
+import logging
 import os
+import subprocess
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
+
+logger = logging.getLogger(__name__)
 # SV_PATCH_EXPORT_ASSEMBLIES_REMOVE_HEX64_RE_V4_ARTIFACT_V6
 
 BANNER = (
@@ -103,7 +110,7 @@ class ApprovedArtifact:
     rendered_text: str  # canonical facts block as stored
 
 
-def fetch_approved_weekly_recap(db: str, league_id: str, season: int, week_index: int) -> Optional[ApprovedArtifact]:
+def fetch_approved_weekly_recap(db: str, league_id: str, season: int, week_index: int) -> ApprovedArtifact | None:
     """Fetch approved WEEKLY_RECAP artifact from DB."""
     with DatabaseSession(db) as conn:
         cur = conn.cursor()
@@ -158,7 +165,7 @@ def run_neutral_recap_render(db: str, league_id: str, season: int, week_index: i
     return out + "\n"
 
 
-def extract_blocks_from_neutral(neutral_text: str) -> Dict[str, str]:
+def extract_blocks_from_neutral(neutral_text: str) -> dict[str, str]:
     """Extract named text blocks from neutral rendered text."""
     lines = neutral_text.splitlines()
 
@@ -175,12 +182,12 @@ def extract_blocks_from_neutral(neutral_text: str) -> Dict[str, str]:
     try:
         ev_i = next(i for i, l in enumerate(lines) if l.startswith(ev_prefix))
     except StopIteration:
-        raise RuntimeError("missing Events selected line in neutral output")
+        raise RuntimeError("missing Events selected line in neutral output") from None
 
     try:
         tr_i = next(i for i, l in enumerate(lines) if any(l.startswith(p) for p in trace_prefixes))
     except StopIteration:
-        raise RuntimeError("missing Trace section in neutral output")
+        raise RuntimeError("missing Trace section in neutral output") from None
 
     counts_block = "\n".join(lines[ev_i:tr_i]).rstrip("\n") + "\n"
 
@@ -230,7 +237,7 @@ def _extract_between(text: str, begin: str, end: str) -> str:
     return body + "\n"
 
 
-def validate_outside_text_allowlist(full_text: str, allowed_outside_lines: Tuple[str, ...]) -> None:
+def validate_outside_text_allowlist(full_text: str, allowed_outside_lines: tuple[str, ...]) -> None:
     """Validate no unexpected text exists outside marked blocks."""
     scrubbed = full_text
     for k, (b, e) in MARKERS.items():
@@ -256,7 +263,7 @@ def validate_outside_text_allowlist(full_text: str, allowed_outside_lines: Tuple
         raise RuntimeError(f"Unexpected outside-block line (NAC violation): {line}")
 
 
-def validate_protected_blocks_byte_stable(full_text: str, sources: Dict[str, str]) -> None:
+def validate_protected_blocks_byte_stable(full_text: str, sources: dict[str, str]) -> None:
     """Validate protected blocks are byte-identical to sources."""
     for key, (b, e) in MARKERS.items():
         extracted = _extract_between(full_text, b, e)
@@ -280,7 +287,7 @@ def writing_room_selection_set_v1_path(base: str, league_id: str, season: int, w
     )
 
 
-def _safe_get_list(d: Dict[str, Any], k: str) -> list:
+def _safe_get_list(d: dict[str, Any], k: str) -> list:
     """Safely get a list value from a dict."""
     v = d.get(k, [])
     if v is None:
@@ -290,7 +297,7 @@ def _safe_get_list(d: Dict[str, Any], k: str) -> list:
     return []
 
 
-def _summarize_selection_set_v1(data: Dict[str, Any], db_path: str, league_id: str, season: int, week_index: int) -> str:
+def _summarize_selection_set_v1(data: dict[str, Any], db_path: str, league_id: str, season: int, week_index: int) -> str:
     """
     Deterministic, non-volatile summary.
     - No timestamps emitted.
@@ -349,11 +356,12 @@ def load_writing_room_block_or_not_available(base: str, league_id: str, season: 
         if not isinstance(data, dict):
             return "Not available\n"
         return _summarize_selection_set_v1(data, db_path=db_path, league_id=league_id, season=season, week_index=week_index)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return "Not available\n"
 
 
-def assemble_plain_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_room_block: str) -> str:
+def assemble_plain_v1(a: ApprovedArtifact, blocks: dict[str, str], writing_room_block: str) -> str:
     """Assemble a plain text narrative from approved artifact and blocks."""
     out = []
     out.append(BANNER.rstrip("\n"))
@@ -381,7 +389,7 @@ def assemble_plain_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_room_
     return "\n".join(out).rstrip() + "\n"
 
 
-def assemble_sharepack_v1(a: ApprovedArtifact, blocks: Dict[str, str], writing_room_block: str) -> str:
+def assemble_sharepack_v1(a: ApprovedArtifact, blocks: dict[str, str], writing_room_block: str) -> str:
     """Assemble a sharepack narrative from approved artifact and blocks."""
     out = []
     out.append(BANNER.rstrip("\n"))

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable
+from typing import Any
 
+logger = logging.getLogger(__name__)
 QUIET_WEEK_MIN_EVENTS = 3
 MAX_BULLETS = 20
 
@@ -46,7 +49,8 @@ def _team(res_team: Callable[[Any], str] | None, raw: Any) -> str:
         return _ascii_punct(_safe(raw, "Unknown team"))
     try:
         return _ascii_punct(_safe(res_team(raw), "Unknown team"))
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return "Unknown team"
 
 
@@ -56,7 +60,8 @@ def _player(res_player: Callable[[Any], str] | None, raw: Any) -> str:
         return _ascii_punct(_safe(raw, "Unknown player"))
     try:
         return _ascii_punct(_safe(res_player(raw), "Unknown player"))
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return "Unknown player"
 
 

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from squadvault.core.storage.session import DatabaseSession
 
@@ -91,7 +90,7 @@ def set_tone_preset(
     preset: str,
     *,
     set_by: str = "commissioner",
-    notes: Optional[str] = None,
+    notes: str | None = None,
 ) -> str:
     """Set (or update) the tone preset for a league.
 

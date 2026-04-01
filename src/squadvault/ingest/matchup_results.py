@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def _stable_external_id(*parts: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
 
 
-def _safe_float(v: Any) -> Optional[float]:
+def _safe_float(v: Any) -> float | None:
     """Parse a value to float, returning None on failure."""
     if v is None:
         return None
@@ -30,7 +30,7 @@ def _safe_float(v: Any) -> Optional[float]:
         return None
 
 
-def _ensure_list(v: Any) -> List[Any]:
+def _ensure_list(v: Any) -> list[Any]:
     """MFL returns a single dict when there's one item, a list for many."""
     if v is None:
         return []
@@ -48,10 +48,10 @@ def derive_matchup_result_envelopes(
     year: int,
     week: int,
     league_id: str,
-    weekly_results_json: Dict[str, Any],
+    weekly_results_json: dict[str, Any],
     source_url: str,
-    occurred_at: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    occurred_at: str | None = None,
+) -> list[dict[str, Any]]:
     """
     Produces canonical WEEKLY_MATCHUP_RESULT event envelopes from MFL
     weeklyResults API response.
@@ -77,7 +77,7 @@ def derive_matchup_result_envelopes(
       league + season + week + sorted franchise IDs
     - Re-ingestion with same data produces no duplicates.
     """
-    events: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
 
     results_root = weekly_results_json.get("weeklyResults", {})
     matchups = _ensure_list(results_root.get("matchup"))

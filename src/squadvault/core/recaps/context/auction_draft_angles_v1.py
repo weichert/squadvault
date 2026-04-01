@@ -27,13 +27,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
+from squadvault.core.resolvers import NameFn
+from squadvault.core.resolvers import identity as _identity
 from squadvault.core.storage.session import DatabaseSession
-
-from squadvault.core.resolvers import NameFn, identity as _identity
-
 
 # ── Data structures ──────────────────────────────────────────────────
 
@@ -65,16 +63,16 @@ class _PlayerSeasonScoring:
 def _load_all_auction_picks(
     db_path: str,
     league_id: str,
-) -> List[_AuctionPick]:
+) -> list[_AuctionPick]:
     """Load all DRAFT_PICK events across all seasons with position enrichment.
 
     Joins with player_directory to attach position data.
     Returns picks sorted by (season, franchise_id, player_id) for determinism.
     """
-    picks: List[_AuctionPick] = []
+    picks: list[_AuctionPick] = []
 
     # Load position lookup
-    positions: Dict[Tuple[int, str], str] = {}  # (season, player_id) -> position
+    positions: dict[tuple[int, str], str] = {}  # (season, player_id) -> position
     with DatabaseSession(db_path) as con:
         pos_rows = con.execute(
             """SELECT season, player_id, position FROM player_directory
@@ -143,7 +141,7 @@ def _load_player_season_scoring(
     *,
     current_season: int = 0,
     target_week: int = 99,
-) -> Dict[Tuple[int, str, str], _PlayerSeasonScoring]:
+) -> dict[tuple[int, str, str], _PlayerSeasonScoring]:
     """Load aggregated player scoring per (season, franchise_id, player_id).
 
     When current_season and target_week are specified, scores for the
@@ -154,7 +152,7 @@ def _load_player_season_scoring(
     Returns dict keyed by (season, franchise_id, player_id).
     """
     # Accumulate from WEEKLY_PLAYER_SCORE events
-    totals: Dict[Tuple[int, str, str], List[Tuple[float, bool]]] = {}
+    totals: dict[tuple[int, str, str], list[tuple[float, bool]]] = {}
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -204,7 +202,7 @@ def _load_player_season_scoring(
             totals[key] = []
         totals[key].append((score, is_starter))
 
-    result: Dict[Tuple[int, str, str], _PlayerSeasonScoring] = {}
+    result: dict[tuple[int, str, str], _PlayerSeasonScoring] = {}
     for (season, fid, pid), entries in totals.items():
         result[(season, fid, pid)] = _PlayerSeasonScoring(
             season=season,
@@ -222,14 +220,14 @@ def _load_season_faab_by_position(
     db_path: str,
     league_id: str,
     season: int,
-) -> Dict[Tuple[str, str], float]:
+) -> dict[tuple[str, str], float]:
     """Load FAAB spending per (franchise_id, position) for a season.
 
     Returns dict: (franchise_id, position) -> total FAAB bid amount.
     Uses player_directory for position lookup.
     """
     # Position lookup
-    positions: Dict[str, str] = {}
+    positions: dict[str, str] = {}
     with DatabaseSession(db_path) as con:
         pos_rows = con.execute(
             """SELECT player_id, position FROM player_directory
@@ -240,7 +238,7 @@ def _load_season_faab_by_position(
         positions[str(row[0]).strip()] = str(row[1] or "").strip()
 
     # FAAB awards
-    spending: Dict[Tuple[str, str], float] = {}
+    spending: dict[tuple[str, str], float] = {}
     with DatabaseSession(db_path) as con:
         rows = con.execute(
             """SELECT payload_json
@@ -286,12 +284,12 @@ def _load_season_faab_by_position(
 
 
 def detect_auction_price_vs_production(
-    picks: List[_AuctionPick],
-    scoring: Dict[Tuple[int, str, str], _PlayerSeasonScoring],
+    picks: list[_AuctionPick],
+    scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
     *,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Find the most productive auction investment in league history.
 
     Sums all-time scoring for a drafted player on the drafting franchise,
@@ -303,7 +301,7 @@ def detect_auction_price_vs_production(
         return []
 
     # Career scoring per draft pick on the drafting franchise
-    career: Dict[Tuple[str, str, int], float] = {}  # (franchise, player, draft_season) -> total
+    career: dict[tuple[str, str, int], float] = {}  # (franchise, player, draft_season) -> total
     for pk in picks:
         total = 0.0
         for (s, fid, pid), sc in scoring.items():
@@ -352,20 +350,20 @@ def detect_auction_price_vs_production(
 
 
 def detect_auction_dollar_per_point(
-    picks: List[_AuctionPick],
-    scoring: Dict[Tuple[int, str, str], _PlayerSeasonScoring],
+    picks: list[_AuctionPick],
+    scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
     current_season: int,
     *,
     min_weeks: int = 3,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Find the best and worst value picks of the current draft by points-per-dollar."""
     season_picks = [pk for pk in picks if pk.season == current_season]
     if len(season_picks) < 3:
         return []
 
-    efficiencies: List[Tuple[_AuctionPick, float, float]] = []  # (pick, ppd, total)
+    efficiencies: list[tuple[_AuctionPick, float, float]] = []  # (pick, ppd, total)
     for pk in season_picks:
         sc = scoring.get((current_season, pk.franchise_id, pk.player_id))
         if sc is None or sc.weeks_played < min_weeks:
@@ -377,7 +375,7 @@ def detect_auction_dollar_per_point(
         return []
 
     efficiencies.sort(key=lambda x: (-x[1], x[0].franchise_id, x[0].player_id))
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     # Best value
     best_pk, best_ppd, best_total = efficiencies[0]
@@ -400,15 +398,15 @@ def detect_auction_dollar_per_point(
 
 
 def detect_auction_bust(
-    picks: List[_AuctionPick],
-    scoring: Dict[Tuple[int, str, str], _PlayerSeasonScoring],
+    picks: list[_AuctionPick],
+    scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
     current_season: int,
     *,
     min_weeks: int = 4,
     avg_threshold_ratio: float = 0.5,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect high-dollar auction picks who dramatically underperformed.
 
     Flags top-3 picks per franchise (by bid) averaging below half the
@@ -419,7 +417,7 @@ def detect_auction_bust(
         return []
 
     # League starter average per week
-    all_starter_scores: List[float] = []
+    all_starter_scores: list[float] = []
     for (s, _, _), sc in scoring.items():
         if s == current_season and sc.starter_weeks > 0:
             all_starter_scores.append(sc.total_points / sc.starter_weeks)
@@ -430,13 +428,13 @@ def detect_auction_bust(
         return []
 
     # Group picks by franchise, take top 3 by bid
-    by_franchise: Dict[str, List[_AuctionPick]] = {}
+    by_franchise: dict[str, list[_AuctionPick]] = {}
     for pk in season_picks:
         if pk.franchise_id not in by_franchise:
             by_franchise[pk.franchise_id] = []
         by_franchise[pk.franchise_id].append(pk)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for fid in sorted(by_franchise.keys()):
         top_picks = sorted(by_franchise[fid], key=lambda p: -p.bid_amount)[:3]
@@ -466,12 +464,12 @@ def detect_auction_bust(
 
 
 def detect_auction_budget_allocation(
-    picks: List[_AuctionPick],
+    picks: list[_AuctionPick],
     current_season: int,
     *,
     budget: float = 200.0,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Analyze how franchises distributed their auction budget.
 
     Reports the most concentrated (stars-and-scrubs) and most balanced strategies.
@@ -480,7 +478,7 @@ def detect_auction_budget_allocation(
     if not season_picks:
         return []
 
-    by_franchise: Dict[str, List[float]] = {}
+    by_franchise: dict[str, list[float]] = {}
     for pk in season_picks:
         if pk.franchise_id not in by_franchise:
             by_franchise[pk.franchise_id] = []
@@ -490,7 +488,7 @@ def detect_auction_budget_allocation(
         return []
 
     # Compute max bid and spread per franchise
-    stats: List[Tuple[str, float, float, float]] = []  # (fid, max_bid, min_bid, std)
+    stats: list[tuple[str, float, float, float]] = []  # (fid, max_bid, min_bid, std)
     for fid in sorted(by_franchise.keys()):
         bids = by_franchise[fid]
         if not bids:
@@ -510,7 +508,7 @@ def detect_auction_budget_allocation(
     most_concentrated = stats_by_std[0]
     most_balanced = stats_by_std[-1]
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     if most_concentrated[3] > most_balanced[3] * 1.5:
         fid, max_b, min_b, std = most_concentrated
@@ -544,21 +542,21 @@ def detect_auction_budget_allocation(
 
 
 def detect_auction_positional_spending(
-    picks: List[_AuctionPick],
+    picks: list[_AuctionPick],
     current_season: int,
     *,
     budget: float = 200.0,
     min_pct: float = 0.35,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect franchises with extreme positional spending in their draft."""
     season_picks = [pk for pk in picks if pk.season == current_season and pk.position]
     if not season_picks:
         return []
 
     # Per franchise, per position group spending
-    spending: Dict[str, Dict[str, float]] = {}  # fid -> {pos -> total}
-    franchise_total: Dict[str, float] = {}
+    spending: dict[str, dict[str, float]] = {}  # fid -> {pos -> total}
+    franchise_total: dict[str, float] = {}
     for pk in season_picks:
         if pk.franchise_id not in spending:
             spending[pk.franchise_id] = {}
@@ -566,7 +564,7 @@ def detect_auction_positional_spending(
         spending[pk.franchise_id][pos] = spending[pk.franchise_id].get(pos, 0.0) + pk.bid_amount
         franchise_total[pk.franchise_id] = franchise_total.get(pk.franchise_id, 0.0) + pk.bid_amount
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for fid in sorted(spending.keys()):
         total = franchise_total.get(fid, 0.0)
@@ -593,20 +591,20 @@ def detect_auction_positional_spending(
 
 
 def detect_auction_strategy_consistency(
-    picks: List[_AuctionPick],
+    picks: list[_AuctionPick],
     current_season: int,
     *,
     min_seasons: int = 3,
     consistency_pct: float = 0.35,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect franchises with consistent positional spending across seasons."""
     if not picks:
         return []
 
     # Per franchise, per season, per position: spending percentage
     # fid -> season -> pos -> pct
-    franchise_seasons: Dict[str, Dict[int, Dict[str, float]]] = {}
+    franchise_seasons: dict[str, dict[int, dict[str, float]]] = {}
     for pk in picks:
         if not pk.position:
             continue
@@ -617,7 +615,7 @@ def detect_auction_strategy_consistency(
         pos_map = franchise_seasons[pk.franchise_id][pk.season]
         pos_map[pk.position] = pos_map.get(pk.position, 0.0) + pk.bid_amount
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for fid in sorted(franchise_seasons.keys()):
         seasons_data = franchise_seasons[fid]
@@ -661,17 +659,17 @@ def detect_auction_strategy_consistency(
 
 
 def detect_auction_league_inflation(
-    picks: List[_AuctionPick],
+    picks: list[_AuctionPick],
     current_season: int,
     *,
     min_seasons: int = 3,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect league-wide positional price trends across draft years."""
     if not picks:
         return []
 
     # Average bid per position per season
-    pos_season_bids: Dict[str, Dict[int, List[float]]] = {}  # pos -> season -> [bids]
+    pos_season_bids: dict[str, dict[int, list[float]]] = {}  # pos -> season -> [bids]
     for pk in picks:
         if not pk.position:
             continue
@@ -681,7 +679,7 @@ def detect_auction_league_inflation(
             pos_season_bids[pk.position][pk.season] = []
         pos_season_bids[pk.position][pk.season].append(pk.bid_amount)
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     for pos in sorted(pos_season_bids.keys()):
         season_avgs = pos_season_bids[pos]
@@ -718,36 +716,36 @@ def detect_auction_league_inflation(
 
 
 def detect_auction_draft_to_faab_pipeline(
-    picks: List[_AuctionPick],
-    scoring: Dict[Tuple[int, str, str], _PlayerSeasonScoring],
-    faab_by_position: Dict[Tuple[str, str], float],
+    picks: list[_AuctionPick],
+    scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
+    faab_by_position: dict[tuple[str, str], float],
     current_season: int,
     *,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Total investment (draft + FAAB) vs. production per position per franchise."""
     season_picks = [pk for pk in picks if pk.season == current_season and pk.position]
     if not season_picks:
         return []
 
     # Draft spending per (franchise, position)
-    draft_spend: Dict[Tuple[str, str], float] = {}
+    draft_spend: dict[tuple[str, str], float] = {}
     for pk in season_picks:
         key = (pk.franchise_id, pk.position)
         draft_spend[key] = draft_spend.get(key, 0.0) + pk.bid_amount
 
     # Production per (franchise, position) — sum player scoring by position
-    positions: Dict[str, str] = {}
+    positions: dict[str, str] = {}
     for pk in picks:
         positions[pk.player_id] = pk.position
 
-    pos_production: Dict[Tuple[str, str], float] = {}
+    pos_production: dict[tuple[str, str], float] = {}
     for (s, fid, pid), sc in scoring.items():
         if s == current_season and pid in positions and positions[pid]:
             key = (fid, positions[pid])
             pos_production[key] = pos_production.get(key, 0.0) + sc.total_points
 
-    angles: List[NarrativeAngle] = []
+    angles: list[NarrativeAngle] = []
 
     # Find the most notable combined investment
     all_keys = set(draft_spend.keys()) | set(faab_by_position.keys())
@@ -790,11 +788,11 @@ def detect_auction_draft_to_faab_pipeline(
 
 
 def detect_auction_most_expensive_history(
-    picks: List[_AuctionPick],
+    picks: list[_AuctionPick],
     *,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Find the most expensive player at each position across all auction drafts.
 
     Reports the all-time record bid per position. Requires 2+ seasons.
@@ -804,7 +802,7 @@ def detect_auction_most_expensive_history(
         return []
 
     # Max bid per position across all drafts
-    pos_max: Dict[str, Tuple[_AuctionPick, float]] = {}  # pos -> (pick, bid)
+    pos_max: dict[str, tuple[_AuctionPick, float]] = {}  # pos -> (pick, bid)
     for pk in picks:
         if not pk.position:
             continue
@@ -842,7 +840,7 @@ def detect_auction_draft_angles_v1(
     week: int,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
-) -> List[NarrativeAngle]:
+) -> list[NarrativeAngle]:
     """Detect all Dimension 6 auction draft angles for a given week.
 
     Loads DRAFT_PICK and WEEKLY_PLAYER_SCORE canonical events, enriches
@@ -868,7 +866,7 @@ def detect_auction_draft_angles_v1(
         current_season=season, target_week=week,
     )
 
-    all_angles: List[NarrativeAngle] = []
+    all_angles: list[NarrativeAngle] = []
 
     # Production-based detectors (any week)
     all_angles.extend(detect_auction_price_vs_production(all_picks, scoring, pname=pname, fname=fname))

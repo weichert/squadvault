@@ -12,8 +12,6 @@ Outputs are stable directive strings intended to guide downstream drafting.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
-
 
 # Stable directive strings (do not change without a version bump)
 EAL_HIGH_CONFIDENCE_ALLOWED = "HIGH_CONFIDENCE_ALLOWED"
@@ -27,8 +25,8 @@ class EALMeta:
     """Metadata-only inputs. Do not add fields that contain content."""
     has_selection_set: bool
     has_window: bool
-    included_count: Optional[int] = None
-    excluded_count: Optional[int] = None
+    included_count: int | None = None
+    excluded_count: int | None = None
 
 
 def evaluate_editorial_attunement_v1(meta: EALMeta) -> str:

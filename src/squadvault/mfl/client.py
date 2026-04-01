@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
+
 import requests
 
 from squadvault.utils.http import http_request_with_retries
@@ -93,7 +94,7 @@ class MflClient:
     # API calls
     # ----------------------------
 
-    def get_transactions(self, year: int) -> tuple[Dict[str, Any], str]:
+    def get_transactions(self, year: int) -> tuple[dict[str, Any], str]:
         """
         Fetch transactions export for a given year.
 
@@ -115,7 +116,7 @@ class MflClient:
         resp.raise_for_status()
         return resp.json(), url
 
-    def get_weekly_results(self, year: int, week: int) -> tuple[Dict[str, Any], str]:
+    def get_weekly_results(self, year: int, week: int) -> tuple[dict[str, Any], str]:
         """
         Fetch weeklyResults export for a given year and week.
 
@@ -136,7 +137,7 @@ class MflClient:
         resp.raise_for_status()
         return resp.json(), url
 
-    def get_league_info(self, year: int) -> tuple[Dict[str, Any], str]:
+    def get_league_info(self, year: int) -> tuple[dict[str, Any], str]:
         """
         Fetch TYPE=league export for franchise info and league metadata.
 
@@ -156,7 +157,7 @@ class MflClient:
         resp.raise_for_status()
         return resp.json(), url
 
-    def get_players(self, year: int) -> tuple[Dict[str, Any], str]:
+    def get_players(self, year: int) -> tuple[dict[str, Any], str]:
         """
         Fetch TYPE=players export for player directory.
 
@@ -176,7 +177,7 @@ class MflClient:
         resp.raise_for_status()
         return resp.json(), url
 
-    def get_player_scores(self, year: int, week: int) -> tuple[Dict[str, Any], str]:
+    def get_player_scores(self, year: int, week: int) -> tuple[dict[str, Any], str]:
         """
         Fetch TYPE=playerScores export for a given year and week.
 
@@ -200,7 +201,7 @@ class MflClient:
         resp.raise_for_status()
         return resp.json(), url
 
-    def get_rosters(self, year: int, week: int) -> tuple[Dict[str, Any], str]:
+    def get_rosters(self, year: int, week: int) -> tuple[dict[str, Any], str]:
         """
         Fetch TYPE=rosters export for a given year and week.
 
@@ -239,7 +240,7 @@ class MflClient:
             f"?TYPE={export_type}&JSON=1"
         )
 
-    def get_nfl_bye_weeks(self, year: int) -> tuple[Dict[str, Any], str]:
+    def get_nfl_bye_weeks(self, year: int) -> tuple[dict[str, Any], str]:
         """
         Fetch TYPE=nflByeWeeks from api.myfantasyleague.com.
 
@@ -260,7 +261,7 @@ class MflClient:
     # League-specific metadata
     # ----------------------------
 
-    def get_rules(self, year: int) -> tuple[Dict[str, Any], str]:
+    def get_rules(self, year: int) -> tuple[dict[str, Any], str]:
         """
         Fetch TYPE=rules export for a given year.
 

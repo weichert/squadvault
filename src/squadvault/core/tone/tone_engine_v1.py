@@ -16,12 +16,12 @@ Default: Any behavior not explicitly permitted by the contract is forbidden.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-import hashlib
-import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class FormalityLevel(str, Enum):
@@ -76,7 +76,7 @@ class ToneDirectiveV1:
     directive_fingerprint: str
 
 
-DEFAULT_NEUTRAL_CONFIG_V1: Dict[str, Any] = {
+DEFAULT_NEUTRAL_CONFIG_V1: dict[str, Any] = {
     "tone_config_id": "default-neutral",
     "group_id": "__unset__",  # filled at use-time
     "formality_level": FormalityLevel.balanced.value,
@@ -87,7 +87,7 @@ DEFAULT_NEUTRAL_CONFIG_V1: Dict[str, Any] = {
 }
 
 
-def _parse_iso8601_utc(ts: str) -> Optional[datetime]:
+def _parse_iso8601_utc(ts: str) -> datetime | None:
     """Parse ISO-8601 UTC timestamp, returning None on failure."""
     if not isinstance(ts, str) or not ts.strip():
         return None
@@ -104,12 +104,12 @@ def _parse_iso8601_utc(ts: str) -> Optional[datetime]:
         return None
 
 
-def validate_tone_config_schema_v1(cfg: Dict[str, Any]) -> List[str]:
+def validate_tone_config_schema_v1(cfg: dict[str, Any]) -> list[str]:
     """
     Type A: strict validation (fail closed). No coercion.
     Only validates fields required for Type A derivation + ordering.
     """
-    errs: List[str] = []
+    errs: list[str] = []
     if not isinstance(cfg, dict):
         return ["tone config must be a dict"]
 
@@ -194,7 +194,7 @@ def _map_ceremonial(weight: str, *, artifact_class_is_ceremonial: bool) -> str:
     return CeremonialEmphasis.none.value
 
 
-def derive_directive_values_v1(cfg: Dict[str, Any], *, artifact_class_is_ceremonial: bool) -> Dict[str, Any]:
+def derive_directive_values_v1(cfg: dict[str, Any], *, artifact_class_is_ceremonial: bool) -> dict[str, Any]:
     """
     Type A: pure derivation from config only.
     Returns directive_values object used in fingerprint calculation.
@@ -212,7 +212,7 @@ def compute_directive_fingerprint_v1(
     group_id: str,
     window_id: str,
     source_tone_config_id: str,
-    directive_values: Dict[str, Any],
+    directive_values: dict[str, Any],
 ) -> str:
     """
     Canonical fingerprint:
@@ -227,15 +227,15 @@ def compute_directive_fingerprint_v1(
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def select_effective_tone_config_v1(configs: Optional[List[Dict[str, Any]]], *, group_id: str) -> Tuple[Dict[str, Any], List[str], List[str]]:
+def select_effective_tone_config_v1(configs: list[dict[str, Any]] | None, *, group_id: str) -> tuple[dict[str, Any], list[str], list[str]]:
     """
     Type A selection semantics:
     - If no config exists: use Default Neutral Configuration.
     - If multiple configs provided: choose most recent approved_at timestamp; emit warning.
     - If selected config invalid: return errors (caller fails closed).
     """
-    errs: List[str] = []
-    warnings: List[str] = []
+    errs: list[str] = []
+    warnings: list[str] = []
 
     if not configs:
         cfg = dict(DEFAULT_NEUTRAL_CONFIG_V1)
@@ -243,7 +243,7 @@ def select_effective_tone_config_v1(configs: Optional[List[Dict[str, Any]]], *, 
         return cfg, errs, warnings
 
     # validate each candidate's approved_at parseability for ordering; fail closed if missing/invalid
-    parsed: List[Tuple[datetime, Dict[str, Any]]] = []
+    parsed: list[tuple[datetime, dict[str, Any]]] = []
     for i, c in enumerate(configs):
         if not isinstance(c, dict):
             errs.append(f"configs[{i}] must be dict")
@@ -272,9 +272,9 @@ def build_tone_directive_v1(
     *,
     group_id: str,
     window_id: str,
-    configs: Optional[List[Dict[str, Any]]],
+    configs: list[dict[str, Any]] | None,
     artifact_class_is_ceremonial: bool,
-) -> Tuple[Optional[ToneDirectiveV1], ToneDirectiveStatus, Optional[str], List[str]]:
+) -> tuple[ToneDirectiveV1 | None, ToneDirectiveStatus, str | None, list[str]]:
     """
     Type A builder:
     - Select effective config (default neutral or most recent).

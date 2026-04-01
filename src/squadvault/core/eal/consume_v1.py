@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
 import json
 import sqlite3
-from squadvault.core.storage.session import DatabaseSession
+from dataclasses import dataclass
+from typing import Any
 
+from squadvault.core.storage.session import DatabaseSession
 
 # IMPORTANT:
 # - Read-only consumer boundary for EAL v1.
@@ -19,16 +19,16 @@ from squadvault.core.storage.session import DatabaseSession
 
 @dataclass(frozen=True)
 class EALDirectivesV1:
-    tone_guard: Optional[str] = None
-    privacy_guard: Optional[str] = None
-    rivalry_heat_cap: Optional[int] = None
-    allow_humiliation: Optional[bool] = None
+    tone_guard: str | None = None
+    privacy_guard: str | None = None
+    rivalry_heat_cap: int | None = None
+    allow_humiliation: bool | None = None
 
 
 def load_eal_directives_v1(
     db_path: str,
     recap_run_id: str,
-) -> Optional[EALDirectivesV1]:
+) -> EALDirectivesV1 | None:
     """
     Read persisted EAL directives for a given recap_run_id.
 
@@ -58,7 +58,7 @@ def load_eal_directives_v1(
         if not row or row[0] is None:
             return None
 
-        payload: Dict[str, Any] = json.loads(row[0])
+        payload: dict[str, Any] = json.loads(row[0])
 
         return EALDirectivesV1(
             tone_guard=payload.get("tone_guard"),

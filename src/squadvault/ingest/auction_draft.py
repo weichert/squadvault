@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
-from typing import Any, Dict, List, Optional, Tuple
+import json
+import logging
+from typing import Any
 
 from squadvault.utils.time import unix_seconds_to_iso_z
 
-
-def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
+logger = logging.getLogger(__name__)
+def _safe_get(d: dict[str, Any], *keys: str) -> Any:
     """Safely get a value from a dict with fallback."""
     for k in keys:
         if k in d:
@@ -17,24 +18,25 @@ def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
     return None
 
 
-def _extract_type(txn: Dict[str, Any]) -> str:
+def _extract_type(txn: dict[str, Any]) -> str:
     """Extract MFL transaction type from raw data."""
     t = _safe_get(txn, "@type", "type", "@transactionType", "transactionType")
     return str(t) if t is not None else ""
 
 
-def _extract_timestamp_unix(txn: Dict[str, Any]) -> Optional[int]:
+def _extract_timestamp_unix(txn: dict[str, Any]) -> int | None:
     """Extract and validate Unix timestamp from raw data."""
     val = _safe_get(txn, "@timestamp", "timestamp", "@time", "time")
     if val is None:
         return None
     try:
         return int(str(val))
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return None
 
 
-def _extract_franchise_id(txn: Dict[str, Any]) -> str:
+def _extract_franchise_id(txn: dict[str, Any]) -> str:
     """Extract franchise ID from raw transaction data."""
     val = _safe_get(txn, "@franchise", "franchise", "@franchise_id", "franchise_id")
     if isinstance(val, str):
@@ -45,7 +47,7 @@ def _extract_franchise_id(txn: Dict[str, Any]) -> str:
     return ""
 
 
-def _parse_transaction_field(txn: Dict[str, Any]) -> Tuple[str, Optional[float]]:
+def _parse_transaction_field(txn: dict[str, Any]) -> tuple[str, float | None]:
     """
     MFL AUCTION_WON sample:
       transaction = "14223|1|"
@@ -62,17 +64,18 @@ def _parse_transaction_field(txn: Dict[str, Any]) -> Tuple[str, Optional[float]]
     parts = raw.split("|")
     player_id = parts[0].strip() if len(parts) > 0 else ""
 
-    bid_amount: Optional[float] = None
+    bid_amount: float | None = None
     if len(parts) > 1 and parts[1].strip() != "":
         try:
             bid_amount = float(parts[1].strip())
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             bid_amount = None
 
     return player_id, bid_amount
 
 
-def _extract_player_id(txn: Dict[str, Any]) -> str:
+def _extract_player_id(txn: dict[str, Any]) -> str:
     # First try explicit fields (some endpoints/leagues may provide them)
     """Extract player ID from raw transaction data."""
     v = _safe_get(txn, "@player", "player", "@player_id", "player_id")
@@ -88,7 +91,7 @@ def _extract_player_id(txn: Dict[str, Any]) -> str:
     return pid2
 
 
-def _extract_bid_amount(txn: Dict[str, Any]) -> Optional[float]:
+def _extract_bid_amount(txn: dict[str, Any]) -> float | None:
     # First try explicit fields (if present)
     """Extract bid amount from raw transaction data."""
     for k in ("@bid", "bid", "@amount", "amount", "@price", "price"):
@@ -97,7 +100,8 @@ def _extract_bid_amount(txn: Dict[str, Any]) -> Optional[float]:
             continue
         try:
             return float(str(v))
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             continue
 
     # Fallback: parse pipe-delimited transaction field, e.g. "14223|1|"
@@ -122,10 +126,10 @@ def derive_auction_event_envelopes_from_transactions(
     *,
     year: int,
     league_id: str,
-    transactions: List[Dict[str, Any]],
+    transactions: list[dict[str, Any]],
     source_url: str,
     raw_json_truncate_chars: int = 2000,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Produces canonical SquadVault "event envelopes" for auction/draft outcomes
     derived from MFL transactions.
@@ -135,7 +139,7 @@ def derive_auction_event_envelopes_from_transactions(
     - Append-only friendly
     - Deterministic external_id for dedupe
     """
-    events: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
 
     for idx, txn in enumerate(transactions):
         t = _extract_type(txn).upper()

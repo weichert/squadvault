@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from squadvault.core.recaps.selection.weekly_selection_v1 import SelectionResult
-from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.storage.db_utils import now_utc_iso as _now_utc_iso
+from squadvault.core.storage.session import DatabaseSession
 
 
 @dataclass(frozen=True)
@@ -17,8 +16,8 @@ class StoredSelection:
     week_index: int
     selection_version: int
     window_mode: str
-    window_start: Optional[str]
-    window_end: Optional[str]
+    window_start: str | None
+    window_end: str | None
     event_count: int
     fingerprint: str
     computed_at: str
@@ -30,7 +29,7 @@ def get_stored_selection(
     season: int,
     week_index: int,
     selection_version: int = 1,
-) -> Optional[StoredSelection]:
+) -> StoredSelection | None:
     """Retrieve stored selection record for a week, or None."""
     with DatabaseSession(db_path) as con:
         row = con.execute(
@@ -99,7 +98,7 @@ def insert_selection_if_missing(
         return cur.rowcount == 1
 
 
-def is_stale(stored: Optional[StoredSelection], current: SelectionResult) -> bool:
+def is_stale(stored: StoredSelection | None, current: SelectionResult) -> bool:
     """Return True if stored selection differs from computed selection."""
     if stored is None:
         return False

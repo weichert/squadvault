@@ -18,18 +18,16 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 from squadvault.core.recaps.selection.weekly_windows_v1 import WeeklyWindow, window_for_week_index
-from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
-
+from squadvault.core.storage.session import DatabaseSession
 
 # -------------------------
 # Allowlist (v1)
 # -------------------------
 
-def _load_allowlist_event_types() -> List[str]:
+def _load_allowlist_event_types() -> list[str]:
     """
     Pull allowlist from config if present. Provide a conservative fallback.
     """
@@ -63,8 +61,8 @@ def _load_allowlist_event_types() -> List[str]:
 class SelectionResult:
     week_index: int
     window: WeeklyWindow
-    canonical_ids: List[str]
-    counts_by_type: Dict[str, int]
+    canonical_ids: list[str]
+    counts_by_type: dict[str, int]
     fingerprint: str
 
 
@@ -74,7 +72,7 @@ class SelectionResult:
 _SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
 
 
-def _fingerprint_from_ids(ids: List[str]) -> str:
+def _fingerprint_from_ids(ids: list[str]) -> str:
     # sha256 of comma-joined canonical ids
     """Compute SHA-256 fingerprint from sorted canonical IDs."""
     s = ",".join(ids).encode("utf-8")
@@ -90,8 +88,8 @@ def select_weekly_recap_events_v1(
     season: int,
     week_index: int,
     *,
-    allowlist_event_types: Optional[List[str]] = None,
-    season_end: Optional[str] = None,
+    allowlist_event_types: list[str] | None = None,
+    season_end: str | None = None,
 ) -> SelectionResult:
     """
     Deterministically select recap-worthy canonical event IDs for a week.
@@ -166,8 +164,8 @@ def select_weekly_recap_events_v1(
 
         rows = [_row_to_dict(r) for r in cur.fetchall()]
 
-    canonical_ids: List[str] = [str(r["canonical_id"]) for r in rows]
-    counts: Dict[str, int] = {}
+    canonical_ids: list[str] = [str(r["canonical_id"]) for r in rows]
+    counts: dict[str, int] = {}
     for r in rows:
         et = str(r.get("event_type") or "")
         counts[et] = counts.get(et, 0) + 1

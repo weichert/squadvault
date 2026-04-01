@@ -2,14 +2,14 @@
 """CLI runner for narrative event count queries."""
 
 import os
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.queries.event_queries import fetch_all_events
 from squadvault.core.queries.narrative_filters import filter_events_for_narrative
+from squadvault.core.storage.sqlite_store import SQLiteStore
 
 load_dotenv(".env")
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Sequence
+from collections.abc import Sequence
 
 from squadvault.chronicle.input_contract_v1 import ApprovedRecapRefV1
 from squadvault.core.storage.session import DatabaseSession
@@ -15,7 +15,7 @@ def load_latest_approved_recap_refs_v1(
     season: int,
     artifact_type: str,
     week_indices: Sequence[int],
-) -> List[ApprovedRecapRefV1]:
+) -> list[ApprovedRecapRefV1]:
     """Load latest approved recap artifact references for given weeks."""
     weeks = sorted(set(int(w) for w in week_indices))
     if not weeks:
@@ -49,7 +49,7 @@ def load_latest_approved_recap_refs_v1(
     with DatabaseSession(db_path) as con:
         rows = con.execute(q, args).fetchall()
 
-    out: List[ApprovedRecapRefV1] = []
+    out: list[ApprovedRecapRefV1] = []
     for week_index, a_type, version, fp in rows:
         out.append(
             ApprovedRecapRefV1(

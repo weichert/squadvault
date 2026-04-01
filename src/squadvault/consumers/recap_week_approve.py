@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 
-from squadvault.recaps.weekly_recap_lifecycle import approve_latest_weekly_recap
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.errors import RecapNotFoundError
+from squadvault.recaps.weekly_recap_lifecycle import approve_latest_weekly_recap
 
 
 def _has_draft(db_path: str, league_id: str, season: int, week_index: int) -> bool:

@@ -20,15 +20,14 @@ Default: any behavior not explicitly permitted is forbidden.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import hashlib
 import json
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-
-DEFAULT_CALIBRATION_VALUES: Dict[str, Any] = {
+DEFAULT_CALIBRATION_VALUES: dict[str, Any] = {
     "min_signal_count_for_confidence": 3,
     "max_ambiguity_tolerance": 0.25,
     "max_grouping_density": 0.5,
@@ -56,7 +55,7 @@ def _is_nonempty_str(x: Any) -> bool:
     return isinstance(x, str) and x.strip() != ""
 
 
-def _parse_iso8601_utc(ts: Any) -> Optional[datetime]:
+def _parse_iso8601_utc(ts: Any) -> datetime | None:
     """
     Strict-ish: must parse and include tzinfo, and must be UTC offset.
     Accepts "+00:00" and "Z".
@@ -95,9 +94,9 @@ def _is_semver_like(v: Any) -> bool:
         return False
 
 
-def validate_calibration_schema(cal: Dict[str, Any]) -> List[str]:
+def validate_calibration_schema(cal: dict[str, Any]) -> list[str]:
     """Validate calibration record fields, returning list of errors."""
-    errs: List[str] = []
+    errs: list[str] = []
 
     required = [
         "calibration_id",
@@ -164,7 +163,7 @@ def validate_calibration_schema(cal: Dict[str, Any]) -> List[str]:
     return errs
 
 
-def default_system_calibration_record() -> Dict[str, Any]:
+def default_system_calibration_record() -> dict[str, Any]:
     # We provide a deterministic default record for Type A behavior.
     # calibration_id is fixed to avoid entropy in fingerprints.
     """Return deterministic default system calibration record."""
@@ -183,11 +182,11 @@ def default_system_calibration_record() -> Dict[str, Any]:
 
 
 def select_effective_calibration(
-    calibrations: List[Dict[str, Any]],
+    calibrations: list[dict[str, Any]],
     *,
     scope: str,
-    scope_id: Optional[str],
-) -> Tuple[Dict[str, Any], List[str]]:
+    scope_id: str | None,
+) -> tuple[dict[str, Any], list[str]]:
     """
     Type A selection semantics:
     - Filter by (scope, scope_id) (scope_id required for group).
@@ -196,7 +195,7 @@ def select_effective_calibration(
     - If none valid, return default system calibration.
     - If ambiguity exists (multiple valid), return latest and include warning.
     """
-    warnings: List[str] = []
+    warnings: list[str] = []
 
     if scope not in ("system", "group"):
         # Fail closed.
@@ -207,7 +206,7 @@ def select_effective_calibration(
         warnings.append("group scope without scope_id; using default calibration")
         return default_system_calibration_record(), warnings
 
-    candidates: List[Dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
     rejected_invalid = 0
     for c in calibrations:
         if not isinstance(c, dict):
@@ -232,7 +231,7 @@ def select_effective_calibration(
         return default_system_calibration_record(), warnings
 
     # Deterministic latest-by-approved_at selection (ties broken by calibration_id).
-    def _key(c: Dict[str, Any]) -> Tuple[datetime, str]:
+    def _key(c: dict[str, Any]) -> tuple[datetime, str]:
         """Sort key: (approved_at datetime, calibration_id)."""
         dt = _parse_iso8601_utc(c["approved_at"])
         assert dt is not None
@@ -250,10 +249,10 @@ def select_effective_calibration(
 def derive_restraint_directive(
     *,
     window_id: str,
-    signal_count: Optional[int],
-    ambiguity: Optional[float],
-    grouping_density: Optional[float],
-    calibration: Optional[Dict[str, Any]],
+    signal_count: int | None,
+    ambiguity: float | None,
+    grouping_density: float | None,
+    calibration: dict[str, Any] | None,
 ) -> RestraintDirective:
     """
     Minimal conservative derivation (Type A):
@@ -292,7 +291,7 @@ def derive_restraint_directive(
     return RestraintDirective.high_restraint
 
 
-def _canonical_json(obj: Dict[str, Any]) -> str:
+def _canonical_json(obj: dict[str, Any]) -> str:
     """Serialize dict to canonical JSON for fingerprinting."""
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -302,7 +301,7 @@ def compute_directive_fingerprint(
     window_id: str,
     source_calibration_id: str,
     restraint_directive: str,
-    inputs: Dict[str, Any],
+    inputs: dict[str, Any],
 ) -> str:
     """
     Contract requires reproducibility but does not specify a formula.
@@ -318,11 +317,11 @@ def compute_directive_fingerprint(
 def build_restraint_directive_v1(
     *,
     window_id: str,
-    signal_count: Optional[int],
-    ambiguity: Optional[float],
-    grouping_density: Optional[float],
-    calibration: Optional[Dict[str, Any]],
-    generated_at: Optional[str] = None,
+    signal_count: int | None,
+    ambiguity: float | None,
+    grouping_density: float | None,
+    calibration: dict[str, Any] | None,
+    generated_at: str | None = None,
 ) -> EALRestraintDirectiveV1:
     """
     Construct the derived directive record (non-canonical output).

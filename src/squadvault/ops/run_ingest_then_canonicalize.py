@@ -2,25 +2,22 @@
 
 from __future__ import annotations
 
-from collections import Counter
 import argparse
-from pathlib import Path
 import os
 import sqlite3
+from collections import Counter
+from pathlib import Path
 
 from dotenv import load_dotenv
 
+from squadvault.core.canonicalize.run_canonicalize import canonicalize
+from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.errors import ConfigError
-from squadvault.mfl.client import MflClient
-
 from squadvault.ingest.auction_draft import derive_auction_event_envelopes_from_transactions
 from squadvault.ingest.transactions import derive_transaction_event_envelopes
 from squadvault.ingest.waiver_bids import derive_waiver_bid_event_envelopes_from_transactions
-
-from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.storage.session import DatabaseSession
-
+from squadvault.mfl.client import MflClient
 
 # Load env early so argparse defaults can safely reference env vars.
 load_dotenv(".env")

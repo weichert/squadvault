@@ -18,7 +18,6 @@ from squadvault.recaps.writing_room.intake_v1 import (
     build_selection_set_v1,
 )
 
-
 # ---------------------------------------------------------------------
 # Minimal JSON adapter (Sprint 1 only)
 # ---------------------------------------------------------------------

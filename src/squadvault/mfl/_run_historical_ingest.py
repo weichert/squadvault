@@ -39,7 +39,6 @@ from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.mfl.discovery import discover_mfl_league, discover_mfl_league_via_history
 from squadvault.mfl.historical_ingest import ingest_mfl_seasons
 
-
 SCHEMA_PATH = Path("src/squadvault/core/storage/schema.sql")
 
 ALL_CATEGORIES = [

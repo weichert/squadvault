@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
-
 import argparse
+import json
 from pathlib import Path
 
 from squadvault.core.exports.approved_weekly_recap_export_v1 import (

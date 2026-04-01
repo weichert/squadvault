@@ -7,7 +7,7 @@ import os
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from squadvault.core.storage.db_utils import table_columns as _table_columns
 from squadvault.core.storage.session import DatabaseSession
@@ -23,12 +23,12 @@ class ApprovedRecapArtifact:
     artifact_type: str
     state: str
 
-    selection_fingerprint: Optional[str]
-    window_start: Optional[str]
-    window_end: Optional[str]
+    selection_fingerprint: str | None
+    window_start: str | None
+    window_end: str | None
 
-    approved_by: Optional[str]
-    approved_at: Optional[str]
+    approved_by: str | None
+    approved_at: str | None
 
     rendered_text: str
     payload_json: dict[str, Any]

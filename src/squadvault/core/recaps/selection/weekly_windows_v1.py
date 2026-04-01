@@ -17,12 +17,11 @@ If no safe boundary can be computed, the window is UNSAFE.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import datetime as dt
 import sqlite3
-from typing import Optional, List
-from squadvault.core.storage.session import DatabaseSession
+from dataclasses import dataclass
 
+from squadvault.core.storage.session import DatabaseSession
 
 LOCK_EVENT_TYPE = "TRANSACTION_LOCK_ALL_PLAYERS"
 
@@ -36,11 +35,11 @@ WINDOW_UNSAFE_TO_COMPUTE = "WINDOW_UNSAFE_TO_COMPUTE"
 class WeeklyWindow:
     mode: str  # LOCK_TO_LOCK | LOCK_TO_SEASON_END | LOCK_PLUS_7D_CAP | UNSAFE
     week_index: int
-    window_start: Optional[str]
-    window_end: Optional[str]
-    start_lock: Optional[str]
-    next_lock: Optional[str]
-    reason: Optional[str] = None
+    window_start: str | None
+    window_end: str | None
+    start_lock: str | None
+    next_lock: str | None
+    reason: str | None = None
 
 
 def _parse_iso_z(s: str) -> dt.datetime:
@@ -60,7 +59,7 @@ def _to_iso_z(t: dt.datetime) -> str:
     )
 
 
-def _fetch_lock_times(conn: sqlite3.Connection, league_id: str, season: int) -> List[str]:
+def _fetch_lock_times(conn: sqlite3.Connection, league_id: str, season: int) -> list[str]:
     # IMPORTANT: MFL can emit multiple lock events at the same timestamp (e.g. per division).
     # Weekly windows must be computed off UNIQUE lock times or week_index will drift.
     """Fetch distinct lock timestamps for a league/season."""
@@ -83,7 +82,7 @@ def window_for_week_index(
     season: int,
     week_index: int,
     *,
-    season_end: Optional[str] = None,
+    season_end: str | None = None,
 ) -> WeeklyWindow:
     """
     Compute a deterministic weekly window.

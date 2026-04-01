@@ -2,10 +2,8 @@
 """Recap artifact lifecycle: DRAFT -> APPROVED -> SUPERSEDED state machine."""
 
 import sqlite3
-from typing import Optional, Tuple
 
 from squadvault.core.storage.session import DatabaseSession
-
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 
@@ -53,7 +51,7 @@ def _latest_artifact_row_any_state(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[sqlite3.Row]:
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> sqlite3.Row | None:
     """Return latest artifact row regardless of state, or None."""
     row = con.execute(
         """
@@ -72,7 +70,7 @@ def _latest_artifact_version_any_state(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[int]:
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> int | None:
     """Return latest artifact version regardless of state, or None."""
     row = _latest_artifact_row_any_state(con, league_id, season, week_index, artifact_type)
     return int(row[0]) if row else None
@@ -82,7 +80,7 @@ def _latest_artifact_fingerprint_any_state(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[str]:
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> str | None:
     """Return selection fingerprint of latest artifact, or None."""
     row = _latest_artifact_row_any_state(con, league_id, season, week_index, artifact_type)
     if not row:
@@ -97,7 +95,7 @@ def latest_approved_version(
     season: int,
     week_index: int,
     artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
-) -> Optional[int]:
+) -> int | None:
     """Return version number of latest APPROVED artifact, or None."""
     with DatabaseSession(db_path) as con:
         row = con.execute(
@@ -120,7 +118,7 @@ def _latest_approved_fingerprint(
     season: int,
     week_index: int,
     artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
-) -> Optional[str]:
+) -> str | None:
     """Return selection fingerprint of latest APPROVED artifact, or None."""
     row = con.execute(
         """
@@ -140,7 +138,7 @@ def _latest_approved_version_in_conn(
     con: sqlite3.Connection,
     league_id: str,
     season: int,
-    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> Optional[int]:
+    week_index: int, artifact_type=ARTIFACT_TYPE_WEEKLY_RECAP) -> int | None:
     """Return latest APPROVED version using an existing connection."""
     row = con.execute(
         """
@@ -163,7 +161,7 @@ def _find_existing_draft_version(
     week_index: int,
     selection_fingerprint: str,
     artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
-) -> Optional[int]:
+) -> int | None:
     """
     Idempotency helper: if a DRAFT already exists for this exact fingerprint,
     return its version.
@@ -206,14 +204,14 @@ def create_recap_artifact_draft_idempotent(
     season: int,
     week_index: int,
     selection_fingerprint: str,
-    window_start: Optional[str],
-    window_end: Optional[str],
+    window_start: str | None,
+    window_end: str | None,
     rendered_text: str,
     artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
     created_by: str = "system",
-    supersedes_version: Optional[int] = None,
+    supersedes_version: int | None = None,
     force: bool = False,
-) -> Tuple[int, bool]:
+) -> tuple[int, bool]:
     """
     Option B: fingerprint-idempotent regeneration.
 
@@ -289,7 +287,7 @@ def approve_recap_artifact(
     week_index: int,
     version: int,
     approved_by: str,
-    approved_at_utc: Optional[str] = None, artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
+    approved_at_utc: str | None = None, artifact_type: str = ARTIFACT_TYPE_WEEKLY_RECAP,
 ) -> None:
     """Transition a DRAFT artifact to APPROVED state."""
     # If approved_at_utc is provided, persist it. Otherwise preserve existing 'now' behavior.

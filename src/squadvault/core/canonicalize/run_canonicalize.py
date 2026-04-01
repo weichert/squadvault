@@ -6,16 +6,15 @@ from dotenv import load_dotenv
 
 load_dotenv(".env")
 
-import os
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
-
 
 DEFAULT_DB_PATH = Path(os.environ.get("SQUADVAULT_DB", ".local_squadvault.sqlite"))  # type: ignore[name-defined]
 
@@ -26,7 +25,7 @@ class MemoryEventRow:
     league_id: str
     season: int
     event_type: str
-    occurred_at: Optional[str]
+    occurred_at: str | None
     ingested_at: str
     payload_json: str
 

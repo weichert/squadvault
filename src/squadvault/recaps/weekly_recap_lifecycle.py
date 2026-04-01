@@ -6,37 +6,28 @@ import json
 import logging
 import sqlite3
 from dataclasses import dataclass
-from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
-from typing import List, Optional, Tuple
-from squadvault.core.eal.consume_v1 import load_eal_directives_v1, EALDirectivesV1
-from squadvault.errors import RecapNotFoundError, RecapStateError, RecapDataError
-from squadvault.core.recaps.render.render_recap_text_v1 import (
-    render_recap_text_v1,
-)
-from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-    CanonicalEventRow,
-    render_deterministic_bullets_v1,
-)
-from squadvault.core.resolvers import PlayerResolver, FranchiseResolver, build_player_name_map
-from squadvault.core.recaps.recap_runs import (
-    get_recap_run_state,
-    sync_recap_run_state_from_artifacts,
-)
-from squadvault.core.recaps.recap_artifacts import latest_approved_version
-from squadvault.core.storage.session import DatabaseSession
+
 from squadvault.ai.creative_layer_v1 import draft_narrative_v1
-from squadvault.core.tone.tone_profile_v1 import get_tone_preset
-from squadvault.core.tone.voice_profile_v1 import get_voice_profile
-from squadvault.core.recaps.context.season_context_v1 import (
-    derive_season_context_v1,
-    render_season_context_for_prompt,
+from squadvault.core.eal.consume_v1 import EALDirectivesV1, load_eal_directives_v1
+from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
+from squadvault.core.recaps.context.auction_draft_angles_v1 import (
+    detect_auction_draft_angles_v1,
+)
+from squadvault.core.recaps.context.bye_week_context_v1 import (
+    detect_bye_week_angles_v1,
+)
+from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
+    detect_franchise_deep_angles_v1,
 )
 from squadvault.core.recaps.context.league_history_v1 import (
+    build_cross_season_name_resolver,
     compute_franchise_tenures,
     derive_league_history_v1,
     load_all_matchups,
-    build_cross_season_name_resolver,
     render_league_history_for_prompt,
+)
+from squadvault.core.recaps.context.league_rules_context_v1 import (
+    detect_scoring_rules_angles_v1,
 )
 from squadvault.core.recaps.context.narrative_angles_v1 import (
     NarrativeAngle,
@@ -45,24 +36,32 @@ from squadvault.core.recaps.context.narrative_angles_v1 import (
 from squadvault.core.recaps.context.player_narrative_angles_v1 import (
     detect_player_narrative_angles_v1,
 )
-from squadvault.core.recaps.context.auction_draft_angles_v1 import (
-    detect_auction_draft_angles_v1,
-)
-from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
-    detect_franchise_deep_angles_v1,
-)
-from squadvault.core.recaps.context.bye_week_context_v1 import (
-    detect_bye_week_angles_v1,
-)
-from squadvault.core.recaps.context.league_rules_context_v1 import (
-    detect_scoring_rules_angles_v1,
+from squadvault.core.recaps.context.season_context_v1 import (
+    derive_season_context_v1,
+    render_season_context_for_prompt,
 )
 from squadvault.core.recaps.context.writer_room_context_v1 import (
-    derive_scoring_deltas,
     derive_faab_spending,
+    derive_scoring_deltas,
     render_writer_room_context_for_prompt,
 )
-
+from squadvault.core.recaps.recap_artifacts import latest_approved_version
+from squadvault.core.recaps.recap_runs import (
+    get_recap_run_state,
+    sync_recap_run_state_from_artifacts,
+)
+from squadvault.core.recaps.render.deterministic_bullets_v1 import (
+    CanonicalEventRow,
+    render_deterministic_bullets_v1,
+)
+from squadvault.core.recaps.render.render_recap_text_v1 import (
+    render_recap_text_v1,
+)
+from squadvault.core.resolvers import FranchiseResolver, PlayerResolver, build_player_name_map
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.tone.tone_profile_v1 import get_tone_preset
+from squadvault.core.tone.voice_profile_v1 import get_voice_profile
+from squadvault.errors import RecapDataError, RecapNotFoundError, RecapStateError
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 
@@ -80,18 +79,18 @@ class GenerateDraftResult:
     version: int
     created_new: bool
     selection_fingerprint: str
-    window_start: Optional[str]
-    window_end: Optional[str]
-    prev_approved_version: Optional[int]
-    synced_recap_run_state: Optional[str]
+    window_start: str | None
+    window_end: str | None
+    prev_approved_version: int | None
+    synced_recap_run_state: str | None
     reason: str
 
 
 @dataclass(frozen=True)
 class ApproveResult:
     approved_version: int
-    superseded_version: Optional[int]
-    synced_recap_run_state: Optional[str]
+    superseded_version: int | None
+    synced_recap_run_state: str | None
 
 
 # =============================================================================
@@ -198,8 +197,8 @@ def _create_recap_artifact_draft_always_new(
             (league_id, season, week_index),
         ).fetchone()
 
-        latest_v: Optional[int] = None
-        latest_fp: Optional[str] = None
+        latest_v: int | None = None
+        latest_fp: str | None = None
 
         if row:
             latest_v = int(row[0])
@@ -257,7 +256,7 @@ def _latest_artifact_in_state(
     season: int,
     week_index: int,
     state: str,
-) -> Optional[int]:
+) -> int | None:
     """Return latest artifact version in a given state, or None."""
     row = con.execute(
         """
@@ -279,7 +278,7 @@ def _approve_version_and_supersede_previous(
     week_index: int,
     version_to_approve: int,
     approved_by: str,
-) -> Tuple[int, Optional[int]]:
+) -> tuple[int, int | None]:
     """Approve a version and supersede prior APPROVED if any."""
     with DatabaseSession(db_path) as con:
         con.execute("BEGIN IMMEDIATE")
@@ -340,8 +339,8 @@ def _approve_version_and_supersede_previous(
 
 def _load_canonical_event_rows(
     db_path: str,
-    canonical_ids: List[str],
-) -> List[CanonicalEventRow]:
+    canonical_ids: list[str],
+) -> list[CanonicalEventRow]:
     """Load canonical event rows with payloads from v_canonical_best_events.
 
     canonical_ids are action fingerprints stored in recap_runs.canonical_ids_json.
@@ -351,7 +350,7 @@ def _load_canonical_event_rows(
     if not canonical_ids:
         return []
 
-    rows: List[CanonicalEventRow] = []
+    rows: list[CanonicalEventRow] = []
     with DatabaseSession(db_path) as con:
         # Check if view exists (defensive for minimal test DBs)
         tables = {r[0] for r in con.execute(
@@ -393,7 +392,7 @@ def _load_canonical_event_rows(
 
 
 def _collect_ids_from_payloads(
-    events: List[CanonicalEventRow],
+    events: list[CanonicalEventRow],
 ) -> tuple[set, set]:
     """Extract all player IDs and franchise IDs from event payloads."""
     player_ids: set = set()
@@ -457,8 +456,8 @@ def _render_text_from_recap_runs(
     season: int,
     week_index: int,
     *,
-    eal_directives: Optional[EALDirectivesV1] = None,
-) -> Optional[str]:
+    eal_directives: EALDirectivesV1 | None = None,
+) -> str | None:
     """Render recap text directly from recap_runs data (no recaps table needed).
 
     Returns rendered text if recap_runs has sufficient data, else None.
@@ -537,6 +536,219 @@ def _render_text_from_recap_runs(
                 summary += "\n".join(lines) + "\n"
 
     return summary
+
+
+@dataclass(frozen=True)
+class _PromptContext:
+    """All derived, non-authoritative context fed to the creative layer prompt."""
+
+    season_context_text: str
+    league_history_text: str
+    narrative_angles_text: str
+    writer_room_text: str
+    tone_preset: str
+    voice_profile: str
+    seasons_count: int
+
+
+def _derive_prompt_context(
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    window_end: str | None,
+) -> _PromptContext:
+    """Derive all non-authoritative context blocks for the creative layer prompt.
+
+    Every derivation is wrapped in try/except — failure is silent (debug-logged)
+    and produces an empty default. This is consistent with the governing principle
+    that context enrichments are derived, never fact-creating.
+    """
+    season_context_text = ""
+    league_history_text = ""
+    narrative_angles_text = ""
+    writer_room_text = ""
+    _tenure_map = None
+    _history_ctx = None
+    _season_ctx = None
+    _all_matchups = None
+
+    # -- Name resolution --
+    try:
+        _name_map = build_cross_season_name_resolver(db_path, league_id)
+    except Exception as e:
+        logger.debug("Cross-season name resolver failed: %s", e)
+        _name_map = {}
+
+    _player_name_map: dict[str, str] = {}
+    try:
+        _player_name_map = build_player_name_map(db_path, league_id)
+    except Exception as e:
+        logger.debug("Player name map failed: %s", e)
+
+    # -- Season context --
+    try:
+        _season_ctx = derive_season_context_v1(
+            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
+        )
+        season_context_text = render_season_context_for_prompt(
+            _season_ctx, team_resolver=lambda fid: _name_map.get(fid, fid),
+        )
+    except Exception as e:
+        logger.debug("Season context derivation failed: %s", e)
+        _season_ctx = None
+
+    # -- League history --
+    try:
+        _history_ctx = derive_league_history_v1(db_path=db_path, league_id=league_id)
+        _tenure_map = compute_franchise_tenures(db_path, league_id)
+        league_history_text = render_league_history_for_prompt(
+            _history_ctx, name_map=_name_map, tenure_map=_tenure_map,
+        )
+    except Exception as e:
+        logger.debug("League history context failed: %s", e)
+        _history_ctx = None
+
+    # -- Historical matchups --
+    try:
+        _all_matchups = load_all_matchups(db_path, league_id)
+    except Exception as e:
+        logger.debug("Load all matchups failed: %s", e)
+        _all_matchups = None
+
+    # -- Narrative angle detection (all 6 modules → unified budget) --
+    try:
+        _all_angles: list[NarrativeAngle] = []
+
+        if _season_ctx is not None:
+            _cl_angles = detect_narrative_angles_v1(
+                season_ctx=_season_ctx,
+                history_ctx=_history_ctx,
+                all_matchups=_all_matchups,
+                tenure_map=_tenure_map,
+                fname=lambda fid: _name_map.get(fid, fid),
+            )
+            _all_angles.extend(_cl_angles.angles)
+
+        try:
+            _all_angles.extend(detect_player_narrative_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+                tenure_map=_tenure_map,
+                pname=lambda pid: _player_name_map.get(pid, pid),
+                fname=lambda fid: _name_map.get(fid, fid),
+            ))
+        except Exception as e:
+            logger.debug("Player narrative angles failed: %s", e)
+
+        try:
+            _all_angles.extend(detect_auction_draft_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+                pname=lambda pid: _player_name_map.get(pid, pid),
+                fname=lambda fid: _name_map.get(fid, fid),
+            ))
+        except Exception as e:
+            logger.debug("Auction draft angles failed: %s", e)
+
+        try:
+            _all_angles.extend(detect_franchise_deep_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+                tenure_map=_tenure_map,
+                pname=lambda pid: _player_name_map.get(pid, pid),
+                fname=lambda fid: _name_map.get(fid, fid),
+            ))
+        except Exception as e:
+            logger.debug("Franchise deep angles failed: %s", e)
+
+        try:
+            _all_angles.extend(detect_bye_week_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+                all_matchups=_all_matchups,
+                fname=lambda fid: _name_map.get(fid, fid),
+            ))
+        except Exception as e:
+            logger.debug("Bye week angles failed: %s", e)
+
+        try:
+            _all_angles.extend(detect_scoring_rules_angles_v1(
+                db_path=db_path, league_id=league_id, season=season, week=week_index,
+            ))
+        except Exception as e:
+            logger.debug("Scoring rules angles failed: %s", e)
+
+        _all_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))
+
+        # Tiered angle budget (per scope doc):
+        #   HEADLINE (strength 3): cap 3, NOTABLE (strength 2): cap 6,
+        #   MINOR (strength 1): cap 4 (only if total < 12). Total cap: 15.
+        if _all_angles:
+            budgeted: list[NarrativeAngle] = []
+            h_count = n_count = m_count = 0
+            for a in _all_angles:
+                if a.strength >= 3 and h_count < 3:
+                    budgeted.append(a)
+                    h_count += 1
+                elif a.strength == 2 and n_count < 6:
+                    budgeted.append(a)
+                    n_count += 1
+                elif a.strength <= 1 and m_count < 4 and len(budgeted) < 12:
+                    budgeted.append(a)
+                    m_count += 1
+
+            lines: list[str] = [f"Narrative angles for Week {week_index} (what's interesting):"]
+            for a in budgeted:
+                slabel = {3: "HEADLINE", 2: "NOTABLE", 1: "MINOR"}.get(a.strength, "")
+                line = f"  [{slabel}] {a.headline}"
+                if a.detail:
+                    line += f" — {a.detail}"
+                lines.append(line)
+            remaining = len(_all_angles) - len(budgeted)
+            if remaining > 0:
+                lines.append(f"  (+ {remaining} minor angles omitted)")
+            narrative_angles_text = "\n".join(lines) + "\n"
+    except Exception as e:
+        logger.debug("Narrative angle rendering failed: %s", e)
+
+    # -- Writer room context (scoring deltas + FAAB) --
+    try:
+        _deltas = derive_scoring_deltas(
+            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
+        )
+        _faab = derive_faab_spending(
+            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
+            through_occurred_at=window_end,
+        )
+        writer_room_text = render_writer_room_context_for_prompt(
+            deltas=_deltas, faab=_faab,
+            name_map=_name_map,
+        )
+    except Exception as e:
+        logger.debug("Writer room context failed: %s", e)
+
+    # -- Tone & voice --
+    tone_preset = ""
+    try:
+        tone_preset = get_tone_preset(db_path, league_id)
+    except Exception as e:
+        logger.debug("Tone preset lookup failed: %s", e)
+
+    voice_profile = ""
+    try:
+        voice_profile = get_voice_profile(db_path, league_id) or ""
+    except Exception as e:
+        logger.debug("Voice profile lookup failed: %s", e)
+
+    return _PromptContext(
+        season_context_text=season_context_text,
+        league_history_text=league_history_text,
+        narrative_angles_text=narrative_angles_text,
+        writer_room_text=writer_room_text,
+        tone_preset=tone_preset,
+        voice_profile=voice_profile,
+        seasons_count=(
+            len(_history_ctx.seasons_available) if _history_ctx is not None else 0
+        ),
+    )
 
 
 def generate_weekly_recap_draft(
@@ -630,11 +842,6 @@ def generate_weekly_recap_draft(
     # enrichments are derived from canonical data and rendered as text blocks for the
     # creative layer prompt. These are derived, non-authoritative, and never modify facts.
     _creative_bullets: list[str] = []
-    _season_context_text = ""
-    _league_history_text = ""
-    _narrative_angles_text = ""
-    _cl_tenure_map = None
-    _writer_room_text = ""
 
     with DatabaseSession(db_path) as _cl_con:
         _cl_row = _cl_con.execute(
@@ -664,188 +871,10 @@ def generate_weekly_recap_draft(
                 logger.debug("Creative bullets rendering failed: %s", e)
                 _creative_bullets = []
 
-    # --- Context derivation (all derived, non-authoritative, silent on failure) ---
-    try:
-        _cl_name_map = build_cross_season_name_resolver(db_path, league_id)
-    except Exception as e:
-        logger.debug("Cross-season name resolver failed: %s", e)
-        _cl_name_map = {}
-
-    # Player name map for angle rendering (player_id -> display name)
-    _cl_player_name_map: dict[str, str] = {}
-    try:
-        _cl_player_name_map = build_player_name_map(db_path, league_id)
-    except Exception as e:
-        logger.debug("Player name map failed: %s", e)
-
-    try:
-        _cl_season_ctx = derive_season_context_v1(
-            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
-        )
-        _season_context_text = render_season_context_for_prompt(
-            _cl_season_ctx, team_resolver=lambda fid: _cl_name_map.get(fid, fid),
-        )
-    except Exception as e:
-        logger.debug("Season context derivation failed: %s", e)
-        _cl_season_ctx = None
-
-    try:
-        _cl_history_ctx = derive_league_history_v1(db_path=db_path, league_id=league_id)
-        _cl_tenure_map = compute_franchise_tenures(db_path, league_id)
-        _league_history_text = render_league_history_for_prompt(
-            _cl_history_ctx, name_map=_cl_name_map, tenure_map=_cl_tenure_map,
-        )
-    except Exception as e:
-        logger.debug("League history context failed: %s", e)
-        _cl_history_ctx = None
-
-    try:
-        _cl_all_matchups = load_all_matchups(db_path, league_id)
-    except Exception as e:
-        logger.debug("Load all matchups failed: %s", e)
-        _cl_all_matchups = None
-
-    try:
-        # ── Unified narrative angle detection across all modules ──
-        # Collect angles from all modules into one list, then apply
-        # a unified budget (spec: 3 HEADLINE + 6 NOTABLE + 4 MINOR = ~13).
-        _all_detected_angles: list[NarrativeAngle] = []
-
-        # Module 1: Franchise-level angles (existing — upsets, streaks, records, rivalry)
-        if _cl_season_ctx is not None:
-            _cl_angles = detect_narrative_angles_v1(
-                season_ctx=_cl_season_ctx,
-                history_ctx=_cl_history_ctx,
-                all_matchups=_cl_all_matchups,
-                tenure_map=_cl_tenure_map,
-                fname=lambda fid: _cl_name_map.get(fid, fid),
-            )
-            _all_detected_angles.extend(_cl_angles.angles)
-
-        # Module 2: Player narrative angles (Dimensions 1-5)
-        try:
-            _player_angles = detect_player_narrative_angles_v1(
-                db_path=db_path, league_id=league_id, season=season, week=week_index,
-                tenure_map=_cl_tenure_map,
-                pname=lambda pid: _cl_player_name_map.get(pid, pid),
-                fname=lambda fid: _cl_name_map.get(fid, fid),
-            )
-            _all_detected_angles.extend(_player_angles)
-        except Exception as e:
-            logger.debug("Player narrative angles failed: %s", e)
-
-        # Module 3: Auction draft angles (Dimension 6)
-        try:
-            _auction_angles = detect_auction_draft_angles_v1(
-                db_path=db_path, league_id=league_id, season=season, week=week_index,
-                pname=lambda pid: _cl_player_name_map.get(pid, pid),
-                fname=lambda fid: _cl_name_map.get(fid, fid),
-            )
-            _all_detected_angles.extend(_auction_angles)
-        except Exception as e:
-            logger.debug("Auction draft angles failed: %s", e)
-
-        # Module 4: Franchise deep angles (Dimensions 7-9)
-        try:
-            _deep_angles = detect_franchise_deep_angles_v1(
-                db_path=db_path, league_id=league_id, season=season, week=week_index,
-                tenure_map=_cl_tenure_map,
-                pname=lambda pid: _cl_player_name_map.get(pid, pid),
-                fname=lambda fid: _cl_name_map.get(fid, fid),
-            )
-            _all_detected_angles.extend(_deep_angles)
-        except Exception as e:
-            logger.debug("Franchise deep angles failed: %s", e)
-
-        # Module 5: Bye week angles (Dimension 10 — requires nfl_bye_weeks data)
-        try:
-            _bye_angles = detect_bye_week_angles_v1(
-                db_path=db_path, league_id=league_id, season=season, week=week_index,
-                all_matchups=_cl_all_matchups,
-                fname=lambda fid: _cl_name_map.get(fid, fid),
-            )
-            _all_detected_angles.extend(_bye_angles)
-        except Exception as e:
-            logger.debug("Bye week angles failed: %s", e)
-
-        # Module 6: Scoring rules context (Dimension 11 — week 1 only)
-        try:
-            _rules_angles = detect_scoring_rules_angles_v1(
-                db_path=db_path, league_id=league_id, season=season, week=week_index,
-            )
-            _all_detected_angles.extend(_rules_angles)
-        except Exception as e:
-            logger.debug("Scoring rules angles failed: %s", e)
-
-        # Unified sort: strength desc, category asc, headline asc
-        _all_detected_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))
-
-        # Tiered angle budget (per scope doc):
-        #   HEADLINE (strength 3): always included, cap at 3
-        #   NOTABLE (strength 2): included up to 6
-        #   MINOR (strength 1): included up to 4, only if total < 12
-        #   Total cap: 15
-        if _all_detected_angles:
-            _budgeted: list[NarrativeAngle] = []
-            _headline_count = 0
-            _notable_count = 0
-            _minor_count = 0
-            for _a in _all_detected_angles:
-                if _a.strength >= 3 and _headline_count < 3:
-                    _budgeted.append(_a)
-                    _headline_count += 1
-                elif _a.strength == 2 and _notable_count < 6:
-                    _budgeted.append(_a)
-                    _notable_count += 1
-                elif _a.strength <= 1 and _minor_count < 4 and len(_budgeted) < 12:
-                    _budgeted.append(_a)
-                    _minor_count += 1
-
-            _angle_lines: list[str] = []
-            _angle_lines.append(f"Narrative angles for Week {week_index} (what's interesting):")
-            for _a in _budgeted:
-                _slabel = {3: "HEADLINE", 2: "NOTABLE", 1: "MINOR"}.get(_a.strength, "")
-                _headline = _a.headline
-                _detail = _a.detail
-                _line = f"  [{_slabel}] {_headline}"
-                if _detail:
-                    _line += f" — {_detail}"
-                _angle_lines.append(_line)
-            _remaining = len(_all_detected_angles) - len(_budgeted)
-            if _remaining > 0:
-                _angle_lines.append(f"  (+ {_remaining} minor angles omitted)")
-            _narrative_angles_text = "\n".join(_angle_lines) + "\n"
-    except Exception as e:
-        logger.debug("Narrative angle rendering failed: %s", e)
-
-    try:
-        _cl_deltas = derive_scoring_deltas(
-            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
-        )
-        _cl_faab = derive_faab_spending(
-            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
-            through_occurred_at=window_end,
-        )
-        _writer_room_text = render_writer_room_context_for_prompt(
-            deltas=_cl_deltas, faab=_cl_faab,
-            name_map=_cl_name_map,
-        )
-    except Exception as e:
-        logger.debug("Writer room context failed: %s", e)
-
-    # Read governed tone preset (commissioner-configured, defaults to POINTED)
-    try:
-        _cl_tone_preset = get_tone_preset(db_path, league_id)
-    except Exception as e:
-        logger.debug("Tone preset lookup failed: %s", e)
-        _cl_tone_preset = ""
-
-    # Read commissioner-approved voice profile (league-specific cultural guidance)
-    _cl_voice_profile = ""
-    try:
-        _cl_voice_profile = get_voice_profile(db_path, league_id) or ""
-    except Exception as e:
-        logger.debug("Voice profile lookup failed: %s", e)
+    _ctx = _derive_prompt_context(
+        db_path=db_path, league_id=league_id, season=season,
+        week_index=week_index, window_end=window_end,
+    )
 
     _narrative_draft = draft_narrative_v1(
         facts_bullets=_creative_bullets,
@@ -853,16 +882,13 @@ def generate_weekly_recap_draft(
         league_id=league_id,
         season=season,
         week_index=week_index,
-        season_context=_season_context_text,
-        league_history=_league_history_text,
-        narrative_angles=_narrative_angles_text,
-        writer_room_context=_writer_room_text,
-        tone_preset=_cl_tone_preset,
-        voice_profile=_cl_voice_profile,
-        seasons_count=(
-            len(_cl_history_ctx.seasons_available)
-            if _cl_history_ctx is not None else 0
-        ),
+        season_context=_ctx.season_context_text,
+        league_history=_ctx.league_history_text,
+        narrative_angles=_ctx.narrative_angles_text,
+        writer_room_context=_ctx.writer_room_text,
+        tone_preset=_ctx.tone_preset,
+        voice_profile=_ctx.voice_profile,
+        seasons_count=_ctx.seasons_count,
     )
     if _narrative_draft:
         rendered_text = (

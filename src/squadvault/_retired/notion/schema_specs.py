@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 from squadvault.config import Config
 
@@ -16,17 +15,17 @@ class RelationSpec:
 @dataclass(frozen=True)
 class PropertySpec:
     notion_type: str  # e.g., title, rich_text, number, select, date, url, checkbox, relation
-    relation: Optional[RelationSpec] = None
+    relation: RelationSpec | None = None
 
 
 @dataclass(frozen=True)
 class DatabaseSpec:
     database_id: str
     title_property: str
-    required_properties: Dict[str, PropertySpec]
+    required_properties: dict[str, PropertySpec]
 
 
-def build_schema_specs(cfg: Config) -> Dict[str, DatabaseSpec]:
+def build_schema_specs(cfg: Config) -> dict[str, DatabaseSpec]:
     """
     Authoritative schema expectations for validator.
     Property names must match Notion exactly.

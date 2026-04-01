@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
-from typing import Optional, Iterable, Tuple
+from collections.abc import Iterable
 
+from squadvault.utils.time import utc_now_iso
 
 ACTIONS = ("OPEN", "APPROVE", "REGENERATE", "WITHHOLD", "NOTES")
-
-
-def utc_now_iso() -> str:
-    """Return current UTC time as ISO-8601 string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def ensure_editorial_tables(conn: sqlite3.Connection) -> None:
@@ -35,10 +30,10 @@ def insert_editorial_action(
     week_index: int,
     artifact_kind: str,
     artifact_version: int,
-    selection_fingerprint: Optional[str],
+    selection_fingerprint: str | None,
     action: str,
     actor: str,
-    notes_md: Optional[str],
+    notes_md: str | None,
 ) -> None:
     """Insert an editorial action record."""
     if action not in ACTIONS:
@@ -77,7 +72,7 @@ def fetch_editorial_log(
     week_index: int,
     artifact_kind: str = "WEEKLY_RECAP",
     limit: int = 200,
-) -> Iterable[Tuple]:
+) -> Iterable[tuple]:
     """Fetch editorial action log for a week."""
     ensure_editorial_tables(conn)
     cur = conn.execute(

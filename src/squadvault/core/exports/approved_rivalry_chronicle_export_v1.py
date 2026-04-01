@@ -5,15 +5,15 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Set
+from typing import Any
 
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
 from squadvault.core.storage.db_utils import table_columns as _table_columns
 from squadvault.core.storage.session import DatabaseSession
-from squadvault.errors import SchemaError, RecapNotFoundError
+from squadvault.errors import RecapNotFoundError, SchemaError
 
 
-def _pick_first(existing: Set[str], candidates: List[str]) -> str | None:
+def _pick_first(existing: set[str], candidates: list[str]) -> str | None:
     """Return first column name from candidates that exists in cols, or None."""
     for c in candidates:
         if c in existing:
@@ -29,7 +29,7 @@ class ApprovedRivalryChronicleArtifactV1:
     artifact_type: str
     version: int
     selection_fingerprint: str
-    provenance: Dict[str, Any]
+    provenance: dict[str, Any]
     rendered_text: str
 
 
@@ -75,7 +75,7 @@ def fetch_latest_approved_rivalry_chronicle_v1(db_path: str) -> ApprovedRivalryC
                 select_cols.append(c)
 
         # Deterministic ordering: prefer approved timestamp if present, else fall back to id.
-        order_terms: List[str] = []
+        order_terms: list[str] = []
         if approved_at_col:
             order_terms.append(f"{approved_at_col} DESC")
         order_terms.append("id DESC")
@@ -95,7 +95,7 @@ def fetch_latest_approved_rivalry_chronicle_v1(db_path: str) -> ApprovedRivalryC
         if row is None:
             raise RecapNotFoundError("No APPROVED RIVALRY_CHRONICLE_V1 artifact found.")
 
-        provenance: Dict[str, Any] = {
+        provenance: dict[str, Any] = {
             "id": int(row["id"]),
             "state": str(row["state"]),
         }

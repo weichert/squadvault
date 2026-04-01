@@ -23,10 +23,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
-
 
 # ── Data classes (all frozen for determinism) ────────────────────────
 
@@ -55,21 +54,21 @@ class FranchiseWeekContext:
     franchise_id: str
 
     # All players sorted by score descending
-    starters: Tuple[PlayerScore, ...]
-    bench: Tuple[PlayerScore, ...]
+    starters: tuple[PlayerScore, ...]
+    bench: tuple[PlayerScore, ...]
 
     # Highlights (deterministic — derived from sorted lists)
-    top_starter: Optional[PlayerScore]     # highest-scoring starter
-    bust_starter: Optional[PlayerScore]    # lowest-scoring starter
+    top_starter: PlayerScore | None     # highest-scoring starter
+    bust_starter: PlayerScore | None    # lowest-scoring starter
     starter_total: float                   # sum of starter scores
     bench_total: float                     # sum of bench scores
 
     # Bench analysis
     bench_points_over_starters: float      # sum of bench scores where should_start=True
-    best_bench_player: Optional[PlayerScore]  # highest-scoring bench player
+    best_bench_player: PlayerScore | None  # highest-scoring bench player
 
     # FAAB linkage (players acquired via FAAB who scored this week)
-    faab_performers: Tuple[Tuple[PlayerScore, FaabPickup], ...]
+    faab_performers: tuple[tuple[PlayerScore, FaabPickup], ...]
 
 
 @dataclass(frozen=True)
@@ -85,11 +84,11 @@ class PlayerWeekContextV1:
     week: int
 
     # Per-franchise context, sorted by franchise_id
-    franchises: Tuple[FranchiseWeekContext, ...]
+    franchises: tuple[FranchiseWeekContext, ...]
 
     # Week-level highlights
-    week_top_scorer: Optional[Tuple[str, str, float]]     # (franchise_id, player_id, score)
-    week_lowest_starter: Optional[Tuple[str, str, float]]  # (franchise_id, player_id, score)
+    week_top_scorer: tuple[str, str, float] | None     # (franchise_id, player_id, score)
+    week_lowest_starter: tuple[str, str, float] | None  # (franchise_id, player_id, score)
 
     # Metadata
     total_players: int
@@ -126,12 +125,12 @@ def _load_player_scores(
     league_id: str,
     season: int,
     week: int,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Load WEEKLY_PLAYER_SCORE events from canonical_events for a given week.
 
     Returns raw payload dicts sorted by (franchise_id, player_id).
     """
-    payloads: List[Dict[str, Any]] = []
+    payloads: list[dict[str, Any]] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -172,13 +171,13 @@ def _load_faab_awards(
     db_path: str,
     league_id: str,
     season: int,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Load WAIVER_BID_AWARDED events from canonical_events for a season.
 
     Returns raw payload dicts for all FAAB awards in the season.
     These are used to link FAAB spending to player performance.
     """
-    payloads: List[Dict[str, Any]] = []
+    payloads: list[dict[str, Any]] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -205,15 +204,15 @@ def _load_faab_awards(
 
 
 def _build_faab_lookup(
-    faab_payloads: List[Dict[str, Any]],
-) -> Dict[str, List[FaabPickup]]:
+    faab_payloads: list[dict[str, Any]],
+) -> dict[str, list[FaabPickup]]:
     """Build a lookup: player_id -> list of FaabPickup records.
 
     Since we don't have a direct week number on FAAB events, we use
     a placeholder week of 0. The linkage is by player_id + franchise_id,
     and the bid_amount is the key data for narrative context.
     """
-    lookup: Dict[str, List[FaabPickup]] = {}
+    lookup: dict[str, list[FaabPickup]] = {}
 
     for p in faab_payloads:
         # Try to extract player IDs from FAAB events
@@ -263,13 +262,13 @@ def _build_faab_lookup(
 
 def _build_franchise_context(
     franchise_id: str,
-    player_payloads: List[Dict[str, Any]],
-    faab_lookup: Dict[str, List[FaabPickup]],
+    player_payloads: list[dict[str, Any]],
+    faab_lookup: dict[str, list[FaabPickup]],
 ) -> FranchiseWeekContext:
     """Build context for a single franchise from its player score payloads."""
 
-    starters: List[PlayerScore] = []
-    bench: List[PlayerScore] = []
+    starters: list[PlayerScore] = []
+    bench: list[PlayerScore] = []
 
     for p in player_payloads:
         player_id = str(p.get("player_id", "")).strip()
@@ -313,7 +312,7 @@ def _build_franchise_context(
     best_bench = bench[0] if bench else None
 
     # FAAB linkage — find FAAB pickups who scored this week for this franchise
-    faab_performers: List[Tuple[PlayerScore, FaabPickup]] = []
+    faab_performers: list[tuple[PlayerScore, FaabPickup]] = []
     all_players = list(starters) + list(bench)
     for ps in all_players:
         pickups = faab_lookup.get(ps.player_id, [])
@@ -373,7 +372,7 @@ def derive_player_week_context_v1(
     faab_lookup = _build_faab_lookup(faab_payloads)
 
     # Group payloads by franchise
-    by_franchise: Dict[str, List[Dict[str, Any]]] = {}
+    by_franchise: dict[str, list[dict[str, Any]]] = {}
     for p in player_payloads:
         fid = str(p.get("franchise_id", "")).strip()
         if fid:
@@ -382,13 +381,13 @@ def derive_player_week_context_v1(
             by_franchise[fid].append(p)
 
     # Build per-franchise context
-    franchise_contexts: List[FranchiseWeekContext] = []
+    franchise_contexts: list[FranchiseWeekContext] = []
     for fid in sorted(by_franchise.keys()):
         ctx = _build_franchise_context(fid, by_franchise[fid], faab_lookup)
         franchise_contexts.append(ctx)
 
     # Week-level highlights
-    all_starters: List[Tuple[str, str, float]] = []
+    all_starters: list[tuple[str, str, float]] = []
     all_players_count = 0
 
     for fc in franchise_contexts:
@@ -426,8 +425,8 @@ def derive_player_week_context_v1(
 def render_player_highlights_for_prompt(
     ctx: PlayerWeekContextV1,
     *,
-    team_resolver: Optional[Any] = None,
-    player_resolver: Optional[Any] = None,
+    team_resolver: Any | None = None,
+    player_resolver: Any | None = None,
 ) -> str:
     """Render player week context as a text block for the creative layer prompt.
 
@@ -461,7 +460,7 @@ def render_player_highlights_for_prompt(
                 pass
         return pid
 
-    lines: List[str] = []
+    lines: list[str] = []
 
     # Week-level highlights
     if ctx.week_top_scorer:
@@ -480,7 +479,7 @@ def render_player_highlights_for_prompt(
     # Per-franchise highlights (top performer, bust, bench analysis)
     for fc in ctx.franchises:
         team_name = _team(fc.franchise_id)
-        franchise_lines: List[str] = []
+        franchise_lines: list[str] = []
 
         # Top starter
         if fc.top_starter:

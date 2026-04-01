@@ -6,14 +6,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.queries.event_queries import (
     draft_picks,
+    free_agent_transactions,
+    trades,
     waiver_awards,
     waiver_requests,
-    trades,
-    free_agent_transactions,
 )
+from squadvault.core.storage.sqlite_store import SQLiteStore
 
 load_dotenv(".env")
 

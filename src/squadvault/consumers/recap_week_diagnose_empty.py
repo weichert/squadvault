@@ -21,18 +21,18 @@ Outputs are deterministic and safe (no inference beyond explicit comparisons).
 from __future__ import annotations
 
 import argparse
+import logging
 import sqlite3
 import sys
-from typing import Any, Dict, List, Optional, Tuple
-from squadvault.core.storage.session import DatabaseSession
+from typing import Any
+
 from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
+from squadvault.core.storage.session import DatabaseSession
 
-
-
-
+logger = logging.getLogger(__name__)
 def _q(
-    conn: sqlite3.Connection, sql: str, params: Tuple[Any, ...]
-) -> List[Dict[str, Any]]:
+    conn: sqlite3.Connection, sql: str, params: tuple[Any, ...]
+) -> list[dict[str, Any]]:
     """Execute a query and return all rows as dicts."""
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -41,14 +41,14 @@ def _q(
 
 
 def _q_one(
-    conn: sqlite3.Connection, sql: str, params: Tuple[Any, ...]
-) -> Optional[Dict[str, Any]]:
+    conn: sqlite3.Connection, sql: str, params: tuple[Any, ...]
+) -> dict[str, Any] | None:
     """Execute a query and return a single scalar value."""
     rows = _q(conn, sql, params)
     return rows[0] if rows else None
 
 
-def _print_kv(title: str, pairs: List[Tuple[str, Any]]) -> None:
+def _print_kv(title: str, pairs: list[tuple[str, Any]]) -> None:
     """Print a titled list of key-value pairs."""
     print(title)
     for k, v in pairs:
@@ -56,7 +56,7 @@ def _print_kv(title: str, pairs: List[Tuple[str, Any]]) -> None:
     print("")
 
 
-def _fmt_counts(rows: List[Dict[str, Any]], key_col: str, val_col: str) -> str:
+def _fmt_counts(rows: list[dict[str, Any]], key_col: str, val_col: str) -> str:
     """Format rows as a key-count summary string."""
     if not rows:
         return "  (none)\n"
@@ -66,7 +66,7 @@ def _fmt_counts(rows: List[Dict[str, Any]], key_col: str, val_col: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _try_load_allowlist() -> Optional[set[str]]:
+def _try_load_allowlist() -> set[str] | None:
     """
     Best-effort: if your repo has a canonical allowlist module, load it.
     (We keep this tolerant so the script works even if names move.)
@@ -84,7 +84,8 @@ def _try_load_allowlist() -> Optional[set[str]]:
             v = getattr(m, attr, None)
             if isinstance(v, (set, list, tuple)):
                 return set(str(x) for x in v)
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             continue
     return None
 
@@ -333,4 +334,4 @@ if __name__ == "__main__":
         raise
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from e

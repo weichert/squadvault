@@ -7,15 +7,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
 
 from squadvault.chronicle.approved_recap_refs_v1 import load_latest_approved_recap_refs_v1
 from squadvault.chronicle.format_rivalry_chronicle_v1 import (
     UpstreamRecapQuoteV1,
-    render_rivalry_chronicle_v1,
     render_rivalry_chronicle_contract_v1,
+    render_rivalry_chronicle_v1,
 )
 from squadvault.chronicle.input_contract_v1 import (
     ChronicleInputResolverV1,
@@ -23,12 +24,14 @@ from squadvault.chronicle.input_contract_v1 import (
     RivalryChronicleInputV1,
 )
 from squadvault.chronicle.matchup_facts_v1 import (
-    query_head_to_head_matchups_v1,
     facts_block_hash_v1,
+    query_head_to_head_matchups_v1,
 )
-from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_WEEKLY_RECAP
 from squadvault.core.exports.approved_weekly_recap_export_v1 import fetch_latest_approved_weekly_recap
+from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_WEEKLY_RECAP
 from squadvault.core.storage.session import DatabaseSession
+
+logger = logging.getLogger(__name__)
 
 ARTIFACT_TYPE_RIVALRY_CHRONICLE = "RIVALRY_CHRONICLE"
 
@@ -39,7 +42,7 @@ def chronicle_fingerprint_v1(
     season: int,
     weeks_requested: Sequence[int],
     missing_weeks: Sequence[int],
-    approved_recaps: Sequence[Tuple[int, str, int, str]],
+    approved_recaps: Sequence[tuple[int, str, int, str]],
     team_a_id: str | None = None,
     team_b_id: str | None = None,
     matchup_facts_hash: str | None = None,
@@ -67,7 +70,7 @@ def chronicle_fingerprint_v1(
 @dataclass(frozen=True)
 class RivalryChronicleGeneratedV1:
     text: str
-    missing_weeks: Tuple[int, ...]
+    missing_weeks: tuple[int, ...]
     fingerprint: str
     anchor_week_index: int
 
@@ -84,7 +87,8 @@ def _resolve_team_name(db_path: str, league_id: int, season: int, franchise_id: 
             ).fetchone()
             if row and row["name"]:
                 return str(row["name"]).strip()
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         pass
     return str(franchise_id)
 
@@ -95,7 +99,7 @@ def generate_rivalry_chronicle_v1(
     league_id: int,
     season: int,
     week_indices: Sequence[int] | None,
-    week_range: Tuple[int, int] | None,
+    week_range: tuple[int, int] | None,
     missing_weeks_policy: MissingWeeksPolicy,
     created_at_utc: str,
     team_a_id: str | None = None,
@@ -180,8 +184,9 @@ def generate_rivalry_chronicle_v1(
                 league_id=int(league_id),
                 season=int(season),
             )
-        except Exception:
-            pass  # Silent fallback: facts-only output
+        except Exception as exc:
+            logger.debug("%s", exc)
+            pass
 
         out_text = render_rivalry_chronicle_contract_v1(
             league_id=int(league_id),
@@ -206,7 +211,7 @@ def generate_rivalry_chronicle_v1(
         )
 
     # ── Legacy path (no team pair — upstream quotes) ──
-    quotes: List[UpstreamRecapQuoteV1] = []
+    quotes: list[UpstreamRecapQuoteV1] = []
     for ref in resolved.approved_recaps:
         art = fetch_latest_approved_weekly_recap(
             db_path=db_path,

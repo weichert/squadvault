@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Dict, List, Optional, Tuple
+import logging
+from typing import Any
 
 from squadvault.utils.time import unix_seconds_to_iso_z
+
+logger = logging.getLogger(__name__)
 
 
 def _truncate_raw_json(text: str, limit: int) -> str:
@@ -22,7 +25,7 @@ def _stable_external_id(*parts: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
 
 
-def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
+def _safe_get(d: dict[str, Any], *keys: str) -> Any:
     """Safely get a value from a dict with fallback."""
     for k in keys:
         if k in d:
@@ -30,30 +33,31 @@ def _safe_get(d: Dict[str, Any], *keys: str) -> Any:
     return None
 
 
-def _extract_type(txn: Dict[str, Any]) -> str:
+def _extract_type(txn: dict[str, Any]) -> str:
     """Extract MFL transaction type from raw data."""
     t = _safe_get(txn, "@type", "type")
     return str(t) if t is not None else ""
 
 
-def _extract_franchise_id(txn: Dict[str, Any]) -> str:
+def _extract_franchise_id(txn: dict[str, Any]) -> str:
     """Extract franchise ID from raw transaction data."""
     v = _safe_get(txn, "@franchise", "franchise", "@franchise_id", "franchise_id")
     return str(v) if v is not None else ""
 
 
-def _extract_timestamp_unix(txn: Dict[str, Any]) -> Optional[int]:
+def _extract_timestamp_unix(txn: dict[str, Any]) -> int | None:
     """Extract and validate Unix timestamp from raw data."""
     v = _safe_get(txn, "@timestamp", "timestamp", "@time", "time")
     if v is None:
         return None
     try:
         return int(str(v))
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return None
 
 
-def _parse_mfl_transaction_field(txn: Dict[str, Any]) -> Tuple[List[str], Optional[float], List[str]]:
+def _parse_mfl_transaction_field(txn: dict[str, Any]) -> tuple[list[str], float | None, list[str]]:
     """
     Parses MFL's compact 'transaction' field.
 
@@ -77,7 +81,7 @@ def _parse_mfl_transaction_field(txn: Dict[str, Any]) -> Tuple[List[str], Option
     bid_part = parts[1] if len(parts) >= 2 else ""
     drop_part = parts[2] if len(parts) >= 3 else ""
 
-    def split_ids(s: str) -> List[str]:
+    def split_ids(s: str) -> list[str]:
         """Split comma-separated ID string into list of non-empty strings."""
         items = [x.strip() for x in s.split(",")]
         return [x for x in items if x]
@@ -85,11 +89,12 @@ def _parse_mfl_transaction_field(txn: Dict[str, Any]) -> Tuple[List[str], Option
     added = split_ids(add_part)
     dropped = split_ids(drop_part)
 
-    bid_amount: Optional[float] = None
+    bid_amount: float | None = None
     if bid_part:
         try:
             bid_amount = float(bid_part)
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             bid_amount = None
 
     return (added, bid_amount, dropped)
@@ -99,10 +104,10 @@ def derive_waiver_bid_event_envelopes_from_transactions(
     *,
     year: int,
     league_id: str,
-    transactions: List[Dict[str, Any]],
+    transactions: list[dict[str, Any]],
     source_url: str,
     raw_json_truncate_chars: int = 2000,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Produces WAIVER_BID_* event envelopes from the MFL transactions export.
 
@@ -123,7 +128,7 @@ def derive_waiver_bid_event_envelopes_from_transactions(
       from the compact 'transaction' field. This prevents "stub awards" (blank player/bid/add/drop)
       from polluting the append-only ledger.
     """
-    events: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
 
     for idx, txn in enumerate(transactions):
         t = _extract_type(txn).upper().strip()
@@ -151,7 +156,8 @@ def derive_waiver_bid_event_envelopes_from_transactions(
             elif isinstance(direct_bid, str) and direct_bid.strip():
                 try:
                     bid_amount = float(direct_bid.strip())
-                except Exception:
+                except Exception as exc:
+                    logger.debug("%s", exc)
                     bid_amount = None
 
 
@@ -180,7 +186,7 @@ def derive_waiver_bid_event_envelopes_from_transactions(
             ts_key,
         )
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "mfl_type": t,
             "franchise_id": franchise_id,
             "source_url": source_url,

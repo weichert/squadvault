@@ -13,7 +13,7 @@ Rules:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from squadvault.recaps.writing_room.identity_recipes_v1 import compute_sha256_hex_from_payload_v1
 
@@ -35,7 +35,7 @@ def _window_id_payload_v1(
     window_end: str,
     mode: str,
     version: str = "v1.0",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a deterministic window ID hash payload."""
     return {
         "type": "writing_room_window_id",

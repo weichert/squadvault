@@ -17,7 +17,6 @@ from __future__ import annotations
 import logging
 import os
 import warnings
-from typing import Optional
 
 from squadvault.core.eal.editorial_attunement_v1 import EAL_AMBIGUITY_PREFER_SILENCE
 
@@ -278,7 +277,7 @@ def draft_narrative_v1(
     tone_preset: str = "",
     voice_profile: str = "",
     seasons_count: int = 0,
-) -> Optional[str]:
+) -> str | None:
     """Attempt to produce a governed prose narrative draft.
 
     Returns a narrative string if successful, or None if:

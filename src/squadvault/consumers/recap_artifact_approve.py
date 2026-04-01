@@ -2,12 +2,12 @@
 
 import argparse
 
-from squadvault.core.recaps.recap_runs import sync_recap_run_state_from_artifacts
 from squadvault.core.recaps.recap_artifacts import (
     approve_recap_artifact,
     latest_approved_version,
     supersede_approved_recap_artifact,
 )
+from squadvault.core.recaps.recap_runs import sync_recap_run_state_from_artifacts
 
 
 def main() -> None:

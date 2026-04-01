@@ -2,16 +2,19 @@
 
 import argparse
 import json
+import logging
 import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
-from squadvault.core.storage.sqlite_store import SQLiteStore
+from squadvault.core.resolvers import FranchiseResolver, PlayerResolver, _csv_ids
 from squadvault.core.storage.session import DatabaseSession
-from squadvault.core.resolvers import PlayerResolver, FranchiseResolver, _csv_ids
+from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.recaps.dng_reasons import DNGReason
-from squadvault.recaps.preflight import PreflightVerdictType, PreflightVerdict
+from squadvault.recaps.preflight import PreflightVerdict, PreflightVerdictType
+
+logger = logging.getLogger(__name__)
 
 
 FAAB_BUDGET = 100.00
@@ -24,7 +27,7 @@ def recap_preflight_verdict(
     season: int,
     start: str,
     end: str,
-    canonical_events: List[Dict[str, Any]],
+    canonical_events: list[dict[str, Any]],
 ) -> PreflightVerdict:
     """Phase 2: Do-Not-Generate (DNG) gate.
 
@@ -83,7 +86,7 @@ def recap_preflight_verdict(
     )
 
 
-def _parse_raw_mfl_json(raw: Any, omit_reasons: Dict[str, int]) -> Optional[dict]:
+def _parse_raw_mfl_json(raw: Any, omit_reasons: dict[str, int]) -> dict | None:
     """Best-effort parse of MFL raw JSON payloads.
 
     Handles cases where the DB stores:
@@ -100,7 +103,8 @@ def _parse_raw_mfl_json(raw: Any, omit_reasons: Dict[str, int]) -> Optional[dict
         """Attempt JSON parse, returning None on failure."""
         try:
             return json.loads(s)
-        except Exception:
+        except Exception as exc:
+            logger.debug("%s", exc)
             return None
 
     # Pass 1: direct
@@ -127,7 +131,8 @@ def _parse_raw_mfl_json(raw: Any, omit_reasons: Dict[str, int]) -> Optional[dict
     # Pass 3: decode escape sequences
     try:
         decoded = rs.encode("utf-8").decode("unicode_escape")
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         decoded = None
     if decoded:
         v = _try_load(decoded)
@@ -184,7 +189,7 @@ def _as_float(x: Any, default: float = 0.0) -> float:
         return default
 
 
-def _safe_json_loads(s: Any) -> Dict[str, Any]:
+def _safe_json_loads(s: Any) -> dict[str, Any]:
     """
     Best-effort parse for raw_mfl_json, returning {} on failure.
     """
@@ -193,7 +198,8 @@ def _safe_json_loads(s: Any) -> Dict[str, Any]:
     try:
         obj = json.loads(s)
         return obj if isinstance(obj, dict) else {}
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return {}
 
 
@@ -209,11 +215,11 @@ def _print_header(title: str) -> None:
 # Deep extraction (best-effort, non-breaking)
 # ----------------------------
 
-def _extract_player_ids_deep(obj: Any) -> Set[str]:
+def _extract_player_ids_deep(obj: Any) -> set[str]:
     """
     Deep-scan an object for common player-id keys. Non-breaking, best-effort.
     """
-    ids: Set[str] = set()
+    ids: set[str] = set()
 
     def walk(x: Any) -> None:
         """Recursively scan a nested structure for player IDs."""
@@ -262,9 +268,9 @@ def _extract_player_ids_deep(obj: Any) -> Set[str]:
     return ids
 
 
-def _collect_player_ids_from_events(events: List[Dict[str, Any]]) -> Set[str]:
+def _collect_player_ids_from_events(events: list[dict[str, Any]]) -> set[str]:
     """Collect all player IDs from event payloads via deep scan."""
-    ids: Set[str] = set()
+    ids: set[str] = set()
     for e in events:
         p = e.get("payload") or {}
         if isinstance(p, dict):
@@ -275,9 +281,9 @@ def _collect_player_ids_from_events(events: List[Dict[str, Any]]) -> Set[str]:
     return ids
 
 
-def _collect_franchise_ids_from_events(events: List[Dict[str, Any]]) -> Set[str]:
+def _collect_franchise_ids_from_events(events: list[dict[str, Any]]) -> set[str]:
     """Collect all franchise IDs from event payloads."""
-    ids: Set[str] = set()
+    ids: set[str] = set()
     for e in events:
         p = e.get("payload") or {}
         if isinstance(p, dict):
@@ -300,7 +306,7 @@ def _collect_franchise_ids_from_events(events: List[Dict[str, Any]]) -> Set[str]
 
 
 
-def _fid(franchise_resolver: Optional[FranchiseResolver], fid_raw: Any) -> str:
+def _fid(franchise_resolver: FranchiseResolver | None, fid_raw: Any) -> str:
     """Resolve franchise ID via resolver, or return raw string."""
     return franchise_resolver.one(fid_raw) if franchise_resolver is not None else str(fid_raw)
 
@@ -309,7 +315,7 @@ def _fid(franchise_resolver: Optional[FranchiseResolver], fid_raw: Any) -> str:
 # Event selection + scoring
 # ----------------------------
 
-def _score_event(e: Dict[str, Any]) -> float:
+def _score_event(e: dict[str, Any]) -> float:
     """Assign a notability score to an event by type."""
     et = e.get("event_type")
     p = e.get("payload") or {}
@@ -336,7 +342,7 @@ def _score_event(e: Dict[str, Any]) -> float:
     return 0.0
 
 
-def _dedupe_key(e: Dict[str, Any]) -> str:
+def _dedupe_key(e: dict[str, Any]) -> str:
     """Compute a deduplication key for an event."""
     et = e.get("event_type")
     p = e.get("payload") or {}
@@ -348,7 +354,7 @@ def _dedupe_key(e: Dict[str, Any]) -> str:
     return f'{e.get("external_source")}:{e.get("external_id")}'
 
 
-def _pick_notable(events: List[Dict[str, Any]], max_items: int) -> List[Dict[str, Any]]:
+def _pick_notable(events: list[dict[str, Any]], max_items: int) -> list[dict[str, Any]]:
     """Select top notable events by score, with deduplication."""
     TYPE_PRIORITY = {
         "TRANSACTION_TRADE": 0,
@@ -359,7 +365,7 @@ def _pick_notable(events: List[Dict[str, Any]], max_items: int) -> List[Dict[str
         "TRANSACTION_BBID_WAIVER": 5,
     }
 
-    scored: List[Tuple[float, Dict[str, Any]]] = []
+    scored: list[tuple[float, dict[str, Any]]] = []
     for e in events:
         s = _score_event(e)
         if s > 0:
@@ -375,7 +381,7 @@ def _pick_notable(events: List[Dict[str, Any]], max_items: int) -> List[Dict[str
         )
     )
 
-    picked: List[Dict[str, Any]] = []
+    picked: list[dict[str, Any]] = []
     seen: set[str] = set()
     for _, e in scored:
         k = _dedupe_key(e)
@@ -393,7 +399,7 @@ def _pick_notable(events: List[Dict[str, Any]], max_items: int) -> List[Dict[str
 # Trade parsing
 # ----------------------------
 
-def _extract_trade_fields(payload: Dict[str, Any]) -> Tuple[str, str, List[str], List[str]]:
+def _extract_trade_fields(payload: dict[str, Any]) -> tuple[str, str, list[str], list[str]]:
     """Extract franchise IDs and traded player IDs from a trade payload."""
     f1 = payload.get("franchise_id") or payload.get("franchise")
     f2 = payload.get("franchise2")
@@ -437,9 +443,9 @@ def _extract_trade_fields(payload: Dict[str, Any]) -> Tuple[str, str, List[str],
 # ----------------------------
 
 def format_headline(
-    e: Dict[str, Any],
-    player_resolver: Optional[PlayerResolver] = None,
-    franchise_resolver: Optional[FranchiseResolver] = None,
+    e: dict[str, Any],
+    player_resolver: PlayerResolver | None = None,
+    franchise_resolver: FranchiseResolver | None = None,
 ) -> str:
     """Format a human-readable headline for a canonical event."""
     et = e.get("event_type")
@@ -448,7 +454,7 @@ def format_headline(
     fid_raw = p.get("franchise_id", "?")
     fid = _fid(franchise_resolver, fid_raw)
 
-    def resolve_players(ids: Any) -> List[str]:
+    def resolve_players(ids: Any) -> list[str]:
         """Resolve player IDs via resolver or return raw IDs."""
         if player_resolver is None:
             return _csv_ids(ids)
@@ -797,8 +803,8 @@ def main() -> int:
         conn.close()
 
 
-    player_resolver: Optional[PlayerResolver] = None
-    franchise_resolver: Optional[FranchiseResolver] = None
+    player_resolver: PlayerResolver | None = None
+    franchise_resolver: FranchiseResolver | None = None
 
     if args.resolve_players:
         ids_needed = _collect_player_ids_from_events(events)
@@ -841,7 +847,7 @@ def main() -> int:
 
     _print_header("Leaderboards (auto)")
 
-    moves_by_team: Dict[str, int] = defaultdict(int)
+    moves_by_team: dict[str, int] = defaultdict(int)
     for e in events:
         p = e.get("payload") or {}
         fid = p.get("franchise_id")
@@ -858,9 +864,9 @@ def main() -> int:
 
     print()
 
-    faab_total_by_team: Dict[str, float] = defaultdict(float)
-    biggest_bids: List[Tuple[float, str]] = []
-    waiver_wins: List[Tuple[float, str, Dict[str, Any]]] = []
+    faab_total_by_team: dict[str, float] = defaultdict(float)
+    biggest_bids: list[tuple[float, str]] = []
+    waiver_wins: list[tuple[float, str, dict[str, Any]]] = []
 
     for e in events:
         if e.get("event_type") != "WAIVER_BID_AWARDED":

@@ -9,11 +9,10 @@ provenance-based format for backward compatibility.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import List, Sequence
 
 from squadvault.chronicle.matchup_facts_v1 import MatchupFactV1, facts_block_hash_v1
-
 
 BANNER = (
     "NON-CANONICAL / DERIVED NARRATIVE — Rivalry Chronicle v1\n"
@@ -67,7 +66,7 @@ def render_rivalry_chronicle_contract_v1(
     missing = sorted(set(int(w) for w in missing_weeks))
     facts = sorted(matchup_facts, key=lambda f: (f.season, f.week))
 
-    lines: List[str] = []
+    lines: list[str] = []
 
     # ── Header ──
     lines.append(_nl("# Rivalry Chronicle v1"))
@@ -160,7 +159,7 @@ def render_rivalry_chronicle_v1(
     quotes = list(sorted(upstream_quotes, key=lambda q: int(q.week_index)))
     missing = list(sorted(set(int(w) for w in missing_weeks)))
 
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append(_nl(BANNER))
     lines.append(_nl(f"League: {int(league_id)}"))
     lines.append(_nl(f"Season: {int(season)}"))

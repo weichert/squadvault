@@ -3,9 +3,9 @@
 
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Any
-from squadvault.core.storage.session import DatabaseSession
+from typing import Any
 
+from squadvault.core.storage.session import DatabaseSession
 
 # Sentinel that lets callers distinguish:
 # - reason not provided (leave unchanged)
@@ -20,15 +20,15 @@ class RecapRunRecord:
     week_index: int
     state: str  # ELIGIBLE | DRAFTED | REVIEW_REQUIRED | APPROVED | WITHHELD | SUPERSEDED
 
-    window_mode: Optional[str]
-    window_start: Optional[str]
-    window_end: Optional[str]
+    window_mode: str | None
+    window_start: str | None
+    window_end: str | None
 
     selection_fingerprint: str
-    canonical_ids: List[str]
-    counts_by_type: Dict[str, int]
+    canonical_ids: list[str]
+    counts_by_type: dict[str, int]
 
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 def upsert_recap_run(db_path: str, r: RecapRunRecord) -> None:
@@ -76,7 +76,7 @@ def upsert_recap_run(db_path: str, r: RecapRunRecord) -> None:
         conn.commit()
 
 
-def get_recap_run_state(db_path: str, league_id: str, season: int, week_index: int) -> Optional[str]:
+def get_recap_run_state(db_path: str, league_id: str, season: int, week_index: int) -> str | None:
     """Return current recap_runs state for a week, or None if no row exists."""
     with DatabaseSession(db_path) as conn:
         row = conn.execute(
@@ -144,7 +144,7 @@ def _latest_artifact_state_for_week(
     league_id: str,
     season: int,
     week_index: int,
-) -> Optional[Tuple[int, str]]:
+) -> tuple[int, str] | None:
     """
     Returns (version, state) for the latest recap_artifacts row for this week,
     or None if no artifacts exist.
@@ -191,7 +191,7 @@ def sync_recap_run_state_from_artifacts(
     league_id: str,
     season: int,
     week_index: int,
-) -> Optional[str]:
+) -> str | None:
     """
     Explicit reconciliation step (call it from render/approve/regenerate/withhold).
 

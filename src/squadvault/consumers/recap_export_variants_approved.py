@@ -5,31 +5,26 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import logging
 import os
+import subprocess
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from squadvault.core.storage.session import DatabaseSession
+from typing import Any
+
 from squadvault.core.storage.db_utils import row_to_dict as _row_to_dict
+from squadvault.core.storage.session import DatabaseSession
+from squadvault.utils.time import utc_now_iso
 
-
-def utc_now_iso() -> str:
-    """Return current UTC time as ISO-8601 string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
-
-
+logger = logging.getLogger(__name__)
 def _fetch_approved_weekly_recap_artifact(
     *,
     db_path: str,
     league_id: str,
     season: int,
     week_index: int,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Fetch latest approved WEEKLY_RECAP artifact for a week."""
     with DatabaseSession(db_path) as conn:
         row = conn.execute(
@@ -53,7 +48,8 @@ def _safe_int(v: Any, default: int = 0) -> int:
     """Parse value as int, returning default on failure."""
     try:
         return int(v)
-    except Exception:
+    except Exception as exc:
+        logger.debug("%s", exc)
         return default
 
 
@@ -66,7 +62,7 @@ class ExportMetadata:
     lifecycle_version: int
     lifecycle_state: str
     selection_fingerprint: str
-    voices: List[str]
+    voices: list[str]
     generated_at: str
     output_path: str
 
@@ -82,7 +78,7 @@ def _run_renderer(
     league_id: str,
     season: int,
     week_index: int,
-    voices: List[str],
+    voices: list[str],
     base_dir: str,
 ) -> str:
     """
@@ -113,7 +109,7 @@ def _run_renderer(
     return out
 
 
-def main(argv: List[str]) -> int:
+def main(argv: list[str]) -> int:
     """CLI entrypoint: export approved voice variants."""
     ap = argparse.ArgumentParser(description="Export APPROVED weekly recap voice variants as a shareable pack")
     ap.add_argument("--db", required=True)

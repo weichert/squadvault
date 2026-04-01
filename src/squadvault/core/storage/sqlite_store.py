@@ -6,7 +6,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 def _now_iso_z() -> str:
@@ -30,7 +30,7 @@ class SQLiteStore:
             conn.executescript(schema_sql)
             conn.commit()
 
-    def append_events(self, events: List[Dict[str, Any]]) -> Tuple[int, int]:
+    def append_events(self, events: list[dict[str, Any]]) -> tuple[int, int]:
         """
         Append-only insert. Idempotent by (external_source, external_id).
         Returns (inserted_count, skipped_count).
@@ -80,11 +80,11 @@ class SQLiteStore:
         *,
         league_id: str,
         season: int,
-        occurred_at_min: Optional[str] = None,
-        occurred_at_max: Optional[str] = None,
+        occurred_at_min: str | None = None,
+        occurred_at_max: str | None = None,
         limit: int = 1000,
         use_canonical: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Downstream consumer read surface.
 
@@ -103,7 +103,7 @@ class SQLiteStore:
         FROM {source}
         WHERE league_id = ? AND season = ?
         """
-        params: List[Any] = [league_id, int(season)]
+        params: list[Any] = [league_id, int(season)]
 
         if occurred_at_min is not None:
             q += " AND (occurred_at IS NOT NULL AND occurred_at >= ?)"
@@ -126,7 +126,7 @@ class SQLiteStore:
         with self.connect() as conn:
             rows = conn.execute(q, params).fetchall()
 
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for r in rows:
             out.append(
                 {
@@ -150,7 +150,7 @@ class SQLiteStore:
         occurred_at_min: str,
         occurred_at_max: str,
         limit: int = 5000,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Convenience wrapper for canonical-only reads in a time range.
         occurred_at_* must be ISO8601 with trailing 'Z' (UTC).

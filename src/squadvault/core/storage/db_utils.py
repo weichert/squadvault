@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any
 
 
 def table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -28,7 +28,7 @@ def norm_id(raw: Any) -> str:
     return s
 
 
-def row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     """Convert a sqlite3.Row to a plain dict."""
     return {k: row[k] for k in row.keys()}
 

@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
 
@@ -45,15 +45,15 @@ STANDARD_SCORING = {
 
 
 def parse_scoring_rules(
-    raw_json: Dict[str, Any],
-) -> Dict[str, Any]:
+    raw_json: dict[str, Any],
+) -> dict[str, Any]:
     """Parse MFL rules response into a structured scoring summary.
 
     Extracts key scoring parameters from the MFL positionRules structure.
     Returns a dict with the raw JSON plus extracted key parameters.
     """
-    result: Dict[str, Any] = {"raw": raw_json}
-    key_rules: Dict[str, Optional[float]] = {}
+    result: dict[str, Any] = {"raw": raw_json}
+    key_rules: dict[str, float | None] = {}
 
     rules_root = raw_json.get("rules", {})
     position_rules = rules_root.get("positionRules", [])
@@ -114,7 +114,7 @@ def parse_scoring_rules(
     result["key_rules"] = key_rules
 
     # Compute deviations from standard
-    deviations: Dict[str, str] = {}
+    deviations: dict[str, str] = {}
     for key, standard_val in STANDARD_SCORING.items():
         actual = key_rules.get(key)
         if actual is not None and abs(actual - standard_val) > 0.001:
@@ -128,7 +128,7 @@ def upsert_scoring_rules(
     db_path: str,
     league_id: str,
     season: int,
-    parsed_rules: Dict[str, Any],
+    parsed_rules: dict[str, Any],
 ) -> int:
     """Upsert scoring rules into league_scoring_rules table.
 
@@ -154,7 +154,7 @@ def ingest_scoring_rules_from_mfl(
     db_path: str,
     league_id: str,
     season: int,
-    raw_json: Dict[str, Any],
+    raw_json: dict[str, Any],
 ) -> int:
     """Full pipeline: parse MFL rules response and upsert into DB."""
     parsed = parse_scoring_rules(raw_json)

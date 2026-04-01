@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 
@@ -26,7 +26,7 @@ class NotionClient:
             }
         )
 
-    def get_database(self, database_id: str) -> Dict[str, Any]:
+    def get_database(self, database_id: str) -> dict[str, Any]:
         """Retrieve a Notion database by ID."""
         url = f"{self.base_url}/databases/{database_id}"
         resp = http_request_with_retries(self.session, "GET", url)
@@ -35,13 +35,13 @@ class NotionClient:
     def query_database(
         self,
         database_id: str,
-        filter_obj: Optional[Dict[str, Any]] = None,
-        start_cursor: Optional[str] = None,
+        filter_obj: dict[str, Any] | None = None,
+        start_cursor: str | None = None,
         page_size: int = 100,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Query a Notion database with optional filter."""
         url = f"{self.base_url}/databases/{database_id}/query"
-        payload: Dict[str, Any] = {"page_size": page_size}
+        payload: dict[str, Any] = {"page_size": page_size}
         if filter_obj:
             payload["filter"] = filter_obj
         if start_cursor:
@@ -55,7 +55,7 @@ class NotionClient:
         property_name: str,
         property_type: str,
         value: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         property_type must be one of: title, rich_text, number, select, url, checkbox
         """
@@ -75,14 +75,14 @@ class NotionClient:
             raise ValueError(f"Unsupported property_type for equals query: {property_type}")
         return self.query_database(database_id=database_id, filter_obj=filter_obj, page_size=100)
 
-    def create_page(self, parent_database_id: str, properties: Dict[str, Any]) -> Dict[str, Any]:
+    def create_page(self, parent_database_id: str, properties: dict[str, Any]) -> dict[str, Any]:
         """Create a page in a Notion database."""
         url = f"{self.base_url}/pages"
         payload = {"parent": {"database_id": parent_database_id}, "properties": properties}
         resp = http_request_with_retries(self.session, "POST", url, json=payload)
         return resp.json()
 
-    def update_page(self, page_id: str, properties: Dict[str, Any]) -> Dict[str, Any]:
+    def update_page(self, page_id: str, properties: dict[str, Any]) -> dict[str, Any]:
         """Update properties on a Notion page."""
         url = f"{self.base_url}/pages/{page_id}"
         payload = {"properties": properties}
@@ -94,8 +94,8 @@ class NotionClient:
         database_id: str,
         title_property_name: str,
         key_value: str,
-        properties: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        properties: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Idempotent upsert where the Notion database Title property is the key field.
         - Looks up pages where title_property_name == key_value

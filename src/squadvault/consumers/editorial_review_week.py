@@ -9,7 +9,6 @@ import sqlite3
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
 
 from squadvault.consumers.editorial_actions import insert_editorial_action
 from squadvault.core.storage.session import DatabaseSession
@@ -49,7 +48,7 @@ def recap_dir(base_dir: str, league_id: str, season: int, week_index: int) -> Pa
 _V_RE = re.compile(r"recap_v(\d+)\.json$")
 
 
-def find_latest_recap_json(base_dir: str, league_id: str, season: int, week_index: int) -> Optional[Path]:
+def find_latest_recap_json(base_dir: str, league_id: str, season: int, week_index: int) -> Path | None:
     """Find the latest recap JSON file on disk for a week."""
     d = recap_dir(base_dir, league_id, season, week_index)
     if not d.exists():
@@ -86,7 +85,7 @@ def extract_version(path: Path, payload: dict) -> int:
     return int(m.group(1))
 
 
-def extract_fingerprint(payload: dict) -> Optional[str]:
+def extract_fingerprint(payload: dict) -> str | None:
     # We’ve seen selection fingerprints in run metadata; try common keys
     """Extract selection fingerprint from a recap payload."""
     for k in ("selection_fingerprint", "fingerprint", "selectionFingerprint"):
@@ -161,7 +160,7 @@ def run_script(py_path: str, args: list[str]) -> int:
 
 def ensure_draft_exists(
     db: str, league_id: str, season: int, week_index: int, base_dir: str
-) -> Tuple[Path, dict]:
+) -> tuple[Path, dict]:
     """Ensure a draft recap JSON exists on disk."""
     latest = find_latest_recap_json(base_dir, league_id, season, week_index)
     if latest is None:

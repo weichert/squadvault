@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-from typing import Optional
 
 
 class DatabaseSession:
@@ -21,7 +20,7 @@ class DatabaseSession:
     def __init__(self, db_path: str | Path):
         """Initialize with path to SQLite database."""
         self.db_path = str(db_path)
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
 
     def __enter__(self) -> sqlite3.Connection:
         """Open connection with Row factory enabled."""
