@@ -237,18 +237,18 @@ def _extract_player_ids_deep(obj: Any) -> Set[str]:
                             ids.add(pid)
 
                 if lk in {"player", "players"} and isinstance(v, dict):
-                    pid_val = v.get("id") or v.get("player_id") or v.get("playerId")
-                    if pid_val is not None:
-                        spid = str(pid_val).strip()
+                    _pid = v.get("id") or v.get("player_id") or v.get("playerId")
+                    if _pid is not None:
+                        spid = str(_pid).strip()
                         if spid:
                             ids.add(spid)
 
                 if lk in {"players", "player_list", "playerlist"} and isinstance(v, list):
                     for item in v:
                         if isinstance(item, dict):
-                            pid_val = item.get("id") or item.get("player_id") or item.get("playerId")
-                            if pid_val is not None:
-                                spid = str(pid_val).strip()
+                            _pid = item.get("id") or item.get("player_id") or item.get("playerId")
+                            if _pid is not None:
+                                spid = str(_pid).strip()
                                 if spid:
                                     ids.add(spid)
 
@@ -607,7 +607,7 @@ def main() -> int:
                 print()
 
                 _print_header("Counts by event_type (canonical only)")
-                counts: Counter[str] = Counter(str(e.get("event_type", "")) for e in events)
+                counts: dict[str, int] = Counter(str(e.get("event_type", "")) for e in events)
                 for k in sorted(counts.keys()):
                     print(f"{k:<35} {counts[k]}")
                 print()

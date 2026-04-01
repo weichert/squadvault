@@ -129,7 +129,7 @@ def main() -> int:
                 no_artifact_count += 1
                 continue
 
-            version = int(art.get("version"))
+            version = int(art.get("version", 0))
             rendered_text = art.get("rendered_text") or ""
             has_facts = _has_facts_block(rendered_text)
 

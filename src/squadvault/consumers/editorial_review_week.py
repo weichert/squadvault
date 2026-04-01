@@ -69,7 +69,8 @@ def find_latest_recap_json(base_dir: str, league_id: str, season: int, week_inde
 def parse_recap_json(path: Path) -> dict:
     """Parse a recap JSON file into a dict."""
     with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        result: dict = json.load(f)
+    return result
 
 
 def extract_version(path: Path, payload: dict) -> int:

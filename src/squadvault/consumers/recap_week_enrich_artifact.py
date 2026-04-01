@@ -516,7 +516,7 @@ def main() -> int:
     if art is None:
         raise SystemExit("No WEEKLY_RECAP artifact found for this week (recap_artifacts latest is missing).")
 
-    version = int(art.get("version"))
+    version = int(art.get("version", 0))
     existing_text = art.get("rendered_text") or ""
 
     # Mode: remove only

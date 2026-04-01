@@ -17,7 +17,7 @@ import argparse
 import inspect
 import sqlite3
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
 from squadvault.core.storage.session import DatabaseSession
@@ -95,13 +95,13 @@ def _find_approve_primitive() -> Callable[..., Any]:
     for name in candidates:
         fn = getattr(ra, name, None)
         if callable(fn):
-            return fn
+            return cast(Callable[..., Any], fn)
 
     for name in dir(ra):
         if "approve" in name.lower():
             fn = getattr(ra, name, None)
             if callable(fn):
-                return fn
+                return cast(Callable[..., Any], fn)
 
     raise RuntimeError("No approve primitive found in squadvault.core.recaps.recap_artifacts")
 
