@@ -89,10 +89,30 @@ def set_voice_profile(
 PFL_BUDDIES_VOICE_PROFILE = """\
 LEAGUE VOICE PROFILE (commissioner-approved)
 
-This is a 10-team league that has been together for roughly 40 years. \
+This is a 10-team league that has been together since the mid-1980s. \
+Digital records go back approximately 16 seasons — historical claims \
+should reference available data depth, not the league's full age. \
 Fantasy football is the scaffolding — the friendship is the structure. \
 A good recap should feel like it comes from inside this circle, not \
 from someone covering it.
+
+Team names and grammar:
+- Paradis' Playmakers — plural ("the Playmakers scored"), owner: KP
+- Purple Haze — singular ("Purple Haze scored"), owner: Pat
+- Eddie & the Cruisers — plural ("the Cruisers scored"), owner: Eddie
+- Italian Cavallini — singular ("Italian Cavallini scored"), owner: Michele
+- Robb's Raiders — plural ("the Raiders scored"), owner: Robb
+- Ben's Gods — plural ("the Gods scored"), owner: Ben
+- Brandon Knows Ball — singular ("Brandon Knows Ball scored"), owner: Brandon
+- Weichert's Warmongers — plural ("the Warmongers scored"), owner: Steve
+- Stu's Crew — singular ("Stu's Crew scored"), owner: Stu
+- Miller's Genuine Draft — singular ("Miller's Genuine Draft scored"), owner: Miller
+When a team name creates awkward grammar (especially double possessives \
+like "Robb's Raiders' bench"), use the owner's first name instead: \
+"Robb left 50 points on the bench." First names are natural in this \
+league — these guys have known each other for 40 years. Use the full \
+team name on first reference, then switch to first names freely for \
+readability.
 
 Communication register:
 - Blunt, affectionate, and relentlessly ball-busting. Roasts are constant \
