@@ -310,18 +310,24 @@ def verify_scores(
 ) -> list[VerificationFailure]:
     """Verify matchup scores mentioned in the recap against canonical data.
 
-    Extracts score patterns (XX.XX) from the text, associates them with
-    nearby franchise names, and checks whether the score belongs to that
-    franchise in the canonical matchup data for this week.
+    Uses a two-pass strategy:
+    1. Find score PAIRS that match canonical matchups (both winner and loser
+       scores appear near each other). These are correctly stated matchups.
+    2. Check remaining solo scores attributed to a specific franchise.
+
+    This avoids false positives from "X beat Y 123.20-86.35" patterns where
+    proximity-based franchise matching picks the wrong team.
     """
     failures: list[VerificationFailure] = []
 
-    # Build lookup: franchise_id -> score for this week
+    # Build matchup score pairs for this week
+    week_matchup_pairs: list[tuple[float, float]] = []
     canonical_scores: dict[str, float] = {}
     all_week_scores: set[float] = set()
     for m in week_matchups:
         if m.week != week:
             continue
+        week_matchup_pairs.append((m.winner_score, m.loser_score))
         canonical_scores[m.winner_id] = m.winner_score
         canonical_scores[m.loser_id] = m.loser_score
         all_week_scores.add(m.winner_score)
@@ -330,21 +336,44 @@ def verify_scores(
     if not canonical_scores:
         return []
 
+    # Extract all score positions in the text
+    score_positions: list[tuple[int, float]] = []
     for match in _SCORE_PATTERN.finditer(recap_text):
-        score_str = match.group(1)
         try:
-            mentioned_score = float(score_str)
+            val = float(match.group(1))
         except ValueError:
             continue
+        if 40.0 <= val <= 250.0:
+            score_positions.append((match.start(), val))
 
-        # Skip scores that are clearly not matchup scores (e.g. FAAB bids,
-        # draft prices, player scores). Matchup scores are typically 50-200.
-        if mentioned_score < 40.0 or mentioned_score > 250.0:
+    # Pass 1: Find score pairs that match canonical matchups.
+    # Two scores within 30 chars of each other that match a matchup pair
+    # are a correctly stated matchup — mark both positions as pair-verified.
+    pair_verified: set[int] = set()
+    for i, (pos_a, val_a) in enumerate(score_positions):
+        for j, (pos_b, val_b) in enumerate(score_positions):
+            if i >= j:
+                continue
+            if abs(pos_b - pos_a) > 30:
+                continue
+            # Check if these two scores match any matchup pair (either order)
+            for w_score, l_score in week_matchup_pairs:
+                if ((abs(val_a - w_score) <= 0.01 and abs(val_b - l_score) <= 0.01) or
+                        (abs(val_a - l_score) <= 0.01 and abs(val_b - w_score) <= 0.01)):
+                    pair_verified.add(i)
+                    pair_verified.add(j)
+
+    # Pass 2: Check solo scores (not part of a verified pair)
+    for i, (pos, mentioned_score) in enumerate(score_positions):
+        if i in pair_verified:
             continue
 
-        # Find which franchise this score is near in the text
+        if mentioned_score not in all_week_scores:
+            # Score not in any matchup — likely player/FAAB. Skip.
+            continue
+
         franchise_id = _find_nearby_franchise(
-            recap_text, match.start(), reverse_name_map,
+            recap_text, pos, reverse_name_map,
         )
 
         if franchise_id is None:
@@ -359,43 +388,15 @@ def verify_scores(
 
         fname = _resolve_display_name(franchise_id, reverse_name_map)
 
-        # Check if this is the opponent's score (transposed)
-        opponent_score: float | None = None
-        for m in week_matchups:
-            if m.week != week:
-                continue
-            if m.winner_id == franchise_id:
-                opponent_score = m.loser_score
-                break
-            if m.loser_id == franchise_id:
-                opponent_score = m.winner_score
-                break
-
-        if opponent_score is not None and abs(mentioned_score - opponent_score) <= 0.01:
-            failures.append(VerificationFailure(
-                category="SCORE",
-                severity="HARD",
-                claim=f"{fname} scored {score_str}",
-                evidence=(
-                    f"Score {score_str} belongs to {fname}'s opponent "
-                    f"(canonical: {fname} scored {canonical:.2f}). "
-                    f"Possible transposition."
-                ),
-            ))
-        elif mentioned_score not in all_week_scores:
-            # Score not in any matchup — likely a player score, FAAB bid,
-            # or draft price, not a fabricated team score. Skip.
-            continue
-        else:
-            failures.append(VerificationFailure(
-                category="SCORE",
-                severity="HARD",
-                claim=f"{fname} scored {score_str}",
-                evidence=(
-                    f"Canonical score for {fname} in Week {week}: "
-                    f"{canonical:.2f}, not {score_str}."
-                ),
-            ))
+        failures.append(VerificationFailure(
+            category="SCORE",
+            severity="HARD",
+            claim=f"{fname} scored {mentioned_score:.2f}",
+            evidence=(
+                f"Canonical score for {fname} in Week {week}: "
+                f"{canonical:.2f}, not {mentioned_score:.2f}."
+            ),
+        ))
 
     return failures
 

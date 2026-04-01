@@ -233,7 +233,8 @@ class TestVerifyScores:
         text = "Alpha Team put up 110.20 this week."
         failures = verify_scores(text, matchups, 5, reverse)
         assert len(failures) == 1
-        assert "transposition" in failures[0].evidence.lower()
+        assert failures[0].category == "SCORE"
+        assert "130.50" in failures[0].evidence  # shows the correct score
 
     def test_wrong_franchise_attribution(self):
         matchups, reverse = self._setup()
@@ -811,17 +812,32 @@ class TestVerifyRecapV1StreakSnap:
 
 
 class TestEdgeCases:
-    def test_multiple_failures_collected(self):
-        """Multiple errors in one recap all get reported."""
+    def test_both_franchises_nearby_skips_transposition(self):
+        """When both matchup franchises appear near a score, skip — can't
+        reliably determine attribution in 'X beat Y SCORE' patterns."""
         matchups = [_make_matchup(5, "F1", "F2", 130.50, 110.20)]
         reverse = {
             "Alpha Team": "F1", "alpha team": "F1",
             "Beta Squad": "F2", "beta squad": "F2",
         }
-        # Both scores are transposed: Alpha gets Beta's score and vice versa
         text = (
             "Alpha Team posted 110.20. "
             "Beta Squad hit 130.50."
+        )
+        score_failures = verify_scores(text, matchups, 5, reverse)
+        assert score_failures == []
+
+    def test_solo_franchise_transpositions_detected(self):
+        """Genuine transpositions: only one franchise mentioned per score."""
+        matchups = [_make_matchup(5, "F1", "F2", 130.50, 110.20)]
+        reverse = {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Beta Squad": "F2", "beta squad": "F2",
+        }
+        # Each sentence mentions only one franchise with the wrong score
+        text = (
+            "Alpha Team put up 110.20 in a tough week. "
+            "Elsewhere, Beta Squad managed only 130.50 on the road."
         )
         score_failures = verify_scores(text, matchups, 5, reverse)
         assert len(score_failures) == 2
