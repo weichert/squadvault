@@ -504,7 +504,10 @@ def detect_close_game_record(
 ) -> list[NarrativeAngle]:
     """Detector 36: All-time record in close games (< 5 pts).
 
-    Only fires when a close game actually happened this week.
+    Only fires when the franchise that holds the best clutch record is
+    actually involved in a close game this week. This prevents the model
+    from misattributing the record to whichever team happens to be in
+    this week's close game.
     """
     # Gate: did a close game happen this week?
     this_week = [
@@ -514,6 +517,12 @@ def detect_close_game_record(
     ]
     if not this_week:
         return []
+
+    # Collect franchise IDs involved in this week's close games
+    this_week_close_fids: set[str] = set()
+    for m in this_week:
+        this_week_close_fids.add(m.winner_id)
+        this_week_close_fids.add(m.loser_id)
 
     # Filter to tenure scope and through current week
     filtered = _tenure_filter(all_matchups, current_season, target_week, tenure_map)
@@ -544,7 +553,10 @@ def detect_close_game_record(
             best_fid = fid
             best_record = f"{w}-{lo}"
 
-    if best_fid and best_pct >= 0.60:
+    # Only fire if the best-clutch-record franchise is actually in a
+    # close game this week. Otherwise the model will misattribute the
+    # record to whichever team is in the close game.
+    if best_fid and best_pct >= 0.60 and best_fid in this_week_close_fids:
         return [NarrativeAngle(
             category="CLOSE_GAME_RECORD",
             headline=f"{fname(best_fid)} is {best_record} in games decided by fewer than {margin_threshold:.0f} points",

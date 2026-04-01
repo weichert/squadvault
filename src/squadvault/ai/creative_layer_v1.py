@@ -129,7 +129,12 @@ Hard rules (non-negotiable):
   PLAYER HIGHLIGHTS data. If player data is not available for a week, do not \
   fabricate it.
 - NEVER use the phrase "the kind of chaos that makes fantasy football beautiful" \
-  or any variation of it. This phrase is permanently banned.\
+  or any variation of it. This phrase is permanently banned.
+- NEVER attribute a NARRATIVE ANGLE to a franchise other than the one named in \
+  the angle. Each angle has a [RE: franchise] tag identifying which team it \
+  applies to. If an angle says "[RE: Eddie & the Cruisers] Eddie is 15-9 in \
+  close games," that stat belongs to Eddie ONLY — do not apply it to Ben, Pat, \
+  or any other team, even if that other team also played a close game this week.\
 """
 
 # ---------------------------------------------------------------------------

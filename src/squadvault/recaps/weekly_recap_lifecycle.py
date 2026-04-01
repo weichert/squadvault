@@ -701,10 +701,17 @@ def _derive_prompt_context(
                     budgeted.append(a)
                     m_count += 1
 
-            lines: list[str] = [f"Narrative angles for Week {week_index} (what's interesting):"]
+            lines: list[str] = [
+                f"Narrative angles for Week {week_index} (what's interesting):",
+                "IMPORTANT: Each angle is about the NAMED franchise ONLY. "
+                "Never apply an angle about one franchise to a different franchise.",
+            ]
             for a in budgeted:
                 slabel = {3: "HEADLINE", 2: "NOTABLE", 1: "MINOR"}.get(a.strength, "")
-                line = f"  [{slabel}] {a.headline}"
+                # Resolve franchise names for attribution tag
+                fnames = [_name_map.get(fid, fid) for fid in a.franchise_ids if fid]
+                ftag = f" [RE: {', '.join(fnames)}]" if fnames else ""
+                line = f"  [{slabel}]{ftag} {a.headline}"
                 if a.detail:
                     line += f" — {a.detail}"
                 lines.append(line)
