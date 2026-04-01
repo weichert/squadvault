@@ -72,7 +72,7 @@ def _fetch_url(url: str, timeout_s: int = 30) -> bytes:
         method="GET",
     )
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-        return resp.read()
+        return bytes(resp.read())
 
 
 def _parse_players_json(payload: bytes) -> List[PlayerRow]:

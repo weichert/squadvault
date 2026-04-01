@@ -136,7 +136,7 @@ def _resolve_server_from_response(resp: requests.Response, fallback: str) -> str
     try:
         parsed = urlparse(resp.url)
         if parsed.hostname and "myfantasyleague.com" in parsed.hostname:
-            return parsed.hostname
+            return str(parsed.hostname)
     except Exception:
         pass
     return fallback

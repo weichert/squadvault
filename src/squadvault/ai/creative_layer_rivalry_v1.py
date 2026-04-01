@@ -215,7 +215,8 @@ def draft_rivalry_narrative_v1(
             messages=[{"role": "user", "content": user_prompt}],
         )
 
-        text = message.content[0].text.strip() if message.content else ""
+        block = message.content[0] if message.content else None
+        text = block.text.strip() if block and hasattr(block, "text") else ""
         if not text:
             logger.warning(
                 "creative_layer_rivalry_v1: API returned empty content — "

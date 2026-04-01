@@ -108,8 +108,10 @@ class RivalryChronicleInputV1:
 
     def missing_weeks(self) -> Tuple[int, ...]:
         """Return list of weeks in scope that lack approved recap references."""
-        present = {r.week_index for r in self.approved_recaps}
-        missing = [w for w in self.week_indices if w not in present]
+        recaps = self.approved_recaps or ()
+        weeks = self.week_indices or ()
+        present = {r.week_index for r in recaps}
+        missing = [w for w in weeks if w not in present]
         return tuple(missing)
 
 

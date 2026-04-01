@@ -93,7 +93,7 @@ def _latest_approved_chronicle_row(
 ) -> Optional[sqlite3.Row]:
     """Return the latest approved rivalry chronicle artifact row, or None."""
     conn.row_factory = sqlite3.Row
-    return conn.execute(
+    row = conn.execute(
         """
         SELECT version, selection_fingerprint
         FROM recap_artifacts
@@ -107,6 +107,7 @@ def _latest_approved_chronicle_row(
         """,
         (int(league_id), int(season), int(anchor_week_index), ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1),
     ).fetchone()
+    return row  # type: ignore[no-any-return]
 
 
 def _next_version(conn: sqlite3.Connection, league_id: int, season: int, anchor_week_index: int) -> int:

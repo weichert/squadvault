@@ -116,7 +116,7 @@ def generate_rivalry_chronicle_v1(
         league_id=int(league_id),
         season=int(season),
         week_indices=tuple(week_indices) if week_indices is not None else None,
-        week_range=tuple(week_range) if week_range is not None else None,
+        week_range=(int(week_range[0]), int(week_range[1])) if week_range is not None else None,
         missing_weeks_policy=missing_weeks_policy,
     )
 
