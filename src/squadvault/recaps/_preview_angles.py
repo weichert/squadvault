@@ -58,24 +58,7 @@ from squadvault.core.recaps.context.league_history_v1 import (
     build_cross_season_name_resolver,
 )
 from squadvault.core.storage.session import DatabaseSession
-from squadvault.core.resolvers import identity as _identity
-
-
-def _build_player_name_map(db_path: str, league_id: str) -> dict[str, str]:
-    """Build player_id -> name map from player_directory."""
-    name_map: dict[str, str] = {}
-    with DatabaseSession(db_path) as con:
-        rows = con.execute(
-            """SELECT player_id, name FROM player_directory
-               WHERE league_id = ? ORDER BY season DESC""",
-            (str(league_id),),
-        ).fetchall()
-    for row in rows:
-        pid = str(row[0]).strip()
-        name = str(row[1]).strip() if row[1] else ""
-        if pid and name and pid not in name_map:
-            name_map[pid] = name
-    return name_map
+from squadvault.core.resolvers import identity as _identity, build_player_name_map
 
 
 def detect_all_angles(
@@ -227,7 +210,7 @@ def render_angle(a: NarrativeAngle) -> str:
 def preview_week(db_path: str, league_id: str, season: int, week: int) -> None:
     """Print the full angle preview for a single week."""
     name_map = build_cross_season_name_resolver(db_path, league_id)
-    player_name_map = _build_player_name_map(db_path, league_id)
+    player_name_map = build_player_name_map(db_path, league_id)
 
     all_angles, module_counts = detect_all_angles(
         db_path, league_id, season, week,

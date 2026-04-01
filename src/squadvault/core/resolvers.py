@@ -215,3 +215,28 @@ class FranchiseResolver:
         if not fid:
             return "?"
         return self._map.get(fid, fid)
+
+
+# ── Lightweight name-map builders ────────────────────────────────────
+
+
+def build_player_name_map(db_path: str, league_id: str) -> Dict[str, str]:
+    """Build a player_id -> display name map from player_directory.
+
+    Returns a dict mapping MFL player IDs to their most recent known name.
+    ORDER BY season DESC ensures the latest name wins when a player appears
+    across multiple seasons. First occurrence is kept (most recent season).
+    """
+    name_map: Dict[str, str] = {}
+    with DatabaseSession(str(db_path)) as con:
+        rows = con.execute(
+            """SELECT player_id, name FROM player_directory
+               WHERE league_id = ? ORDER BY season DESC""",
+            (str(league_id),),
+        ).fetchall()
+    for row in rows:
+        pid = str(row[0]).strip()
+        name = str(row[1]).strip() if row[1] else ""
+        if pid and name and pid not in name_map:
+            name_map[pid] = name
+    return name_map

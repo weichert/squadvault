@@ -16,7 +16,7 @@ from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     render_deterministic_bullets_v1,
 )
-from squadvault.core.resolvers import PlayerResolver, FranchiseResolver
+from squadvault.core.resolvers import PlayerResolver, FranchiseResolver, build_player_name_map
 from squadvault.core.recaps.recap_runs import (
     get_recap_run_state,
     sync_recap_run_state_from_artifacts,
@@ -709,18 +709,7 @@ def generate_weekly_recap_draft(
     # Player name map for angle rendering (player_id -> display name)
     _cl_player_name_map: dict[str, str] = {}
     try:
-        with DatabaseSession(db_path) as _pn_con:
-            _pn_rows = _pn_con.execute(
-                """SELECT player_id, name FROM player_directory
-                   WHERE league_id = ?
-                   ORDER BY season DESC""",
-                (str(league_id),),
-            ).fetchall()
-        for _pn_row in _pn_rows:
-            _pid = str(_pn_row[0]).strip()
-            _pname = str(_pn_row[1]).strip() if _pn_row[1] else ""
-            if _pid and _pname and _pid not in _cl_player_name_map:
-                _cl_player_name_map[_pid] = _pname
+        _cl_player_name_map = build_player_name_map(db_path, league_id)
     except Exception:
         pass
 
