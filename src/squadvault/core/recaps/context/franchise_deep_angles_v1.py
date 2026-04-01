@@ -47,6 +47,15 @@ from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.recaps.context.league_history_v1 import HistoricalMatchup
 from squadvault.core.storage.session import DatabaseSession
 
+from typing import Callable
+
+# Name resolver: takes an ID string, returns a display name (or the ID itself).
+NameFn = Callable[[str], str]
+
+
+def _identity(x: str) -> str:
+    return x
+
 
 # ── Data loading (lightweight, module-local) ─────────────────────────
 
@@ -128,6 +137,8 @@ def _load_season_transaction_counts(
 def detect_scoring_concentration(
     score_payloads: List[Dict], target_week: int,
     *, threshold: float = 0.35,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 29: One player accounts for 35%+ of franchise starter scoring."""
     # Aggregate starter scoring per (franchise, player) through target_week
@@ -159,7 +170,7 @@ def detect_scoring_concentration(
         if pct >= threshold:
             angles.append(NarrativeAngle(
                 category="SCORING_CONCENTRATION",
-                headline=f"{round(pct * 100)}% of {fid}'s starter points come from {pid}",
+                headline=f"{round(pct * 100)}% of {fname(fid)}'s starter points come from {pname(pid)}",
                 detail=f"{pts:.1f} of {total:.1f} total.",
                 strength=2,  # NOTABLE
                 franchise_ids=(fid,),
@@ -169,6 +180,7 @@ def detect_scoring_concentration(
 
 def detect_scoring_volatility(
     score_payloads: List[Dict], target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 30: Unusually consistent or volatile week-to-week scoring."""
     # Weekly totals per franchise (starters only)
@@ -227,6 +239,8 @@ def detect_scoring_volatility(
 def detect_star_explosion_count(
     score_payloads: List[Dict], target_week: int,
     *, explosion_threshold: float = 40.0,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 31: Franchise with disproportionately many 40+ point performances."""
     franchise_explosions: Dict[str, int] = {}
@@ -256,7 +270,7 @@ def detect_star_explosion_count(
         return [NarrativeAngle(
             category="STAR_EXPLOSION_COUNT",
             headline=(
-                f"{best_fid} has had a player score {explosion_threshold:.0f}+ "
+                f"{fname(best_fid)} has had a player score {explosion_threshold:.0f}+ "
                 f"{best_count} times this season"
             ),
             detail=f"No other team has more than {others_max}.",
@@ -267,6 +281,7 @@ def detect_star_explosion_count(
 
 def detect_positional_strength(
     score_payloads: List[Dict], positions: Dict[str, str], target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 32: Franchise with disproportionate production from a position."""
     # Aggregate by (franchise, position)
@@ -308,7 +323,7 @@ def detect_positional_strength(
             continue
         angles.append(NarrativeAngle(
             category="POSITIONAL_STRENGTH",
-            headline=f"{fid} has the most combined {pos} production this season",
+            headline=f"{fname(fid)} has the most combined {pos} production this season",
             detail=f"{pts:.1f} total {pos} points.",
             strength=1, franchise_ids=(fid,),
         ))
@@ -322,6 +337,7 @@ def detect_bench_cost_game(
     score_payloads: List[Dict],
     matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 33: Lost by fewer points than left on bench."""
     # Bench points where should_start=True per (franchise, week)
@@ -376,6 +392,7 @@ def detect_bench_cost_game(
 def detect_chronic_bench_mismanagement(
     score_payloads: List[Dict], target_week: int,
     *, bench_threshold: float = 15.0, min_weeks: int = 3,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 34: Franchise leaves 15+ bench points on table in 3+ weeks."""
     # Per franchise per week: total should_start bench points
@@ -410,7 +427,7 @@ def detect_chronic_bench_mismanagement(
             angles.append(NarrativeAngle(
                 category="CHRONIC_BENCH_MISMANAGEMENT",
                 headline=(
-                    f"{fid} has left {bench_threshold:.0f}+ bench points "
+                    f"{fname(fid)} has left {bench_threshold:.0f}+ bench points "
                     f"on the table in {fid_bad_weeks[fid]} weeks this season"
                 ),
                 detail="", strength=1, franchise_ids=(fid,),
@@ -420,6 +437,7 @@ def detect_chronic_bench_mismanagement(
 
 def detect_perfect_lineup_week(
     score_payloads: List[Dict], target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 35: Actual lineup matched optimal — zero bench regrets."""
     # Per franchise this week: check if every should_start=True player is also is_starter=True
@@ -451,7 +469,7 @@ def detect_perfect_lineup_week(
         if perfect:
             angles.append(NarrativeAngle(
                 category="PERFECT_LINEUP_WEEK",
-                headline=f"{fid} fielded a perfect lineup this week",
+                headline=f"{fname(fid)} fielded a perfect lineup this week",
                 detail="Every optimal player was started.",
                 strength=1, franchise_ids=(fid,),
             ))
@@ -466,6 +484,7 @@ def detect_close_game_record(
     current_season: int, target_week: int,
     *, margin_threshold: float = 5.0,
     tenure_map: Optional[Dict[str, int]] = None,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 36: All-time record in close games (< 5 pts)."""
     # Filter to tenure scope and through current week
@@ -500,7 +519,7 @@ def detect_close_game_record(
     if best_fid and best_pct >= 0.60:
         return [NarrativeAngle(
             category="CLOSE_GAME_RECORD",
-            headline=f"{best_fid} is {best_record} in games decided by fewer than {margin_threshold:.0f} points",
+            headline=f"{fname(best_fid)} is {best_record} in games decided by fewer than {margin_threshold:.0f} points",
             detail="The best clutch record in the league.",
             strength=2, franchise_ids=(best_fid,),
         )]
@@ -510,6 +529,7 @@ def detect_close_game_record(
 def detect_season_trajectory_match(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 37: Current W-L matches a historical season at same week."""
     # Current season records through target_week
@@ -548,9 +568,9 @@ def detect_season_trajectory_match(
                     angles.append(NarrativeAngle(
                         category="SEASON_TRAJECTORY_MATCH",
                         headline=(
-                            f"{fid} is {cw}-{cl} through Week {target_week}. "
+                            f"{fname(fid)} is {cw}-{cl} through Week {target_week}. "
                             f"The last team at {cw}-{cl} at this point was "
-                            f"{hfid} in {hseason}, who finished {fw}-{fl}"
+                            f"{fname(hfid)} in {hseason}, who finished {fw}-{fl}"
                         ),
                         detail="", strength=1, franchise_ids=(fid,),
                     ))
@@ -563,6 +583,7 @@ def detect_lucky_record(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     *, luck_threshold: float = 30.0,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 42: W-L significantly deviates from point differential."""
     wins: Dict[str, int] = {}
@@ -593,7 +614,7 @@ def detect_lucky_record(
             angles.append(NarrativeAngle(
                 category="LUCKY_RECORD",
                 headline=(
-                    f"{fid} is {w}-{lo} despite being outscored by "
+                    f"{fname(fid)} is {w}-{lo} despite being outscored by "
                     f"{abs(diff):.0f} total points"
                 ),
                 detail="", strength=2, franchise_ids=(fid,),
@@ -603,7 +624,7 @@ def detect_lucky_record(
             angles.append(NarrativeAngle(
                 category="LUCKY_RECORD",
                 headline=(
-                    f"{fid} is {w}-{lo} despite outscoring opponents by "
+                    f"{fname(fid)} is {w}-{lo} despite outscoring opponents by "
                     f"{diff:.0f} total points"
                 ),
                 detail="", strength=2, franchise_ids=(fid,),
@@ -615,6 +636,7 @@ def detect_the_bridesmaid(
     score_payloads: List[Dict],
     matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 46: Second-highest score in the league this week but lost."""
     # Get franchise totals this week
@@ -647,7 +669,7 @@ def detect_the_bridesmaid(
                 return [NarrativeAngle(
                     category="THE_BRIDESMAID",
                     headline=(
-                        f"{second_fid} scored {second_score:.2f} — the second-highest "
+                        f"{fname(second_fid)} scored {second_score:.2f} — the second-highest "
                         f"in the league — and still lost"
                     ),
                     detail="", strength=1, franchise_ids=(second_fid,),
@@ -657,6 +679,7 @@ def detect_the_bridesmaid(
 
 def detect_transaction_volume_identity(
     transaction_counts: Dict[str, int],
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 41: Roster move volume as franchise personality."""
     if len(transaction_counts) < 3:
@@ -669,8 +692,8 @@ def detect_transaction_volume_identity(
         return [NarrativeAngle(
             category="TRANSACTION_VOLUME_IDENTITY",
             headline=(
-                f"{most_fid} made {most_count} roster moves this season. "
-                f"{least_fid} made {least_count}"
+                f"{fname(most_fid)} made {most_count} roster moves this season. "
+                f"{fname(least_fid)} made {least_count}"
             ),
             detail="", strength=1, franchise_ids=(most_fid, least_fid),
         )]
@@ -680,6 +703,7 @@ def detect_transaction_volume_identity(
 def detect_scoring_momentum_in_streak(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 49: Growing or shrinking margins during a win streak."""
     # Find current win streaks
@@ -725,7 +749,7 @@ def detect_scoring_momentum_in_streak(
                 angles.append(NarrativeAngle(
                     category="SCORING_MOMENTUM_IN_STREAK",
                     headline=(
-                        f"{fid}'s {len(streak_margins)}-game win streak has growing margins: {margin_str}"
+                        f"{fname(fid)}'s {len(streak_margins)}-game win streak has growing margins: {margin_str}"
                     ),
                     detail="Each win more dominant than the last.",
                     strength=1, franchise_ids=(fid,),
@@ -739,6 +763,7 @@ def detect_scoring_momentum_in_streak(
 def detect_second_half_surge_collapse(
     score_payloads: List[Dict], target_week: int,
     *, change_threshold: float = 0.15,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 38: Scoring avg drops/rises 15%+ between season halves."""
     if target_week < 8:
@@ -782,7 +807,7 @@ def detect_second_half_surge_collapse(
             angles.append(NarrativeAngle(
                 category="SECOND_HALF_SURGE_COLLAPSE",
                 headline=(
-                    f"{fid} averaged {avg_first:.1f} in weeks 1-{midpoint} "
+                    f"{fname(fid)} averaged {avg_first:.1f} in weeks 1-{midpoint} "
                     f"but just {avg_second:.1f} in weeks {midpoint + 1}-{target_week} "
                     f"— a {abs(change):.0%} decline"
                 ),
@@ -792,7 +817,7 @@ def detect_second_half_surge_collapse(
             angles.append(NarrativeAngle(
                 category="SECOND_HALF_SURGE_COLLAPSE",
                 headline=(
-                    f"{fid} averaged {avg_first:.1f} in weeks 1-{midpoint} "
+                    f"{fname(fid)} averaged {avg_first:.1f} in weeks 1-{midpoint} "
                     f"and {avg_second:.1f} in weeks {midpoint + 1}-{target_week} "
                     f"— a {change:.0%} surge"
                 ),
@@ -809,6 +834,7 @@ def detect_franchise_alltime_scoring(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     *, tenure_map: Optional[Dict[str, int]] = None,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 40: Total franchise scoring across seasons (tenure-scoped)."""
     filtered = _tenure_filter(all_matchups, current_season, target_week, tenure_map)
@@ -833,7 +859,7 @@ def detect_franchise_alltime_scoring(
     return [NarrativeAngle(
         category="FRANCHISE_ALLTIME_SCORING",
         headline=(
-            f"{best_fid} has scored {best_pts:,.0f} total points{tenure_label} "
+            f"{fname(best_fid)} has scored {best_pts:,.0f} total points{tenure_label} "
             f"— the most of any franchise"
         ),
         detail="", strength=1, franchise_ids=(best_fid,),
@@ -846,6 +872,7 @@ def detect_franchise_alltime_scoring(
 def detect_weekly_scoring_rank_dominance(
     score_payloads: List[Dict], target_week: int,
     *, min_weeks_on_top: int = 4,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 43: Franchise finishes as top or bottom scorer unusually often."""
     # Weekly franchise totals (starters)
@@ -891,7 +918,7 @@ def detect_weekly_scoring_rank_dominance(
         angles.append(NarrativeAngle(
             category="WEEKLY_SCORING_RANK_DOMINANCE",
             headline=(
-                f"{best_fid} has finished as the week's top scorer "
+                f"{fname(best_fid)} has finished as the week's top scorer "
                 f"{best_count} times this season"
             ),
             detail=f"No other team has more than {others_max}.",
@@ -906,6 +933,7 @@ def detect_weekly_scoring_rank_dominance(
 def detect_schedule_strength(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 44: Opponents' combined winning percentage."""
     # Current season W-L
@@ -956,7 +984,7 @@ def detect_schedule_strength(
         angles.append(NarrativeAngle(
             category="SCHEDULE_STRENGTH",
             headline=(
-                f"{toughest_fid}'s opponents have a combined "
+                f"{fname(toughest_fid)}'s opponents have a combined "
                 f".{round(opp_strength[toughest_fid] * 1000):03d} winning percentage "
                 f"— the toughest schedule"
             ),
@@ -972,6 +1000,7 @@ def detect_points_against_luck(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     *, min_times: int = 3,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 47: Franchise faced opponent's season-high unusually often."""
     # Find each franchise's season-high score
@@ -1000,7 +1029,7 @@ def detect_points_against_luck(
             angles.append(NarrativeAngle(
                 category="POINTS_AGAINST_LUCK",
                 headline=(
-                    f"{fid} has faced their opponent's season-best performance "
+                    f"{fname(fid)} has faced their opponent's season-best performance "
                     f"{faced_high[fid]} times"
                 ),
                 detail="The most in the league.",
@@ -1016,6 +1045,7 @@ def detect_repeat_matchup_pattern(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     *, high_combined_threshold: float = 230.0, min_meetings: int = 4,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 48: Two franchises consistently produce high combined scores."""
     # Group meetings by franchise pair (all-time)
@@ -1055,6 +1085,7 @@ def detect_repeat_matchup_pattern(
 def detect_championship_history(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 39: Playoff and championship appearance counts.
 
@@ -1115,7 +1146,7 @@ def detect_championship_history(
         angles.append(NarrativeAngle(
             category="CHAMPIONSHIP_HISTORY",
             headline=(
-                f"{best_fid} has appeared in the championship matchup "
+                f"{fname(best_fid)} has appeared in the championship matchup "
                 f"{best_count} times in {total_seasons} seasons"
             ),
             detail="", strength=2, franchise_ids=(best_fid,),
@@ -1131,7 +1162,7 @@ def detect_championship_history(
         for fid in never_champ[:1]:  # just report one
             angles.append(NarrativeAngle(
                 category="CHAMPIONSHIP_HISTORY",
-                headline=f"{fid} has never appeared in a championship matchup",
+                headline=f"{fname(fid)} has never appeared in a championship matchup",
                 detail=f"Across {len(completed_seasons)} seasons.",
                 strength=1, franchise_ids=(fid,),
             ))
@@ -1145,6 +1176,7 @@ def detect_championship_history(
 def detect_regular_season_vs_playoff(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 45: Regular season vs playoff record diverges.
 
@@ -1197,7 +1229,7 @@ def detect_regular_season_vs_playoff(
             angles.append(NarrativeAngle(
                 category="REGULAR_SEASON_VS_PLAYOFF",
                 headline=(
-                    f"{fid} is {rw}-{rl} in the regular season "
+                    f"{fname(fid)} is {rw}-{rl} in the regular season "
                     f"but {pw}-{pl} in playoff games"
                 ),
                 detail="", strength=1, franchise_ids=(fid,),
@@ -1213,6 +1245,7 @@ def detect_the_almost(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     *, min_times: int = 3,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detector 50: Finished one game out of the playoffs multiple times.
 
@@ -1264,7 +1297,7 @@ def detect_the_almost(
             angles.append(NarrativeAngle(
                 category="THE_ALMOST",
                 headline=(
-                    f"{fid} has finished one game out of the playoffs "
+                    f"{fname(fid)} has finished one game out of the playoffs "
                     f"{almost_counts[fid]} times in {len(completed_seasons)} seasons"
                 ),
                 detail="", strength=1, franchise_ids=(fid,),
@@ -1344,6 +1377,8 @@ def detect_franchise_deep_angles_v1(
     season: int,
     week: int,
     tenure_map: Optional[Dict[str, int]] = None,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect all Dimension 7-9 franchise deep angles for a given week.
 
@@ -1358,45 +1393,45 @@ def detect_franchise_deep_angles_v1(
 
     # ── Dimension 7: Franchise Scoring Patterns ──
     if score_payloads:
-        all_angles.extend(detect_scoring_concentration(score_payloads, week))
-        all_angles.extend(detect_scoring_volatility(score_payloads, week))
-        all_angles.extend(detect_star_explosion_count(score_payloads, week))
-        all_angles.extend(detect_second_half_surge_collapse(score_payloads, week))
-        all_angles.extend(detect_weekly_scoring_rank_dominance(score_payloads, week))
+        all_angles.extend(detect_scoring_concentration(score_payloads, week, pname=pname, fname=fname))
+        all_angles.extend(detect_scoring_volatility(score_payloads, week, fname=fname))
+        all_angles.extend(detect_star_explosion_count(score_payloads, week, pname=pname, fname=fname))
+        all_angles.extend(detect_second_half_surge_collapse(score_payloads, week, fname=fname))
+        all_angles.extend(detect_weekly_scoring_rank_dominance(score_payloads, week, fname=fname))
         if positions:
-            all_angles.extend(detect_positional_strength(score_payloads, positions, week))
+            all_angles.extend(detect_positional_strength(score_payloads, positions, week, fname=fname))
 
     # ── Dimension 8: Bench & Lineup Decisions ──
     if score_payloads and all_matchups:
-        all_angles.extend(detect_bench_cost_game(score_payloads, all_matchups, season, week))
+        all_angles.extend(detect_bench_cost_game(score_payloads, all_matchups, season, week, fname=fname))
     if score_payloads:
-        all_angles.extend(detect_chronic_bench_mismanagement(score_payloads, week))
-        all_angles.extend(detect_perfect_lineup_week(score_payloads, week))
+        all_angles.extend(detect_chronic_bench_mismanagement(score_payloads, week, fname=fname))
+        all_angles.extend(detect_perfect_lineup_week(score_payloads, week, fname=fname))
 
     # ── Dimension 9: Franchise History & Identity ──
     if all_matchups:
         all_angles.extend(detect_close_game_record(
-            all_matchups, season, week, tenure_map=tenure_map))
-        all_angles.extend(detect_season_trajectory_match(all_matchups, season, week))
-        all_angles.extend(detect_lucky_record(all_matchups, season, week))
-        all_angles.extend(detect_scoring_momentum_in_streak(all_matchups, season, week))
+            all_matchups, season, week, tenure_map=tenure_map, fname=fname))
+        all_angles.extend(detect_season_trajectory_match(all_matchups, season, week, fname=fname))
+        all_angles.extend(detect_lucky_record(all_matchups, season, week, fname=fname))
+        all_angles.extend(detect_scoring_momentum_in_streak(all_matchups, season, week, fname=fname))
         all_angles.extend(detect_franchise_alltime_scoring(
-            all_matchups, season, week, tenure_map=tenure_map))
-        all_angles.extend(detect_schedule_strength(all_matchups, season, week))
-        all_angles.extend(detect_points_against_luck(all_matchups, season, week))
-        all_angles.extend(detect_repeat_matchup_pattern(all_matchups, season, week))
+            all_matchups, season, week, tenure_map=tenure_map, fname=fname))
+        all_angles.extend(detect_schedule_strength(all_matchups, season, week, fname=fname))
+        all_angles.extend(detect_points_against_luck(all_matchups, season, week, fname=fname))
+        all_angles.extend(detect_repeat_matchup_pattern(all_matchups, season, week, fname=fname))
         # Playoff-dependent detectors (only fire during playoff weeks)
-        all_angles.extend(detect_championship_history(all_matchups, season, week))
-        all_angles.extend(detect_regular_season_vs_playoff(all_matchups, season, week))
-        all_angles.extend(detect_the_almost(all_matchups, season, week))
+        all_angles.extend(detect_championship_history(all_matchups, season, week, fname=fname))
+        all_angles.extend(detect_regular_season_vs_playoff(all_matchups, season, week, fname=fname))
+        all_angles.extend(detect_the_almost(all_matchups, season, week, fname=fname))
         if score_payloads:
             all_angles.extend(detect_the_bridesmaid(
-                score_payloads, all_matchups, season, week))
+                score_payloads, all_matchups, season, week, fname=fname))
 
     # Transaction volume (only needs current season)
     txn_counts = _load_season_transaction_counts(db_path, league_id, season)
     if txn_counts:
-        all_angles.extend(detect_transaction_volume_identity(txn_counts))
+        all_angles.extend(detect_transaction_volume_identity(txn_counts, fname=fname))
 
     # Deterministic sort
     all_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))

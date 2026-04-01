@@ -32,6 +32,15 @@ from typing import Dict, List, Optional, Tuple
 from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.storage.session import DatabaseSession
 
+from typing import Callable
+
+# Name resolver: takes an ID string, returns a display name (or the ID itself).
+NameFn = Callable[[str], str]
+
+
+def _identity(x: str) -> str:
+    return x
+
 
 # ── Data structures ──────────────────────────────────────────────────
 
@@ -286,6 +295,9 @@ def _load_season_faab_by_position(
 def detect_auction_price_vs_production(
     picks: List[_AuctionPick],
     scoring: Dict[Tuple[int, str, str], _PlayerSeasonScoring],
+    *,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Find the most productive auction investment in league history.
 
@@ -333,7 +345,7 @@ def detect_auction_price_vs_production(
     return [NarrativeAngle(
         category="AUCTION_PRICE_VS_PRODUCTION",
         headline=(
-            f"{fid} spent ${best_bid:.0f} on {pid} in {draft_season} — "
+            f"{fname(fid)} spent ${best_bid:.0f} on {pname(pid)} in {draft_season} — "
             f"{best_total:.0f} career points, the most productive auction "
             f"investment in league history"
         ),
@@ -352,6 +364,8 @@ def detect_auction_dollar_per_point(
     current_season: int,
     *,
     min_weeks: int = 3,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Find the best and worst value picks of the current draft by points-per-dollar."""
     season_picks = [pk for pk in picks if pk.season == current_season]
@@ -377,8 +391,8 @@ def detect_auction_dollar_per_point(
     angles.append(NarrativeAngle(
         category="AUCTION_DOLLAR_PER_POINT",
         headline=(
-            f"{best_pk.franchise_id}'s ${best_pk.bid_amount:.0f} pick of "
-            f"{best_pk.player_id} has produced {best_ppd:.1f} points per dollar "
+            f"{fname(best_pk.franchise_id)}'s ${best_pk.bid_amount:.0f} pick of "
+            f"{pname(best_pk.player_id)} has produced {best_ppd:.1f} points per dollar "
             f"— the best value of the {current_season} draft"
         ),
         detail=f"{best_total:.1f} total points.",
@@ -399,6 +413,8 @@ def detect_auction_bust(
     *,
     min_weeks: int = 4,
     avg_threshold_ratio: float = 0.5,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect high-dollar auction picks who dramatically underperformed.
 
@@ -441,7 +457,7 @@ def detect_auction_bust(
                 angles.append(NarrativeAngle(
                     category="AUCTION_BUST",
                     headline=(
-                        f"{fid} spent ${pk.bid_amount:.0f} on {pk.player_id} "
+                        f"{fname(fid)} spent ${pk.bid_amount:.0f} on {pname(pk.player_id)} "
                         f"— averaging just {player_avg:.1f} points through "
                         f"{sc.starter_weeks} starts"
                     ),
@@ -461,6 +477,7 @@ def detect_auction_budget_allocation(
     current_season: int,
     *,
     budget: float = 200.0,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Analyze how franchises distributed their auction budget.
 
@@ -507,7 +524,7 @@ def detect_auction_budget_allocation(
         angles.append(NarrativeAngle(
             category="AUCTION_BUDGET_ALLOCATION",
             headline=(
-                f"{fid} ran the most concentrated draft: "
+                f"{fname(fid)} ran the most concentrated draft: "
                 f"${max_b:.0f} top pick, ${min_b:.0f} cheapest"
             ),
             detail="",
@@ -519,7 +536,7 @@ def detect_auction_budget_allocation(
         angles.append(NarrativeAngle(
             category="AUCTION_BUDGET_ALLOCATION",
             headline=(
-                f"{fid2} ran the most balanced draft: "
+                f"{fname(fid2)} ran the most balanced draft: "
                 f"${max_b2:.0f} top pick, ${min_b2:.0f} cheapest"
             ),
             detail="",
@@ -539,6 +556,7 @@ def detect_auction_positional_spending(
     *,
     budget: float = 200.0,
     min_pct: float = 0.35,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect franchises with extreme positional spending in their draft."""
     season_picks = [pk for pk in picks if pk.season == current_season and pk.position]
@@ -568,7 +586,7 @@ def detect_auction_positional_spending(
                 angles.append(NarrativeAngle(
                     category="AUCTION_POSITIONAL_SPENDING",
                     headline=(
-                        f"{fid} spent {pct:.0%} of their draft budget on {pos}s"
+                        f"{fname(fid)} spent {pct:.0%} of their draft budget on {pos}s"
                     ),
                     detail=f"${pos_total:.0f} of ${total:.0f} total.",
                     strength=1,  # MINOR
@@ -587,6 +605,7 @@ def detect_auction_strategy_consistency(
     *,
     min_seasons: int = 3,
     consistency_pct: float = 0.35,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect franchises with consistent positional spending across seasons."""
     if not picks:
@@ -634,7 +653,7 @@ def detect_auction_strategy_consistency(
                 angles.append(NarrativeAngle(
                     category="AUCTION_STRATEGY_CONSISTENCY",
                     headline=(
-                        f"{fid} has spent {consistency_pct:.0%}+ of their budget "
+                        f"{fname(fid)} has spent {consistency_pct:.0%}+ of their budget "
                         f"on {pos}s in {heavy_seasons} of {total_seasons} drafts"
                     ),
                     detail="",
@@ -710,6 +729,8 @@ def detect_auction_draft_to_faab_pipeline(
     scoring: Dict[Tuple[int, str, str], _PlayerSeasonScoring],
     faab_by_position: Dict[Tuple[str, str], float],
     current_season: int,
+    *,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Total investment (draft + FAAB) vs. production per position per franchise."""
     season_picks = [pk for pk in picks if pk.season == current_season and pk.position]
@@ -760,7 +781,7 @@ def detect_auction_draft_to_faab_pipeline(
         angles.append(NarrativeAngle(
             category="AUCTION_DRAFT_TO_FAAB_PIPELINE",
             headline=(
-                f"{fid} spent ${d_spend:.0f} at the draft and ${f_spend:.0f} in FAAB "
+                f"{fname(fid)} spent ${d_spend:.0f} at the draft and ${f_spend:.0f} in FAAB "
                 f"on {pos} — ${best_total_invest:.0f} total investment has produced "
                 f"{best_production:.0f} points"
             ),
@@ -777,6 +798,9 @@ def detect_auction_draft_to_faab_pipeline(
 
 def detect_auction_most_expensive_history(
     picks: List[_AuctionPick],
+    *,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Find the most expensive player at each position across all auction drafts.
 
@@ -805,7 +829,7 @@ def detect_auction_most_expensive_history(
     return [NarrativeAngle(
         category="AUCTION_MOST_EXPENSIVE_HISTORY",
         headline=(
-            f"{pk.franchise_id}'s ${bid:.0f} on {pk.player_id} in {pk.season} "
+            f"{fname(pk.franchise_id)}'s ${bid:.0f} on {pname(pk.player_id)} in {pk.season} "
             f"is the most ever spent on a single player in a league auction"
         ),
         detail=f"Position: {pk.position}.",
@@ -823,6 +847,8 @@ def detect_auction_draft_angles_v1(
     league_id: str,
     season: int,
     week: int,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect all Dimension 6 auction draft angles for a given week.
 
@@ -834,6 +860,9 @@ def detect_auction_draft_angles_v1(
     that are draft-day observations (budget, positional, consistency,
     inflation, history). Production-based detectors (price vs production,
     dollar per point, bust, pipeline) surface any week with sufficient data.
+
+    pname: callable resolving player_id -> display name (default: identity).
+    fname: callable resolving franchise_id -> display name (default: identity).
 
     Returns an empty list when no auction data exists.
     """
@@ -849,22 +878,22 @@ def detect_auction_draft_angles_v1(
     all_angles: List[NarrativeAngle] = []
 
     # Production-based detectors (any week)
-    all_angles.extend(detect_auction_price_vs_production(all_picks, scoring))
-    all_angles.extend(detect_auction_dollar_per_point(all_picks, scoring, season))
-    all_angles.extend(detect_auction_bust(all_picks, scoring, season))
+    all_angles.extend(detect_auction_price_vs_production(all_picks, scoring, pname=pname, fname=fname))
+    all_angles.extend(detect_auction_dollar_per_point(all_picks, scoring, season, pname=pname, fname=fname))
+    all_angles.extend(detect_auction_bust(all_picks, scoring, season, pname=pname, fname=fname))
 
     # Draft-day observations (week 1 only to avoid repetition)
     if week == 1:
-        all_angles.extend(detect_auction_budget_allocation(all_picks, season))
-        all_angles.extend(detect_auction_positional_spending(all_picks, season))
-        all_angles.extend(detect_auction_strategy_consistency(all_picks, season))
+        all_angles.extend(detect_auction_budget_allocation(all_picks, season, fname=fname))
+        all_angles.extend(detect_auction_positional_spending(all_picks, season, fname=fname))
+        all_angles.extend(detect_auction_strategy_consistency(all_picks, season, fname=fname))
         all_angles.extend(detect_auction_league_inflation(all_picks, season))
-        all_angles.extend(detect_auction_most_expensive_history(all_picks))
+        all_angles.extend(detect_auction_most_expensive_history(all_picks, pname=pname, fname=fname))
 
         # Pipeline needs FAAB data
         faab_by_pos = _load_season_faab_by_position(db_path, league_id, season)
         all_angles.extend(detect_auction_draft_to_faab_pipeline(
-            all_picks, scoring, faab_by_pos, season,
+            all_picks, scoring, faab_by_pos, season, fname=fname,
         ))
 
     # Deterministic sort

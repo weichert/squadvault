@@ -781,6 +781,8 @@ def generate_weekly_recap_draft(
         try:
             _auction_angles = detect_auction_draft_angles_v1(
                 db_path=db_path, league_id=league_id, season=season, week=week_index,
+                pname=lambda pid: _cl_player_name_map.get(pid, pid),
+                fname=lambda fid: _cl_name_map.get(fid, fid),
             )
             _all_detected_angles.extend(_auction_angles)
         except Exception:
@@ -791,6 +793,8 @@ def generate_weekly_recap_draft(
             _deep_angles = detect_franchise_deep_angles_v1(
                 db_path=db_path, league_id=league_id, season=season, week=week_index,
                 tenure_map=_cl_tenure_map,
+                pname=lambda pid: _cl_player_name_map.get(pid, pid),
+                fname=lambda fid: _cl_name_map.get(fid, fid),
             )
             _all_detected_angles.extend(_deep_angles)
         except Exception:
