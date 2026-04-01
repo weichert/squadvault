@@ -812,25 +812,28 @@ def generate_weekly_recap_draft(
             except (ValueError, TypeError):
                 pass
 
-        # Playoff detection: compare matchup count this week vs season maximum.
-        # Playoff weeks have fewer matchups by design (eliminated teams don't play).
+        # Playoff detection: find the last week with full matchup count (= last regular
+        # season week). Any week after that is a playoff, even if it has no matchup results.
         try:
-            _this_week_matchups = _eal_con.execute(
-                "SELECT COUNT(*) FROM v_canonical_best_events"
-                " WHERE league_id=? AND season=? AND event_type='WEEKLY_MATCHUP_RESULT'"
-                " AND json_extract(payload_json, '$.week') = ?",
-                (league_id, season, str(week_index)),
-            ).fetchone()[0]
-            _max_week_matchups = _eal_con.execute(
-                "SELECT MAX(cnt) FROM ("
-                "  SELECT COUNT(*) as cnt FROM v_canonical_best_events"
+            _last_regular_row = _eal_con.execute(
+                "SELECT MAX(week) FROM ("
+                "  SELECT CAST(json_extract(payload_json, '$.week') AS INTEGER) as week,"
+                "         COUNT(*) as cnt"
+                "  FROM v_canonical_best_events"
                 "  WHERE league_id=? AND season=? AND event_type='WEEKLY_MATCHUP_RESULT'"
                 "  GROUP BY json_extract(payload_json, '$.week')"
+                "  HAVING cnt = ("
+                "    SELECT MAX(cnt2) FROM ("
+                "      SELECT COUNT(*) as cnt2 FROM v_canonical_best_events"
+                "      WHERE league_id=? AND season=? AND event_type='WEEKLY_MATCHUP_RESULT'"
+                "      GROUP BY json_extract(payload_json, '$.week')"
+                "    )"
+                "  )"
                 ")",
-                (league_id, season),
-            ).fetchone()[0]
-            if (_max_week_matchups and _this_week_matchups
-                    and 0 < _this_week_matchups < _max_week_matchups):
+                (league_id, season, league_id, season),
+            ).fetchone()
+            _last_regular_week = _last_regular_row[0] if _last_regular_row else None
+            if _last_regular_week and week_index > _last_regular_week:
                 _is_playoff = True
         except Exception:
             pass  # Playoff detection is best-effort; default to non-playoff
