@@ -20,7 +20,7 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
 
-from squadvault.core.canonicalize.run_canonicalize import action_fingerprint, safe_json_loads
+from squadvault.core.canonicalize.run_canonicalize import action_fingerprint, safe_json_loads, MemoryEventRow
 from squadvault.core.recaps.recap_runs import (
     RecapRunRecord,
     get_recap_run_state,
@@ -115,21 +115,17 @@ def _ledger_unique_actions_in_range(
     rows = _fetch_memory_rows_in_range(conn, league_id, season, start, end)
     fps: Set[str] = set()
 
-    class _RowShim:
-        def __init__(self, d: Dict[str, Any]) -> None:
-            self.id = d["id"]
-            self.league_id = d["league_id"]
-            self.season = d["season"]
-            self.external_source = d["external_source"]
-            self.external_id = d["external_id"]
-            self.event_type = d["event_type"]
-            self.occurred_at = d["occurred_at"]
-            self.ingested_at = d["ingested_at"]
-            self.payload_json = d["payload_json"]
-
     for d in rows:
         payload = safe_json_loads(d["payload_json"])
-        fp = action_fingerprint(_RowShim(d), payload)
+        fp = action_fingerprint(MemoryEventRow(
+            id=d["id"],
+            league_id=d["league_id"],
+            season=d["season"],
+            event_type=d["event_type"],
+            occurred_at=d["occurred_at"],
+            ingested_at=d["ingested_at"],
+            payload_json=d["payload_json"],
+        ), payload)
 
         # canonicalize skips empty fingerprints; match that behavior
         if not fp:
@@ -250,6 +246,9 @@ def main() -> None:
         return
 
     store = SQLiteStore(args.db)
+    # Safe to assert: _is_safe_window above verified start and end are non-None
+    assert sel.window.window_start is not None
+    assert sel.window.window_end is not None
     with DatabaseSession(args.db) as conn:
         v = generation_verdict_unique_actions(
             conn,

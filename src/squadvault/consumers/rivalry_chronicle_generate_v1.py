@@ -60,6 +60,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         created_at_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Resolve week selection
+    week_range: tuple[int, int] | None = None
     if args.start_week is not None:
         if args.end_week is None:
             raise SystemExit("ERROR: --start-week requires --end-week")

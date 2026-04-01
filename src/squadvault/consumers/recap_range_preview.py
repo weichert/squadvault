@@ -237,18 +237,18 @@ def _extract_player_ids_deep(obj: Any) -> Set[str]:
                             ids.add(pid)
 
                 if lk in {"player", "players"} and isinstance(v, dict):
-                    pid = v.get("id") or v.get("player_id") or v.get("playerId")
-                    if pid is not None:
-                        spid = str(pid).strip()
+                    pid_val = v.get("id") or v.get("player_id") or v.get("playerId")
+                    if pid_val is not None:
+                        spid = str(pid_val).strip()
                         if spid:
                             ids.add(spid)
 
                 if lk in {"players", "player_list", "playerlist"} and isinstance(v, list):
                     for item in v:
                         if isinstance(item, dict):
-                            pid = item.get("id") or item.get("player_id") or item.get("playerId")
-                            if pid is not None:
-                                spid = str(pid).strip()
+                            pid_val = item.get("id") or item.get("player_id") or item.get("playerId")
+                            if pid_val is not None:
+                                spid = str(pid_val).strip()
                                 if spid:
                                     ids.add(spid)
 
@@ -368,7 +368,7 @@ def _pick_notable(events: List[Dict[str, Any]], max_items: int) -> List[Dict[str
     scored.sort(
         key=lambda t: (
             -t[0],
-            TYPE_PRIORITY.get(t[1].get("event_type"), 99),
+            TYPE_PRIORITY.get(str(t[1].get("event_type", "")), 99),
             t[1].get("occurred_at") or "",
             t[1].get("external_source") or "",
             t[1].get("external_id") or "",
@@ -607,7 +607,7 @@ def main() -> int:
                 print()
 
                 _print_header("Counts by event_type (canonical only)")
-                counts = Counter([e.get("event_type") for e in events])
+                counts: Counter[str] = Counter(str(e.get("event_type", "")) for e in events)
                 for k in sorted(counts.keys()):
                     print(f"{k:<35} {counts[k]}")
                 print()
@@ -634,8 +634,8 @@ def main() -> int:
                     by_type.setdefault(et, []).append(_e)
 
 
-                omit_reasons = Counter()
-                printed_by_type = Counter()
+                omit_reasons: Counter[str] = Counter()
+                printed_by_type: Counter[str] = Counter()
                 seen_keys: set[str] = set()
                 dedup_skipped = 0  # count of duplicate notable lines skipped (content-level)
 
@@ -825,7 +825,7 @@ def main() -> int:
             f"Franchise: franchise_directory | requested={franchise_resolver.requested} resolved={franchise_resolver.resolved}"
         )
 
-    counts = Counter(e.get("event_type") for e in events)
+    counts = Counter(str(e.get("event_type", "")) for e in events)
     _print_header("Counts by event_type")
     for etype, n in sorted(counts.items(), key=lambda x: (-x[1], x[0] or "")):
         print(f"{etype:35} {n}")
