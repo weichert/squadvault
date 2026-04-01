@@ -32,6 +32,15 @@ from squadvault.core.recaps.context.league_history_v1 import (
     compute_head_to_head,
 )
 
+from typing import Callable
+
+# Name resolver: takes an ID string, returns a display name (or the ID itself).
+NameFn = Callable[[str], str]
+
+
+def _identity(x: str) -> str:
+    return x
+
 
 # ── Angle data class ─────────────────────────────────────────────────
 
@@ -132,7 +141,7 @@ def _detect_upsets(ctx: SeasonContextV1) -> List[NarrativeAngle]:
     return angles
 
 
-def _detect_streaks(ctx: SeasonContextV1) -> List[NarrativeAngle]:
+def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> List[NarrativeAngle]:
     """Detect notable streak milestones."""
     angles: List[NarrativeAngle] = []
 
@@ -142,7 +151,7 @@ def _detect_streaks(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         if streak >= 4:
             angles.append(NarrativeAngle(
                 category="STREAK",
-                headline=f"{rec.franchise_id} on {streak}-game win streak",
+                headline=f"{fname(rec.franchise_id)} on {streak}-game win streak",
                 detail=f"Record: {rec.wins}-{rec.losses}.",
                 strength=3 if streak >= 5 else 2,
                 franchise_ids=(rec.franchise_id,),
@@ -150,7 +159,7 @@ def _detect_streaks(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         elif streak == 3:
             angles.append(NarrativeAngle(
                 category="STREAK",
-                headline=f"{rec.franchise_id} has won 3 straight",
+                headline=f"{fname(rec.franchise_id)} has won 3 straight",
                 detail=f"Record: {rec.wins}-{rec.losses}.",
                 strength=1,
                 franchise_ids=(rec.franchise_id,),
@@ -158,7 +167,7 @@ def _detect_streaks(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         elif streak <= -4:
             angles.append(NarrativeAngle(
                 category="STREAK",
-                headline=f"{rec.franchise_id} on {abs(streak)}-game losing streak",
+                headline=f"{fname(rec.franchise_id)} on {abs(streak)}-game losing streak",
                 detail=f"Record: {rec.wins}-{rec.losses}.",
                 strength=3 if streak <= -5 else 2,
                 franchise_ids=(rec.franchise_id,),
@@ -166,7 +175,7 @@ def _detect_streaks(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         elif streak == -3:
             angles.append(NarrativeAngle(
                 category="STREAK",
-                headline=f"{rec.franchise_id} has lost 3 straight",
+                headline=f"{fname(rec.franchise_id)} has lost 3 straight",
                 detail=f"Record: {rec.wins}-{rec.losses}.",
                 strength=1,
                 franchise_ids=(rec.franchise_id,),
@@ -175,7 +184,7 @@ def _detect_streaks(ctx: SeasonContextV1) -> List[NarrativeAngle]:
     return angles
 
 
-def _detect_scoring_anomalies(ctx: SeasonContextV1) -> List[NarrativeAngle]:
+def _detect_scoring_anomalies(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> List[NarrativeAngle]:
     """Detect scores significantly above or below league average."""
     if not ctx.has_this_week_data or ctx.season_avg_score is None:
         return []
@@ -205,7 +214,7 @@ def _detect_scoring_anomalies(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         if score >= extreme_high:
             angles.append(NarrativeAngle(
                 category="SCORING_ANOMALY",
-                headline=f"{fid} scored {score:.2f} (well above {avg:.0f} avg)",
+                headline=f"{fname(fid)} scored {score:.2f} (well above {avg:.0f} avg)",
                 detail=f"League average: {avg:.2f}. Deviation: +{score - avg:.2f}.",
                 strength=3,
                 franchise_ids=(fid,),
@@ -213,7 +222,7 @@ def _detect_scoring_anomalies(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         elif score >= high_threshold:
             angles.append(NarrativeAngle(
                 category="SCORING_ANOMALY",
-                headline=f"{fid} scored {score:.2f} (above {avg:.0f} avg)",
+                headline=f"{fname(fid)} scored {score:.2f} (above {avg:.0f} avg)",
                 detail=f"League average: {avg:.2f}. Deviation: +{score - avg:.2f}.",
                 strength=2,
                 franchise_ids=(fid,),
@@ -221,7 +230,7 @@ def _detect_scoring_anomalies(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         elif score <= extreme_low:
             angles.append(NarrativeAngle(
                 category="SCORING_ANOMALY",
-                headline=f"{fid} scored only {score:.2f} (well below {avg:.0f} avg)",
+                headline=f"{fname(fid)} scored only {score:.2f} (well below {avg:.0f} avg)",
                 detail=f"League average: {avg:.2f}. Deviation: {score - avg:.2f}.",
                 strength=3,
                 franchise_ids=(fid,),
@@ -229,7 +238,7 @@ def _detect_scoring_anomalies(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         elif score <= low_threshold:
             angles.append(NarrativeAngle(
                 category="SCORING_ANOMALY",
-                headline=f"{fid} scored only {score:.2f} (below {avg:.0f} avg)",
+                headline=f"{fname(fid)} scored only {score:.2f} (below {avg:.0f} avg)",
                 detail=f"League average: {avg:.2f}. Deviation: {score - avg:.2f}.",
                 strength=1,
                 franchise_ids=(fid,),
@@ -238,7 +247,7 @@ def _detect_scoring_anomalies(ctx: SeasonContextV1) -> List[NarrativeAngle]:
     return angles
 
 
-def _detect_margin_stories(ctx: SeasonContextV1) -> List[NarrativeAngle]:
+def _detect_margin_stories(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> List[NarrativeAngle]:
     """Detect blowouts and nail-biters relative to this week's matchups."""
     if not ctx.has_this_week_data:
         return []
@@ -250,7 +259,7 @@ def _detect_margin_stories(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         if margin >= 30:
             angles.append(NarrativeAngle(
                 category="BLOWOUT",
-                headline=f"{w} blew out {l} by {margin:.2f}",
+                headline=f"{fname(w)} blew out {fname(l)} by {margin:.2f}",
                 detail="",
                 strength=3,
                 franchise_ids=(w, l),
@@ -258,7 +267,7 @@ def _detect_margin_stories(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         elif margin >= 20:
             angles.append(NarrativeAngle(
                 category="BLOWOUT",
-                headline=f"{w} dominated {l} by {margin:.2f}",
+                headline=f"{fname(w)} dominated {fname(l)} by {margin:.2f}",
                 detail="",
                 strength=2,
                 franchise_ids=(w, l),
@@ -269,7 +278,7 @@ def _detect_margin_stories(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         if margin <= 2:
             angles.append(NarrativeAngle(
                 category="NAIL_BITER",
-                headline=f"{w} squeaked past {l} by {margin:.2f}",
+                headline=f"{fname(w)} squeaked past {fname(l)} by {margin:.2f}",
                 detail="",
                 strength=3,
                 franchise_ids=(w, l),
@@ -277,7 +286,7 @@ def _detect_margin_stories(ctx: SeasonContextV1) -> List[NarrativeAngle]:
         elif margin <= 5:
             angles.append(NarrativeAngle(
                 category="NAIL_BITER",
-                headline=f"{w} edged {l} by {margin:.2f}",
+                headline=f"{fname(w)} edged {fname(l)} by {margin:.2f}",
                 detail="",
                 strength=2,
                 franchise_ids=(w, l),
@@ -289,6 +298,7 @@ def _detect_margin_stories(ctx: SeasonContextV1) -> List[NarrativeAngle]:
 def _detect_season_records(
     ctx: SeasonContextV1,
     history: Optional[LeagueHistoryContextV1],
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect when this week set a new season or all-time scoring record."""
     angles: List[NarrativeAngle] = []
@@ -329,7 +339,7 @@ def _detect_season_records(
                 and ctx.season_low.week == ctx.through_week):
             angles.append(NarrativeAngle(
                 category="SCORING_RECORD",
-                headline=f"{wl_fid} set the season scoring low: {wl_score:.2f}",
+                headline=f"{fname(wl_fid)} set the season scoring low: {wl_score:.2f}",
                 detail="",
                 strength=2,
                 franchise_ids=(wl_fid,),
@@ -343,6 +353,7 @@ def _detect_rivalry_angles(
     history: Optional[LeagueHistoryContextV1],
     all_matchups: Optional[Sequence[HistoricalMatchup]],
     tenure_map: Optional[Dict[str, int]] = None,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect notable rivalry angles when this week's opponents have history.
 
@@ -393,7 +404,7 @@ def _detect_rivalry_angles(
                 record_str += f"-{h2h.ties}"
             angles.append(NarrativeAngle(
                 category="RIVALRY",
-                headline=f"{wm.winner_id} leads the series {record_str} ({tenure_label})",
+                headline=f"{fname(wm.winner_id)} leads the series {record_str} ({tenure_label})",
                 detail=f"{total} meetings {tenure_label}.",
                 strength=2,
                 franchise_ids=(wm.winner_id, wm.loser_id),
@@ -404,7 +415,7 @@ def _detect_rivalry_angles(
                 record_str += f"-{h2h.ties}"
             angles.append(NarrativeAngle(
                 category="RIVALRY",
-                headline=f"Upset: {wm.winner_id} wins despite trailing {record_str} ({tenure_label})",
+                headline=f"Upset: {fname(wm.winner_id)} wins despite trailing {record_str} ({tenure_label})",
                 detail=f"{total} meetings {tenure_label}.",
                 strength=3,
                 franchise_ids=(wm.winner_id, wm.loser_id),
@@ -413,7 +424,7 @@ def _detect_rivalry_angles(
         elif total >= 5 and abs(h2h.a_wins - h2h.b_wins) <= 1:
             angles.append(NarrativeAngle(
                 category="RIVALRY",
-                headline=f"Even rivalry: {wm.winner_id} vs {wm.loser_id} ({h2h.a_wins}-{h2h.b_wins}, {tenure_label})",
+                headline=f"Even rivalry: {fname(wm.winner_id)} vs {fname(wm.loser_id)} ({h2h.a_wins}-{h2h.b_wins}, {tenure_label})",
                 detail=f"{total} meetings {tenure_label}, nearly even.",
                 strength=1,
                 franchise_ids=(wm.winner_id, wm.loser_id),
@@ -425,6 +436,7 @@ def _detect_rivalry_angles(
 def _detect_streak_records(
     ctx: SeasonContextV1,
     history: Optional[LeagueHistoryContextV1],
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect when a current streak matches or approaches the league record.
 
@@ -450,15 +462,15 @@ def _detect_streak_records(
             if streak >= record:
                 angles.append(NarrativeAngle(
                     category="STREAK",
-                    headline=f"{rec.franchise_id} tied/broke the league win streak record ({streak} games)",
-                    detail=f"Previous record: {record} by {history.longest_win_streak.franchise_id}.",
+                    headline=f"{fname(rec.franchise_id)} tied/broke the league win streak record ({streak} games)",
+                    detail=f"Previous record: {record} by {fname(history.longest_win_streak.franchise_id)}.",
                     strength=3,
                     franchise_ids=(rec.franchise_id,),
                 ))
             elif streak == record - 1:
                 angles.append(NarrativeAngle(
                     category="STREAK",
-                    headline=f"{rec.franchise_id} is 1 win from the league win streak record ({record})",
+                    headline=f"{fname(rec.franchise_id)} is 1 win from the league win streak record ({record})",
                     detail="",
                     strength=2,
                     franchise_ids=(rec.franchise_id,),
@@ -469,8 +481,8 @@ def _detect_streak_records(
             if abs(streak) >= record:
                 angles.append(NarrativeAngle(
                     category="STREAK",
-                    headline=f"{rec.franchise_id} tied/broke the league loss streak record ({abs(streak)} games)",
-                    detail=f"Previous record: {record} by {history.longest_loss_streak.franchise_id}.",
+                    headline=f"{fname(rec.franchise_id)} tied/broke the league loss streak record ({abs(streak)} games)",
+                    detail=f"Previous record: {record} by {fname(history.longest_loss_streak.franchise_id)}.",
                     strength=3,
                     franchise_ids=(rec.franchise_id,),
                 ))
@@ -487,6 +499,7 @@ def detect_narrative_angles_v1(
     history_ctx: Optional[LeagueHistoryContextV1] = None,
     all_matchups: Optional[Sequence[HistoricalMatchup]] = None,
     tenure_map: Optional[Dict[str, int]] = None,
+    fname: NameFn = _identity,
 ) -> WeekAnglesV1:
     """Detect all narrative angles for a given week.
 
@@ -500,12 +513,12 @@ def detect_narrative_angles_v1(
     all_angles: List[NarrativeAngle] = []
 
     all_angles.extend(_detect_upsets(season_ctx))
-    all_angles.extend(_detect_streaks(season_ctx))
-    all_angles.extend(_detect_scoring_anomalies(season_ctx))
-    all_angles.extend(_detect_margin_stories(season_ctx))
-    all_angles.extend(_detect_season_records(season_ctx, history_ctx))
-    all_angles.extend(_detect_rivalry_angles(season_ctx, history_ctx, all_matchups, tenure_map))
-    all_angles.extend(_detect_streak_records(season_ctx, history_ctx))
+    all_angles.extend(_detect_streaks(season_ctx, fname=fname))
+    all_angles.extend(_detect_scoring_anomalies(season_ctx, fname=fname))
+    all_angles.extend(_detect_margin_stories(season_ctx, fname=fname))
+    all_angles.extend(_detect_season_records(season_ctx, history_ctx, fname=fname))
+    all_angles.extend(_detect_rivalry_angles(season_ctx, history_ctx, all_matchups, tenure_map, fname=fname))
+    all_angles.extend(_detect_streak_records(season_ctx, history_ctx, fname=fname))
 
     # Deterministic sort: strength desc, then category asc, then headline asc
     all_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))

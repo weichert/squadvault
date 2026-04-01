@@ -762,6 +762,7 @@ def generate_weekly_recap_draft(
                 history_ctx=_cl_history_ctx,
                 all_matchups=_cl_all_matchups,
                 tenure_map=_cl_tenure_map,
+                fname=lambda fid: _cl_name_map.get(fid, fid),
             )
             _all_detected_angles.extend(_cl_angles.angles)
 
