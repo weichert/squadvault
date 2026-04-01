@@ -111,53 +111,17 @@ def _get_recap_run_trace(
     league_id: str,
     season: int,
     week_index: int,
-    include_editorial: bool = False,
-) -> tuple[str, str | None, str | None] | tuple[str, str | None, str | None, str | None]:
-    """Reads selection_fingerprint + window bounds from recap_runs.
-
-    If include_editorial=True:
-      - returns (fp, window_start, window_end, editorial_attunement_v1_or_None)
-      - if recap_runs lacks the column, the editorial value is None
-
-    If include_editorial=False:
-      - returns (fp, window_start, window_end)
-    """
+) -> tuple[str, str | None, str | None]:
+    """Reads selection_fingerprint + window bounds from recap_runs."""
     with DatabaseSession(db_path) as con:
-        if include_editorial:
-            cols = {str(r[1]) for r in con.execute("PRAGMA table_info(recap_runs)").fetchall()}
-            has_eal = "editorial_attunement_v1" in cols
-
-            if has_eal:
-                row = con.execute(
-                    """
-                    SELECT selection_fingerprint, window_start, window_end, editorial_attunement_v1
-                    FROM recap_runs
-                    WHERE league_id=? AND season=? AND week_index=?
-                    """,
-                    (league_id, season, week_index),
-                ).fetchone()
-            else:
-                row = con.execute(
-                    """
-                    SELECT selection_fingerprint, window_start, window_end
-                    FROM recap_runs
-                    WHERE league_id=? AND season=? AND week_index=?
-                    """,
-                    (league_id, season, week_index),
-                ).fetchone()
-
-                if row:
-                    row = (row[0], row[1], row[2], None)
-
-        else:
-            row = con.execute(
-                """
-                SELECT selection_fingerprint, window_start, window_end
-                FROM recap_runs
-                WHERE league_id=? AND season=? AND week_index=?
-                """,
-                (league_id, season, week_index),
-            ).fetchone()
+        row = con.execute(
+            """
+            SELECT selection_fingerprint, window_start, window_end
+            FROM recap_runs
+            WHERE league_id=? AND season=? AND week_index=?
+            """,
+            (league_id, season, week_index),
+        ).fetchone()
 
     if not row or not row[0]:
         raise RecapNotFoundError("No recap_runs row found (missing selection_fingerprint).")
@@ -165,10 +129,6 @@ def _get_recap_run_trace(
     fp = str(row[0])
     ws = (str(row[1]) if row[1] else None)
     we = (str(row[2]) if row[2] else None)
-
-    if include_editorial:
-        eal = (str(row[3]) if row[3] else None)
-        return fp, ws, we, eal
 
     return fp, ws, we
 

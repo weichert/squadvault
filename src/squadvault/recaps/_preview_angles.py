@@ -69,14 +69,14 @@ def detect_all_angles(
     *,
     pname=None,
     fname=None,
-) -> tuple[list[NarrativeAngle], dict[str, int]]:
+) -> tuple[list[NarrativeAngle], dict[str, int | str]]:
     """Run all 6 angle modules and return combined angles + module counts."""
     if pname is None:
         pname = _identity
     if fname is None:
         fname = _identity
 
-    module_counts: dict[str, int] = {}
+    module_counts: dict[str, int | str] = {}
 
     # Shared context
     try:

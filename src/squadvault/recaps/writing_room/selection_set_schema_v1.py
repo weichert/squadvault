@@ -346,11 +346,6 @@ def _norm_keys(xs: Iterable[str] | str | None) -> list[str]:
         return [str(x) for x in xs]
     return [str(xs)]
 
-def _sha256_hex(s: str) -> str:
-    """Compute SHA-256 hex digest of a string."""
-    import hashlib
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
-
 def _group_id_v1(group_basis: str, scope_key: str, subject_key: str, fact_basis_key: str) -> str:
     """Generate a v1 group ID from basis code and signal IDs."""
     canonical = f"SignalGrouping|v1.0|{group_basis}|scope={scope_key}|subject={subject_key}|fact={fact_basis_key}"

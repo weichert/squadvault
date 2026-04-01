@@ -78,11 +78,11 @@ class DictSignalAdapter:
 
     def signal_id(self, signal: dict) -> str:
         """Return the unique signal identifier."""
-        return signal["signal_id"]
+        return str(signal["signal_id"])
 
     def confidence(self, signal: dict) -> str:
         """Return the signal confidence grade."""
-        return signal["confidence"]
+        return str(signal["confidence"])
 
     def is_lineage_complete(self, signal: dict) -> bool:
         """Return True if signal has complete data lineage."""

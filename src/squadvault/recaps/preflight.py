@@ -19,7 +19,7 @@ class PreflightVerdictType(str, Enum):
 class PreflightVerdict:
     verdict: PreflightVerdictType
     reason_code: Optional[DNGReason] = None
-    evidence: dict[str, Any] = None
+    evidence: Optional[dict[str, Any]] = None
 
     def __post_init__(self):
         # dataclasses + frozen: use object.__setattr__
