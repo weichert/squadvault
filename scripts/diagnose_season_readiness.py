@@ -72,7 +72,30 @@ def _eal_for_week(db_path: str, league_id: str, season: int, week: int) -> tuple
         except (ValueError, TypeError):
             included = None
 
-    meta = EALMeta(has_selection_set=True, has_window=True, included_count=included)
+        # Playoff detection: fewer matchups this week than season max
+        is_playoff = False
+        try:
+            this_week_matchups = con.execute(
+                "SELECT COUNT(*) FROM v_canonical_best_events"
+                " WHERE league_id=? AND season=? AND event_type='WEEKLY_MATCHUP_RESULT'"
+                " AND json_extract(payload_json, '$.week') = ?",
+                (league_id, season, str(week)),
+            ).fetchone()[0]
+            max_week_matchups = con.execute(
+                "SELECT MAX(cnt) FROM ("
+                "  SELECT COUNT(*) as cnt FROM v_canonical_best_events"
+                "  WHERE league_id=? AND season=? AND event_type='WEEKLY_MATCHUP_RESULT'"
+                "  GROUP BY json_extract(payload_json, '$.week')"
+                ")",
+                (league_id, season),
+            ).fetchone()[0]
+            if (max_week_matchups and this_week_matchups
+                    and 0 < this_week_matchups < max_week_matchups):
+                is_playoff = True
+        except Exception:
+            pass
+
+    meta = EALMeta(has_selection_set=True, has_window=True, included_count=included, is_playoff=is_playoff)
     return (evaluate_editorial_attunement_v1(meta), included)
 
 
