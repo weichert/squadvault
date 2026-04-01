@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import re
 import sys
 from collections import Counter
 
@@ -59,6 +58,7 @@ from squadvault.core.recaps.context.league_history_v1 import (
     build_cross_season_name_resolver,
 )
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.core.resolvers import identity as _identity
 
 
 def _build_player_name_map(db_path: str, league_id: str) -> dict[str, str]:
@@ -83,8 +83,16 @@ def detect_all_angles(
     league_id: str,
     season: int,
     week: int,
+    *,
+    pname=None,
+    fname=None,
 ) -> tuple[list[NarrativeAngle], dict[str, int]]:
     """Run all 6 angle modules and return combined angles + module counts."""
+    if pname is None:
+        pname = _identity
+    if fname is None:
+        fname = _identity
+
     module_counts: dict[str, int] = {}
 
     # Shared context
@@ -120,6 +128,7 @@ def detect_all_angles(
                 history_ctx=history_ctx,
                 all_matchups=all_matchups,
                 tenure_map=tenure_map,
+                fname=fname,
             )
             angles = list(m1.angles)
             module_counts["narrative_angles_v1"] = len(angles)
@@ -132,6 +141,7 @@ def detect_all_angles(
         angles = detect_player_narrative_angles_v1(
             db_path=db_path, league_id=league_id, season=season, week=week,
             tenure_map=tenure_map,
+            pname=pname, fname=fname,
         )
         module_counts["player_narrative"] = len(angles)
         all_angles.extend(angles)
@@ -142,6 +152,7 @@ def detect_all_angles(
     try:
         angles = detect_auction_draft_angles_v1(
             db_path=db_path, league_id=league_id, season=season, week=week,
+            pname=pname, fname=fname,
         )
         module_counts["auction_draft"] = len(angles)
         all_angles.extend(angles)
@@ -153,6 +164,7 @@ def detect_all_angles(
         angles = detect_franchise_deep_angles_v1(
             db_path=db_path, league_id=league_id, season=season, week=week,
             tenure_map=tenure_map,
+            pname=pname, fname=fname,
         )
         module_counts["franchise_deep"] = len(angles)
         all_angles.extend(angles)
@@ -164,6 +176,7 @@ def detect_all_angles(
         angles = detect_bye_week_angles_v1(
             db_path=db_path, league_id=league_id, season=season, week=week,
             all_matchups=all_matchups,
+            fname=fname,
         )
         module_counts["bye_week"] = len(angles)
         all_angles.extend(angles)
@@ -202,29 +215,12 @@ def apply_tiered_budget(angles: list[NarrativeAngle]) -> list[NarrativeAngle]:
     return budgeted
 
 
-def render_angle(
-    a: NarrativeAngle,
-    name_map: dict[str, str],
-    player_name_map: dict[str, str],
-) -> str:
-    """Render a single angle with name resolution."""
+def render_angle(a: NarrativeAngle) -> str:
+    """Render a single angle (names already resolved by detectors)."""
     label = {3: "HEADLINE", 2: "NOTABLE", 1: "MINOR"}.get(a.strength, "")
-    headline = a.headline
-    detail = a.detail
-    for fid, fname in name_map.items():
-        headline = headline.replace(fid, fname)
-        if detail:
-            detail = detail.replace(fid, fname)
-    for pid, pname in player_name_map.items():
-        if len(pid) < 5:
-            continue
-        pat = r'(?<![.\d])' + re.escape(pid) + r'(?![.\d])'
-        headline = re.sub(pat, pname, headline)
-        if detail:
-            detail = re.sub(pat, pname, detail)
-    line = f"  [{label}] {headline}"
-    if detail:
-        line += f" — {detail}"
+    line = f"  [{label}] {a.headline}"
+    if a.detail:
+        line += f" — {a.detail}"
     return line
 
 
@@ -233,7 +229,11 @@ def preview_week(db_path: str, league_id: str, season: int, week: int) -> None:
     name_map = build_cross_season_name_resolver(db_path, league_id)
     player_name_map = _build_player_name_map(db_path, league_id)
 
-    all_angles, module_counts = detect_all_angles(db_path, league_id, season, week)
+    all_angles, module_counts = detect_all_angles(
+        db_path, league_id, season, week,
+        pname=lambda pid: player_name_map.get(pid, pid),
+        fname=lambda fid: name_map.get(fid, fid),
+    )
     budgeted = apply_tiered_budget(all_angles)
 
     print(f"\n{'=' * 72}")
@@ -260,7 +260,7 @@ def preview_week(db_path: str, league_id: str, season: int, week: int) -> None:
         print("\n  === ANGLE FEED (as sent to creative layer) ===")
         print(f"  Narrative angles for Week {week} (what's interesting):")
         for a in budgeted:
-            print(render_angle(a, name_map, player_name_map))
+            print(render_angle(a))
         remaining = total_raw - len(budgeted)
         if remaining > 0:
             print(f"  (+ {remaining} minor angles omitted)")
