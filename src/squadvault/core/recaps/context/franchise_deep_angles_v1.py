@@ -362,27 +362,27 @@ def detect_bench_cost_game(
         if m.season == current_season and m.week == target_week and not m.is_tie
     ]
 
-    # Collect candidates: (total_bench, margin, loser_id, best_bench_pid)
-    candidates: list[tuple[float, float, str, str]] = []
+    # Collect candidates: (total_bench, margin, loser_id, best_bench_pid, best_bench_score)
+    candidates: list[tuple[float, float, str, str, float]] = []
     for m in week_matchups:
         loser = m.loser_id
         margin = m.margin
         bench = bench_pts.get((loser, target_week), [])
         total_bench = sum(s for _, s in bench)
         if total_bench > margin and bench:
-            best_bench_pid, _ = max(bench, key=lambda x: x[1])
-            candidates.append((total_bench, margin, loser, best_bench_pid))
+            best_bench_pid, best_bench_score = max(bench, key=lambda x: x[1])
+            candidates.append((total_bench, margin, loser, best_bench_pid, best_bench_score))
 
     # Cap at 2 most dramatic (highest bench points left on table)
     candidates.sort(key=lambda c: -c[0])
 
     angles: list[NarrativeAngle] = []
-    for total_bench, margin, loser, best_bench_pid in candidates[:2]:
+    for total_bench, margin, loser, best_bench_pid, best_score in candidates[:2]:
         angles.append(NarrativeAngle(
             category="BENCH_COST_GAME",
             headline=(
-                f"{fname(loser)} lost by {margin:.2f} with {total_bench:.2f} "
-                f"sitting on the bench from {pname(best_bench_pid)}"
+                f"{fname(loser)} lost by {margin:.2f} with {total_bench:.2f} total bench points; "
+                f"top benched player was {pname(best_bench_pid)} ({best_score:.2f})"
             ),
             detail="",
             strength=2, franchise_ids=(loser,),
