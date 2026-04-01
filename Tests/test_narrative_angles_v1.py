@@ -10,37 +10,19 @@ import json
 import os
 import sqlite3
 
-import pytest
 
 from squadvault.core.recaps.context.season_context_v1 import (
-    SeasonContextV1,
-    TeamRecord,
-    WeekMatchupContext,
-    ScoringMilestone,
     derive_season_context_v1,
 )
 from squadvault.core.recaps.context.league_history_v1 import (
-    LeagueHistoryContextV1,
-    HistoricalMatchup,
-    StreakRecord,
-    ScoringRecord,
-    AllTimeRecord,
-    SeasonRecord,
     derive_league_history_v1,
-    compute_head_to_head,
 )
 from squadvault.core.recaps.context.narrative_angles_v1 import (
-    NarrativeAngle,
-    WeekAnglesV1,
     _detect_upsets,
     _detect_streaks,
     _detect_scoring_anomalies,
     _detect_margin_stories,
-    _detect_season_records,
-    _detect_rivalry_angles,
-    _detect_streak_records,
     detect_narrative_angles_v1,
-    render_angles_for_prompt,
 )
 
 SCHEMA_PATH = os.path.join(
@@ -345,41 +327,3 @@ class TestFullDetection:
         )
         result = detect_narrative_angles_v1(season_ctx=ctx, history_ctx=None)
         assert result.has_angles
-
-
-# ── Prompt rendering ─────────────────────────────────────────────────
-
-
-class TestAnglePromptRendering:
-    def test_renders_with_names(self, tmp_path):
-        db_path = _build_upset_scenario(tmp_path)
-        ctx = derive_season_context_v1(
-            db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=6
-        )
-        result = detect_narrative_angles_v1(season_ctx=ctx)
-        names = {"A": "Alpha", "B": "Beta", "C": "Charlie",
-                 "D": "Delta", "E": "Echo", "F": "Foxtrot"}
-        text = render_angles_for_prompt(result, name_map=names)
-        assert "Narrative angles" in text
-        # Names should be resolved
-        assert any(n in text for n in names.values())
-
-    def test_empty_renders_cleanly(self, tmp_path):
-        db_path = _fresh_db(tmp_path)
-        ctx = derive_season_context_v1(
-            db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=1
-        )
-        result = detect_narrative_angles_v1(season_ctx=ctx)
-        text = render_angles_for_prompt(result)
-        assert "No notable" in text
-
-    def test_max_angles_cap(self, tmp_path):
-        db_path = _build_upset_scenario(tmp_path)
-        ctx = derive_season_context_v1(
-            db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=6
-        )
-        result = detect_narrative_angles_v1(season_ctx=ctx)
-        text = render_angles_for_prompt(result, max_angles=2)
-        # Should show at most 2 angle lines (plus header and possible "omitted" line)
-        angle_lines = [l for l in text.strip().split("\n") if l.strip().startswith("[")]
-        assert len(angle_lines) <= 2

@@ -8,7 +8,6 @@ import json
 import os
 import sqlite3
 
-from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.recaps.context.league_history_v1 import HistoricalMatchup
 from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
     detect_scoring_concentration,
@@ -30,7 +29,6 @@ from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
     detect_championship_history,
     detect_the_almost,
     detect_franchise_deep_angles_v1,
-    render_franchise_deep_angles_for_prompt,
 )
 
 
@@ -367,26 +365,6 @@ class TestFranchiseDeepPipeline:
         a2 = detect_franchise_deep_angles_v1(
             db_path=db_path, league_id=LEAGUE, season=SEASON, week=3)
         assert a1 == a2
-
-
-# ── Rendering ────────────────────────────────────────────────────────
-
-
-class TestFranchiseDeepRendering:
-    def test_renders_with_names(self):
-        angles = [NarrativeAngle(
-            category="SCORING_CONCENTRATION", headline="F1 depends on P1",
-            detail="80%.", strength=2, franchise_ids=("F1",),
-        )]
-        text = render_franchise_deep_angles_for_prompt(
-            angles, name_map={"F1": "Robb's Raiders"},
-            player_name_map={"P1": "Josh Allen"},
-        )
-        assert "Robb's Raiders" in text
-        assert "Josh Allen" in text
-
-    def test_empty_returns_empty(self):
-        assert render_franchise_deep_angles_for_prompt([]) == ""
 
 
 # ── Additional Dimension 9 detectors ─────────────────────────────────

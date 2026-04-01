@@ -27,7 +27,6 @@ import os
 import sqlite3
 
 
-from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.recaps.context.player_narrative_angles_v1 import (
     _PlayerWeekRecord,
     _CrossSeasonRecord,
@@ -64,7 +63,6 @@ from squadvault.core.recaps.context.player_narrative_angles_v1 import (
     detect_faab_franchise_efficiency,
     detect_waiver_dependency,
     detect_player_narrative_angles_v1,
-    render_player_angles_for_prompt,
 )
 
 
@@ -652,57 +650,6 @@ class TestFullPipeline:
 
 # ── Prompt rendering ─────────────────────────────────────────────────
 
-
-class TestPlayerAngleRendering:
-    def test_renders_with_names(self):
-        angles = [
-            NarrativeAngle(
-                category="PLAYER_HOT_STREAK",
-                headline="P1 has scored 25+ points in 4 consecutive weeks for F1",
-                detail="Latest: 30.00 pts.",
-                strength=2,
-                franchise_ids=("F1",),
-            ),
-        ]
-        text = render_player_angles_for_prompt(
-            angles,
-            name_map={"F1": "Miller's Genuine Draft"},
-            player_name_map={"P1": "Josh Allen"},
-        )
-        assert "Josh Allen" in text
-        assert "Miller's Genuine Draft" in text
-        assert "[NOTABLE]" in text
-
-    def test_empty_angles_empty_string(self):
-        text = render_player_angles_for_prompt([])
-        assert text == ""
-
-    def test_max_angles_cap(self):
-        angles = [
-            NarrativeAngle(
-                category=f"CAT_{i}",
-                headline=f"Angle {i}",
-                detail="",
-                strength=1,
-                franchise_ids=("F1",),
-            )
-            for i in range(10)
-        ]
-        text = render_player_angles_for_prompt(angles, max_angles=3)
-        angle_lines = [ln for ln in text.strip().split("\n") if ln.strip().startswith("[")]
-        assert len(angle_lines) == 3
-        assert "omitted" in text
-
-    def test_strength_labels(self):
-        angles = [
-            NarrativeAngle(category="A", headline="H", detail="", strength=3, franchise_ids=("F1",)),
-            NarrativeAngle(category="B", headline="N", detail="", strength=2, franchise_ids=("F1",)),
-            NarrativeAngle(category="C", headline="M", detail="", strength=1, franchise_ids=("F1",)),
-        ]
-        text = render_player_angles_for_prompt(angles)
-        assert "[HEADLINE]" in text
-        assert "[NOTABLE]" in text
-        assert "[MINOR]" in text
 
 
 # ══════════════════════════════════════════════════════════════════════

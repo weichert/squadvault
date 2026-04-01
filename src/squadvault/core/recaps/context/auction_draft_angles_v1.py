@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.storage.session import DatabaseSession
@@ -893,45 +893,3 @@ def detect_auction_draft_angles_v1(
     all_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))
 
     return all_angles
-
-
-def render_auction_angles_for_prompt(
-    angles: List[NarrativeAngle],
-    *,
-    name_map: Optional[Dict[str, str]] = None,
-    player_name_map: Optional[Dict[str, str]] = None,
-    max_angles: int = 8,
-) -> str:
-    """Render auction draft angles as a text block for the creative layer prompt."""
-    if not angles:
-        return ""
-
-    def _resolve(text: str) -> str:
-        result = text
-        if name_map:
-            for fid, name in name_map.items():
-                result = result.replace(fid, name)
-        if player_name_map:
-            for pid, name in player_name_map.items():
-                result = result.replace(pid, name)
-        return result
-
-    lines: List[str] = []
-    lines.append("Auction draft angles:")
-
-    shown = 0
-    for a in angles:
-        if shown >= max_angles:
-            break
-        strength_label = {3: "HEADLINE", 2: "NOTABLE", 1: "MINOR"}.get(a.strength, "")
-        line = f"  [{strength_label}] {_resolve(a.headline)}"
-        if a.detail:
-            line += f" — {_resolve(a.detail)}"
-        lines.append(line)
-        shown += 1
-
-    remaining = len(angles) - shown
-    if remaining > 0:
-        lines.append(f"  (+ {remaining} angles omitted)")
-
-    return "\n".join(lines) + "\n"

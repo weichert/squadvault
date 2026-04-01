@@ -9,7 +9,6 @@ import json
 import os
 import sqlite3
 
-from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.recaps.context.auction_draft_angles_v1 import (
     _AuctionPick,
     _PlayerSeasonScoring,
@@ -24,7 +23,6 @@ from squadvault.core.recaps.context.auction_draft_angles_v1 import (
     detect_auction_league_inflation,
     detect_auction_most_expensive_history,
     detect_auction_draft_angles_v1,
-    render_auction_angles_for_prompt,
 )
 
 
@@ -402,27 +400,3 @@ class TestAuctionFullPipeline:
         a2 = detect_auction_draft_angles_v1(db_path=db_path, league_id=LEAGUE,
                                              season=SEASON, week=4)
         assert a1 == a2
-
-
-# ── Prompt rendering ─────────────────────────────────────────────────
-
-
-class TestAuctionRendering:
-    def test_renders_with_names(self):
-        angles = [NarrativeAngle(
-            category="AUCTION_BUST",
-            headline="F1 spent $60 on P1",
-            detail="League avg: 15.",
-            strength=2,
-            franchise_ids=("F1",),
-        )]
-        text = render_auction_angles_for_prompt(
-            angles, name_map={"F1": "Robb's Raiders"},
-            player_name_map={"P1": "Saquon Barkley"},
-        )
-        assert "Robb's Raiders" in text
-        assert "Saquon Barkley" in text
-        assert "[NOTABLE]" in text
-
-    def test_empty_returns_empty(self):
-        assert render_auction_angles_for_prompt([]) == ""
