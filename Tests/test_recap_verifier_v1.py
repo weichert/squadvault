@@ -828,16 +828,18 @@ class TestEdgeCases:
         assert score_failures == []
 
     def test_solo_franchise_transpositions_detected(self):
-        """Genuine transpositions: only one franchise mentioned per score."""
+        """Genuine transpositions: scores far apart, each near wrong franchise."""
         matchups = [_make_matchup(5, "F1", "F2", 130.50, 110.20)]
         reverse = {
             "Alpha Team": "F1", "alpha team": "F1",
             "Beta Squad": "F2", "beta squad": "F2",
         }
-        # Each sentence mentions only one franchise with the wrong score
+        # Scores are >80 chars apart so they won't be pair-verified
         text = (
-            "Alpha Team put up 110.20 in a tough week. "
-            "Elsewhere, Beta Squad managed only 130.50 on the road."
+            "Alpha Team put up 110.20 in what was a really disappointing "
+            "performance from a team that had been on a roll all season long. "
+            "Meanwhile on the other side of the league, Beta Squad managed "
+            "only 130.50 despite having the roster advantage on paper."
         )
         score_failures = verify_scores(text, matchups, 5, reverse)
         assert len(score_failures) == 2

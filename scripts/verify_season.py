@@ -1,0 +1,91 @@
+"""Scan all APPROVED recaps for a season through the V1 verifier.
+
+Usage:
+    ./scripts/py scripts/verify_season.py [--season 2025] [--league 70985]
+
+Reports all hard failures by week, then a season summary.
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+
+from squadvault.core.recaps.verification.recap_verifier_v1 import (
+    VerificationResult,
+    verify_recap_v1,
+)
+from squadvault.core.storage.session import DatabaseSession
+
+DB_PATH = ".local_squadvault.sqlite"
+
+
+def _load_approved_weeks(
+    db_path: str, league_id: str, season: int,
+) -> list[tuple[int, str]]:
+    """Return (week_index, rendered_text) for all APPROVED recaps."""
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT week_index, rendered_text
+               FROM recap_artifacts
+               WHERE league_id = ? AND season = ?
+                 AND artifact_type = 'WEEKLY_RECAP'
+                 AND state = 'APPROVED'
+               ORDER BY week_index ASC""",
+            (str(league_id), int(season)),
+        ).fetchall()
+    return [(int(r[0]), str(r[1])) for r in rows]
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Verify all approved recaps for a season.")
+    parser.add_argument("--season", type=int, default=2025)
+    parser.add_argument("--league", type=str, default="70985")
+    parser.add_argument("--db", type=str, default=DB_PATH)
+    args = parser.parse_args()
+
+    weeks = _load_approved_weeks(args.db, args.league, args.season)
+    if not weeks:
+        print(f"No APPROVED recaps found for league={args.league} season={args.season}")
+        sys.exit(1)
+
+    print(f"Verifying {len(weeks)} approved recaps: league={args.league} season={args.season}")
+    print("=" * 72)
+
+    total_hard = 0
+    total_checks = 0
+    weeks_passed = 0
+    weeks_failed = 0
+    failures_by_category: dict[str, int] = {}
+
+    for week_index, rendered_text in weeks:
+        result = verify_recap_v1(
+            rendered_text,
+            db_path=args.db,
+            league_id=args.league,
+            season=args.season,
+            week=week_index,
+        )
+        total_checks += result.checks_run
+
+        if result.passed:
+            weeks_passed += 1
+            print(f"  Week {week_index:2d}: PASSED ({result.checks_run} checks)")
+        else:
+            weeks_failed += 1
+            total_hard += result.hard_failure_count
+            print(f"  Week {week_index:2d}: FAILED ({result.hard_failure_count} hard failure(s))")
+            for f in result.hard_failures:
+                cat = f.category
+                failures_by_category[cat] = failures_by_category.get(cat, 0) + 1
+                print(f"           [{cat}] {f.claim}")
+                print(f"            → {f.evidence}")
+
+    print("=" * 72)
+    print(f"Season summary: {weeks_passed} passed, {weeks_failed} failed out of {len(weeks)} weeks")
+    print(f"Total checks: {total_checks}  |  Total hard failures: {total_hard}")
+    if failures_by_category:
+        print(f"Failures by category: {', '.join(f'{k}={v}' for k, v in sorted(failures_by_category.items()))}")
+
+
+if __name__ == "__main__":
+    main()

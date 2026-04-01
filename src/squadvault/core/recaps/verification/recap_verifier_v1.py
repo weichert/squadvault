@@ -358,14 +358,17 @@ def verify_scores(
             score_positions.append((match.start(), val))
 
     # Pass 1: Find score pairs that match canonical matchups.
-    # Two scores within 30 chars of each other that match a matchup pair
+    # Two scores within 80 chars of each other that match a matchup pair
     # are a correctly stated matchup — mark both positions as pair-verified.
+    # 80 chars handles patterns like "Team A fell to Team B Name 179.55-103.55"
+    # where franchise names add 20-40 chars between the two scores.
+    _PAIR_WINDOW = 80
     pair_verified: set[int] = set()
     for i, (pos_a, val_a) in enumerate(score_positions):
         for j, (pos_b, val_b) in enumerate(score_positions):
             if i >= j:
                 continue
-            if abs(pos_b - pos_a) > 30:
+            if abs(pos_b - pos_a) > _PAIR_WINDOW:
                 continue
             # Check if these two scores match any matchup pair (either order)
             for w_score, l_score in week_matchup_pairs:
