@@ -61,6 +61,10 @@ from squadvault.core.recaps.render.deterministic_bullets_v1 import (
 from squadvault.core.recaps.render.render_recap_text_v1 import (
     render_recap_text_v1,
 )
+from squadvault.core.recaps.verification.recap_verifier_v1 import (
+    VerificationResult,
+    verify_recap_v1,
+)
 from squadvault.core.resolvers import FranchiseResolver, PlayerResolver, build_player_name_map
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.tone.tone_profile_v1 import get_tone_preset
@@ -89,6 +93,7 @@ class GenerateDraftResult:
     prev_approved_version: int | None
     synced_recap_run_state: str | None
     reason: str
+    verification_result: VerificationResult | None = None
 
 
 @dataclass(frozen=True)
@@ -991,6 +996,48 @@ def generate_weekly_recap_draft(
             )
     # SV_CREATIVE_LAYER_V1_END
 
+    # SV_VERIFICATION_V1_BEGIN
+    # Post-generation verification gate: check factual claims in the narrative
+    # against canonical data. Deterministic, non-modifying — appends warnings only.
+    _verification_result: VerificationResult | None = None
+    if not _skip_creative:
+        try:
+            _verification_result = verify_recap_v1(
+                rendered_text,
+                db_path=db_path,
+                league_id=league_id,
+                season=season,
+                week=week_index,
+            )
+            if _verification_result.hard_failure_count > 0:
+                _vf_lines: list[str] = [
+                    f"VERIFICATION: {_verification_result.hard_failure_count} hard failure(s) detected.",
+                ]
+                for _vf in _verification_result.hard_failures:
+                    _vf_lines.append(
+                        f"  [{_vf.category}] {_vf.claim} — {_vf.evidence}"
+                    )
+                rendered_text = (
+                    rendered_text.rstrip()
+                    + "\n\n--- VERIFICATION WARNINGS ---\n"
+                    + "\n".join(_vf_lines)
+                    + "\n--- END VERIFICATION WARNINGS ---\n"
+                )
+                logger.warning(
+                    "Verification V1: %d hard failure(s) for league=%s season=%d week=%d",
+                    _verification_result.hard_failure_count,
+                    league_id, season, week_index,
+                )
+            else:
+                logger.debug(
+                    "Verification V1: passed (%d checks) for league=%s season=%d week=%d",
+                    _verification_result.checks_run,
+                    league_id, season, week_index,
+                )
+        except Exception as e:
+            logger.debug("Verification V1 failed: %s", e)
+    # SV_VERIFICATION_V1_END
+
     prev_approved = latest_approved_version(db_path, league_id, season, week_index)
 
     v, created_new = _create_recap_artifact_draft_always_new(
@@ -1018,6 +1065,7 @@ def generate_weekly_recap_draft(
         prev_approved_version=prev_approved,
         synced_recap_run_state=synced_state,
         reason=reason,
+        verification_result=_verification_result,
     )
 
 
