@@ -27,6 +27,15 @@ from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.recaps.context.league_history_v1 import HistoricalMatchup
 from squadvault.core.storage.session import DatabaseSession
 
+from typing import Callable
+
+# Name resolver: takes an ID string, returns a display name (or the ID itself).
+NameFn = Callable[[str], str]
+
+
+def _identity(x: str) -> str:
+    return x
+
 
 # ── Data loading ─────────────────────────────────────────────────────
 
@@ -152,6 +161,7 @@ def detect_bye_week_impact(
     bye_counts: Dict[str, int],
     *,
     min_on_bye: int = 2,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect franchises with multiple starters on bye this week.
 
@@ -164,7 +174,7 @@ def detect_bye_week_impact(
             angles.append(NarrativeAngle(
                 category="BYE_WEEK_IMPACT",
                 headline=(
-                    f"{fid} has {count} starters on NFL bye this week"
+                    f"{fname(fid)} has {count} starters on NFL bye this week"
                 ),
                 detail="",
                 strength=1,  # MINOR
@@ -178,6 +188,8 @@ def detect_bye_week_impact(
 
 def detect_bye_week_conflict(
     bye_counts: Dict[str, int],
+    *,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect the franchise with the most bye week conflicts this week."""
     if not bye_counts:
@@ -196,7 +208,7 @@ def detect_bye_week_conflict(
     return [NarrativeAngle(
         category="BYE_WEEK_CONFLICT",
         headline=(
-            f"{fid} had {max_count} starters on bye this week "
+            f"{fname(fid)} had {max_count} starters on bye this week "
             f"— the most in the league"
         ),
         detail="",
@@ -217,6 +229,7 @@ def detect_franchise_bye_week_record(
     *,
     min_on_bye: int = 2,
     min_bye_weeks: int = 3,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect franchise historical record in weeks with 2+ starters on bye.
 
@@ -266,7 +279,7 @@ def detect_franchise_bye_week_record(
         angles.append(NarrativeAngle(
             category="FRANCHISE_BYE_WEEK_RECORD",
             headline=(
-                f"{fid} has gone {wins}-{losses} in weeks with "
+                f"{fname(fid)} has gone {wins}-{losses} in weeks with "
                 f"{min_on_bye}+ starters on bye"
             ),
             detail=f"Across {len(bye_wks)} bye-heavy weeks this season.",
@@ -287,6 +300,7 @@ def detect_bye_week_angles_v1(
     season: int,
     week: int,
     all_matchups: Optional[Sequence[HistoricalMatchup]] = None,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect all Dimension 10 bye week angles for a given week.
 
@@ -317,15 +331,15 @@ def detect_bye_week_angles_v1(
     all_angles: List[NarrativeAngle] = []
 
     # Detector 51: Bye week impact
-    all_angles.extend(detect_bye_week_impact(bye_counts))
+    all_angles.extend(detect_bye_week_impact(bye_counts, fname=fname))
 
     # Detector 52: Bye week conflict
-    all_angles.extend(detect_bye_week_conflict(bye_counts))
+    all_angles.extend(detect_bye_week_conflict(bye_counts, fname=fname))
 
     # Detector 53: Bye week record (needs matchup data)
     if all_matchups:
         all_angles.extend(detect_franchise_bye_week_record(
-            db_path, league_id, season, week, all_matchups,
+            db_path, league_id, season, week, all_matchups, fname=fname,
         ))
 
     all_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))

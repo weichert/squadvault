@@ -805,6 +805,7 @@ def generate_weekly_recap_draft(
             _bye_angles = detect_bye_week_angles_v1(
                 db_path=db_path, league_id=league_id, season=season, week=week_index,
                 all_matchups=_cl_all_matchups,
+                fname=lambda fid: _cl_name_map.get(fid, fid),
             )
             _all_detected_angles.extend(_bye_angles)
         except Exception:
