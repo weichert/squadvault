@@ -32,14 +32,7 @@ from typing import Dict, List, Optional, Tuple
 from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.storage.session import DatabaseSession
 
-from typing import Callable
-
-# Name resolver: takes an ID string, returns a display name (or the ID itself).
-NameFn = Callable[[str], str]
-
-
-def _identity(x: str) -> str:
-    return x
+from squadvault.core.resolvers import NameFn, identity as _identity
 
 
 # ── Data structures ──────────────────────────────────────────────────

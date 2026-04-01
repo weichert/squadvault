@@ -6,9 +6,18 @@ previously duplicated/embedded in consumer files.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import Any, Callable, Dict, List, Set
 
 from squadvault.core.storage.session import DatabaseSession
+
+# Lightweight name-resolver type used by angle detectors.
+# Takes an ID string, returns a display name (or the ID itself).
+NameFn = Callable[[str], str]
+
+
+def identity(x: str) -> str:
+    """Default NameFn: returns the input unchanged."""
+    return x
 
 
 def _csv_ids(s: Any) -> List[str]:

@@ -32,14 +32,7 @@ from squadvault.core.recaps.context.league_history_v1 import (
     compute_head_to_head,
 )
 
-from typing import Callable
-
-# Name resolver: takes an ID string, returns a display name (or the ID itself).
-NameFn = Callable[[str], str]
-
-
-def _identity(x: str) -> str:
-    return x
+from squadvault.core.resolvers import NameFn, identity as _identity
 
 
 # ── Angle data class ─────────────────────────────────────────────────
