@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 from dataclasses import dataclass
 from squadvault.core.eal.editorial_attunement_v1 import EALMeta, evaluate_editorial_attunement_v1
@@ -850,22 +849,6 @@ def generate_weekly_recap_draft(
                 _slabel = {3: "HEADLINE", 2: "NOTABLE", 1: "MINOR"}.get(_a.strength, "")
                 _headline = _a.headline
                 _detail = _a.detail
-                if _cl_name_map:
-                    for _fid, _fname in _cl_name_map.items():
-                        _headline = _headline.replace(_fid, _fname)
-                        if _detail:
-                            _detail = _detail.replace(_fid, _fname)
-                if _cl_player_name_map:
-                    for _pid, _pname in _cl_player_name_map.items():
-                        # Skip short IDs (< 5 chars) — they collide with
-                        # scores/prices in angle text (e.g. "986 career pts")
-                        if len(_pid) < 5:
-                            continue
-                        # Decimal-aware boundary: prevent "985.8" matching ID "9858"
-                        _pat = r'(?<![.\d])' + re.escape(_pid) + r'(?![.\d])'
-                        _headline = re.sub(_pat, _pname, _headline)
-                        if _detail:
-                            _detail = re.sub(_pat, _pname, _detail)
                 _line = f"  [{_slabel}] {_headline}"
                 if _detail:
                     _line += f" — {_detail}"
