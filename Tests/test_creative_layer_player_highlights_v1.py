@@ -219,3 +219,42 @@ class TestDraftNarrativeV1AcceptsPlayerHighlights(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ── Lifecycle wiring regression guard ───────────────────────────────────
+# These structural tests ensure player_highlights stays wired through the
+# lifecycle after the Phase C → lifecycle extraction regression (26b53b0).
+
+
+class TestLifecyclePlayerHighlightsWiring(unittest.TestCase):
+    """Guard against player_highlights being silently dropped from the lifecycle."""
+
+    def test_prompt_context_has_player_highlights_field(self) -> None:
+        """_PromptContext must include player_highlights_text."""
+        import dataclasses
+
+        from squadvault.recaps.weekly_recap_lifecycle import _PromptContext
+
+        field_names = {f.name for f in dataclasses.fields(_PromptContext)}
+        self.assertIn(
+            "player_highlights_text",
+            field_names,
+            "_PromptContext is missing player_highlights_text — "
+            "this was a Phase C regression (26b53b0). The field must exist "
+            "so _derive_prompt_context can pass player data to the creative layer.",
+        )
+
+    def test_lifecycle_source_wires_player_highlights_to_draft(self) -> None:
+        """The draft_narrative_v1 call in the lifecycle must pass player_highlights."""
+        import inspect
+
+        from squadvault.recaps import weekly_recap_lifecycle
+
+        source = inspect.getsource(weekly_recap_lifecycle.generate_weekly_recap_draft)
+        self.assertIn(
+            "player_highlights=_ctx.player_highlights_text",
+            source,
+            "generate_weekly_recap_draft must pass player_highlights from "
+            "_PromptContext to draft_narrative_v1. This wiring was lost in "
+            "the lifecycle extraction refactor (26b53b0).",
+        )

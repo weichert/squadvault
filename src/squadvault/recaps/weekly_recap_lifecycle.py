@@ -36,6 +36,10 @@ from squadvault.core.recaps.context.narrative_angles_v1 import (
 from squadvault.core.recaps.context.player_narrative_angles_v1 import (
     detect_player_narrative_angles_v1,
 )
+from squadvault.core.recaps.context.player_week_context_v1 import (
+    derive_player_week_context_v1,
+    render_player_highlights_for_prompt,
+)
 from squadvault.core.recaps.context.season_context_v1 import (
     derive_season_context_v1,
     render_season_context_for_prompt,
@@ -547,6 +551,7 @@ class _PromptContext:
     league_history_text: str
     narrative_angles_text: str
     writer_room_text: str
+    player_highlights_text: str
     tone_preset: str
     voice_profile: str
     seasons_count: int
@@ -726,6 +731,35 @@ def _derive_prompt_context(
     except Exception as e:
         logger.debug("Writer room context failed: %s", e)
 
+    # -- Player highlights (per-franchise starter/bench scoring) --
+    player_highlights_text = ""
+    try:
+        _player_ctx = derive_player_week_context_v1(
+            db_path=db_path, league_id=league_id, season=season, week=week_index,
+        )
+        if _player_ctx.has_data:
+            _ph_pres = PlayerResolver(db_path, league_id, season)
+            _ph_fres = FranchiseResolver(db_path, league_id, season)
+            _ph_pids: set[str] = set()
+            _ph_fids: set[str] = set()
+            for _fc in _player_ctx.franchises:
+                _ph_fids.add(_fc.franchise_id)
+                for _ps in _fc.starters:
+                    _ph_pids.add(_ps.player_id)
+                for _ps in _fc.bench:
+                    _ph_pids.add(_ps.player_id)
+            if _ph_pids:
+                _ph_pres.load_for_ids(_ph_pids)
+            if _ph_fids:
+                _ph_fres.load_for_ids(_ph_fids)
+            player_highlights_text = render_player_highlights_for_prompt(
+                _player_ctx,
+                team_resolver=_ph_fres.one,
+                player_resolver=_ph_pres.one,
+            )
+    except Exception as e:
+        logger.debug("Player highlights derivation failed: %s", e)
+
     # -- Tone & voice --
     tone_preset = ""
     try:
@@ -744,6 +778,7 @@ def _derive_prompt_context(
         league_history_text=league_history_text,
         narrative_angles_text=narrative_angles_text,
         writer_room_text=writer_room_text,
+        player_highlights_text=player_highlights_text,
         tone_preset=tone_preset,
         voice_profile=voice_profile,
         seasons_count=(
@@ -935,6 +970,7 @@ def generate_weekly_recap_draft(
             league_history=_ctx.league_history_text,
             narrative_angles=_ctx.narrative_angles_text,
             writer_room_context=_ctx.writer_room_text,
+            player_highlights=_ctx.player_highlights_text,
             tone_preset=_ctx.tone_preset,
             voice_profile=_ctx.voice_profile,
             seasons_count=_ctx.seasons_count,
