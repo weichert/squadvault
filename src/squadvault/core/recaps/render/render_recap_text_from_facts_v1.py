@@ -1,7 +1,6 @@
 
 """Render full recap text from enriched facts artifacts with name resolution."""
 
-import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from squadvault.core.storage.db_utils import norm_id as _norm_id
@@ -346,10 +345,3 @@ def render_recap_from_facts_v1(artifact: Dict[str, Any], *, db_path: Optional[st
     lines.append("")
     lines.append("Note: ID-based output only. No inference or hallucination.")
     return "\n".join(lines)
-
-
-def render_recap_from_enriched_path_v1(path: str, *, db_path: Optional[str] = None) -> str:
-    """Load enriched artifact JSON from path and render recap."""
-    with open(path, "r", encoding="utf-8") as f:
-        artifact = json.load(f)
-    return render_recap_from_facts_v1(artifact, db_path=db_path)
