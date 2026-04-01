@@ -10,12 +10,12 @@ from squadvault.ops.approval_authority_v1 import (
 
 def test_bulk_allows_primary_approved_under_limit():
     req = BulkApprovalRequest(actor_role="primary", artifact_ids=["a1", "a2", "a3"], action="approved")
-    validate_bulk_approval_request(req)
+    assert validate_bulk_approval_request(req) is None
 
 
 def test_bulk_allows_co_commissioner_approved_under_limit():
     req = BulkApprovalRequest(actor_role="co_commissioner", artifact_ids=["a1"], action="approved")
-    validate_bulk_approval_request(req)
+    assert validate_bulk_approval_request(req) is None
 
 
 def test_bulk_rejects_unknown_role_default_deny():
