@@ -24,8 +24,10 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     _find_nearby_franchise,
     _MatchupFact,
     _resolve_display_name,
+    verify_banned_phrases,
     verify_recap_v1,
     verify_scores,
+    verify_series_records,
     verify_streaks,
     verify_superlatives,
 )
@@ -535,7 +537,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 3
+        assert result.checks_run == 5
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -616,7 +618,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 3
+        assert result.checks_run == 5
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -856,3 +858,214 @@ class TestEdgeCases:
         assert result.hard_failure_count == 1
         assert result.soft_failure_count == 0
         assert result.passed is False
+
+
+# ── Unit: Category 4 — Series Record Verification ───────────────────
+
+
+class TestVerifySeriesRecords:
+    def _make_matchups(self):
+        """F1 beats F2 in 7 of 10 meetings."""
+        matchups = []
+        for w in range(1, 8):
+            matchups.append(_make_matchup(w, "F1", "F2", 120.0, 100.0))
+        for w in range(8, 11):
+            matchups.append(_make_matchup(w, "F2", "F1", 115.0, 105.0))
+        return matchups
+
+    def _reverse(self):
+        return {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Beta Squad": "F2", "beta squad": "F2",
+        }
+
+    def test_correct_series_record_passes(self):
+        matchups = self._make_matchups()
+        reverse = self._reverse()
+        text = "Alpha Team leads the series 7-3 against Beta Squad."
+        failures = verify_series_records(text, matchups, reverse)
+        assert failures == []
+
+    def test_reversed_order_passes(self):
+        matchups = self._make_matchups()
+        reverse = self._reverse()
+        text = "Beta Squad trails 7-3 in the series against Alpha Team."
+        failures = verify_series_records(text, matchups, reverse)
+        assert failures == []
+
+    def test_wrong_series_record_fails(self):
+        matchups = self._make_matchups()
+        reverse = self._reverse()
+        text = "Alpha Team leads the series 8-2 against Beta Squad."
+        failures = verify_series_records(text, matchups, reverse)
+        assert len(failures) == 1
+        assert failures[0].category == "SERIES"
+        assert "7-3" in failures[0].evidence
+
+    def test_no_series_keyword_skipped(self):
+        matchups = self._make_matchups()
+        reverse = self._reverse()
+        # "7-3" without series/rivalry context — should not be checked
+        text = "Alpha Team won 7-3 innings today against Beta Squad."
+        failures = verify_series_records(text, matchups, reverse)
+        assert failures == []
+
+    def test_no_matchups_returns_empty(self):
+        reverse = self._reverse()
+        text = "Alpha Team leads the series 5-2 against Beta Squad."
+        failures = verify_series_records(text, [], reverse)
+        assert failures == []
+
+    def test_single_franchise_skipped(self):
+        matchups = self._make_matchups()
+        reverse = self._reverse()
+        # Only one franchise mentioned — can't verify H2H
+        text = "Alpha Team has a 7-3 record in the series."
+        failures = verify_series_records(text, matchups, reverse)
+        assert failures == []
+
+
+class TestVerifySeriesRecordsIntegration:
+    """Integration tests with full DB."""
+
+    def _build_db(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F1", name="Alpha Team")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F2", name="Beta Squad")
+
+        # F1 beats F2 in weeks 1-3, F2 beats F1 in week 4
+        for w in range(1, 4):
+            _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=w,
+                            winner_id="F1", loser_id="F2",
+                            winner_score=120.00 + w, loser_score=100.00 + w)
+        _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=4,
+                        winner_id="F2", loser_id="F1",
+                        winner_score=130.00, loser_score=110.00)
+
+        con.commit()
+        con.close()
+        return db_path
+
+    def test_correct_series_passes_pipeline(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Alpha Team leads the series 3-1 against Beta Squad.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
+                                  season=SEASON, week=4)
+        # No series failures
+        series_failures = [f for f in result.hard_failures if f.category == "SERIES"]
+        assert series_failures == []
+
+    def test_wrong_series_fails_pipeline(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Alpha Team leads the series 5-1 against Beta Squad.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
+                                  season=SEASON, week=4)
+        series_failures = [f for f in result.hard_failures if f.category == "SERIES"]
+        assert len(series_failures) == 1
+
+
+# ── Unit: Category 5 — Banned Phrase Detection ──────────────────────
+
+
+class TestVerifyBannedPhrases:
+    def test_clean_text_passes(self):
+        text = "Alpha Team posted 130.50 to beat Beta Squad's 110.20."
+        failures = verify_banned_phrases(text)
+        assert failures == []
+
+    def test_kill_list_phrase_detected(self):
+        text = "It was the kind of chaos that makes fantasy football beautiful."
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 1
+        assert failures[0].category == "BANNED_PHRASE"
+        assert failures[0].severity == "SOFT"
+
+    def test_delivered_a_statement_detected(self):
+        text = "Alpha Team delivered a statement this week."
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 1
+        assert "delivered a statement" in failures[0].claim
+
+    def test_speculation_kicking_themselves(self):
+        text = "Ben has to be kicking himself after that loss."
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 1
+        assert failures[0].category == "SPECULATION"
+        assert failures[0].severity == "SOFT"
+
+    def test_speculation_that_stings(self):
+        text = "Losing by 0.30 — that stings."
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 1
+        assert failures[0].category == "SPECULATION"
+
+    def test_speculation_probably_regret(self):
+        text = "Steve probably regrets that bench decision."
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 1
+        assert failures[0].category == "SPECULATION"
+
+    def test_speculation_has_to_be_frustrating(self):
+        text = "That has to be frustrating for the owner."
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 1
+
+    def test_speculation_had_to_sting(self):
+        text = "That loss had to sting for Brandon."
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 1
+
+    def test_multiple_violations_all_reported(self):
+        text = (
+            "It was the kind of chaos that makes fantasy football great. "
+            "Ben has to be kicking himself. That stings."
+        )
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 3
+
+    def test_case_insensitive(self):
+        text = "DELIVERED A STATEMENT this week."
+        failures = verify_banned_phrases(text)
+        assert len(failures) == 1
+
+    def test_soft_failures_dont_block_pass(self, tmp_path):
+        """Soft failures flag for review but don't set passed=False."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F1", name="Alpha Team")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F2", name="Beta Squad")
+        _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=1,
+                        winner_id="F1", loser_id="F2",
+                        winner_score=120.50, loser_score=100.20)
+        con.commit()
+        con.close()
+
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Alpha Team delivered a statement with 120.50-100.20.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
+                                  season=SEASON, week=1)
+        # Scores are correct, so no hard failures
+        assert result.passed is True
+        # But soft failure flagged
+        assert result.soft_failure_count >= 1
+        assert any(f.category == "BANNED_PHRASE" for f in result.soft_failures)
+

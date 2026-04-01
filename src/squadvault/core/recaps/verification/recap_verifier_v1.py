@@ -734,6 +734,206 @@ def verify_streaks(
     return failures
 
 
+# ── Category 4: Series Record Verification ───────────────────────────
+
+# Pattern: "X-Y" (W-L record) near series/rivalry keywords
+_SERIES_RECORD_PATTERN = re.compile(
+    r'(?:'
+    r'(?:leads?|trails?|series|rivalry|all[- ]?time|meetings?|record)\s[^.]{0,40}'
+    r'(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?'
+    r'|'
+    r'(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?\s[^.]{0,40}'
+    r'(?:series|rivalry|all[- ]?time|meetings?|record|lead)'
+    r')',
+    re.IGNORECASE,
+)
+
+
+def _find_two_franchises(
+    text: str,
+    match_pos: int,
+    reverse_name_map: dict[str, str],
+    *,
+    window: int = 200,
+) -> tuple[str | None, str | None]:
+    """Find two franchise names near a series record claim.
+
+    Returns (franchise_a_id, franchise_b_id) or (None, None) if fewer
+    than two franchises are found in the window.
+    """
+    start = max(0, match_pos - window)
+    end = min(len(text), match_pos + window)
+    context = _normalize_apostrophes(text[start:end]).lower()
+
+    found: list[tuple[int, str]] = []  # (position, franchise_id)
+    seen_ids: set[str] = set()
+
+    for name, fid in reverse_name_map.items():
+        if not name.islower():
+            continue
+        if fid in seen_ids:
+            continue
+        idx = context.find(name)
+        if idx >= 0:
+            found.append((idx, fid))
+            seen_ids.add(fid)
+
+    if len(found) < 2:
+        return (None, None)
+
+    # Return the two closest to the match position
+    found.sort(key=lambda x: abs(x[0] - (match_pos - start)))
+    return (found[0][1], found[1][1])
+
+
+def verify_series_records(
+    recap_text: str,
+    all_matchups: list[_MatchupFact],
+    reverse_name_map: dict[str, str],
+) -> list[VerificationFailure]:
+    """Verify head-to-head series record claims against canonical matchups."""
+    failures: list[VerificationFailure] = []
+
+    if not all_matchups:
+        return []
+
+    for match in _SERIES_RECORD_PATTERN.finditer(recap_text):
+        # Extract the W-L(-T) record — groups depend on which branch matched
+        if match.group(1) is not None:
+            w_str, l_str, t_str = match.group(1), match.group(2), match.group(3)
+        else:
+            w_str, l_str, t_str = match.group(4), match.group(5), match.group(6)
+
+        try:
+            claimed_w = int(w_str)
+            claimed_l = int(l_str)
+            claimed_t = int(t_str) if t_str else 0
+        except (ValueError, TypeError):
+            continue
+
+        # Find the two franchises this record is about
+        fid_a, fid_b = _find_two_franchises(
+            recap_text, match.start(), reverse_name_map,
+        )
+        if fid_a is None or fid_b is None:
+            continue
+
+        # Compute actual H2H from canonical matchups
+        actual_a_wins = 0
+        actual_b_wins = 0
+        actual_ties = 0
+        for m in all_matchups:
+            pair = {m.winner_id, m.loser_id}
+            if pair != {fid_a, fid_b}:
+                continue
+            if m.winner_id == fid_a:
+                actual_a_wins += 1
+            elif m.winner_id == fid_b:
+                actual_b_wins += 1
+            # Ties would need an is_tie field — not in _MatchupFact currently
+
+        total = actual_a_wins + actual_b_wins + actual_ties
+        if total == 0:
+            continue
+
+        # Check if claimed record matches actual (in either direction)
+        matches_ab = (
+            claimed_w == actual_a_wins
+            and claimed_l == actual_b_wins
+            and claimed_t == actual_ties
+        )
+        matches_ba = (
+            claimed_w == actual_b_wins
+            and claimed_l == actual_a_wins
+            and claimed_t == actual_ties
+        )
+
+        if not matches_ab and not matches_ba:
+            fname_a = _resolve_display_name(fid_a, reverse_name_map)
+            fname_b = _resolve_display_name(fid_b, reverse_name_map)
+            actual_str = f"{actual_a_wins}-{actual_b_wins}"
+            if actual_ties:
+                actual_str += f"-{actual_ties}"
+            claimed_str = f"{claimed_w}-{claimed_l}"
+            if claimed_t:
+                claimed_str += f"-{claimed_t}"
+            failures.append(VerificationFailure(
+                category="SERIES",
+                severity="HARD",
+                claim=f"Series record {claimed_str} ({fname_a} vs {fname_b})",
+                evidence=(
+                    f"Actual H2H record: {fname_a} {actual_str} {fname_b} "
+                    f"({total} meetings)."
+                ),
+            ))
+
+    return failures
+
+
+# ── Category 5: Banned Phrase Detection ──────────────────────────────
+
+# Exact phrases from the creative layer kill list — these should never
+# appear in a recap. Case-insensitive matching.
+_BANNED_PHRASES: tuple[str, ...] = (
+    "the kind of chaos that makes fantasy football",
+    "delivered a statement",
+    "set a tone",
+    "the irony here is painful",
+    "peaked at exactly the right moment",
+    "nightmare season continued",
+    "self-sabotage",
+    "stings when you lose by",
+)
+
+# Speculation patterns — the model attributing emotions or intent to
+# franchise owners despite explicit hard rules against it.
+_SPECULATION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r'\bkicking\s+(himself|herself|themselves)\b', re.IGNORECASE),
+    re.compile(r'\bthat\s+stings\b', re.IGNORECASE),
+    re.compile(r'\blooking\s+desperate\b', re.IGNORECASE),
+    re.compile(r'\bprobably\s+regret', re.IGNORECASE),
+    re.compile(r'\bhas\s+to\s+be\s+frustrating\b', re.IGNORECASE),
+    re.compile(r'\bhad\s+to\s+(?:sting|hurt)\b', re.IGNORECASE),
+)
+
+
+def verify_banned_phrases(
+    recap_text: str,
+) -> list[VerificationFailure]:
+    """Detect banned phrases and speculation patterns.
+
+    These are SOFT failures — flagged for human review but do not
+    auto-reject the draft. They indicate the model is ignoring
+    explicit hard rules in the system prompt.
+    """
+    failures: list[VerificationFailure] = []
+    text_lower = recap_text.lower()
+
+    for phrase in _BANNED_PHRASES:
+        if phrase.lower() in text_lower:
+            failures.append(VerificationFailure(
+                category="BANNED_PHRASE",
+                severity="SOFT",
+                claim=f"Contains banned phrase: \"{phrase}\"",
+                evidence="This phrase is on the creative layer kill list.",
+            ))
+
+    for pattern in _SPECULATION_PATTERNS:
+        match = pattern.search(recap_text)
+        if match:
+            failures.append(VerificationFailure(
+                category="SPECULATION",
+                severity="SOFT",
+                claim=f"Speculation detected: \"{match.group(0)}\"",
+                evidence=(
+                    "The system prompt prohibits attributing emotions "
+                    "or intent to franchise owners."
+                ),
+            ))
+
+    return failures
+
+
 # ── Orchestrator ─────────────────────────────────────────────────────
 
 
@@ -794,6 +994,19 @@ def verify_recap_v1(
     all_failures.extend(verify_streaks(
         narrative, season_matchups, week, reverse_name_map,
     ))
+
+    # Category 4: Series record verification
+    checks_run += 1
+    if _SERIES_RECORD_PATTERN.search(narrative):
+        if all_matchups is None:
+            all_matchups = _load_all_matchups(db_path, league_id)
+        all_failures.extend(verify_series_records(
+            narrative, all_matchups or [], reverse_name_map,
+        ))
+
+    # Category 5: Banned phrase / speculation detection (SOFT)
+    checks_run += 1
+    all_failures.extend(verify_banned_phrases(narrative))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")
     soft = tuple(f for f in all_failures if f.severity == "SOFT")

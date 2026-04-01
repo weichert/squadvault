@@ -3,7 +3,7 @@
 Usage:
     ./scripts/py scripts/verify_season.py [--season 2025] [--league 70985]
 
-Reports all hard failures by week, then a season summary.
+Reports all hard and soft failures by week, then a season summary.
 """
 from __future__ import annotations
 
@@ -52,10 +52,12 @@ def main() -> None:
     print("=" * 72)
 
     total_hard = 0
+    total_soft = 0
     total_checks = 0
     weeks_passed = 0
     weeks_failed = 0
-    failures_by_category: dict[str, int] = {}
+    hard_by_category: dict[str, int] = {}
+    soft_by_category: dict[str, int] = {}
 
     for week_index, rendered_text in weeks:
         result = verify_recap_v1(
@@ -67,24 +69,39 @@ def main() -> None:
         )
         total_checks += result.checks_run
 
-        if result.passed:
-            weeks_passed += 1
-            print(f"  Week {week_index:2d}: PASSED ({result.checks_run} checks)")
-        else:
+        has_hard = result.hard_failure_count > 0
+        has_soft = result.soft_failure_count > 0
+
+        if has_hard:
             weeks_failed += 1
             total_hard += result.hard_failure_count
             print(f"  Week {week_index:2d}: FAILED ({result.hard_failure_count} hard failure(s))")
             for f in result.hard_failures:
-                cat = f.category
-                failures_by_category[cat] = failures_by_category.get(cat, 0) + 1
-                print(f"           [{cat}] {f.claim}")
+                hard_by_category[f.category] = hard_by_category.get(f.category, 0) + 1
+                print(f"           [{f.category}] {f.claim}")
                 print(f"            → {f.evidence}")
+        else:
+            weeks_passed += 1
+            if has_soft:
+                print(f"  Week {week_index:2d}: PASSED ({result.soft_failure_count} soft warning(s))")
+            else:
+                print(f"  Week {week_index:2d}: PASSED ({result.checks_run} checks)")
+
+        if has_soft:
+            total_soft += result.soft_failure_count
+            for f in result.soft_failures:
+                soft_by_category[f.category] = soft_by_category.get(f.category, 0) + 1
+                if not has_hard:
+                    # Only print soft details if no hard failures already printed
+                    print(f"           [{f.category}] {f.claim}")
 
     print("=" * 72)
     print(f"Season summary: {weeks_passed} passed, {weeks_failed} failed out of {len(weeks)} weeks")
-    print(f"Total checks: {total_checks}  |  Total hard failures: {total_hard}")
-    if failures_by_category:
-        print(f"Failures by category: {', '.join(f'{k}={v}' for k, v in sorted(failures_by_category.items()))}")
+    print(f"Total checks: {total_checks}  |  Hard failures: {total_hard}  |  Soft warnings: {total_soft}")
+    if hard_by_category:
+        print(f"Hard by category: {', '.join(f'{k}={v}' for k, v in sorted(hard_by_category.items()))}")
+    if soft_by_category:
+        print(f"Soft by category: {', '.join(f'{k}={v}' for k, v in sorted(soft_by_category.items()))}")
 
 
 if __name__ == "__main__":
