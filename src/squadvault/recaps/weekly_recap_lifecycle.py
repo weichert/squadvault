@@ -94,6 +94,7 @@ class GenerateDraftResult:
     synced_recap_run_state: str | None
     reason: str
     verification_result: VerificationResult | None = None
+    verification_attempts: int = 0
 
 
 @dataclass(frozen=True)
@@ -938,6 +939,13 @@ def generate_weekly_recap_draft(
 
     _creative_bullets: list[str] = []
 
+    # Maximum verification retry attempts before falling back to facts-only.
+    # Each attempt is an independent LLM call — stochastic output means
+    # different drafts may pass verification even with identical inputs.
+    _MAX_VERIFICATION_RETRIES = 3
+    _verification_result: VerificationResult | None = None
+    _verification_attempts = 0
+
     if not _skip_creative:
         with DatabaseSession(db_path) as _cl_con:
             _cl_row = _cl_con.execute(
@@ -972,71 +980,98 @@ def generate_weekly_recap_draft(
             week_index=week_index, window_end=window_end,
         )
 
-        _narrative_draft = draft_narrative_v1(
-            facts_bullets=_creative_bullets,
-            eal_directive=editorial_attunement_v1,
-            league_id=league_id,
-            season=season,
-            week_index=week_index,
-            season_context=_ctx.season_context_text,
-            league_history=_ctx.league_history_text,
-            narrative_angles=_ctx.narrative_angles_text,
-            writer_room_context=_ctx.writer_room_text,
-            player_highlights=_ctx.player_highlights_text,
-            tone_preset=_ctx.tone_preset,
-            voice_profile=_ctx.voice_profile,
-            seasons_count=_ctx.seasons_count,
-        )
-        if _narrative_draft:
+        # Save pre-narrative rendered text — reset to this on each retry
+        _base_rendered_text = rendered_text
+
+        # SV_VERIFICATION_RETRY_LOOP_BEGIN
+        for _attempt in range(1, _MAX_VERIFICATION_RETRIES + 1):
+            _verification_attempts = _attempt
+
+            # Reset to pre-narrative state
+            rendered_text = _base_rendered_text
+
+            _narrative_draft = draft_narrative_v1(
+                facts_bullets=_creative_bullets,
+                eal_directive=editorial_attunement_v1,
+                league_id=league_id,
+                season=season,
+                week_index=week_index,
+                season_context=_ctx.season_context_text,
+                league_history=_ctx.league_history_text,
+                narrative_angles=_ctx.narrative_angles_text,
+                writer_room_context=_ctx.writer_room_text,
+                player_highlights=_ctx.player_highlights_text,
+                tone_preset=_ctx.tone_preset,
+                voice_profile=_ctx.voice_profile,
+                seasons_count=_ctx.seasons_count,
+            )
+
+            if not _narrative_draft:
+                # No narrative produced (API key missing, EAL silence, etc.)
+                # Nothing to verify — exit loop.
+                break
+
             rendered_text = (
                 rendered_text.rstrip()
                 + "\n\n--- SHAREABLE RECAP ---\n"
                 + _narrative_draft
                 + "\n--- END SHAREABLE RECAP ---\n"
             )
-    # SV_CREATIVE_LAYER_V1_END
 
-    # SV_VERIFICATION_V1_BEGIN
-    # Post-generation verification gate: check factual claims in the narrative
-    # against canonical data. Deterministic, non-modifying — appends warnings only.
-    _verification_result: VerificationResult | None = None
-    if not _skip_creative:
-        try:
-            _verification_result = verify_recap_v1(
-                rendered_text,
-                db_path=db_path,
-                league_id=league_id,
-                season=season,
-                week=week_index,
-            )
-            if _verification_result.hard_failure_count > 0:
-                _vf_lines: list[str] = [
-                    f"VERIFICATION: {_verification_result.hard_failure_count} hard failure(s) detected.",
-                ]
-                for _vf in _verification_result.hard_failures:
-                    _vf_lines.append(
-                        f"  [{_vf.category}] {_vf.claim} — {_vf.evidence}"
-                    )
-                rendered_text = (
-                    rendered_text.rstrip()
-                    + "\n\n--- VERIFICATION WARNINGS ---\n"
-                    + "\n".join(_vf_lines)
-                    + "\n--- END VERIFICATION WARNINGS ---\n"
+            # Verify the draft against canonical data
+            try:
+                _verification_result = verify_recap_v1(
+                    rendered_text,
+                    db_path=db_path,
+                    league_id=league_id,
+                    season=season,
+                    week=week_index,
                 )
-                logger.warning(
-                    "Verification V1: %d hard failure(s) for league=%s season=%d week=%d",
+            except Exception as e:
+                logger.debug("Verification V1 failed on attempt %d: %s", _attempt, e)
+                _verification_result = None
+                break  # Verification error — keep this draft, don't retry
+
+            if _verification_result.passed:
+                logger.debug(
+                    "Verification V1: passed on attempt %d (%d checks) "
+                    "for league=%s season=%d week=%d",
+                    _attempt, _verification_result.checks_run,
+                    league_id, season, week_index,
+                )
+                break  # Clean draft — done
+
+            # Hard failure(s) detected
+            if _attempt < _MAX_VERIFICATION_RETRIES:
+                logger.info(
+                    "Verification V1: %d hard failure(s) on attempt %d/%d, "
+                    "retrying — league=%s season=%d week=%d",
                     _verification_result.hard_failure_count,
+                    _attempt, _MAX_VERIFICATION_RETRIES,
                     league_id, season, week_index,
                 )
             else:
-                logger.debug(
-                    "Verification V1: passed (%d checks) for league=%s season=%d week=%d",
-                    _verification_result.checks_run,
-                    league_id, season, week_index,
+                # All retries exhausted — fall back to facts-only.
+                # Silence over fabrication: if the model can't produce a clean
+                # draft after N attempts, the narrative is not trustworthy.
+                _fail_details = "; ".join(
+                    f"[{f.category}] {f.claim}"
+                    for f in _verification_result.hard_failures
                 )
-        except Exception as e:
-            logger.debug("Verification V1 failed: %s", e)
-    # SV_VERIFICATION_V1_END
+                logger.warning(
+                    "Verification V1: failed after %d attempt(s), falling back "
+                    "to facts-only — league=%s season=%d week=%d — %s",
+                    _attempt, league_id, season, week_index, _fail_details,
+                )
+                rendered_text = (
+                    _base_rendered_text.rstrip()
+                    + "\n\nNote: Narrative draft failed verification after "
+                    + f"{_attempt} attempt(s). Falling back to facts-only "
+                    + "output — silence over fabrication.\n"
+                    + "Last failure(s): " + _fail_details + "\n"
+                )
+        # SV_VERIFICATION_RETRY_LOOP_END
+    # SV_CREATIVE_LAYER_V1_END
 
     prev_approved = latest_approved_version(db_path, league_id, season, week_index)
 
@@ -1066,6 +1101,7 @@ def generate_weekly_recap_draft(
         synced_recap_run_state=synced_state,
         reason=reason,
         verification_result=_verification_result,
+        verification_attempts=_verification_attempts,
     )
 
 
