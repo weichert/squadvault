@@ -221,15 +221,26 @@ def _extract_shareable_recap(full_text: str) -> str:
     return full_text.strip()
 
 
+def _normalize_apostrophes(text: str) -> str:
+    """Normalize curly/smart apostrophes to straight ASCII apostrophes.
+
+    MFL franchise names may use U+2019 (RIGHT SINGLE QUOTATION MARK)
+    while LLM-generated recap text uses U+0027 (APOSTROPHE).
+    """
+    return text.replace("\u2018", "'").replace("\u2019", "'")
+
+
 def _build_reverse_name_map(name_map: dict[str, str]) -> dict[str, str]:
     """Build name -> franchise_id reverse lookup.
 
     Adds both exact-case and lowercased entries for robustness.
+    Normalizes apostrophes so curly quotes match straight quotes.
     """
     reverse: dict[str, str] = {}
     for fid, name in name_map.items():
-        reverse[name] = fid
-        reverse[name.lower()] = fid
+        normalized = _normalize_apostrophes(name)
+        reverse[normalized] = fid
+        reverse[normalized.lower()] = fid
     return reverse
 
 
@@ -257,7 +268,7 @@ def _find_nearby_franchise(
     """
     # Search the text before the score first (stronger association)
     before_start = max(0, score_pos - window)
-    before_context = text[before_start:score_pos].lower()
+    before_context = _normalize_apostrophes(text[before_start:score_pos]).lower()
 
     best_match: str | None = None
     best_dist: int = window + 1
@@ -278,7 +289,7 @@ def _find_nearby_franchise(
 
     # Pass 2: look for franchise names AFTER the score (fallback)
     after_end = min(len(text), score_pos + window)
-    after_context = text[score_pos:after_end].lower()
+    after_context = _normalize_apostrophes(text[score_pos:after_end]).lower()
 
     for name, fid in reverse_name_map.items():
         if not name.islower():
