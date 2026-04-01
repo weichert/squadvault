@@ -103,13 +103,28 @@ def _load_all_matchups_flat(
 def _load_season_transaction_counts(
     db_path: str, league_id: str, season: int,
 ) -> dict[str, int]:
-    """Count TRANSACTION_* events per franchise for a season."""
+    """Count in-season roster move events per franchise for a season.
+
+    Only counts transaction types that represent real in-season roster
+    decisions (trades, free agents, waivers). Excludes auction draft wins,
+    operational events, and boundary markers to avoid inflating early-week
+    counts with draft-day activity.
+    """
+    # In-season roster move types only — excludes TRANSACTION_AUCTION_WON
+    # (initial draft), operational events, and boundary markers.
+    in_season_types = (
+        "TRANSACTION_TRADE",
+        "TRANSACTION_FREE_AGENT",
+        "TRANSACTION_WAIVER",
+        "TRANSACTION_BBID_WAIVER",
+    )
+    placeholders = ",".join(["?"] * len(in_season_types))
     counts: dict[str, int] = {}
     with DatabaseSession(db_path) as con:
         rows = con.execute(
-            """SELECT payload_json FROM v_canonical_best_events
-               WHERE league_id = ? AND season = ? AND event_type LIKE 'TRANSACTION_%'""",
-            (str(league_id), int(season)),
+            f"""SELECT payload_json FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ? AND event_type IN ({placeholders})""",
+            (str(league_id), int(season), *in_season_types),
         ).fetchall()
     for row in rows:
         try:
