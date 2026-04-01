@@ -62,6 +62,7 @@ from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.tone.tone_profile_v1 import get_tone_preset
 from squadvault.core.tone.voice_profile_v1 import get_voice_profile
 from squadvault.errors import RecapDataError, RecapNotFoundError, RecapStateError
+from squadvault.recaps.preflight import check_duplicate_matchup_week
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 
@@ -870,62 +871,81 @@ def generate_weekly_recap_draft(
     # Context feed: season context + league history + narrative angles + writer room
     # enrichments are derived from canonical data and rendered as text blocks for the
     # creative layer prompt. These are derived, non-authoritative, and never modify facts.
-    _creative_bullets: list[str] = []
 
-    with DatabaseSession(db_path) as _cl_con:
-        _cl_row = _cl_con.execute(
-            "SELECT canonical_ids_json FROM recap_runs"
-            " WHERE league_id=? AND season=? AND week_index=?",
-            (league_id, season, week_index),
-        ).fetchone()
-        if _cl_row and _cl_row[0]:
-            try:
-                _cl_ids = json.loads(_cl_row[0])
-                if isinstance(_cl_ids, list) and _cl_ids:
-                    _cl_events = _load_canonical_event_rows(db_path, _cl_ids)
-                    if _cl_events:
-                        _cl_pids, _cl_fids = _collect_ids_from_payloads(_cl_events)
-                        _cl_pres = PlayerResolver(db_path, league_id, season)
-                        _cl_fres = FranchiseResolver(db_path, league_id, season)
-                        if _cl_pids:
-                            _cl_pres.load_for_ids(_cl_pids)
-                        if _cl_fids:
-                            _cl_fres.load_for_ids(_cl_fids)
-                        _creative_bullets = render_deterministic_bullets_v1(
-                            _cl_events,
-                            team_resolver=_cl_fres.one,
-                            player_resolver=_cl_pres.one,
-                        )
-            except Exception as e:
-                logger.debug("Creative bullets rendering failed: %s", e)
-                _creative_bullets = []
-
-    _ctx = _derive_prompt_context(
-        db_path=db_path, league_id=league_id, season=season,
-        week_index=week_index, window_end=window_end,
-    )
-
-    _narrative_draft = draft_narrative_v1(
-        facts_bullets=_creative_bullets,
-        eal_directive=editorial_attunement_v1,
-        league_id=league_id,
-        season=season,
-        week_index=week_index,
-        season_context=_ctx.season_context_text,
-        league_history=_ctx.league_history_text,
-        narrative_angles=_ctx.narrative_angles_text,
-        writer_room_context=_ctx.writer_room_text,
-        tone_preset=_ctx.tone_preset,
-        voice_profile=_ctx.voice_profile,
-        seasons_count=_ctx.seasons_count,
-    )
-    if _narrative_draft:
+    # Duplicate matchup gate: skip creative layer if all matchups duplicate the prior week.
+    # MFL sometimes records championship results in multiple week slots.
+    _dup_verdict = check_duplicate_matchup_week(db_path, league_id, season, week_index)
+    _skip_creative = False
+    if _dup_verdict is not None:
+        logger.debug(
+            "Duplicate matchup week detected (week %d): %s",
+            week_index, _dup_verdict.evidence,
+        )
         rendered_text = (
             rendered_text.rstrip()
-            + "\n\n--- SHAREABLE RECAP ---\n"
-            + _narrative_draft
-            + "\n--- END SHAREABLE RECAP ---\n"
+            + f"\n\nNote: Week {week_index} matchup results are identical to week {week_index - 1}. "
+            + "This appears to be a platform duplicate, not a distinct game. "
+            + "Creative narrative skipped — silence over fabrication.\n"
         )
+        _skip_creative = True
+
+    _creative_bullets: list[str] = []
+
+    if not _skip_creative:
+        with DatabaseSession(db_path) as _cl_con:
+            _cl_row = _cl_con.execute(
+                "SELECT canonical_ids_json FROM recap_runs"
+                " WHERE league_id=? AND season=? AND week_index=?",
+                (league_id, season, week_index),
+            ).fetchone()
+            if _cl_row and _cl_row[0]:
+                try:
+                    _cl_ids = json.loads(_cl_row[0])
+                    if isinstance(_cl_ids, list) and _cl_ids:
+                        _cl_events = _load_canonical_event_rows(db_path, _cl_ids)
+                        if _cl_events:
+                            _cl_pids, _cl_fids = _collect_ids_from_payloads(_cl_events)
+                            _cl_pres = PlayerResolver(db_path, league_id, season)
+                            _cl_fres = FranchiseResolver(db_path, league_id, season)
+                            if _cl_pids:
+                                _cl_pres.load_for_ids(_cl_pids)
+                            if _cl_fids:
+                                _cl_fres.load_for_ids(_cl_fids)
+                            _creative_bullets = render_deterministic_bullets_v1(
+                                _cl_events,
+                                team_resolver=_cl_fres.one,
+                                player_resolver=_cl_pres.one,
+                            )
+                except Exception as e:
+                    logger.debug("Creative bullets rendering failed: %s", e)
+                    _creative_bullets = []
+
+        _ctx = _derive_prompt_context(
+            db_path=db_path, league_id=league_id, season=season,
+            week_index=week_index, window_end=window_end,
+        )
+
+        _narrative_draft = draft_narrative_v1(
+            facts_bullets=_creative_bullets,
+            eal_directive=editorial_attunement_v1,
+            league_id=league_id,
+            season=season,
+            week_index=week_index,
+            season_context=_ctx.season_context_text,
+            league_history=_ctx.league_history_text,
+            narrative_angles=_ctx.narrative_angles_text,
+            writer_room_context=_ctx.writer_room_text,
+            tone_preset=_ctx.tone_preset,
+            voice_profile=_ctx.voice_profile,
+            seasons_count=_ctx.seasons_count,
+        )
+        if _narrative_draft:
+            rendered_text = (
+                rendered_text.rstrip()
+                + "\n\n--- SHAREABLE RECAP ---\n"
+                + _narrative_draft
+                + "\n--- END SHAREABLE RECAP ---\n"
+            )
     # SV_CREATIVE_LAYER_V1_END
 
     prev_approved = latest_approved_version(db_path, league_id, season, week_index)
