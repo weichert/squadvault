@@ -330,6 +330,7 @@ def detect_bench_cost_game(
     matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
+    pname: NameFn = _identity,
 ) -> list[NarrativeAngle]:
     """Detector 33: Lost by fewer points than left on bench."""
     # Bench points where should_start=True per (franchise, week)
@@ -361,23 +362,31 @@ def detect_bench_cost_game(
         if m.season == current_season and m.week == target_week and not m.is_tie
     ]
 
-    angles: list[NarrativeAngle] = []
+    # Collect candidates: (total_bench, margin, loser_id, best_bench_pid)
+    candidates: list[tuple[float, float, str, str]] = []
     for m in week_matchups:
         loser = m.loser_id
         margin = m.margin
         bench = bench_pts.get((loser, target_week), [])
         total_bench = sum(s for _, s in bench)
         if total_bench > margin and bench:
-            best_bench_pid, best_bench_score = max(bench, key=lambda x: x[1])
-            angles.append(NarrativeAngle(
-                category="BENCH_COST_GAME",
-                headline=(
-                    f"{loser} lost by {margin:.2f} with {total_bench:.2f} "
-                    f"sitting on the bench from {best_bench_pid}"
-                ),
-                detail="",
-                strength=2, franchise_ids=(loser,),
-            ))
+            best_bench_pid, _ = max(bench, key=lambda x: x[1])
+            candidates.append((total_bench, margin, loser, best_bench_pid))
+
+    # Cap at 2 most dramatic (highest bench points left on table)
+    candidates.sort(key=lambda c: -c[0])
+
+    angles: list[NarrativeAngle] = []
+    for total_bench, margin, loser, best_bench_pid in candidates[:2]:
+        angles.append(NarrativeAngle(
+            category="BENCH_COST_GAME",
+            headline=(
+                f"{fname(loser)} lost by {margin:.2f} with {total_bench:.2f} "
+                f"sitting on the bench from {pname(best_bench_pid)}"
+            ),
+            detail="",
+            strength=2, franchise_ids=(loser,),
+        ))
     return angles
 
 
@@ -478,7 +487,19 @@ def detect_close_game_record(
     tenure_map: dict[str, int] | None = None,
     fname: NameFn = _identity,
 ) -> list[NarrativeAngle]:
-    """Detector 36: All-time record in close games (< 5 pts)."""
+    """Detector 36: All-time record in close games (< 5 pts).
+
+    Only fires when a close game actually happened this week.
+    """
+    # Gate: did a close game happen this week?
+    this_week = [
+        m for m in all_matchups
+        if m.season == current_season and m.week == target_week
+        and m.margin < margin_threshold and not m.is_tie
+    ]
+    if not this_week:
+        return []
+
     # Filter to tenure scope and through current week
     filtered = _tenure_filter(all_matchups, current_season, target_week, tenure_map)
     close_wins: dict[str, int] = {}
@@ -1395,7 +1416,7 @@ def detect_franchise_deep_angles_v1(
 
     # ── Dimension 8: Bench & Lineup Decisions ──
     if score_payloads and all_matchups:
-        all_angles.extend(detect_bench_cost_game(score_payloads, all_matchups, season, week, fname=fname))
+        all_angles.extend(detect_bench_cost_game(score_payloads, all_matchups, season, week, fname=fname, pname=pname))
     if score_payloads:
         all_angles.extend(detect_chronic_bench_mismanagement(score_payloads, week, fname=fname))
         all_angles.extend(detect_perfect_lineup_week(score_payloads, week, fname=fname))

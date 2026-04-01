@@ -27,23 +27,35 @@ class EALMeta:
     has_window: bool
     included_count: int | None = None
     excluded_count: int | None = None
+    is_playoff: bool = False
 
 
 def evaluate_editorial_attunement_v1(meta: EALMeta) -> str:
     """Return an EAL directive based only on metadata.
 
     This function must remain deterministic and restraint-only.
+
+    Playoff weeks have fewer canonical events by design (fewer matchups).
+    When is_playoff is True and at least 1 event is included, the floor
+    is MODERATE_CONFIDENCE_ONLY rather than LOW_CONFIDENCE_RESTRAINT.
+    This prevents championship recaps from being unnecessarily restrained.
     """
     if not meta.has_window or not meta.has_selection_set:
         return EAL_AMBIGUITY_PREFER_SILENCE
 
     n = meta.included_count
     if n is None:
-        # Unknown selection strength => prefer restraint, but not necessarily silence
         return EAL_LOW_CONFIDENCE_RESTRAINT
 
     if n <= 0:
         return EAL_AMBIGUITY_PREFER_SILENCE
+
+    # Playoff floor: at least MODERATE when any events exist
+    if meta.is_playoff:
+        if n >= 8:
+            return EAL_HIGH_CONFIDENCE_ALLOWED
+        return EAL_MODERATE_CONFIDENCE_ONLY
+
     if n <= 2:
         return EAL_LOW_CONFIDENCE_RESTRAINT
     if n >= 8:

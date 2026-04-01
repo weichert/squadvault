@@ -51,6 +51,31 @@ class TestEditorialAttunementV1(unittest.TestCase):
         b = evaluate_editorial_attunement_v1(meta)
         self.assertEqual(a, b)
 
+    # ── Playoff-aware EAL ──
+
+    def test_playoff_low_included_gets_moderate_not_restrained(self) -> None:
+        """Playoff weeks with few events should get MODERATE, not LOW_CONFIDENCE."""
+        meta = EALMeta(has_selection_set=True, has_window=True, included_count=1, is_playoff=True)
+        self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_MODERATE_CONFIDENCE_ONLY)
+
+    def test_playoff_two_included_gets_moderate(self) -> None:
+        meta = EALMeta(has_selection_set=True, has_window=True, included_count=2, is_playoff=True)
+        self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_MODERATE_CONFIDENCE_ONLY)
+
+    def test_playoff_high_included_gets_high_confidence(self) -> None:
+        meta = EALMeta(has_selection_set=True, has_window=True, included_count=10, is_playoff=True)
+        self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_HIGH_CONFIDENCE_ALLOWED)
+
+    def test_playoff_zero_included_still_silenced(self) -> None:
+        """Even playoff weeks must be silenced when there are zero events."""
+        meta = EALMeta(has_selection_set=True, has_window=True, included_count=0, is_playoff=True)
+        self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_AMBIGUITY_PREFER_SILENCE)
+
+    def test_non_playoff_low_included_still_restrained(self) -> None:
+        """Non-playoff behavior should be unchanged."""
+        meta = EALMeta(has_selection_set=True, has_window=True, included_count=1, is_playoff=False)
+        self.assertEqual(evaluate_editorial_attunement_v1(meta), EAL_LOW_CONFIDENCE_RESTRAINT)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -821,19 +821,20 @@ class TestPlayerFranchiseRecord:
 
 
 class TestCareerMilestone:
-    def test_crosses_500_point_milestone(self):
-        """Crossing 500 career points this week = NOTABLE."""
+    def test_crosses_1000_point_milestone_basic(self):
+        """Crossing 1000 career points this week = NOTABLE."""
         records = [
-            # Prior: 480 total points on F1
-            _make_xseason(2022, 1, "F1", "P1", 200.0),
-            _make_xseason(2023, 1, "F1", "P1", 280.0),
-            # This week: pushes past 500
+            # Prior: 980 total points on F1
+            _make_xseason(2021, 1, "F1", "P1", 300.0),
+            _make_xseason(2022, 1, "F1", "P1", 350.0),
+            _make_xseason(2023, 1, "F1", "P1", 330.0),
+            # This week: pushes past 1000
             _make_xseason(2024, 3, "F1", "P1", 25.0),
         ]
         angles = detect_career_milestone(records, current_season=2024, target_week=3)
         assert len(angles) == 1
         assert angles[0].category == "CAREER_MILESTONE"
-        assert "500" in angles[0].headline
+        assert "1,000" in angles[0].headline
         assert angles[0].strength == 2
 
     def test_crosses_1000_point_milestone(self):
@@ -848,10 +849,9 @@ class TestCareerMilestone:
         angles = detect_career_milestone(records, current_season=2024, target_week=3)
         assert len(angles) == 1
         assert "1,000" in angles[0].headline
-        # Should NOT also report 500 (highest milestone only)
 
-    def test_no_milestone_below_500(self):
-        """Career total below 500 = no angle."""
+    def test_no_milestone_below_1000(self):
+        """Career total below 1000 = no angle."""
         records = [
             _make_xseason(2023, 1, "F1", "P1", 200.0),
             _make_xseason(2024, 3, "F1", "P1", 20.0),
@@ -863,7 +863,7 @@ class TestCareerMilestone:
         """Milestone crossed in prior weeks = no angle this week."""
         records = [
             _make_xseason(2022, 1, "F1", "P1", 300.0),
-            _make_xseason(2023, 1, "F1", "P1", 220.0),  # already past 500
+            _make_xseason(2023, 1, "F1", "P1", 220.0),  # total 520, below 1000
             _make_xseason(2024, 3, "F1", "P1", 15.0),
         ]
         angles = detect_career_milestone(records, current_season=2024, target_week=3)
@@ -872,9 +872,10 @@ class TestCareerMilestone:
     def test_different_franchises_independent(self):
         """Career points are per-franchise, not global."""
         records = [
-            _make_xseason(2022, 1, "F1", "P1", 300.0),
+            _make_xseason(2021, 1, "F1", "P1", 300.0),
+            _make_xseason(2022, 1, "F1", "P1", 400.0),
             _make_xseason(2023, 1, "F2", "P1", 300.0),  # different franchise
-            _make_xseason(2024, 3, "F1", "P1", 210.0),   # crosses 500 on F1
+            _make_xseason(2024, 3, "F1", "P1", 310.0),   # crosses 1000 on F1
         ]
         angles = detect_career_milestone(records, current_season=2024, target_week=3)
         assert len(angles) == 1
@@ -1058,19 +1059,19 @@ class TestCrossSeasonDataLoading:
 class TestFullPipelineDimension2:
     def _build_cross_season_scenario(self, tmp_path):
         """Multi-season scenario with known angles:
-        - P1 on F1: 2022 (300 pts), 2023 (200 pts), 2024 week 1 (10 pts) = 510 career
+        - P1 on F1: 2022 (500 pts), 2023 (490 pts), 2024 week 1 (15 pts) = 1005 career
         - P2 on F2: 2023 (best=40), 2024 week 1 (50) = new franchise record
         - P3: F1 in 2020, F2 in 2021, F3 in 2022, F3 in 2024 week 1 = journey
         """
         db_path = _fresh_db(tmp_path)
         con = sqlite3.connect(db_path)
 
-        # P1: career milestone candidate (crosses 500 pts on F1 this week)
-        # Prior: 290 + 200 = 490. This week: 10 + 490 = 500. Crosses 500.
+        # P1: career milestone candidate (crosses 1000 pts on F1 this week)
+        # Prior: 500 + 490 = 990. This week: 15 + 990 = 1005. Crosses 1000.
         _insert_player_score(con, league_id=LEAGUE, season=2022, week=1,
-                              franchise_id="F1", player_id="P1", score=290.0)
+                              franchise_id="F1", player_id="P1", score=500.0)
         _insert_player_score(con, league_id=LEAGUE, season=2023, week=1,
-                              franchise_id="F1", player_id="P1", score=200.0)
+                              franchise_id="F1", player_id="P1", score=490.0)
         _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=1,
                               franchise_id="F1", player_id="P1", score=15.0)
 
@@ -1103,7 +1104,7 @@ class TestFullPipelineDimension2:
         milestone_angles = [a for a in angles if a.category == "CAREER_MILESTONE"]
         assert len(milestone_angles) == 1
         assert "P1" in milestone_angles[0].headline
-        assert "500" in milestone_angles[0].headline
+        assert "1,000" in milestone_angles[0].headline
 
     def test_detects_franchise_record_via_pipeline(self, tmp_path):
         """Full pipeline detects franchise record from DB data."""

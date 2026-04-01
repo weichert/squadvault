@@ -1112,7 +1112,7 @@ def detect_player_franchise_record(
 # ── Detector 9: CAREER_MILESTONE ────────────────────────────────────
 
 
-_CAREER_MILESTONES = [2000, 1500, 1000, 500]  # checked high to low
+_CAREER_MILESTONES = [2000, 1500, 1000]  # checked high to low; 500 too low for $200-budget league
 
 
 def detect_career_milestone(
@@ -1760,6 +1760,7 @@ def detect_faab_roi(
     *,
     min_roi_multiplier: float = 3.0,
     min_weeks: int = 3,
+    min_bid: float = 1.0,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
 ) -> list[NarrativeAngle]:
@@ -1767,6 +1768,7 @@ def detect_faab_roi(
 
     Only current-season FAAB pickups. The player must have at least
     min_weeks of scoring data on the acquiring franchise.
+    Bids below min_bid are excluded (prevents absurd multipliers on $0 claims).
     """
     if not faab_acquisitions:
         return []
@@ -1791,7 +1793,7 @@ def detect_faab_roi(
 
         total_pts = round(sum(r.score for r in player_scores), 2)
 
-        if acq.bid_amount > 0 and total_pts >= acq.bid_amount * min_roi_multiplier:
+        if acq.bid_amount >= min_bid and total_pts >= acq.bid_amount * min_roi_multiplier:
             ratio = total_pts / acq.bid_amount
             starter_weeks = sum(1 for r in player_scores if r.is_starter)
             angles.append(NarrativeAngle(

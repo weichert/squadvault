@@ -196,8 +196,11 @@ class TestCloseGameRecord:
         ] + [
             _make_matchup(2023, w, "F1", "F3", 100.0, 97.0)
             for w in range(1, 4)
+        ] + [
+            # Close game in the target week (required for detector to fire)
+            _make_matchup(2024, 1, "F1", "F2", 102.0, 100.0),
         ]
-        # F1: 8-0 in close games
+        # F1: 9-0 in close games
         angles = detect_close_game_record(matchups, 2024, 1)
         assert len(angles) >= 1
         assert any("F1" in a.headline for a in angles)

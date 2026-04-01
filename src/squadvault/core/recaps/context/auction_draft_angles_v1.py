@@ -287,6 +287,8 @@ def detect_auction_price_vs_production(
     picks: list[_AuctionPick],
     scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
     *,
+    current_season: int = 0,
+    target_week: int = 0,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
 ) -> list[NarrativeAngle]:
@@ -295,6 +297,9 @@ def detect_auction_price_vs_production(
     Sums all-time scoring for a drafted player on the drafting franchise,
     then computes career points-per-dollar. Reports the all-time leader.
     Requires at least 2 seasons of draft data.
+
+    Only fires when the leader's player scored during target_week of the
+    current season — prevents the same angle from firing every week.
     """
     seasons = {pk.season for pk in picks}
     if len(seasons) < 2:
@@ -333,6 +338,14 @@ def detect_auction_price_vs_production(
         return []
 
     fid, pid, draft_season = best_key
+
+    # Gate: only fire if the leader's player scored this week.
+    # This prevents the same all-time observation from repeating every week.
+    if current_season and target_week:
+        current_sc = scoring.get((current_season, fid, pid))
+        if current_sc is None or current_sc.total_points <= 0:
+            return []
+
     return [NarrativeAngle(
         category="AUCTION_PRICE_VS_PRODUCTION",
         headline=(
@@ -869,7 +882,9 @@ def detect_auction_draft_angles_v1(
     all_angles: list[NarrativeAngle] = []
 
     # Production-based detectors (any week)
-    all_angles.extend(detect_auction_price_vs_production(all_picks, scoring, pname=pname, fname=fname))
+    all_angles.extend(detect_auction_price_vs_production(
+        all_picks, scoring, current_season=season, target_week=week, pname=pname, fname=fname,
+    ))
     all_angles.extend(detect_auction_dollar_per_point(all_picks, scoring, season, pname=pname, fname=fname))
     all_angles.extend(detect_auction_bust(all_picks, scoring, season, pname=pname, fname=fname))
 

@@ -797,6 +797,7 @@ def generate_weekly_recap_draft(
     # SV_EAL_V1_BEGIN: Editorial Attunement Layer v1 (restraint-only, metadata-only)
     # NOTE: This must not modify selection, ordering, or facts. It only constrains expression.
     included_count = None
+    _is_playoff = False
     # Read canonical_ids_json from recap_runs for deterministic included_count.
     with DatabaseSession(db_path) as _eal_con:
         _eal_row = _eal_con.execute(
@@ -810,6 +811,30 @@ def generate_weekly_recap_draft(
                     included_count = len(_ids)
             except (ValueError, TypeError):
                 pass
+
+        # Playoff detection: compare matchup count this week vs season maximum.
+        # Playoff weeks have fewer matchups by design (eliminated teams don't play).
+        try:
+            _this_week_matchups = _eal_con.execute(
+                "SELECT COUNT(*) FROM v_canonical_best_events"
+                " WHERE league_id=? AND season=? AND event_type='WEEKLY_MATCHUP_RESULT'"
+                " AND json_extract(payload_json, '$.week') = ?",
+                (league_id, season, str(week_index)),
+            ).fetchone()[0]
+            _max_week_matchups = _eal_con.execute(
+                "SELECT MAX(cnt) FROM ("
+                "  SELECT COUNT(*) as cnt FROM v_canonical_best_events"
+                "  WHERE league_id=? AND season=? AND event_type='WEEKLY_MATCHUP_RESULT'"
+                "  GROUP BY json_extract(payload_json, '$.week')"
+                ")",
+                (league_id, season),
+            ).fetchone()[0]
+            if (_max_week_matchups and _this_week_matchups
+                    and 0 < _this_week_matchups < _max_week_matchups):
+                _is_playoff = True
+        except Exception:
+            pass  # Playoff detection is best-effort; default to non-playoff
+
         # If canonical_ids_json is NULL or empty string, included_count stays None
         # (unknown). This is distinct from "[]" which parses to 0 (zero events selected).
         # None → EAL_LOW_CONFIDENCE_RESTRAINT (restrained but not silenced).
@@ -819,6 +844,7 @@ def generate_weekly_recap_draft(
         has_window=True,
         included_count=included_count,
         excluded_count=None,
+        is_playoff=_is_playoff,
     )
     editorial_attunement_v1 = evaluate_editorial_attunement_v1(meta)
 
