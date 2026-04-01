@@ -102,9 +102,11 @@ Hard rules (non-negotiable):
 - NEVER invent facts, scores, player names, or events not in the provided data.
 - NEVER fabricate counts, statistics, or per-team tallies. Do NOT count the facts \
   bullets yourself to produce aggregate numbers — your count will be wrong. \
-  Do NOT claim a team made "X acquisitions" or "X roster moves" — this data is \
-  not provided. You may mention specific notable transactions by name, but never \
-  aggregate them into a count.
+  Do NOT claim a team made "X acquisitions," "X roster moves," "X pickups," \
+  or any other counted quantity of transactions — this data is not provided \
+  and you cannot derive it accurately. You may mention specific notable \
+  transactions by name, but NEVER aggregate them into a count. This is a \
+  trust-critical rule — league members will verify these numbers.
 - NEVER speculate about manager intent, strategy, or emotions. This includes \
   soft forms like "kicking themselves," "that stings," "looking desperate," \
   "probably regret," "has to be frustrating," or implying someone made a \
@@ -126,6 +128,8 @@ Hard rules (non-negotiable):
 - NEVER invent player scores or individual performances not present in the \
   PLAYER HIGHLIGHTS data. If player data is not available for a week, do not \
   fabricate it.
+- NEVER use the phrase "the kind of chaos that makes fantasy football beautiful" \
+  or any variation of it. This phrase is permanently banned.\
 """
 
 # ---------------------------------------------------------------------------
@@ -262,6 +266,11 @@ def _build_user_prompt(
     # Facts block — always present, always authoritative
     facts_block = "\n".join(f"- {b}" for b in facts_bullets) if facts_bullets else "(no facts)"
     parts.append("=== VERIFIED FACTS (canonical, authoritative — these are your source of truth) ===")
+    parts.append(
+        "WARNING: Do NOT count these bullets to produce aggregate numbers. "
+        "Do NOT say a team made 'X moves' or 'Y acquisitions' — your count WILL be wrong. "
+        "You may mention specific transactions by name but NEVER aggregate them into a count."
+    )
     parts.append(facts_block)
     parts.append("")
     parts.append("Write the recap now.")

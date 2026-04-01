@@ -1456,10 +1456,13 @@ def detect_franchise_deep_angles_v1(
             all_angles.extend(detect_the_bridesmaid(
                 score_payloads, all_matchups, season, week, fname=fname))
 
-    # Transaction volume (only needs current season)
-    txn_counts = _load_season_transaction_counts(db_path, league_id, season)
-    if txn_counts:
-        all_angles.extend(detect_transaction_volume_identity(txn_counts, fname=fname))
+    # Detector 41 (TRANSACTION_VOLUME_IDENTITY) disabled.
+    # Aggregate transaction counts are unverifiable by league members and
+    # the model also counts individual facts bullets to produce its own
+    # aggregates, which are wrong. Per governance: silence over fabrication.
+    # FAAB spending in the writer room context captures spending patterns.
+    # Individual transaction bullets in the facts block cover specific moves.
+    # Re-enable only if verified per-team weekly counts can be produced.
 
     # Deterministic sort
     all_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))
