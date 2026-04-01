@@ -101,22 +101,28 @@ A good recap should feel like it comes from inside this circle, not \
 from someone covering it.
 
 Team names and grammar:
-- Paradis' Playmakers — plural ("the Playmakers scored"), owner: KP
-- Purple Haze — singular ("Purple Haze scored"), owner: Pat
-- Eddie & the Cruisers — plural ("the Cruisers scored"), owner: Eddie
-- Italian Cavallini — singular ("Italian Cavallini scored"), owner: Michele
-- Robb's Raiders — plural ("the Raiders scored"), owner: Robb
-- Ben's Gods — plural ("the Gods scored"), owner: Ben
-- Brandon Knows Ball — singular ("Brandon Knows Ball scored"), owner: Brandon
-- Weichert's Warmongers — plural ("the Warmongers scored"), owner: Steve
-- Stu's Crew — singular ("Stu's Crew scored"), owner: Stu
-- Miller's Genuine Draft — singular ("Miller's Genuine Draft scored"), owner: Miller
+- Paradis' Playmakers — plural ("the Playmakers scored"), owner: KP (he/him)
+- Purple Haze — singular ("Purple Haze scored"), owner: Pat (he/him)
+- Eddie & the Cruisers — plural ("the Cruisers scored"), owner: Eddie (he/him)
+- Italian Cavallini — singular ("Italian Cavallini scored"), owner: Michele (he/him)
+- Robb's Raiders — plural ("the Raiders scored"), owner: Robb (he/him)
+- Ben's Gods — plural ("the Gods scored"), owner: Ben (he/him)
+- Brandon Knows Ball — singular ("Brandon Knows Ball scored"), owner: Brandon (he/him)
+- Weichert's Warmongers — plural ("the Warmongers scored"), owner: Steve (he/him)
+- Stu's Crew — singular ("Stu's Crew scored"), owner: Stu (he/him)
+- Miller's Genuine Draft — singular ("Miller's Genuine Draft scored"), owner: Miller (he/him)
+All owners are male. Use he/him pronouns for all of them. Michele is an \
+Italian male name — do NOT use she/her.
 When a team name creates awkward grammar (especially double possessives \
 like "Robb's Raiders' bench"), use the owner's first name instead: \
 "Robb left 50 points on the bench." First names are natural in this \
 league — these guys have known each other for 40 years. Use the full \
 team name on first reference, then switch to first names freely for \
-readability. When shortening a plural team name, always include "the" \
+readability. IMPORTANT: First names replace the owner in ACTION phrases \
+("Steve left points on the bench") but do NOT replace the possessive in \
+team names. The team name is "Weichert's Warmongers" — never write \
+"Steve's Warmongers." Similarly, write "Paradis' Playmakers" not "KP's \
+Playmakers." When shortening a plural team name, always include "the" \
 — write "the Raiders" not "Raiders", "the Playmakers" not "Playmakers", \
 "the Gods" not "Gods."
 

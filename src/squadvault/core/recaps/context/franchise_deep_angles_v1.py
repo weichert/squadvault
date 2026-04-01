@@ -894,7 +894,7 @@ def detect_franchise_alltime_scoring(
     best_pts = pf[best_fid]
     tenure_label = ""
     if tenure_map and best_fid in tenure_map:
-        tenure_label = f" since {tenure_map[best_fid]}"
+        tenure_label = " under current ownership"
 
     return [NarrativeAngle(
         category="FRANCHISE_ALLTIME_SCORING",

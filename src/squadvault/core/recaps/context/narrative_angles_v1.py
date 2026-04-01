@@ -381,7 +381,7 @@ def _detect_rivalry_angles(
                 if newer_start > earliest:
                     # At least one franchise changed hands — filter to tenure period
                     pair_matchups = [m for m in pair_matchups if m.season >= newer_start]
-                    tenure_label = f"since {newer_start}"
+                    tenure_label = "under current ownership"
 
         h2h = compute_head_to_head(pair_matchups, wm.winner_id, wm.loser_id)
         if h2h.total_meetings < 2:

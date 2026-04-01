@@ -105,8 +105,10 @@ Hard rules (non-negotiable):
   Do NOT claim a team made "X acquisitions," "X roster moves," "X pickups," \
   or any other counted quantity of transactions — this data is not provided \
   and you cannot derive it accurately. You may mention specific notable \
-  transactions by name, but NEVER aggregate them into a count. This is a \
-  trust-critical rule — league members will verify these numbers.
+  transactions by name, but NEVER aggregate them into a count. Do NOT invent \
+  historical event counts like "the Nth time a starter scored zero" — if the \
+  exact count is not in the data, do not state one. This is a trust-critical \
+  rule — league members will verify these numbers.
 - NEVER speculate about manager intent, strategy, or emotions. This includes \
   soft forms like "kicking themselves," "that stings," "looking desperate," \
   "probably regret," "has to be frustrating," or implying someone made a \
@@ -134,7 +136,17 @@ Hard rules (non-negotiable):
   the angle. Each angle has a [RE: franchise] tag identifying which team it \
   applies to. If an angle says "[RE: Eddie & the Cruisers] Eddie is 15-9 in \
   close games," that stat belongs to Eddie ONLY — do not apply it to Ben, Pat, \
-  or any other team, even if that other team also played a close game this week.\
+  or any other team, even if that other team also played a close game this week.
+- Use streak terminology correctly. "Snapping" a streak means the team ON the \
+  streak ends it — a team that BEATS a losing-streak team EXTENDS the streak. \
+  If Ben beats Brandon (who has lost 11 straight), Ben extended Brandon's \
+  losing streak, not snapped it. Brandon can only snap his own streak by winning.
+- Distinguish FAAB (waiver spending during the season) from auction draft prices \
+  (preseason draft investment). The data labels these differently. Do not call \
+  a draft pick a "FAAB pickup" or a waiver claim a "draft investment."
+- Use "despite" correctly. "Won despite leaving points on the bench" only makes \
+  sense if the bench points would have changed the outcome or the win was narrow. \
+  Winning by 17 while leaving bench points is not "despite" — it is irrelevant.\
 """
 
 # ---------------------------------------------------------------------------
