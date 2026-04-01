@@ -48,6 +48,15 @@ from typing import Dict, List, Optional, Tuple
 from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
 from squadvault.core.storage.session import DatabaseSession
 
+from typing import Callable
+
+# Name resolver: takes an ID string, returns a display name (or the ID itself).
+NameFn = Callable[[str], str]
+
+
+def _identity(x: str) -> str:
+    return x
+
 
 # ── Data loading ─────────────────────────────────────────────────────
 
@@ -613,6 +622,8 @@ def detect_player_hot_streak(
     target_week: int,
     *,
     threshold: float = 25.0,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect players scoring above threshold for consecutive weeks ending at target_week.
 
@@ -654,8 +665,8 @@ def detect_player_hot_streak(
             angles.append(NarrativeAngle(
                 category="PLAYER_HOT_STREAK",
                 headline=(
-                    f"{player_id} has scored {threshold:.0f}+ points in "
-                    f"{streak} consecutive weeks for {franchise_id}"
+                    f"{pname(player_id)} has scored {threshold:.0f}+ points in "
+                    f"{streak} consecutive weeks for {fname(franchise_id)}"
                 ),
                 detail=f"Latest: {latest_score:.2f} pts in Week {target_week}.",
                 strength=strength,
@@ -673,6 +684,8 @@ def detect_player_cold_streak(
     target_week: int,
     *,
     threshold: float = 8.0,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect starters scoring below threshold for consecutive weeks ending at target_week.
 
@@ -704,8 +717,8 @@ def detect_player_cold_streak(
             angles.append(NarrativeAngle(
                 category="PLAYER_COLD_STREAK",
                 headline=(
-                    f"{player_id} has scored under {threshold:.0f} points in "
-                    f"{streak} straight starts for {franchise_id}"
+                    f"{pname(player_id)} has scored under {threshold:.0f} points in "
+                    f"{streak} straight starts for {fname(franchise_id)}"
                 ),
                 detail=f"Latest: {latest_score:.2f} pts in Week {target_week}.",
                 strength=strength,
@@ -721,6 +734,9 @@ def detect_player_cold_streak(
 def detect_player_season_high(
     records: List[_PlayerWeekRecord],
     target_week: int,
+    *,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect if a player posted the highest individual score of the season this week.
 
@@ -752,11 +768,11 @@ def detect_player_season_high(
         angles.append(NarrativeAngle(
             category="PLAYER_SEASON_HIGH",
             headline=(
-                f"{best_this_week.player_id}'s {best_this_week.score:.2f} points "
+                f"{pname(best_this_week.player_id)}'s {best_this_week.score:.2f} points "
                 f"is the highest individual score of the season"
             ),
             detail=(
-                f"For {best_this_week.franchise_id}. "
+                f"For {fname(best_this_week.franchise_id)}. "
                 f"Previous season high: {prior_best:.2f}."
             ),
             strength=3,  # Always HEADLINE
@@ -777,6 +793,8 @@ def detect_player_boom_bust(
     boom_multiplier: float = 2.0,
     bust_multiplier: float = 0.3,
     min_prior_weeks: int = 4,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect starters who dramatically outperformed or underperformed their recent average.
 
@@ -817,9 +835,9 @@ def detect_player_boom_bust(
             angles.append(NarrativeAngle(
                 category="PLAYER_BOOM_BUST",
                 headline=(
-                    f"{player_id}'s {target_score:.2f} points is "
+                    f"{pname(player_id)}'s {target_score:.2f} points is "
                     f"{ratio:.1f}x their {len(recent_prior)}-week average "
-                    f"of {avg_score:.2f} for {franchise_id}"
+                    f"of {avg_score:.2f} for {fname(franchise_id)}"
                 ),
                 detail=f"Boom performance in Week {target_week}.",
                 strength=1,  # Always MINOR per spec
@@ -829,9 +847,9 @@ def detect_player_boom_bust(
             angles.append(NarrativeAngle(
                 category="PLAYER_BOOM_BUST",
                 headline=(
-                    f"{player_id}'s {target_score:.2f} points is "
+                    f"{pname(player_id)}'s {target_score:.2f} points is "
                     f"{ratio:.1f}x their {len(recent_prior)}-week average "
-                    f"of {avg_score:.2f} for {franchise_id}"
+                    f"of {avg_score:.2f} for {fname(franchise_id)}"
                 ),
                 detail=f"Bust performance in Week {target_week}.",
                 strength=1,  # Always MINOR per spec
@@ -849,6 +867,8 @@ def detect_player_breakout(
     target_week: int,
     *,
     breakout_threshold: float = 20.0,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect first time a player exceeds a scoring threshold on this franchise.
 
@@ -883,8 +903,8 @@ def detect_player_breakout(
         angles.append(NarrativeAngle(
             category="PLAYER_BREAKOUT",
             headline=(
-                f"This was {player_id}'s first {breakout_threshold:.0f}+ point game "
-                f"for {franchise_id}"
+                f"This was {pname(player_id)}'s first {breakout_threshold:.0f}+ point game "
+                f"for {fname(franchise_id)}"
             ),
             detail=f"{target_score:.2f} pts in Week {target_week}.",
             strength=1,  # Always MINOR per spec
@@ -902,6 +922,8 @@ def detect_zero_point_starter(
     target_week: int,
     *,
     alltime_zero_count: Optional[int] = None,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect starters who scored exactly 0.00 points this week.
 
@@ -925,7 +947,7 @@ def detect_zero_point_starter(
         angles.append(NarrativeAngle(
             category="ZERO_POINT_STARTER",
             headline=(
-                f"{r.franchise_id} started {r.player_id} for 0.00 points"
+                f"{fname(r.franchise_id)} started {pname(r.player_id)} for 0.00 points"
             ),
             detail=" ".join(detail_parts),
             strength=2,  # NOTABLE per spec
@@ -951,6 +973,9 @@ def detect_player_alltime_high(
     all_records: List[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
+    *,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect if a player posted the highest individual score in league history.
 
@@ -998,10 +1023,10 @@ def detect_player_alltime_high(
         return [NarrativeAngle(
             category="PLAYER_ALLTIME_HIGH",
             headline=(
-                f"{best.player_id}'s {best.score:.2f} points is the highest "
+                f"{pname(best.player_id)}'s {best.score:.2f} points is the highest "
                 f"individual score in league history ({num_seasons} seasons)"
             ),
-            detail=f"For {best.franchise_id}. Previous all-time high: {prior_best_score:.2f}.",
+            detail=f"For {fname(best.franchise_id)}. Previous all-time high: {prior_best_score:.2f}.",
             strength=3,  # Always HEADLINE
             franchise_ids=(best.franchise_id,),
         )]
@@ -1018,6 +1043,8 @@ def detect_player_franchise_record(
     target_week: int,
     *,
     tenure_map: Optional[Dict[str, int]] = None,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect if a player set a new single-week scoring record for their franchise.
 
@@ -1080,8 +1107,8 @@ def detect_player_franchise_record(
             angles.append(NarrativeAngle(
                 category="PLAYER_FRANCHISE_RECORD",
                 headline=(
-                    f"{best.player_id}'s {best.score:.2f} points is the highest "
-                    f"single-week score for {franchise_id} ({tenure_label})"
+                    f"{pname(best.player_id)}'s {best.score:.2f} points is the highest "
+                    f"single-week score for {fname(franchise_id)} ({tenure_label})"
                 ),
                 detail=f"Previous franchise record: {prior_best:.2f}.",
                 strength=2,  # NOTABLE per spec
@@ -1101,6 +1128,9 @@ def detect_career_milestone(
     all_records: List[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
+    *,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect if a player crossed a career scoring milestone on a franchise.
 
@@ -1134,8 +1164,8 @@ def detect_career_milestone(
                 angles.append(NarrativeAngle(
                     category="CAREER_MILESTONE",
                     headline=(
-                        f"{player_id} just crossed {milestone:,} career points "
-                        f"for {franchise_id}"
+                        f"{pname(player_id)} just crossed {milestone:,} career points "
+                        f"for {fname(franchise_id)}"
                     ),
                     detail=f"Career total: {total:.2f} pts.",
                     strength=2,  # NOTABLE per spec
@@ -1153,6 +1183,9 @@ def detect_player_franchise_tenure(
     all_records: List[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
+    *,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect players on the same franchise for 3+ consecutive seasons.
 
@@ -1205,7 +1238,7 @@ def detect_player_franchise_tenure(
         angles.append(NarrativeAngle(
             category="PLAYER_FRANCHISE_TENURE",
             headline=(
-                f"{player_id} has been on {franchise_id}'s roster "
+                f"{pname(player_id)} has been on {fname(franchise_id)}'s roster "
                 f"for {streak} consecutive seasons"
             ),
             detail=detail,
@@ -1223,6 +1256,9 @@ def detect_player_journey(
     all_records: List[_CrossSeasonRecord],
     current_season: int,
     target_week: int,
+    *,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect players rostered by 3+ different franchises in their league career.
 
@@ -1263,7 +1299,7 @@ def detect_player_journey(
             angles.append(NarrativeAngle(
                 category="PLAYER_JOURNEY",
                 headline=(
-                    f"{player_id} has been rostered by {len(franchises)} different "
+                    f"{pname(player_id)} has been rostered by {len(franchises)} different "
                     f"franchises since {earliest}"
                 ),
                 detail="",
@@ -1285,6 +1321,8 @@ def detect_player_vs_opponent(
     *,
     threshold: float = 30.0,
     min_meetings: int = 3,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect players who consistently dominate a specific opposing franchise.
 
@@ -1330,9 +1368,9 @@ def detect_player_vs_opponent(
             angles.append(NarrativeAngle(
                 category="PLAYER_VS_OPPONENT",
                 headline=(
-                    f"{r.player_id} has scored {threshold:.0f}+ in all "
-                    f"{total_meetings} career games against {opponent_id} "
-                    f"for {r.franchise_id}"
+                    f"{pname(r.player_id)} has scored {threshold:.0f}+ in all "
+                    f"{total_meetings} career games against {fname(opponent_id)} "
+                    f"for {fname(r.franchise_id)}"
                 ),
                 detail=f"This week: {r.score:.2f} pts.",
                 strength=strength,
@@ -1352,6 +1390,8 @@ def detect_revenge_game(
     opponent_index: Dict[Tuple[int, int, str], str],
     *,
     min_score: float = 15.0,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect a player scoring against a franchise they were previously on.
 
@@ -1392,8 +1432,8 @@ def detect_revenge_game(
             angles.append(NarrativeAngle(
                 category="REVENGE_GAME",
                 headline=(
-                    f"{r.player_id}, formerly on {opponent_id}, scored "
-                    f"{r.score:.2f} against them for {r.franchise_id}"
+                    f"{pname(r.player_id)}, formerly on {fname(opponent_id)}, scored "
+                    f"{r.score:.2f} against them for {fname(r.franchise_id)}"
                 ),
                 detail=f"Week {target_week}.",
                 strength=1,  # MINOR per spec
@@ -1413,6 +1453,8 @@ def detect_player_duel(
     opponent_index: Dict[Tuple[int, int, str], str],
     *,
     min_meetings: int = 3,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect two players on opposing franchises who have met head-to-head multiple times.
 
@@ -1514,8 +1556,8 @@ def detect_player_duel(
                 angles.append(NarrativeAngle(
                     category="PLAYER_DUEL",
                     headline=(
-                        f"In the {leader} vs {trailer} duel, {leader} has outscored "
-                        f"{trailer} in {leader_wins} of {total_meetings} head-to-head meetings"
+                        f"In the {pname(leader)} vs {pname(trailer)} duel, {pname(leader)} has outscored "
+                        f"{pname(trailer)} in {leader_wins} of {total_meetings} head-to-head meetings"
                     ),
                     detail=f"Record: {record_str}.",
                     strength=1,  # MINOR per spec
@@ -1539,6 +1581,8 @@ def detect_trade_outcome(
     *,
     min_post_trade_weeks: int = 3,
     min_point_gap: float = 20.0,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Retrospective scoring comparison after a trade.
 
@@ -1613,9 +1657,9 @@ def detect_trade_outcome(
         angles.append(NarrativeAngle(
             category="TRADE_OUTCOME",
             headline=(
-                f"Since the trade, {leader_player} has scored {leader_total:.1f} for "
-                f"{leader_franchise} while {trailer_player} has scored {trailer_total:.1f} "
-                f"for {trailer_franchise} — a {gap:.1f}-point gap"
+                f"Since the trade, {pname(leader_player)} has scored {leader_total:.1f} for "
+                f"{fname(leader_franchise)} while {pname(trailer_player)} has scored {trailer_total:.1f} "
+                f"for {fname(trailer_franchise)} — a {gap:.1f}-point gap"
             ),
             detail="",
             strength=strength,
@@ -1636,6 +1680,8 @@ def detect_the_one_that_got_away(
     *,
     min_post_drop_points: float = 50.0,
     min_post_drop_weeks: int = 3,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect dropped players who scored well on another franchise.
 
@@ -1694,14 +1740,14 @@ def detect_the_one_that_got_away(
 
         # Which franchises did they end up on?
         post_franchises = sorted({r.franchise_id for r in post_drop})
-        franchise_label = post_franchises[0] if len(post_franchises) == 1 else "other teams"
+        franchise_label = fname(post_franchises[0]) if len(post_franchises) == 1 else "other teams"
 
         seen_players.add(player_id)
         angles.append(NarrativeAngle(
             category="THE_ONE_THAT_GOT_AWAY",
             headline=(
-                f"Since being dropped by {dropping_franchise}, "
-                f"{player_id} has scored {total_post:.1f} points "
+                f"Since being dropped by {fname(dropping_franchise)}, "
+                f"{pname(player_id)} has scored {total_post:.1f} points "
                 f"across {len(post_drop)} weeks for {franchise_label}"
             ),
             detail="",
@@ -1723,6 +1769,8 @@ def detect_faab_roi(
     *,
     min_roi_multiplier: float = 3.0,
     min_weeks: int = 3,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect FAAB acquisitions whose total points exceed min_roi_multiplier × bid.
 
@@ -1758,9 +1806,9 @@ def detect_faab_roi(
             angles.append(NarrativeAngle(
                 category="FAAB_ROI_NOTABLE",
                 headline=(
-                    f"{acq.player_id} (${acq.bid_amount:.0f} FAAB) has scored "
+                    f"{pname(acq.player_id)} (${acq.bid_amount:.0f} FAAB) has scored "
                     f"{total_pts:.1f} points across {starter_weeks} starts "
-                    f"for {acq.franchise_id} — {ratio:.1f}x the acquisition cost"
+                    f"for {fname(acq.franchise_id)} — {ratio:.1f}x the acquisition cost"
                 ),
                 detail="",
                 strength=2,  # NOTABLE per spec
@@ -1778,6 +1826,8 @@ def detect_faab_franchise_efficiency(
     faab_acquisitions: List[_FaabAcquisition],
     current_season: int,
     target_week: int,
+    *,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect franchises whose FAAB pickups significantly outproduce the league average.
 
@@ -1821,7 +1871,7 @@ def detect_faab_franchise_efficiency(
         return [NarrativeAngle(
             category="FAAB_FRANCHISE_EFFICIENCY",
             headline=(
-                f"{best_fid}'s FAAB pickups have produced {best_pts:.1f} total points "
+                f"{fname(best_fid)}'s FAAB pickups have produced {best_pts:.1f} total points "
                 f"this season — the most in the league"
             ),
             detail=f"League average for FAAB pickup production: {avg_pts:.1f}.",
@@ -1842,6 +1892,7 @@ def detect_waiver_dependency(
     target_week: int,
     *,
     dependency_threshold: float = 0.30,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect franchises where 30%+ of scoring comes from non-drafted players.
 
@@ -1887,7 +1938,7 @@ def detect_waiver_dependency(
             angles.append(NarrativeAngle(
                 category="WAIVER_DEPENDENCY",
                 headline=(
-                    f"{pct}% of {fid}'s starter scoring this season "
+                    f"{pct}% of {fname(fid)}'s starter scoring this season "
                     f"came from non-drafted players"
                 ),
                 detail=f"Non-drafted: {nondrafted:.1f} pts of {total:.1f} total.",
@@ -1908,6 +1959,8 @@ def detect_player_narrative_angles_v1(
     season: int,
     week: int,
     tenure_map: Optional[Dict[str, int]] = None,
+    pname: NameFn = _identity,
+    fname: NameFn = _identity,
 ) -> List[NarrativeAngle]:
     """Detect all Dimension 1-5 player narrative angles for a given week.
 
@@ -1919,6 +1972,8 @@ def detect_player_narrative_angles_v1(
 
     tenure_map: optional dict of franchise_id -> first_season_with_current_owner.
         Used by PLAYER_FRANCHISE_RECORD for tenure-scoped attribution.
+    pname: callable resolving player_id -> display name (default: identity).
+    fname: callable resolving franchise_id -> display name (default: identity).
 
     Returns angles sorted by strength descending then category ascending
     for determinism. Returns an empty list when no player scoring data
@@ -1939,24 +1994,24 @@ def detect_player_narrative_angles_v1(
     # ── Dimension 1: Short-horizon (current season only) ──
 
     # Detector 1: Hot streaks
-    all_angles.extend(detect_player_hot_streak(season_records, week))
+    all_angles.extend(detect_player_hot_streak(season_records, week, pname=pname, fname=fname))
 
     # Detector 2: Cold streaks
-    all_angles.extend(detect_player_cold_streak(season_records, week))
+    all_angles.extend(detect_player_cold_streak(season_records, week, pname=pname, fname=fname))
 
     # Detector 3: Season high
-    all_angles.extend(detect_player_season_high(season_records, week))
+    all_angles.extend(detect_player_season_high(season_records, week, pname=pname, fname=fname))
 
     # Detector 4: Boom/bust
-    all_angles.extend(detect_player_boom_bust(season_records, week))
+    all_angles.extend(detect_player_boom_bust(season_records, week, pname=pname, fname=fname))
 
     # Detector 5: Breakout
-    all_angles.extend(detect_player_breakout(season_records, week))
+    all_angles.extend(detect_player_breakout(season_records, week, pname=pname, fname=fname))
 
     # Detector 6: Zero-point starters
     alltime_zeros = _load_all_seasons_starter_zeros(db_path, league_id)
     all_angles.extend(detect_zero_point_starter(
-        season_records, week, alltime_zero_count=alltime_zeros,
+        season_records, week, alltime_zero_count=alltime_zeros, pname=pname, fname=fname,
     ))
 
     # ── Dimension 2: Long-horizon (cross-season) ──
@@ -1967,27 +2022,27 @@ def detect_player_narrative_angles_v1(
     if all_seasons_records:
         # Detector 7: All-time high
         all_angles.extend(detect_player_alltime_high(
-            all_seasons_records, season, week,
+            all_seasons_records, season, week, pname=pname, fname=fname,
         ))
 
         # Detector 8: Franchise record (tenure-scoped)
         all_angles.extend(detect_player_franchise_record(
-            all_seasons_records, season, week, tenure_map=tenure_map,
+            all_seasons_records, season, week, tenure_map=tenure_map, pname=pname, fname=fname,
         ))
 
         # Detector 9: Career milestone
         all_angles.extend(detect_career_milestone(
-            all_seasons_records, season, week,
+            all_seasons_records, season, week, pname=pname, fname=fname,
         ))
 
         # Detector 10: Player franchise tenure (week 1 only)
         all_angles.extend(detect_player_franchise_tenure(
-            all_seasons_records, season, week,
+            all_seasons_records, season, week, pname=pname, fname=fname,
         ))
 
         # Detector 11: Player journey (week 1 only)
         all_angles.extend(detect_player_journey(
-            all_seasons_records, season, week,
+            all_seasons_records, season, week, pname=pname, fname=fname,
         ))
 
         # ── Dimension 3: Player vs. Opponent (scores + matchups) ──
@@ -1997,17 +2052,17 @@ def detect_player_narrative_angles_v1(
         if opponent_index:
             # Detector 12: Player vs. opponent dominance
             all_angles.extend(detect_player_vs_opponent(
-                all_seasons_records, season, week, opponent_index,
+                all_seasons_records, season, week, opponent_index, pname=pname, fname=fname,
             ))
 
             # Detector 13: Revenge game
             all_angles.extend(detect_revenge_game(
-                all_seasons_records, season, week, opponent_index,
+                all_seasons_records, season, week, opponent_index, pname=pname, fname=fname,
             ))
 
             # Detector 14: Player duel
             all_angles.extend(detect_player_duel(
-                all_seasons_records, season, week, opponent_index,
+                all_seasons_records, season, week, opponent_index, pname=pname, fname=fname,
             ))
 
         # ── Dimension 4: Trade & Transaction Outcomes ──
@@ -2016,14 +2071,14 @@ def detect_player_narrative_angles_v1(
         trade_pairs = _load_season_trades(db_path, league_id, season)
         if trade_pairs:
             all_angles.extend(detect_trade_outcome(
-                all_seasons_records, trade_pairs, season, week,
+                all_seasons_records, trade_pairs, season, week, pname=pname, fname=fname,
             ))
 
         # Detector 16: The one that got away
         drops = _load_season_drops(db_path, league_id, season)
         if drops:
             all_angles.extend(detect_the_one_that_got_away(
-                all_seasons_records, drops, season, week,
+                all_seasons_records, drops, season, week, pname=pname, fname=fname,
             ))
 
         # ── Dimension 5: FAAB & Waiver Efficiency ──
@@ -2032,19 +2087,19 @@ def detect_player_narrative_angles_v1(
         faab_acqs = _load_season_faab_acquisitions(db_path, league_id, season)
         if faab_acqs:
             all_angles.extend(detect_faab_roi(
-                all_seasons_records, faab_acqs, season, week,
+                all_seasons_records, faab_acqs, season, week, pname=pname, fname=fname,
             ))
 
             # Detector 18: FAAB franchise efficiency
             all_angles.extend(detect_faab_franchise_efficiency(
-                all_seasons_records, faab_acqs, season, week,
+                all_seasons_records, faab_acqs, season, week, fname=fname,
             ))
 
         # Detector 19: Waiver dependency
         drafted = _load_season_drafted_players(db_path, league_id, season)
         if drafted:
             all_angles.extend(detect_waiver_dependency(
-                all_seasons_records, drafted, season, week,
+                all_seasons_records, drafted, season, week, fname=fname,
             ))
 
     # Deterministic sort: strength desc, then category asc, then headline asc

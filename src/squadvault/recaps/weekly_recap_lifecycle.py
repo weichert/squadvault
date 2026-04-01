@@ -770,6 +770,8 @@ def generate_weekly_recap_draft(
             _player_angles = detect_player_narrative_angles_v1(
                 db_path=db_path, league_id=league_id, season=season, week=week_index,
                 tenure_map=_cl_tenure_map,
+                pname=lambda pid: _cl_player_name_map.get(pid, pid),
+                fname=lambda fid: _cl_name_map.get(fid, fid),
             )
             _all_detected_angles.extend(_player_angles)
         except Exception:
