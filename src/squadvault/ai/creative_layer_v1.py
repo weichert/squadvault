@@ -227,6 +227,7 @@ def _build_user_prompt(
     player_highlights: str = "",
     tone_preset: str = "",
     seasons_count: int = 0,
+    verification_feedback: str = "",
 ) -> str:
     """Build the user-turn prompt with full context feed.
 
@@ -290,6 +291,18 @@ def _build_user_prompt(
     )
     parts.append(facts_block)
     parts.append("")
+
+    if verification_feedback:
+        parts.append("=== VERIFICATION CORRECTIONS (your previous draft was rejected) ===")
+        parts.append(
+            "CRITICAL: Your previous draft contained factual errors that were caught "
+            "by the verification system. The specific errors are listed below. "
+            "Do NOT repeat these errors. If you are unsure about a fact, OMIT IT — "
+            "silence is preferred over fabrication."
+        )
+        parts.append(verification_feedback.strip())
+        parts.append("")
+
     parts.append("Write the recap now.")
 
     return "\n".join(parts)
@@ -324,6 +337,7 @@ def draft_narrative_v1(
     tone_preset: str = "",
     voice_profile: str = "",
     seasons_count: int = 0,
+    verification_feedback: str = "",
 ) -> str | None:
     """Attempt to produce a governed prose narrative draft.
 
@@ -391,6 +405,7 @@ def draft_narrative_v1(
         player_highlights=player_highlights,
         tone_preset=tone_preset,
         seasons_count=seasons_count,
+        verification_feedback=verification_feedback,
     )
 
     # EAL-modulated temperature

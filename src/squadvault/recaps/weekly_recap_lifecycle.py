@@ -984,6 +984,7 @@ def generate_weekly_recap_draft(
         _base_rendered_text = rendered_text
 
         # SV_VERIFICATION_RETRY_LOOP_BEGIN
+        _retry_feedback = ""  # Verification corrections for retry attempts
         for _attempt in range(1, _MAX_VERIFICATION_RETRIES + 1):
             _verification_attempts = _attempt
 
@@ -1004,6 +1005,7 @@ def generate_weekly_recap_draft(
                 tone_preset=_ctx.tone_preset,
                 voice_profile=_ctx.voice_profile,
                 seasons_count=_ctx.seasons_count,
+                verification_feedback=_retry_feedback,
             )
 
             if not _narrative_draft:
@@ -1043,9 +1045,17 @@ def generate_weekly_recap_draft(
 
             # Hard failure(s) detected
             if _attempt < _MAX_VERIFICATION_RETRIES:
+                # Build correction feedback for the next attempt
+                _fb_lines: list[str] = []
+                for _vf in _verification_result.hard_failures:
+                    _fb_lines.append(
+                        f"- ERROR: {_vf.claim}. CORRECTION: {_vf.evidence}"
+                    )
+                _retry_feedback = "\n".join(_fb_lines)
+
                 logger.info(
                     "Verification V1: %d hard failure(s) on attempt %d/%d, "
-                    "retrying — league=%s season=%d week=%d",
+                    "retrying with corrections — league=%s season=%d week=%d",
                     _verification_result.hard_failure_count,
                     _attempt, _MAX_VERIFICATION_RETRIES,
                     league_id, season, week_index,
