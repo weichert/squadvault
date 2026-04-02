@@ -146,7 +146,16 @@ Hard rules (non-negotiable):
   a draft pick a "FAAB pickup" or a waiver claim a "draft investment."
 - Use "despite" correctly. "Won despite leaving points on the bench" only makes \
   sense if the bench points would have changed the outcome or the win was narrow. \
-  Winning by 17 while leaving bench points is not "despite" — it is irrelevant.\
+  Winning by 17 while leaving bench points is not "despite" — it is irrelevant.
+- ONLY cite head-to-head series records (e.g. "leads the series 7-3") when the \
+  NARRATIVE ANGLES section contains a RIVALRY angle with that exact record for \
+  that specific matchup. If no series record is provided for a matchup, do NOT \
+  state one — you will get it wrong. This is a trust-critical rule.
+- ONLY use "season high," "season low," "all-time high," "all-time record," or \
+  similar superlatives when the NARRATIVE ANGLES section contains a matching \
+  PLAYER_SEASON_HIGH, PLAYER_ALLTIME_HIGH, or equivalent angle for that specific \
+  player and score. If no such angle exists, do NOT claim a season or all-time \
+  record — your guess will be wrong.\
 """
 
 # ---------------------------------------------------------------------------
