@@ -421,6 +421,21 @@ def _detect_rivalry_angles(
                 strength=1,
                 franchise_ids=(wm.winner_id, wm.loser_id),
             ))
+        # Competitive long series — neither dominant nor even, but enough
+        # history to provide a verified H2H record the model would otherwise
+        # invent.  15+ meetings catches pairs like 17-14 over 31 games.
+        elif total >= 15:
+            record_str = f"{h2h.a_wins}-{h2h.b_wins}"
+            if h2h.ties:
+                record_str += f"-{h2h.ties}"
+            strength = 2 if total >= 25 else 1
+            angles.append(NarrativeAngle(
+                category="RIVALRY",
+                headline=f"Long series: {fname(wm.winner_id)} vs {fname(wm.loser_id)} ({record_str}, {total} meetings {tenure_label})",
+                detail="Competitive series — neither side dominant.",
+                strength=strength,
+                franchise_ids=(wm.winner_id, wm.loser_id),
+            ))
 
     return angles
 
