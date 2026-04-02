@@ -934,6 +934,208 @@ def verify_banned_phrases(
     return failures
 
 
+# ── Category 6: Cross-Week Consistency (batch only) ──────────────────
+
+@dataclass(frozen=True)
+class _StreakClaim:
+    """An extracted streak claim from a specific week's recap."""
+    week: int
+    franchise_id: str
+    franchise_name: str
+    is_losing: bool
+    count: int
+
+
+@dataclass(frozen=True)
+class _SeriesClaim:
+    """An extracted series record claim from a specific week's recap."""
+    week: int
+    fid_a: str
+    fid_b: str
+    name_a: str
+    name_b: str
+    wins: int
+    losses: int
+
+
+def _extract_streak_claims(
+    narrative: str,
+    week: int,
+    reverse_name_map: dict[str, str],
+) -> list[_StreakClaim]:
+    """Extract streak count claims from a single week's recap."""
+    claims: list[_StreakClaim] = []
+    for match in _STREAK_PATTERN.finditer(narrative):
+        count_str = match.group(1) or match.group(2)
+        if not count_str:
+            continue
+        count = int(count_str)
+        context = match.group(0).lower()
+        is_losing = any(w in context for w in ("losing", "lost", "loss", "skid"))
+
+        fid = _find_nearby_franchise(
+            narrative, match.start(), reverse_name_map, window=150,
+        )
+        if fid is None:
+            continue
+        fname = _resolve_display_name(fid, reverse_name_map)
+        claims.append(_StreakClaim(
+            week=week, franchise_id=fid, franchise_name=fname,
+            is_losing=is_losing, count=count,
+        ))
+    return claims
+
+
+def _extract_series_claims(
+    narrative: str,
+    week: int,
+    reverse_name_map: dict[str, str],
+) -> list[_SeriesClaim]:
+    """Extract series record claims from a single week's recap."""
+    claims: list[_SeriesClaim] = []
+    for match in _SERIES_RECORD_PATTERN.finditer(narrative):
+        if match.group(1) is not None:
+            w_str, l_str = match.group(1), match.group(2)
+        else:
+            w_str, l_str = match.group(4), match.group(5)
+        try:
+            wins, losses = int(w_str), int(l_str)
+        except (ValueError, TypeError):
+            continue
+
+        fid_a, fid_b = _find_two_franchises(
+            narrative, match.start(), reverse_name_map,
+        )
+        if fid_a is None or fid_b is None:
+            continue
+
+        # Normalize pair order for consistent comparison
+        if fid_a > fid_b:
+            fid_a, fid_b = fid_b, fid_a
+            wins, losses = losses, wins
+
+        name_a = _resolve_display_name(fid_a, reverse_name_map)
+        name_b = _resolve_display_name(fid_b, reverse_name_map)
+        claims.append(_SeriesClaim(
+            week=week, fid_a=fid_a, fid_b=fid_b,
+            name_a=name_a, name_b=name_b,
+            wins=wins, losses=losses,
+        ))
+    return claims
+
+
+def verify_cross_week_consistency(
+    week_narratives: list[tuple[int, str]],
+    reverse_name_map: dict[str, str],
+) -> list[VerificationFailure]:
+    """Check for contradictory facts across weeks in a season.
+
+    This is a batch-only check — it requires all weeks' narratives.
+    It catches cases like "15-game streak" in week 10 and "14 is the
+    longest" in week 14.
+
+    Checks:
+    1. Streak claims: a franchise's claimed streak count for the same
+       streak type should not decrease between weeks without a reset.
+    2. Series records: an H2H record between the same two franchises
+       should change by at most 1 game per week.
+    """
+    failures: list[VerificationFailure] = []
+
+    # ── Streak consistency ──
+    # Group streak claims by (franchise_id, is_losing)
+    streak_claims: dict[tuple[str, bool], list[_StreakClaim]] = {}
+    for week_idx, narrative in week_narratives:
+        for claim in _extract_streak_claims(narrative, week_idx, reverse_name_map):
+            key = (claim.franchise_id, claim.is_losing)
+            streak_claims.setdefault(key, []).append(claim)
+
+    for (fid, is_losing), claims in streak_claims.items():
+        if len(claims) < 2:
+            continue
+        claims_sorted = sorted(claims, key=lambda c: c.week)
+        for i in range(len(claims_sorted) - 1):
+            prev = claims_sorted[i]
+            curr = claims_sorted[i + 1]
+            streak_type = "losing" if is_losing else "winning"
+            # A streak count claimed in a later week should be >= the earlier
+            # claim (it can only grow or reset). If it decreased, either the
+            # earlier or later claim is wrong.
+            # Allow resets (curr.count < prev.count is OK if the streak broke
+            # and restarted). But flag if both are large — suggests the same
+            # ongoing streak is being miscounted.
+            if (curr.count < prev.count
+                    and prev.count >= 3
+                    and curr.count >= 3
+                    and curr.week - prev.week <= 3):
+                failures.append(VerificationFailure(
+                    category="CONSISTENCY",
+                    severity="HARD",
+                    claim=(
+                        f"{prev.franchise_name}: {streak_type} streak "
+                        f"claimed as {prev.count} in Week {prev.week} "
+                        f"but {curr.count} in Week {curr.week}"
+                    ),
+                    evidence=(
+                        f"A {streak_type} streak cannot decrease from "
+                        f"{prev.count} to {curr.count} over "
+                        f"{curr.week - prev.week} week(s) without a reset."
+                    ),
+                ))
+
+    # ── Series record consistency ──
+    # Group series claims by normalized franchise pair
+    series_claims: dict[tuple[str, str], list[_SeriesClaim]] = {}
+    for week_idx, narrative in week_narratives:
+        for sc in _extract_series_claims(narrative, week_idx, reverse_name_map):
+            skey = (sc.fid_a, sc.fid_b)
+            series_claims.setdefault(skey, []).append(sc)
+
+    for (_sa, _sb), s_claims in series_claims.items():
+        if len(s_claims) < 2:
+            continue
+        s_sorted = sorted(s_claims, key=lambda c: c.week)
+        for i in range(len(s_sorted) - 1):
+            s_prev = s_sorted[i]
+            s_curr = s_sorted[i + 1]
+            prev_total = s_prev.wins + s_prev.losses
+            curr_total = s_curr.wins + s_curr.losses
+            weeks_between = s_curr.week - s_prev.week
+            # Between two weeks, teams can play at most once per week.
+            # So the total meetings can increase by at most weeks_between.
+            max_change = weeks_between
+            if curr_total - prev_total > max_change:
+                failures.append(VerificationFailure(
+                    category="CONSISTENCY",
+                    severity="HARD",
+                    claim=(
+                        f"{s_prev.name_a} vs {s_prev.name_b}: series record "
+                        f"changed from {s_prev.wins}-{s_prev.losses} (Week {s_prev.week}) "
+                        f"to {s_curr.wins}-{s_curr.losses} (Week {s_curr.week})"
+                    ),
+                    evidence=(
+                        f"Total meetings jumped from {prev_total} to {curr_total} "
+                        f"over {weeks_between} week(s) — impossible increase."
+                    ),
+                ))
+            # Also check if wins or losses decreased (impossible)
+            if s_curr.wins < s_prev.wins or s_curr.losses < s_prev.losses:
+                failures.append(VerificationFailure(
+                    category="CONSISTENCY",
+                    severity="HARD",
+                    claim=(
+                        f"{s_prev.name_a} vs {s_prev.name_b}: series record "
+                        f"changed from {s_prev.wins}-{s_prev.losses} (Week {s_prev.week}) "
+                        f"to {s_curr.wins}-{s_curr.losses} (Week {s_curr.week})"
+                    ),
+                    evidence=(
+                        "Wins or losses cannot decrease between weeks."
+                    ),
+                ))
+
+    return failures
+
+
 # ── Orchestrator ─────────────────────────────────────────────────────
 
 

@@ -11,7 +11,10 @@ import argparse
 import sys
 
 from squadvault.core.recaps.verification.recap_verifier_v1 import (
-    VerificationResult,
+    _build_reverse_name_map,
+    _extract_shareable_recap,
+    _load_franchise_names,
+    verify_cross_week_consistency,
     verify_recap_v1,
 )
 from squadvault.core.storage.session import DatabaseSession
@@ -102,6 +105,25 @@ def main() -> None:
         print(f"Hard by category: {', '.join(f'{k}={v}' for k, v in sorted(hard_by_category.items()))}")
     if soft_by_category:
         print(f"Soft by category: {', '.join(f'{k}={v}' for k, v in sorted(soft_by_category.items()))}")
+
+    # ── Cross-week consistency check ──
+    name_map = _load_franchise_names(args.db, args.league, args.season)
+    reverse_name_map = _build_reverse_name_map(name_map)
+    week_narratives = [
+        (w, _extract_shareable_recap(t)) for w, t in weeks
+    ]
+    consistency_failures = verify_cross_week_consistency(
+        week_narratives, reverse_name_map,
+    )
+    if consistency_failures:
+        print()
+        print(f"Cross-week consistency: {len(consistency_failures)} issue(s)")
+        print("-" * 72)
+        for f in consistency_failures:
+            print(f"  [{f.category}] {f.claim}")
+            print(f"   → {f.evidence}")
+    else:
+        print("\nCross-week consistency: no contradictions found.")
 
 
 if __name__ == "__main__":

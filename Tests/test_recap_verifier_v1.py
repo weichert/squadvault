@@ -25,6 +25,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     _MatchupFact,
     _resolve_display_name,
     verify_banned_phrases,
+    verify_cross_week_consistency,
     verify_recap_v1,
     verify_scores,
     verify_series_records,
@@ -1069,3 +1070,109 @@ class TestVerifyBannedPhrases:
         assert result.soft_failure_count >= 1
         assert any(f.category == "BANNED_PHRASE" for f in result.soft_failures)
 
+
+# ── Unit: Category 6 — Cross-Week Consistency ────────────────────────
+
+
+class TestCrossWeekStreakConsistency:
+    def _reverse(self):
+        return {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Beta Squad": "F2", "beta squad": "F2",
+        }
+
+    def test_consistent_growing_streak_passes(self):
+        reverse = self._reverse()
+        weeks = [
+            (3, "Alpha Team has a 3-game winning streak."),
+            (4, "Alpha Team extended their 4-game winning streak."),
+            (5, "Alpha Team has won 5 straight games."),
+        ]
+        failures = verify_cross_week_consistency(weeks, reverse)
+        assert failures == []
+
+    def test_streak_decrease_flagged(self):
+        """Same streak type decreases between close weeks — contradiction."""
+        reverse = self._reverse()
+        weeks = [
+            (8, "Alpha Team is on a 5-game winning streak."),
+            (10, "Alpha Team has a 3-game winning streak."),
+        ]
+        failures = verify_cross_week_consistency(weeks, reverse)
+        assert len(failures) == 1
+        assert failures[0].category == "CONSISTENCY"
+        assert "5" in failures[0].claim
+        assert "3" in failures[0].claim
+
+    def test_streak_reset_allowed(self):
+        """Small streak after a gap is fine — streak may have broken and restarted."""
+        reverse = self._reverse()
+        weeks = [
+            (3, "Alpha Team is on a 3-game winning streak."),
+            (10, "Alpha Team has won 2 straight games."),
+        ]
+        # Gap of 7 weeks and count dropped below 3 — allowed (reset)
+        failures = verify_cross_week_consistency(weeks, reverse)
+        assert failures == []
+
+    def test_different_franchises_independent(self):
+        reverse = self._reverse()
+        weeks = [
+            (3, "Alpha Team is on a 5-game winning streak."),
+            (5, "Beta Squad has a 3-game winning streak."),
+        ]
+        failures = verify_cross_week_consistency(weeks, reverse)
+        assert failures == []
+
+    def test_empty_weeks_passes(self):
+        reverse = self._reverse()
+        failures = verify_cross_week_consistency([], reverse)
+        assert failures == []
+
+
+class TestCrossWeekSeriesConsistency:
+    def _reverse(self):
+        return {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Beta Squad": "F2", "beta squad": "F2",
+        }
+
+    def test_series_grows_by_one_passes(self):
+        reverse = self._reverse()
+        weeks = [
+            (3, "Alpha Team leads the series 7-3 against Beta Squad."),
+            (10, "Alpha Team leads the series 8-3 against Beta Squad."),
+        ]
+        failures = verify_cross_week_consistency(weeks, reverse)
+        assert failures == []
+
+    def test_series_total_jumps_impossibly(self):
+        """Total meetings can't jump by more than weeks_between."""
+        reverse = self._reverse()
+        weeks = [
+            (3, "Alpha Team leads the series 7-3 against Beta Squad."),
+            (5, "Alpha Team leads the series 12-5 against Beta Squad."),
+        ]
+        # 10 total -> 17 total in 2 weeks = impossible
+        failures = verify_cross_week_consistency(weeks, reverse)
+        assert len(failures) >= 1
+        assert any(f.category == "CONSISTENCY" for f in failures)
+
+    def test_series_wins_decrease_flagged(self):
+        """Wins can never decrease."""
+        reverse = self._reverse()
+        weeks = [
+            (3, "Alpha Team leads the series 7-3 against Beta Squad."),
+            (8, "Alpha Team leads the series 6-4 against Beta Squad."),
+        ]
+        failures = verify_cross_week_consistency(weeks, reverse)
+        assert len(failures) >= 1
+        assert any("decrease" in f.evidence.lower() for f in failures)
+
+    def test_single_week_no_failures(self):
+        reverse = self._reverse()
+        weeks = [
+            (3, "Alpha Team leads the series 7-3 against Beta Squad."),
+        ]
+        failures = verify_cross_week_consistency(weeks, reverse)
+        assert failures == []
