@@ -537,6 +537,18 @@ def verify_superlatives(
 
     # Check "all-time" / "league history" / "across N seasons" claims
     for match in _ALLTIME_PATTERN.finditer(recap_text):
+        # Bug fix: "all-time" in series context (e.g. "all-time series
+        # dominance to 21-7") is about H2H scope, not a scoring record.
+        # Check the surrounding text for series-context words and skip.
+        _at_start = max(0, match.start() - 10)
+        _at_end = min(len(recap_text), match.end() + 40)
+        _at_context = recap_text[_at_start:_at_end].lower()
+        if re.search(
+            r'all[- ]?time\s+(?:series|meetings?|edge|dominance|lead|head|h2h|rivalry)',
+            _at_context,
+        ):
+            continue
+
         claimed_score = _extract_nearby_score(recap_text, match.start())
         if claimed_score is None:
             continue
@@ -737,12 +749,13 @@ def verify_streaks(
 # ── Category 4: Series Record Verification ───────────────────────────
 
 # Pattern: "X-Y" (W-L record) near series/rivalry keywords
+# (?<!\d) prevents matching the tail of a larger number (e.g. "8-9" from "18-9")
 _SERIES_RECORD_PATTERN = re.compile(
     r'(?:'
     r'(?:leads?|trails?|series|rivalry|all[- ]?time|meetings?|record)\s[^.]{0,40}'
-    r'(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?'
+    r'(?<!\d)(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?'
     r'|'
-    r'(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?\s[^.]{0,40}'
+    r'(?<!\d)(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?\s[^.]{0,40}'
     r'(?:series|rivalry|all[- ]?time|meetings?|record|lead)'
     r')',
     re.IGNORECASE,
@@ -849,6 +862,20 @@ def verify_series_records(
         )
 
         if not matches_ab and not matches_ba:
+            # Bug fix: tenure-scoped records ("4-0 under current ownership")
+            # are a subset of all-time meetings. The verifier only has the
+            # all-time H2H, so it would reject a correct tenure-scoped claim.
+            # Skip verification when tenure context is present — silence over
+            # false positive.
+            _sr_start = max(0, match.start() - 30)
+            _sr_end = min(len(recap_text), match.end() + 80)
+            _sr_context = recap_text[_sr_start:_sr_end].lower()
+            if re.search(
+                r'(?:under\s+current\s+ownership|current\s+owner|tenure)',
+                _sr_context,
+            ):
+                continue
+
             fname_a = _resolve_display_name(fid_a, reverse_name_map)
             fname_b = _resolve_display_name(fid_b, reverse_name_map)
             actual_str = f"{actual_a_wins}-{actual_b_wins}"
