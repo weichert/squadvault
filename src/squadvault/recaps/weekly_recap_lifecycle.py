@@ -1078,7 +1078,6 @@ def generate_weekly_recap_draft(
                     + "\n\nNote: Narrative draft failed verification after "
                     + f"{_attempt} attempt(s). Falling back to facts-only "
                     + "output — silence over fabrication.\n"
-                    + "Last failure(s): " + _fail_details + "\n"
                 )
         # SV_VERIFICATION_RETRY_LOOP_END
     # SV_CREATIVE_LAYER_V1_END
