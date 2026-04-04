@@ -538,7 +538,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 5
+        assert result.checks_run == 6
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -619,7 +619,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 5
+        assert result.checks_run == 6
 
 
 class TestVerifyRecapV1WithPlayerScores:

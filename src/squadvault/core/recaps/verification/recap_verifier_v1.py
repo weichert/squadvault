@@ -1163,6 +1163,172 @@ def verify_cross_week_consistency(
     return failures
 
 
+# ── Category 6: Player Score Verification ────────────────────────────
+
+# Player score pattern: 1-2 digit scores with 2 decimal places
+_PLAYER_SCORE_PATTERN = re.compile(r'(\d{1,2}\.\d{2})')
+
+
+def _load_week_player_scores(
+    db_path: str, league_id: str, season: int, week: int,
+) -> dict[str, float]:
+    """Load player_id -> score for all players in a given week."""
+    scores: dict[str, float] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT json_extract(payload_json, '$.player_id'),
+                      CAST(json_extract(payload_json, '$.score') AS REAL)
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WEEKLY_PLAYER_SCORE'
+                 AND CAST(json_extract(payload_json, '$.week') AS INTEGER) = ?""",
+            (str(league_id), int(season), int(week)),
+        ).fetchall()
+    for row in rows:
+        if row[0] and row[1] is not None:
+            scores[str(row[0])] = float(row[1])
+    return scores
+
+
+def _build_player_display_to_score(
+    player_scores: dict[str, float],
+    player_name_map: dict[str, str],
+) -> dict[str, float]:
+    """Build 'first last' (lowered) -> score lookup.
+
+    Converts 'Last, First' from name map to 'first last' for matching
+    against recap prose where the model writes 'Josh Allen' not 'Allen, Josh'.
+    """
+    lookup: dict[str, float] = {}
+    for pid, score in player_scores.items():
+        display = player_name_map.get(pid)
+        if not display:
+            continue
+        # Convert "Last, First" -> "first last"
+        if ", " in display:
+            parts = display.split(", ", 1)
+            first_last = f"{parts[1]} {parts[0]}".strip().lower()
+            # Also store "last" alone for single-name matches
+            lookup[first_last] = score
+            # Handle suffixes: "Penix Jr., Michael" -> "michael penix jr."
+            # Already handled by the split above
+        else:
+            lookup[display.strip().lower()] = score
+    return lookup
+
+
+def _load_player_name_map_for_verify(
+    db_path: str, league_id: str,
+) -> dict[str, str]:
+    """Load player_id -> display name map for verification."""
+    name_map: dict[str, str] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT player_id, name FROM player_directory
+               WHERE league_id = ? ORDER BY season DESC""",
+            (str(league_id),),
+        ).fetchall()
+    for row in rows:
+        pid = str(row[0]).strip()
+        name = str(row[1]).strip() if row[1] else ""
+        if pid and name and pid not in name_map:
+            name_map[pid] = name
+    return name_map
+
+
+def verify_player_scores(
+    recap_text: str,
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week: int,
+) -> list[VerificationFailure]:
+    """Verify player scores attributed in recap text against canonical data.
+
+    Searches for player names (from the player directory) in the recap,
+    finds nearby decimal scores, and checks them against the actual
+    WEEKLY_PLAYER_SCORE for that player in that week.
+    """
+    failures: list[VerificationFailure] = []
+
+    player_scores = _load_week_player_scores(db_path, league_id, season, week)
+    if not player_scores:
+        return []
+
+    player_name_map = _load_player_name_map_for_verify(db_path, league_id)
+    display_to_score = _build_player_display_to_score(player_scores, player_name_map)
+
+    if not display_to_score:
+        return []
+
+    text_lower = recap_text.lower()
+
+    # For each known player name found in the recap, check nearby scores
+    checked: set[tuple[str, float]] = set()  # avoid duplicate checks
+
+    for display_name, actual_score in display_to_score.items():
+        # Skip very short names (3 chars or less) to avoid false matches
+        if len(display_name) <= 5:
+            continue
+
+        idx = text_lower.find(display_name)
+        while idx >= 0:
+            # Look for scores within 40 chars after the name
+            window_start = idx
+            window_end = min(len(recap_text), idx + len(display_name) + 50)
+            window = recap_text[window_start:window_end]
+
+            for m in _PLAYER_SCORE_PATTERN.finditer(window):
+                try:
+                    claimed_score = float(m.group(1))
+                except ValueError:
+                    continue
+
+                # Skip if we already checked this name+score pair
+                check_key = (display_name, claimed_score)
+                if check_key in checked:
+                    continue
+                checked.add(check_key)
+
+                # Skip scores that look like dollar amounts (preceded by $)
+                score_abs_pos = window_start + m.start()
+                if score_abs_pos > 0 and recap_text[score_abs_pos - 1] == "$":
+                    continue
+
+                # Check if the claimed score matches the actual score
+                if abs(claimed_score - actual_score) > 0.01:
+                    # The score near this player name doesn't match their
+                    # actual score. This could be a fabrication or
+                    # misattribution.
+                    # Only flag if the claimed score isn't ANY valid player
+                    # score this week (avoids false positives from adjacent
+                    # player mentions).
+                    valid_scores = set(
+                        round(s, 2) for s in player_scores.values()
+                    )
+                    if round(claimed_score, 2) not in valid_scores:
+                        orig_display = display_name.title()
+                        failures.append(VerificationFailure(
+                            category="PLAYER_SCORE",
+                            severity="HARD",
+                            claim=(
+                                f"Player score {claimed_score:.2f} "
+                                f"attributed to {orig_display}"
+                            ),
+                            evidence=(
+                                f"No player scored {claimed_score:.2f} in "
+                                f"Week {week}. {orig_display}'s actual "
+                                f"score: {actual_score:.2f}."
+                            ),
+                        ))
+
+            # Find next occurrence of this name
+            idx = text_lower.find(display_name, idx + 1)
+
+    return failures
+
+
 # ── Orchestrator ─────────────────────────────────────────────────────
 
 
@@ -1236,6 +1402,16 @@ def verify_recap_v1(
     # Category 5: Banned phrase / speculation detection (SOFT)
     checks_run += 1
     all_failures.extend(verify_banned_phrases(narrative))
+
+    # Category 6: Player score verification (HARD)
+    checks_run += 1
+    all_failures.extend(verify_player_scores(
+        narrative,
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
+        week=week,
+    ))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")
     soft = tuple(f for f in all_failures if f.severity == "SOFT")
