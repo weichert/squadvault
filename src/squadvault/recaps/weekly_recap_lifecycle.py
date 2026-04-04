@@ -611,6 +611,40 @@ def _derive_prompt_context(
         logger.debug("Season context derivation failed: %s", e)
         _season_ctx = None
 
+    # -- Player season high/low reference data --
+    # Data-layer fix: the model sees high player scores and guesses they're
+    # season records. Providing the actual player season high lets the model
+    # compare and self-correct. Give the model verified data and it cites
+    # verified data; withhold it and it invents.
+    try:
+        with DatabaseSession(db_path) as _psh_con:
+            _psh_row = _psh_con.execute(
+                """SELECT json_extract(me.payload_json, '$.player_name'),
+                          json_extract(me.payload_json, '$.score'),
+                          json_extract(me.payload_json, '$.week'),
+                          json_extract(me.payload_json, '$.franchise_id')
+                   FROM v_canonical_best_events ce
+                   JOIN memory_events me ON me.id = ce.best_memory_event_id
+                   WHERE ce.league_id = ? AND ce.season = ?
+                     AND ce.event_type = 'WEEKLY_PLAYER_SCORE'
+                     AND CAST(json_extract(me.payload_json, '$.week') AS INTEGER) <= ?
+                   ORDER BY CAST(json_extract(me.payload_json, '$.score') AS REAL) DESC
+                   LIMIT 1""",
+                (league_id, season, week_index),
+            ).fetchone()
+            if _psh_row and _psh_row[0] and season_context_text:
+                _psh_name = str(_psh_row[0])
+                _psh_score = float(_psh_row[1])
+                _psh_week = int(_psh_row[2])
+                _psh_fid = str(_psh_row[3])
+                _psh_fname = _name_map.get(_psh_fid, _psh_fid)
+                season_context_text = season_context_text.rstrip() + (
+                    f"\n  Player season high: {_psh_name} ({_psh_fname})"
+                    f" — {_psh_score:.2f} (Week {_psh_week})\n"
+                )
+    except Exception as e:
+        logger.debug("Player season high enrichment failed: %s", e)
+
     # -- League history --
     try:
         _history_ctx = derive_league_history_v1(db_path=db_path, league_id=league_id)
