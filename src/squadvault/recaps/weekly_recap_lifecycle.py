@@ -724,6 +724,42 @@ def _derive_prompt_context(
             remaining = len(_all_angles) - len(budgeted)
             if remaining > 0:
                 lines.append(f"  (+ {remaining} minor angles omitted)")
+
+            # -- Negative markers: make absence explicit, not implicit --
+            # When most matchups have rivalry angles, the model infers it should
+            # provide H2H records for the rest and fabricates them.  Explicitly
+            # stating "no data" converts a "remember not to" into "you are told
+            # this does not apply."
+            _rivalry_pairs: set[frozenset[str]] = set()
+            for a in _all_angles:
+                if a.category == "RIVALRY" and len(a.franchise_ids) >= 2:
+                    _rivalry_pairs.add(frozenset(a.franchise_ids[:2]))
+
+            if _season_ctx is not None and _season_ctx.has_this_week_data:
+                lines.append("")
+                for wm in _season_ctx.week_matchups:
+                    pair = frozenset((wm.winner_id, wm.loser_id))
+                    if pair not in _rivalry_pairs:
+                        wname = _name_map.get(wm.winner_id, wm.winner_id)
+                        lname = _name_map.get(wm.loser_id, wm.loser_id)
+                        lines.append(
+                            f"  [NO H2H DATA] {wname} vs {lname}"
+                            " — do not cite a series record for this matchup."
+                        )
+
+            # Superlative negative marker: if no season-high or all-time
+            # angle fired for any player this week, say so explicitly.
+            _has_superlative = any(
+                a.category in ("PLAYER_SEASON_HIGH", "PLAYER_ALLTIME_HIGH")
+                for a in _all_angles
+            )
+            if not _has_superlative:
+                lines.append(
+                    "  [NO SUPERLATIVE] No season-high or all-time record "
+                    "angles detected this week — do not claim any individual "
+                    "scoring records."
+                )
+
             narrative_angles_text = "\n".join(lines) + "\n"
     except Exception as e:
         logger.debug("Narrative angle rendering failed: %s", e)
