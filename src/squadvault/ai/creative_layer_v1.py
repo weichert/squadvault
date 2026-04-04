@@ -287,6 +287,12 @@ def _build_user_prompt(
     # Player highlights block — between WRITER ROOM and VERIFIED FACTS
     if player_highlights and player_highlights.strip():
         parts.append("=== PLAYER HIGHLIGHTS (individual player performances — USE THESE) ===")
+        parts.append(
+            "SUPERLATIVE WARNING: NONE of these scores are season highs, "
+            "all-time records, or any other kind of record UNLESS a "
+            "NARRATIVE ANGLE above explicitly says so. Do NOT infer records "
+            "from these numbers — your inference will be wrong."
+        )
         parts.append(player_highlights.strip())
         parts.append("")
 
