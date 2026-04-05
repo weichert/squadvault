@@ -400,6 +400,36 @@ def verify_scores(
         if abs(mentioned_score - canonical) <= 0.01:
             continue  # correct
 
+        # The nearest franchise doesn't match this score. Before flagging,
+        # check if a DIFFERENT franchise that appears BEFORE the score in
+        # the SAME sentence has this as their canonical score. In recap
+        # prose like "KP demolished Purple Haze 198.80", the verifier
+        # finds "Purple Haze" (nearest) but "KP" (preceding) is the
+        # scorer. Window limited to same sentence to avoid cross-sentence
+        # false matches.
+        _before_start = max(0, pos - 80)
+        _before_raw = recap_text[_before_start:pos]
+        # Limit to same sentence (stop at last period or newline)
+        for _sep in (".", "\n"):
+            _sep_idx = _before_raw.rfind(_sep)
+            if _sep_idx >= 0:
+                _before_raw = _before_raw[_sep_idx + 1:]
+        _before_text = _normalize_apostrophes(_before_raw).lower()
+        _any_preceding_match = False
+        for _fname_lc, _fid in reverse_name_map.items():
+            if not _fname_lc.islower():
+                continue
+            if _fid == franchise_id:
+                continue  # skip the already-checked nearest franchise
+            if _fname_lc not in _before_text:
+                continue
+            _cs = canonical_scores.get(_fid)
+            if _cs is not None and abs(mentioned_score - _cs) <= 0.01:
+                _any_preceding_match = True
+                break
+        if _any_preceding_match:
+            continue  # Score matches a franchise that precedes it in same sentence
+
         fname = _resolve_display_name(franchise_id, reverse_name_map)
 
         failures.append(VerificationFailure(

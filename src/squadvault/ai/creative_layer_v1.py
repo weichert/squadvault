@@ -353,6 +353,7 @@ def draft_narrative_v1(
     voice_profile: str = "",
     seasons_count: int = 0,
     verification_feedback: str = "",
+    temperature_override: float | None = None,
 ) -> str | None:
     """Attempt to produce a governed prose narrative draft.
 
@@ -423,8 +424,12 @@ def draft_narrative_v1(
         verification_feedback=verification_feedback,
     )
 
-    # EAL-modulated temperature
-    temperature = _EAL_TEMPERATURE.get(eal_directive, _TEMPERATURE)
+    # EAL-modulated temperature (override available for retry decay)
+    temperature = (
+        temperature_override
+        if temperature_override is not None
+        else _EAL_TEMPERATURE.get(eal_directive, _TEMPERATURE)
+    )
 
     try:
         import anthropic  # local import: optional dependency

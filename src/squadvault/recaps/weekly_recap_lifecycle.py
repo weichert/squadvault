@@ -1057,8 +1057,13 @@ def generate_weekly_recap_draft(
 
         # SV_VERIFICATION_RETRY_LOOP_BEGIN
         _retry_feedback = ""  # Verification corrections for retry attempts
+        # Temperature decay: reduce temperature on retries to make the model
+        # more conservative. Attempt 1 uses the EAL default, subsequent
+        # attempts step down to reduce fabrication.
+        _retry_temperatures: list[float | None] = [None, 0.5, 0.3]
         for _attempt in range(1, _MAX_VERIFICATION_RETRIES + 1):
             _verification_attempts = _attempt
+            _temp_override = _retry_temperatures[_attempt - 1]
 
             # Reset to pre-narrative state
             rendered_text = _base_rendered_text
@@ -1078,6 +1083,7 @@ def generate_weekly_recap_draft(
                 voice_profile=_ctx.voice_profile,
                 seasons_count=_ctx.seasons_count,
                 verification_feedback=_retry_feedback,
+                temperature_override=_temp_override,
             )
 
             if not _narrative_draft:
