@@ -170,16 +170,32 @@ def _load_player_season_high(
     db_path: str,
     league_id: str,
     season: int,
+    through_week: int | None = None,
 ) -> float | None:
-    """Return the highest individual player score of the season."""
+    """Return the highest individual player score of the season.
+
+    If through_week is provided, only considers scores from weeks
+    <= through_week. This prevents future-data false positives when
+    verifying an earlier week.
+    """
     with DatabaseSession(db_path) as con:
-        row = con.execute(
-            """SELECT MAX(CAST(json_extract(payload_json, '$.score') AS REAL))
-               FROM v_canonical_best_events
-               WHERE league_id = ? AND season = ?
-                 AND event_type = 'WEEKLY_PLAYER_SCORE'""",
-            (str(league_id), int(season)),
-        ).fetchone()
+        if through_week is not None:
+            row = con.execute(
+                """SELECT MAX(CAST(json_extract(payload_json, '$.score') AS REAL))
+                   FROM v_canonical_best_events
+                   WHERE league_id = ? AND season = ?
+                     AND event_type = 'WEEKLY_PLAYER_SCORE'
+                     AND CAST(json_extract(payload_json, '$.week') AS INTEGER) <= ?""",
+                (str(league_id), int(season), int(through_week)),
+            ).fetchone()
+        else:
+            row = con.execute(
+                """SELECT MAX(CAST(json_extract(payload_json, '$.score') AS REAL))
+                   FROM v_canonical_best_events
+                   WHERE league_id = ? AND season = ?
+                     AND event_type = 'WEEKLY_PLAYER_SCORE'""",
+                (str(league_id), int(season)),
+            ).fetchone()
     if row and row[0] is not None:
         return float(row[0])
     return None
@@ -400,28 +416,52 @@ def verify_scores(
         if abs(mentioned_score - canonical) <= 0.01:
             continue  # correct
 
-        # The nearest franchise doesn't match this score. Before flagging,
-        # check if a DIFFERENT franchise that appears BEFORE the score in
-        # the SAME sentence has this as their canonical score. In recap
-        # prose like "KP demolished Purple Haze 198.80", the verifier
-        # finds "Purple Haze" (nearest) but "KP" (preceding) is the
-        # scorer. Window limited to same sentence to avoid cross-sentence
-        # false matches.
-        _before_start = max(0, pos - 80)
-        _before_raw = recap_text[_before_start:pos]
-        # Limit to same sentence (stop at last period or newline)
+        # Check whether the attributed franchise name actually appears
+        # BEFORE the score (in which case the attribution is strong) or
+        # only AFTER (in which case _find_nearby_franchise fell back and
+        # the attribution is weak — the score may belong to a team named
+        # with an alias that isn't in the canonical name map).
+        _before_start = max(0, pos - 150)
+        _before_text_norm = _normalize_apostrophes(
+            recap_text[_before_start:pos]
+        ).lower()
+        _attributed_name_lc = None
+        for _n, _f in reverse_name_map.items():
+            if _f == franchise_id and _n.islower():
+                _attributed_name_lc = _n
+                break
+        _attribution_is_before = (
+            _attributed_name_lc is not None
+            and _attributed_name_lc in _before_text_norm
+        )
+
+        # Weak attribution + score is a valid canonical score for the week:
+        # the model likely wrote "[alias] beat [attributed] <score>" where
+        # [alias] isn't in the name map (e.g. "The Playmakers" vs
+        # "Paradis' Playmakers"). Skip the flag — we cannot reliably
+        # determine the scorer.
+        if not _attribution_is_before:
+            continue
+
+        # Strong attribution (name appears before the score) but the score
+        # is wrong. Before flagging, still check if a DIFFERENT franchise
+        # preceding in the same sentence owns this score — handles
+        # "KP demolished Purple Haze 198.80" where Purple Haze is nearer
+        # but KP owns the score.
+        _sentence_start = max(0, pos - 80)
+        _sentence_raw = recap_text[_sentence_start:pos]
         for _sep in (".", "\n"):
-            _sep_idx = _before_raw.rfind(_sep)
+            _sep_idx = _sentence_raw.rfind(_sep)
             if _sep_idx >= 0:
-                _before_raw = _before_raw[_sep_idx + 1:]
-        _before_text = _normalize_apostrophes(_before_raw).lower()
+                _sentence_raw = _sentence_raw[_sep_idx + 1:]
+        _sentence_text = _normalize_apostrophes(_sentence_raw).lower()
         _any_preceding_match = False
         for _fname_lc, _fid in reverse_name_map.items():
             if not _fname_lc.islower():
                 continue
             if _fid == franchise_id:
-                continue  # skip the already-checked nearest franchise
-            if _fname_lc not in _before_text:
+                continue
+            if _fname_lc not in _sentence_text:
                 continue
             _cs = canonical_scores.get(_fid)
             if _cs is not None and abs(mentioned_score - _cs) <= 0.01:
@@ -1277,7 +1317,8 @@ def verify_player_scores(
     """Verify player scores attributed in recap text against canonical data.
 
     Searches for player names (from the player directory) in the recap,
-    finds nearby decimal scores, and checks them against the actual
+    finds TIGHTLY attributed scores (within 25 chars, no sentence break,
+    no 'by' separator), and checks them against the actual
     WEEKLY_PLAYER_SCORE for that player in that week.
     """
     failures: list[VerificationFailure] = []
@@ -1292,27 +1333,61 @@ def verify_player_scores(
     if not display_to_score:
         return []
 
+    # Collect matchup scores and margins to exclude from player verification.
+    # A number like "40.85" near a player name might be the matchup margin,
+    # not a claim that the player scored 40.85. Exclude all matchup-level
+    # numbers from player score flagging to eliminate this class of false
+    # positive.
+    matchup_numbers: set[float] = set()
+    try:
+        week_matchups_list = _load_season_matchups(db_path, league_id, season)
+        for m in week_matchups_list:
+            if m.week != week:
+                continue
+            matchup_numbers.add(round(m.winner_score, 2))
+            matchup_numbers.add(round(m.loser_score, 2))
+            matchup_numbers.add(round(abs(m.winner_score - m.loser_score), 2))
+    except Exception:
+        pass
+
     text_lower = recap_text.lower()
 
     # For each known player name found in the recap, check nearby scores
     checked: set[tuple[str, float]] = set()  # avoid duplicate checks
 
     for display_name, actual_score in display_to_score.items():
-        # Skip very short names (3 chars or less) to avoid false matches
+        # Skip very short names (5 chars or less) to avoid false matches
         if len(display_name) <= 5:
             continue
 
         idx = text_lower.find(display_name)
         while idx >= 0:
-            # Look for scores within 40 chars after the name
-            window_start = idx
-            window_end = min(len(recap_text), idx + len(display_name) + 50)
+            # Look for scores within 25 chars after the name (tight window).
+            # Models attribute player scores with patterns like "'s 24.50",
+            # "had 24.50", "scored 24.50", "posted 24.50" — all <20 chars.
+            name_end = idx + len(display_name)
+            window_start = name_end
+            window_end = min(len(recap_text), name_end + 25)
             window = recap_text[window_start:window_end]
 
             for m in _PLAYER_SCORE_PATTERN.finditer(window):
                 try:
                     claimed_score = float(m.group(1))
                 except ValueError:
+                    continue
+
+                # Guard: skip if a sentence break or "by" separator
+                # appears between the name and the score. These indicate
+                # the score is about something else (matchup margin,
+                # team total, etc.), not the player.
+                between = window[:m.start()]
+                if "." in between or " by " in between or "\n" in between:
+                    continue
+
+                # Guard: skip scores that match matchup numbers (team
+                # totals or margins). The model isn't claiming the player
+                # scored that — it's just proximity.
+                if round(claimed_score, 2) in matchup_numbers:
                     continue
 
                 # Skip if we already checked this name+score pair
@@ -1329,11 +1404,9 @@ def verify_player_scores(
                 # Check if the claimed score matches the actual score
                 if abs(claimed_score - actual_score) > 0.01:
                     # The score near this player name doesn't match their
-                    # actual score. This could be a fabrication or
-                    # misattribution.
-                    # Only flag if the claimed score isn't ANY valid player
-                    # score this week (avoids false positives from adjacent
-                    # player mentions).
+                    # actual score. Only flag if the claimed score isn't
+                    # ANY valid player score this week (avoids false
+                    # positives from adjacent player mentions).
                     valid_scores = set(
                         round(s, 2) for s in player_scores.values()
                     )
@@ -1407,10 +1480,19 @@ def verify_recap_v1(
 
     season_player_high: float | None = None
     if _SEASON_HIGH_PATTERN.search(narrative):
-        season_player_high = _load_player_season_high(db_path, league_id, season)
+        season_player_high = _load_player_season_high(
+            db_path, league_id, season, through_week=week,
+        )
+
+    # Filter season_matchups to only weeks <= current week. Using future
+    # weeks to invalidate a "season high" claim is a false positive —
+    # the model only knows about weeks that have happened.
+    season_matchups_through_week = [
+        m for m in season_matchups if m.week <= week
+    ]
 
     all_failures.extend(verify_superlatives(
-        narrative, season_matchups, all_matchups, season,
+        narrative, season_matchups_through_week, all_matchups, season,
         season_player_high, alltime_player_high,
     ))
 
