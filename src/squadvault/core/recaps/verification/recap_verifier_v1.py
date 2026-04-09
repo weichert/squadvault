@@ -373,6 +373,20 @@ def verify_scores(
         if 40.0 <= val <= 250.0:
             score_positions.append((match.start(), val))
 
+    # Also extract integer score positions (e.g., "115" in "115-107.50").
+    # Models sometimes write team scores as integers when the canonical
+    # score happens to be a whole number. These don't get verified
+    # individually but they help complete pair detection.
+    _INT_SCORE_PATTERN = re.compile(r'(?<![\d.])(\d{2,3})(?![\d.])')
+    int_score_positions: list[tuple[int, float]] = []
+    for match in _INT_SCORE_PATTERN.finditer(recap_text):
+        try:
+            val = float(match.group(1))
+        except ValueError:
+            continue
+        if 40.0 <= val <= 250.0:
+            int_score_positions.append((match.start(), val))
+
     # Pass 1: Find score pairs that match canonical matchups.
     # Two scores within 80 chars of each other that match a matchup pair
     # are a correctly stated matchup — mark both positions as pair-verified.
@@ -392,6 +406,21 @@ def verify_scores(
                         (abs(val_a - l_score) <= 0.01 and abs(val_b - w_score) <= 0.01)):
                     pair_verified.add(i)
                     pair_verified.add(j)
+
+    # Pass 1b: Integer-decimal pair detection (e.g., "115-107.50").
+    # Mark a decimal score as pair-verified if a nearby integer score
+    # matches the other half of a canonical matchup pair.
+    for i, (pos_dec, val_dec) in enumerate(score_positions):
+        if i in pair_verified:
+            continue
+        for pos_int, val_int in int_score_positions:
+            if abs(pos_int - pos_dec) > _PAIR_WINDOW:
+                continue
+            for w_score, l_score in week_matchup_pairs:
+                if ((abs(val_dec - w_score) <= 0.01 and abs(val_int - l_score) <= 0.5) or
+                        (abs(val_dec - l_score) <= 0.01 and abs(val_int - w_score) <= 0.5)):
+                    pair_verified.add(i)
+                    break
 
     # Pass 2: Check solo scores (not part of a verified pair)
     for i, (pos, mentioned_score) in enumerate(score_positions):
@@ -607,15 +636,32 @@ def verify_superlatives(
 
     # Check "all-time" / "league history" / "across N seasons" claims
     for match in _ALLTIME_PATTERN.finditer(recap_text):
-        # Bug fix: "all-time" in series context (e.g. "all-time series
+        # Bug fix 1: "all-time" in series context (e.g. "all-time series
         # dominance to 21-7") is about H2H scope, not a scoring record.
-        # Check the surrounding text for series-context words and skip.
         _at_start = max(0, match.start() - 10)
         _at_end = min(len(recap_text), match.end() + 40)
         _at_context = recap_text[_at_start:_at_end].lower()
         if re.search(
             r'all[- ]?time\s+(?:series|meetings?|edge|dominance|lead|head|h2h|rivalry)',
             _at_context,
+        ):
+            continue
+
+        # Bug fix 2: "in league history" / "all-time bargains" referring
+        # to AUCTION INVESTMENT context, not scoring records.  Examples:
+        #   "the most productive auction pick in league history"
+        #   "one of the league's all-time bargains at 1,088 points per dollar"
+        #   "auction investment in league history"
+        # The surrounding sentence will mention auction/investment/pick
+        # /dollar/draft. Check a wider window.
+        _auction_start = max(0, match.start() - 80)
+        _auction_end = min(len(recap_text), match.end() + 80)
+        _auction_context = recap_text[_auction_start:_auction_end].lower()
+        if re.search(
+            r'(?:auction|investment|points\s+per\s+dollar|bargain|'
+            r'draft\s+pick|\$\d+\s+(?:spent|investment|pickup|pick)|'
+            r'most\s+productive\s+(?:auction|draft))',
+            _auction_context,
         ):
             continue
 
