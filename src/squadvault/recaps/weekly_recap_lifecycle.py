@@ -616,6 +616,8 @@ def _derive_prompt_context(
     # season records. Providing the actual player season high lets the model
     # compare and self-correct. Give the model verified data and it cites
     # verified data; withhold it and it invents.
+    # Filtered to starters only — bench scores don't count toward
+    # "season high individual score" by fantasy convention.
     try:
         with DatabaseSession(db_path) as _psh_con:
             _psh_row = _psh_con.execute(
@@ -626,6 +628,7 @@ def _derive_prompt_context(
                    FROM v_canonical_best_events
                    WHERE league_id = ? AND season = ?
                      AND event_type = 'WEEKLY_PLAYER_SCORE'
+                     AND CAST(json_extract(payload_json, '$.is_starter') AS INTEGER) = 1
                      AND CAST(json_extract(payload_json, '$.week') AS INTEGER) <= ?
                    ORDER BY CAST(json_extract(payload_json, '$.score') AS REAL) DESC
                    LIMIT 1""",
@@ -639,10 +642,11 @@ def _derive_prompt_context(
                 _psh_pname = _player_name_map.get(_psh_pid, _psh_pid)
                 _psh_fname = _name_map.get(_psh_fid, _psh_fid)
                 season_context_text = season_context_text.rstrip() + (
-                    f"\n  Player season high: {_psh_pname} ({_psh_fname})"
+                    f"\n  Player season high (starters only):"
+                    f" {_psh_pname} ({_psh_fname})"
                     f" — {_psh_score:.2f} (Week {_psh_week})"
-                    f"\n  ANY CLAIM THAT A DIFFERENT PLAYER SET THE SEASON"
-                    f" HIGH IS FALSE.\n"
+                    f"\n  ANY CLAIM THAT A DIFFERENT STARTER SCORED HIGHER"
+                    f" THIS SEASON IS FALSE.\n"
                 )
     except Exception as e:
         logger.debug("Player season high enrichment failed: %s", e)

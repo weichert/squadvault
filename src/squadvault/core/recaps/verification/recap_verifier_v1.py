@@ -172,7 +172,12 @@ def _load_player_season_high(
     season: int,
     through_week: int | None = None,
 ) -> float | None:
-    """Return the highest individual player score of the season.
+    """Return the highest individual STARTER score of the season.
+
+    Bench scores are excluded — the convention "highest individual score
+    of the season" refers to scores from players who were actually in
+    the starting lineup, not bench points that didn't count toward team
+    totals.
 
     If through_week is provided, only considers scores from weeks
     <= through_week. This prevents future-data false positives when
@@ -185,6 +190,7 @@ def _load_player_season_high(
                    FROM v_canonical_best_events
                    WHERE league_id = ? AND season = ?
                      AND event_type = 'WEEKLY_PLAYER_SCORE'
+                     AND CAST(json_extract(payload_json, '$.is_starter') AS INTEGER) = 1
                      AND CAST(json_extract(payload_json, '$.week') AS INTEGER) <= ?""",
                 (str(league_id), int(season), int(through_week)),
             ).fetchone()
@@ -193,7 +199,8 @@ def _load_player_season_high(
                 """SELECT MAX(CAST(json_extract(payload_json, '$.score') AS REAL))
                    FROM v_canonical_best_events
                    WHERE league_id = ? AND season = ?
-                     AND event_type = 'WEEKLY_PLAYER_SCORE'""",
+                     AND event_type = 'WEEKLY_PLAYER_SCORE'
+                     AND CAST(json_extract(payload_json, '$.is_starter') AS INTEGER) = 1""",
                 (str(league_id), int(season)),
             ).fetchone()
     if row and row[0] is not None:
@@ -205,13 +212,14 @@ def _load_alltime_player_high(
     db_path: str,
     league_id: str,
 ) -> float | None:
-    """Return the highest individual player score across all seasons."""
+    """Return the highest individual STARTER score across all seasons."""
     with DatabaseSession(db_path) as con:
         row = con.execute(
             """SELECT MAX(CAST(json_extract(payload_json, '$.score') AS REAL))
                FROM v_canonical_best_events
                WHERE league_id = ?
-                 AND event_type = 'WEEKLY_PLAYER_SCORE'""",
+                 AND event_type = 'WEEKLY_PLAYER_SCORE'
+                 AND CAST(json_extract(payload_json, '$.is_starter') AS INTEGER) = 1""",
             (str(league_id),),
         ).fetchone()
     if row and row[0] is not None:
@@ -251,12 +259,46 @@ def _build_reverse_name_map(name_map: dict[str, str]) -> dict[str, str]:
 
     Adds both exact-case and lowercased entries for robustness.
     Normalizes apostrophes so curly quotes match straight quotes.
+
+    Also adds first-word aliases (5+ chars, unique across all franchises)
+    to handle short-form references in recap prose. The model often writes
+    "Eddie snapped his streak" or "Brandon bounced back" rather than the
+    full franchise name. Without aliases, _find_nearby_franchise falls
+    back to AFTER-the-position matching and may attribute claims to the
+    wrong team.
     """
     reverse: dict[str, str] = {}
+
+    # Pass 1: Full franchise names (exact case and lowercase)
     for fid, name in name_map.items():
         normalized = _normalize_apostrophes(name)
         reverse[normalized] = fid
         reverse[normalized.lower()] = fid
+
+    # Pass 2: First-word aliases for short-form references.
+    # Only add if 5+ chars (avoids substring matches like "ben" in "bench")
+    # and unique across franchises (avoids ambiguity).
+    _first_word_to_fids: dict[str, set[str]] = {}
+    _stop_words = {"the", "and", "team", "club", "fantasy"}
+    for fid, name in name_map.items():
+        normalized = _normalize_apostrophes(name)
+        words = re.findall(r"\w+", normalized)
+        if not words:
+            continue
+        first_word = words[0].lower()
+        if len(first_word) < 5:
+            continue
+        if first_word in _stop_words:
+            continue
+        _first_word_to_fids.setdefault(first_word, set()).add(fid)
+
+    for alias, fids in _first_word_to_fids.items():
+        if len(fids) != 1:
+            continue
+        fid = next(iter(fids))
+        if alias not in reverse:
+            reverse[alias] = fid
+
     return reverse
 
 
