@@ -880,6 +880,18 @@ def verify_series_records(
     if not all_matchups:
         return []
 
+    # Pre-compute all H2H records: (frozenset({fid_a, fid_b})) -> (a_wins, b_wins, fid_a)
+    h2h_records: dict[frozenset[str], tuple[int, int, str, str]] = {}
+    for m in all_matchups:
+        pair_key = frozenset({m.winner_id, m.loser_id})
+        if pair_key not in h2h_records:
+            h2h_records[pair_key] = (0, 0, m.winner_id, m.loser_id)
+        w, ls, fa, fb = h2h_records[pair_key]
+        if m.winner_id == fa:
+            h2h_records[pair_key] = (w + 1, ls, fa, fb)
+        else:
+            h2h_records[pair_key] = (w, ls + 1, fa, fb)
+
     for match in _SERIES_RECORD_PATTERN.finditer(recap_text):
         # Extract the W-L(-T) record — groups depend on which branch matched
         if match.group(1) is not None:
@@ -894,75 +906,88 @@ def verify_series_records(
         except (ValueError, TypeError):
             continue
 
-        # Find the two franchises this record is about
+        # Tenure-scoped records ("4-0 under current ownership") are a
+        # subset of all-time meetings — skip verification when tenure
+        # context is present.
+        _sr_start = max(0, match.start() - 30)
+        _sr_end = min(len(recap_text), match.end() + 80)
+        _sr_context = recap_text[_sr_start:_sr_end].lower()
+        if re.search(
+            r'(?:under\s+current\s+ownership|current\s+owner|tenure)',
+            _sr_context,
+        ):
+            continue
+
+        # Find all franchises that appear in a wider window around the
+        # record. The series record could belong to any pair of
+        # franchises mentioned in the surrounding paragraph — not just
+        # the two closest.
+        _ctx_start = max(0, match.start() - 300)
+        _ctx_end = min(len(recap_text), match.end() + 100)
+        _context = _normalize_apostrophes(recap_text[_ctx_start:_ctx_end]).lower()
+
+        nearby_fids: set[str] = set()
+        for name, fid in reverse_name_map.items():
+            if not name.islower():
+                continue
+            if name in _context:
+                nearby_fids.add(fid)
+
+        if len(nearby_fids) < 2:
+            continue
+
+        # Check if the claimed record matches ANY pair of nearby franchises
+        matched = False
+        for fid_a in nearby_fids:
+            for fid_b in nearby_fids:
+                if fid_a >= fid_b:
+                    continue
+                pair_key = frozenset({fid_a, fid_b})
+                if pair_key not in h2h_records:
+                    continue
+                a_wins, b_wins, _fa, _fb = h2h_records[pair_key]
+                if (
+                    (claimed_w == a_wins and claimed_l == b_wins)
+                    or (claimed_w == b_wins and claimed_l == a_wins)
+                ):
+                    matched = True
+                    break
+            if matched:
+                break
+
+        if matched:
+            continue
+
+        # No nearby pair has this exact record. Find the closest pair to
+        # report in the failure message.
         fid_a, fid_b = _find_two_franchises(
             recap_text, match.start(), reverse_name_map,
         )
         if fid_a is None or fid_b is None:
             continue
-
-        # Compute actual H2H from canonical matchups
-        actual_a_wins = 0
-        actual_b_wins = 0
-        actual_ties = 0
-        for m in all_matchups:
-            pair = {m.winner_id, m.loser_id}
-            if pair != {fid_a, fid_b}:
-                continue
-            if m.winner_id == fid_a:
-                actual_a_wins += 1
-            elif m.winner_id == fid_b:
-                actual_b_wins += 1
-            # Ties would need an is_tie field — not in _MatchupFact currently
-
-        total = actual_a_wins + actual_b_wins + actual_ties
+        pair_key = frozenset({fid_a, fid_b})
+        if pair_key not in h2h_records:
+            continue
+        a_wins, b_wins, fa, fb = h2h_records[pair_key]
+        total = a_wins + b_wins
         if total == 0:
             continue
 
-        # Check if claimed record matches actual (in either direction)
-        matches_ab = (
-            claimed_w == actual_a_wins
-            and claimed_l == actual_b_wins
-            and claimed_t == actual_ties
-        )
-        matches_ba = (
-            claimed_w == actual_b_wins
-            and claimed_l == actual_a_wins
-            and claimed_t == actual_ties
-        )
-
-        if not matches_ab and not matches_ba:
-            # Bug fix: tenure-scoped records ("4-0 under current ownership")
-            # are a subset of all-time meetings. The verifier only has the
-            # all-time H2H, so it would reject a correct tenure-scoped claim.
-            # Skip verification when tenure context is present — silence over
-            # false positive.
-            _sr_start = max(0, match.start() - 30)
-            _sr_end = min(len(recap_text), match.end() + 80)
-            _sr_context = recap_text[_sr_start:_sr_end].lower()
-            if re.search(
-                r'(?:under\s+current\s+ownership|current\s+owner|tenure)',
-                _sr_context,
-            ):
-                continue
-
-            fname_a = _resolve_display_name(fid_a, reverse_name_map)
-            fname_b = _resolve_display_name(fid_b, reverse_name_map)
-            actual_str = f"{actual_a_wins}-{actual_b_wins}"
-            if actual_ties:
-                actual_str += f"-{actual_ties}"
-            claimed_str = f"{claimed_w}-{claimed_l}"
-            if claimed_t:
-                claimed_str += f"-{claimed_t}"
-            failures.append(VerificationFailure(
-                category="SERIES",
-                severity="HARD",
-                claim=f"Series record {claimed_str} ({fname_a} vs {fname_b})",
-                evidence=(
-                    f"Actual H2H record: {fname_a} {actual_str} {fname_b} "
-                    f"({total} meetings)."
-                ),
-            ))
+        fname_a = _resolve_display_name(fa, reverse_name_map)
+        fname_b = _resolve_display_name(fb, reverse_name_map)
+        actual_str = f"{a_wins}-{b_wins}"
+        claimed_str = f"{claimed_w}-{claimed_l}"
+        if claimed_t:
+            claimed_str += f"-{claimed_t}"
+        failures.append(VerificationFailure(
+            category="SERIES",
+            severity="HARD",
+            claim=f"Series record {claimed_str} ({fname_a} vs {fname_b})",
+            evidence=(
+                f"Actual H2H record: {fname_a} {actual_str} {fname_b} "
+                f"({total} meetings)."
+            ),
+        ))
 
     return failures
 
@@ -1260,6 +1285,32 @@ def _load_week_player_scores(
     return scores
 
 
+def _load_player_all_season_scores(
+    db_path: str, league_id: str, season: int, through_week: int,
+) -> dict[str, set[float]]:
+    """Load player_id -> set of all scores in season through given week.
+
+    Used to validate callbacks: if the model writes "Goff's 47.30" in
+    week 7 referencing his week 2 score, the verifier should not flag it.
+    """
+    scores: dict[str, set[float]] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT json_extract(payload_json, '$.player_id'),
+                      CAST(json_extract(payload_json, '$.score') AS REAL)
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WEEKLY_PLAYER_SCORE'
+                 AND CAST(json_extract(payload_json, '$.week') AS INTEGER) <= ?""",
+            (str(league_id), int(season), int(through_week)),
+        ).fetchall()
+    for row in rows:
+        if row[0] and row[1] is not None:
+            pid = str(row[0])
+            scores.setdefault(pid, set()).add(round(float(row[1]), 2))
+    return scores
+
+
 def _build_player_display_to_score(
     player_scores: dict[str, float],
     player_name_map: dict[str, str],
@@ -1333,6 +1384,28 @@ def verify_player_scores(
     if not display_to_score:
         return []
 
+    # Build display_name -> player_id map for callback verification
+    display_to_pid: dict[str, str] = {}
+    for pid, display in player_name_map.items():
+        if not display:
+            continue
+        if ", " in display:
+            parts = display.split(", ", 1)
+            first_last = f"{parts[1]} {parts[0]}".strip().lower()
+            if first_last not in display_to_pid:
+                display_to_pid[first_last] = pid
+        else:
+            key = display.strip().lower()
+            if key not in display_to_pid:
+                display_to_pid[key] = pid
+
+    # Load all-season scores per player (for callback verification —
+    # the model can legitimately reference a player's prior-week score
+    # like "Goff's 47.30 from Week 2").
+    all_season_scores = _load_player_all_season_scores(
+        db_path, league_id, season, through_week=week,
+    )
+
     # Collect matchup scores and margins to exclude from player verification.
     # A number like "40.85" near a player name might be the matchup margin,
     # not a claim that the player scored 40.85. Exclude all matchup-level
@@ -1403,28 +1476,38 @@ def verify_player_scores(
 
                 # Check if the claimed score matches the actual score
                 if abs(claimed_score - actual_score) > 0.01:
-                    # The score near this player name doesn't match their
-                    # actual score. Only flag if the claimed score isn't
-                    # ANY valid player score this week (avoids false
-                    # positives from adjacent player mentions).
+                    # Doesn't match this week's score. Check if it matches
+                    # any other player's score this week (proximity false
+                    # positive from adjacent player mentions) OR any of
+                    # this player's prior-week scores in the season
+                    # (legitimate callback like "Goff's 47.30 from Week 2").
                     valid_scores = set(
                         round(s, 2) for s in player_scores.values()
                     )
-                    if round(claimed_score, 2) not in valid_scores:
-                        orig_display = display_name.title()
-                        failures.append(VerificationFailure(
-                            category="PLAYER_SCORE",
-                            severity="HARD",
-                            claim=(
-                                f"Player score {claimed_score:.2f} "
-                                f"attributed to {orig_display}"
-                            ),
-                            evidence=(
-                                f"No player scored {claimed_score:.2f} in "
-                                f"Week {week}. {orig_display}'s actual "
-                                f"score: {actual_score:.2f}."
-                            ),
-                        ))
+                    if round(claimed_score, 2) in valid_scores:
+                        continue
+
+                    # Callback check: does this player have this score
+                    # in any prior week of the current season?
+                    pid = display_to_pid.get(display_name)
+                    if pid and pid in all_season_scores:
+                        if round(claimed_score, 2) in all_season_scores[pid]:
+                            continue  # legitimate callback
+
+                    orig_display = display_name.title()
+                    failures.append(VerificationFailure(
+                        category="PLAYER_SCORE",
+                        severity="HARD",
+                        claim=(
+                            f"Player score {claimed_score:.2f} "
+                            f"attributed to {orig_display}"
+                        ),
+                        evidence=(
+                            f"No player scored {claimed_score:.2f} in "
+                            f"Week {week}. {orig_display}'s actual "
+                            f"score: {actual_score:.2f}."
+                        ),
+                    ))
 
             # Find next occurrence of this name
             idx = text_lower.find(display_name, idx + 1)
