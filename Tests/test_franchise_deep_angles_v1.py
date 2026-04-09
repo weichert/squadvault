@@ -28,6 +28,7 @@ from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
     detect_repeat_matchup_pattern,
     detect_championship_history,
     detect_the_almost,
+    detect_scoring_momentum_in_streak,
     detect_franchise_deep_angles_v1,
 )
 
@@ -554,3 +555,90 @@ class TestTheAlmost:
         angles = detect_the_almost(matchups, 2024, 14)
         # May or may not find "almost" teams depending on exact standings
         assert isinstance(angles, list)
+
+
+class TestScoringMomentumInStreak:
+    """Detector 49: SCORING_MOMENTUM_IN_STREAK.
+
+    Validates both the growing-margins branch (originally implemented)
+    and the shrinking-margins branch (added to match the docstring).
+    """
+
+    def _streak_for_f1(self, margins, *, win_each_week=True):
+        """Build matchups giving F1 a streak with the given per-week margins.
+
+        Each week pairs F1 vs F2 with F1 winning by ``margins[i]`` points.
+        Other franchises play unrelated matchups so they don't contaminate.
+        Set ``win_each_week=False`` to flip the first matchup into a loss
+        for F1, breaking the streak.
+        """
+        matchups = []
+        for i, m in enumerate(margins, start=1):
+            ws = 100.0 + m
+            ls = 100.0
+            if win_each_week:
+                matchups.append(_make_matchup(SEASON, i, "F1", "F2", ws, ls))
+            else:
+                # First week: F1 loses; remaining weeks: F1 wins
+                if i == 1:
+                    matchups.append(_make_matchup(SEASON, i, "F2", "F1", ws, ls))
+                else:
+                    matchups.append(_make_matchup(SEASON, i, "F1", "F2", ws, ls))
+            # Filler matchups for other franchises so the loop has data
+            matchups.append(_make_matchup(SEASON, i, "F3", "F4", 105.0, 95.0))
+        return matchups
+
+    def test_detects_growing_margins(self):
+        """4-game streak with strictly growing margins fires the growing branch."""
+        matchups = self._streak_for_f1([10, 15, 20, 25])
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 1
+        assert "growing margins" in f1_angles[0].headline
+        assert "10, 15, 20, 25" in f1_angles[0].headline
+        assert f1_angles[0].category == "SCORING_MOMENTUM_IN_STREAK"
+
+    def test_detects_shrinking_margins(self):
+        """4-game streak with strictly shrinking margins fires the shrinking branch.
+
+        This is the regression case for the previously-missing branch:
+        before the fix, a shrinking-margins streak would silently produce
+        no angle even though the docstring promised both directions.
+        """
+        matchups = self._streak_for_f1([30, 22, 15, 8])
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 1
+        assert "shrinking margins" in f1_angles[0].headline
+        assert "30, 22, 15, 8" in f1_angles[0].headline
+        assert f1_angles[0].category == "SCORING_MOMENTUM_IN_STREAK"
+
+    def test_no_angle_for_streak_under_4_games(self):
+        """A 3-game streak (even with monotonic margins) does not fire."""
+        matchups = self._streak_for_f1([10, 20, 30])
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 3)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 0
+
+    def test_no_angle_for_mixed_margins(self):
+        """A 4-game streak with non-monotonic margins fires neither branch."""
+        matchups = self._streak_for_f1([10, 25, 15, 20])
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 0
+
+    def test_no_angle_for_flat_margins(self):
+        """A 4-game streak with equal margins fires neither branch (strict gate)."""
+        matchups = self._streak_for_f1([15, 15, 15, 15])
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 0
+
+    def test_streak_broken_by_loss_does_not_fire(self):
+        """A loss in the middle of the window breaks the active streak."""
+        # Margins suggest growing, but week 1 is a loss for F1 — so the
+        # active streak from week 4 backwards is only 3 games (weeks 2-4).
+        matchups = self._streak_for_f1([10, 15, 20, 25], win_each_week=False)
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 0

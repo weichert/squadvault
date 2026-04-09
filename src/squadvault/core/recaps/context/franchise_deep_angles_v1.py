@@ -745,7 +745,24 @@ def detect_scoring_momentum_in_streak(
     current_season: int, target_week: int,
     fname: NameFn = _identity,
 ) -> list[NarrativeAngle]:
-    """Detector 49: Growing or shrinking margins during a win streak."""
+    """Detector 49: Growing or shrinking margins during an active win streak.
+
+    Walks backwards from ``target_week`` to find the franchise's current
+    consecutive-win streak, then reports when the margins move strictly
+    monotonically in one direction across the entire streak. Both
+    directions are reported with separate framing:
+
+    - **Growing**: each win is by a wider margin than the last. The team
+      is pulling away.
+    - **Shrinking**: each win is by a narrower margin than the last. The
+      team is still winning, but opponents are catching up.
+
+    The two cases are mutually exclusive for any streak of length ≥2 with
+    distinct margins; equal margins (a "flat" streak) match neither.
+
+    Requires a streak of at least 4 consecutive wins. Strict monotonic
+    comparison — a single non-monotonic step disqualifies the streak.
+    """
     # Find current win streaks
     fid_results: dict[str, list[tuple[int, float]]] = {}  # fid -> [(week, margin)]
     for m in all_matchups:
@@ -782,16 +799,37 @@ def detect_scoring_momentum_in_streak(
                 break
 
         if len(streak_margins) >= 4:
-            # Check if margins are growing
-            growing = all(streak_margins[i] < streak_margins[i + 1] for i in range(len(streak_margins) - 1))
+            # Strict monotonic checks. The two cases are mutually exclusive
+            # for length ≥2 sequences with distinct values; flat or mixed
+            # sequences match neither.
+            growing = all(
+                streak_margins[i] < streak_margins[i + 1]
+                for i in range(len(streak_margins) - 1)
+            )
+            shrinking = all(
+                streak_margins[i] > streak_margins[i + 1]
+                for i in range(len(streak_margins) - 1)
+            )
             if growing:
                 margin_str = ", ".join(f"{m:.0f}" for m in streak_margins)
                 angles.append(NarrativeAngle(
                     category="SCORING_MOMENTUM_IN_STREAK",
                     headline=(
-                        f"{fname(fid)}'s {len(streak_margins)}-game win streak has growing margins: {margin_str}"
+                        f"{fname(fid)}'s {len(streak_margins)}-game win streak "
+                        f"has growing margins: {margin_str}"
                     ),
                     detail="Each win more dominant than the last.",
+                    strength=1, franchise_ids=(fid,),
+                ))
+            elif shrinking:
+                margin_str = ", ".join(f"{m:.0f}" for m in streak_margins)
+                angles.append(NarrativeAngle(
+                    category="SCORING_MOMENTUM_IN_STREAK",
+                    headline=(
+                        f"{fname(fid)}'s {len(streak_margins)}-game win streak "
+                        f"has shrinking margins: {margin_str}"
+                    ),
+                    detail="Still winning, but each result closer than the last.",
                     strength=1, franchise_ids=(fid,),
                 ))
     return angles
