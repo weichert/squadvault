@@ -824,6 +824,21 @@ def verify_streaks(
         context = match.group(0).lower()
         is_losing = any(w in context for w in ("losing", "lost", "loss", "skid"))
 
+        # Skip historical references — "11-game win streak ended last
+        # season", "previous season", "from 2022", etc. The model is
+        # citing a past streak, not making a current-season claim.
+        _hist_start = max(0, match.start() - 80)
+        _hist_end = min(len(recap_text), match.end() + 80)
+        _hist_context = recap_text[_hist_start:_hist_end].lower()
+        if re.search(
+            r'(?:last\s+season|previous\s+season|prior\s+season|'
+            r'last\s+year|prior\s+year|ended\s+(?:last|in\s+\d{4})|'
+            r'from\s+\d{4}|in\s+\d{4}|back\s+in\s+\d{4}|'
+            r'his\s+career|career[- ](?:high|long|best))',
+            _hist_context,
+        ):
+            continue
+
         franchise_id = _find_nearby_franchise(
             recap_text, match.start(), reverse_name_map, window=150,
         )
@@ -868,6 +883,18 @@ def verify_streaks(
         snap_context = match.group(0).lower()
         is_losing_snap = any(w in snap_context for w in ("losing", "lost", "skid"))
         if not is_losing_snap:
+            continue
+
+        # Skip historical references same as explicit count check
+        _hist_start = max(0, match.start() - 80)
+        _hist_end = min(len(recap_text), match.end() + 80)
+        _hist_context = recap_text[_hist_start:_hist_end].lower()
+        if re.search(
+            r'(?:last\s+season|previous\s+season|prior\s+season|'
+            r'last\s+year|prior\s+year|ended\s+(?:last|in\s+\d{4})|'
+            r'from\s+\d{4}|in\s+\d{4}|back\s+in\s+\d{4})',
+            _hist_context,
+        ):
             continue
 
         franchise_id = _find_nearby_franchise(
@@ -1537,6 +1564,20 @@ def verify_player_scores(
                 except ValueError:
                     continue
 
+                # Detect a leading minus sign immediately before the matched
+                # number. The regex captures only digits.dot.digits but
+                # negative scores ("-0.30" for defensive penalties) appear
+                # in actual prose. Without this check, the verifier extracts
+                # "0.30" and flags it as not matching canonical "-0.30".
+                score_abs_pos = window_start + m.start()
+                if score_abs_pos > 0 and recap_text[score_abs_pos - 1] == "-":
+                    # Make sure this is a unary minus, not a hyphen between
+                    # words/scores. Look at the char before the minus.
+                    if score_abs_pos < 2 or recap_text[score_abs_pos - 2] in (
+                        " ", "(", "\n", "\t",
+                    ):
+                        claimed_score = -claimed_score
+
                 # Guard: skip if a sentence break or "by" separator
                 # appears between the name and the score. These indicate
                 # the score is about something else (matchup margin,
@@ -1558,7 +1599,6 @@ def verify_player_scores(
                 checked.add(check_key)
 
                 # Skip scores that look like dollar amounts (preceded by $)
-                score_abs_pos = window_start + m.start()
                 if score_abs_pos > 0 and recap_text[score_abs_pos - 1] == "$":
                     continue
 
