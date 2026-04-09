@@ -1094,7 +1094,12 @@ def detect_player_franchise_record(
         best = week_records[0]
 
         if best.score > prior_best and best.score > 0.0:
-            tenure_label = f"since {tenure_start}" if tenure_start else "all-time"
+            # Tenure phrasing: use "under current ownership" rather than
+            # "since {year}" to prevent the model from misinterpreting the
+            # tenure start year as the league founding date. (Documented
+            # learning from prior recap iterations.) When no tenure
+            # information is available, fall back to "all-time".
+            tenure_label = "under current ownership" if tenure_start else "all-time"
             angles.append(NarrativeAngle(
                 category="PLAYER_FRANCHISE_RECORD",
                 headline=(

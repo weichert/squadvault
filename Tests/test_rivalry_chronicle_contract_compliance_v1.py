@@ -332,8 +332,33 @@ class TestContractCompliantGeneration:
         )
         assert r1.fingerprint != r2.fingerprint
 
-    def test_deterministic_output(self, contract_db):
-        """Same inputs produce identical output text."""
+    def test_deterministic_output(self, contract_db, monkeypatch):
+        """Same inputs produce identical fingerprint and identical rendered
+        text — given that the (non-deterministic) creative narrative layer
+        is held constant.
+
+        Architectural note: the Rivalry Chronicle fingerprint is derived
+        purely from canonical facts and is therefore deterministic by
+        construction. The rendered ``text`` field includes optional
+        narrative prose drafted by an LLM at non-zero temperature, which is
+        inherently non-deterministic. To test the deterministic *rendering*
+        layer without coupling to LLM stochasticity, we patch the creative
+        layer to return a constant. This validates that:
+
+          1. Facts → fingerprint is deterministic.
+          2. (Facts, narrative) → rendered text is deterministic.
+
+        It does NOT (and cannot) assert that two real LLM calls produce
+        byte-identical prose; that would be a false claim about the system.
+        """
+        from squadvault.ai import creative_layer_rivalry_v1 as _cl_rivalry
+
+        monkeypatch.setattr(
+            _cl_rivalry,
+            "draft_rivalry_narrative_v1",
+            lambda **_kwargs: "FIXED NARRATIVE FOR DETERMINISM TEST",
+        )
+
         kwargs = dict(
             db_path=contract_db,
             league_id=LEAGUE_INT,
@@ -347,8 +372,8 @@ class TestContractCompliantGeneration:
         )
         r1 = generate_rivalry_chronicle_v1(**kwargs)
         r2 = generate_rivalry_chronicle_v1(**kwargs)
-        assert r1.text == r2.text
         assert r1.fingerprint == r2.fingerprint
+        assert r1.text == r2.text
 
 
 class TestContractCompliantPersistence:

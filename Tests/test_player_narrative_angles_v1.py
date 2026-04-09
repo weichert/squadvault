@@ -767,7 +767,7 @@ class TestPlayerFranchiseRecord:
             tenure_map={"F1": 2021},
         )
         assert len(angles) == 1
-        assert "since 2021" in angles[0].headline
+        assert "under current ownership" in angles[0].headline
         # The 60.0 from 2018 should be excluded by tenure scoping
 
     def test_no_angle_when_not_new_record(self):
@@ -1166,7 +1166,7 @@ class TestFullPipelineDimension2:
         )
         records_with_tenure = [a for a in angles_with_tenure if a.category == "PLAYER_FRANCHISE_RECORD"]
         assert len(records_with_tenure) == 1
-        assert "since 2022" in records_with_tenure[0].headline
+        assert "under current ownership" in records_with_tenure[0].headline
 
     def test_alltime_high_via_pipeline(self, tmp_path):
         """Full pipeline detects all-time high from multi-season data."""
