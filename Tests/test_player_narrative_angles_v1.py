@@ -30,7 +30,7 @@ import sqlite3
 from squadvault.core.recaps.context.player_narrative_angles_v1 import (
     _PlayerWeekRecord,
     _CrossSeasonRecord,
-    _TradeMove,
+    _Trade,
     _PlayerDrop,
     _FaabAcquisition,
     _load_season_player_scores,
@@ -1638,13 +1638,19 @@ def _insert_transaction(con, *, league_id, season, event_type, franchise_id,
     )
 
 
-def _make_trade_move(season, franchise_id, added, dropped, occurred_at="2024-10-01T12:00:00Z"):
-    """Convenience factory for _TradeMove."""
-    return _TradeMove(
+def _make_trade(season, franchise_a, franchise_b, gave_a, gave_b,
+                occurred_at="2024-10-01T12:00:00Z"):
+    """Convenience factory for _Trade.
+
+    ``gave_a`` is the list of player IDs that ``franchise_a`` sent to
+    ``franchise_b``; ``gave_b`` is the reverse direction.
+    """
+    return _Trade(
         season=season,
-        franchise_id=franchise_id,
-        players_added=tuple(added),
-        players_dropped=tuple(dropped),
+        franchise_a_id=franchise_a,
+        franchise_b_id=franchise_b,
+        franchise_a_gave_up=tuple(gave_a),
+        franchise_b_gave_up=tuple(gave_b),
         occurred_at=occurred_at,
     )
 
@@ -1660,11 +1666,9 @@ class TestTradeOutcome:
         ] + [
             _make_xseason(2024, w, "F2", "PB", 8.0 + w) for w in range(1, 4)
         ]
-        pairs = [(
-            _make_trade_move(2024, "F1", ["PA"], ["PB"]),
-            _make_trade_move(2024, "F2", ["PB"], ["PA"]),
-        )]
-        angles = detect_trade_outcome(records, pairs, 2024, 3)
+        # F1 gave PB to F2, F2 gave PA to F1 → F1 acquired PA, F2 acquired PB
+        trades = [_make_trade(2024, "F1", "F2", ["PB"], ["PA"])]
+        angles = detect_trade_outcome(records, trades, 2024, 3)
         assert len(angles) == 1
         assert angles[0].category == "TRADE_OUTCOME"
         assert "PA" in angles[0].headline
@@ -1677,11 +1681,8 @@ class TestTradeOutcome:
         ] + [
             _make_xseason(2024, w, "F2", "PB", 5.0) for w in range(1, 4)
         ]
-        pairs = [(
-            _make_trade_move(2024, "F1", ["PA"], ["PB"]),
-            _make_trade_move(2024, "F2", ["PB"], ["PA"]),
-        )]
-        angles = detect_trade_outcome(records, pairs, 2024, 3)
+        trades = [_make_trade(2024, "F1", "F2", ["PB"], ["PA"])]
+        angles = detect_trade_outcome(records, trades, 2024, 3)
         assert len(angles) == 1
         assert angles[0].strength == 2  # NOTABLE (gap = 75)
 
@@ -1692,11 +1693,8 @@ class TestTradeOutcome:
         ] + [
             _make_xseason(2024, w, "F2", "PB", 18.0) for w in range(1, 4)
         ]
-        pairs = [(
-            _make_trade_move(2024, "F1", ["PA"], ["PB"]),
-            _make_trade_move(2024, "F2", ["PB"], ["PA"]),
-        )]
-        angles = detect_trade_outcome(records, pairs, 2024, 3)
+        trades = [_make_trade(2024, "F1", "F2", ["PB"], ["PA"])]
+        angles = detect_trade_outcome(records, trades, 2024, 3)
         assert len(angles) == 0
 
     def test_insufficient_weeks_silence(self):
@@ -1707,15 +1705,12 @@ class TestTradeOutcome:
             _make_xseason(2024, 1, "F2", "PB", 5.0),
             _make_xseason(2024, 2, "F2", "PB", 5.0),
         ]
-        pairs = [(
-            _make_trade_move(2024, "F1", ["PA"], ["PB"]),
-            _make_trade_move(2024, "F2", ["PB"], ["PA"]),
-        )]
-        angles = detect_trade_outcome(records, pairs, 2024, 2)
+        trades = [_make_trade(2024, "F1", "F2", ["PB"], ["PA"])]
+        angles = detect_trade_outcome(records, trades, 2024, 2)
         assert len(angles) == 0
 
     def test_empty_trades_no_angle(self):
-        """No trade pairs = no angles."""
+        """No trades = no angles."""
         angles = detect_trade_outcome([], [], 2024, 5)
         assert len(angles) == 0
 
@@ -1792,50 +1787,122 @@ class TestTheOneThatGotAway:
 # ── Transaction loading (DB integration) ─────────────────────────────
 
 
+def _insert_trade_event(con, *, league_id, season, franchise_a, franchise_b,
+                        gave_a, gave_b, occurred_at=None, _suffix=""):
+    """Insert a TRANSACTION_TRADE event mirroring the real MFL payload shape.
+
+    The structured ``players_added_ids`` / ``players_dropped_ids`` fields
+    are emitted empty (matching what the canonicalize layer produces for
+    trade events). The actual player IDs live inside ``raw_mfl_json``
+    under ``franchise1_gave_up`` and ``franchise2_gave_up``.
+
+    ``_suffix`` is appended to the external ID for tests that need
+    multiple canonical rows for the same logical trade (deduplication).
+    """
+    if occurred_at is None:
+        occurred_at = f"{season}-10-01T12:00:00Z"
+
+    raw_inner = json.dumps({
+        "comments": "",
+        "expires": "0",
+        "franchise": franchise_a,
+        "franchise2": franchise_b,
+        "franchise1_gave_up": ",".join(gave_a) + ("," if gave_a else ""),
+        "franchise2_gave_up": ",".join(gave_b) + ("," if gave_b else ""),
+        "timestamp": "0",
+        "type": "TRADE",
+    }, sort_keys=True)
+
+    payload = {
+        "mfl_type": "TRADE",
+        "franchise_id": franchise_a,
+        "player_id": None,
+        "players_added_ids": [],
+        "players_dropped_ids": [],
+        "player_ids_involved": [],
+        "bid_amount": None,
+        "raw_mfl_json": raw_inner,
+    }
+    payload_json = json.dumps(payload, sort_keys=True)
+    ext_id = f"trade_{league_id}_{season}_{franchise_a}_{franchise_b}_{occurred_at}{_suffix}"
+    con.execute(
+        """INSERT INTO memory_events
+           (league_id, season, external_source, external_id, event_type,
+            occurred_at, ingested_at, payload_json)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (league_id, season, "test", ext_id, "TRANSACTION_TRADE",
+         occurred_at, occurred_at, payload_json),
+    )
+    me_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+    con.execute(
+        """INSERT INTO canonical_events
+           (league_id, season, event_type, action_fingerprint,
+            best_memory_event_id, best_score, updated_at, occurred_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (league_id, season, "TRANSACTION_TRADE",
+         f"fp_{ext_id}", me_id, 100, occurred_at, occurred_at),
+    )
+
+
 class TestTransactionLoading:
-    def test_loads_trade_pairs(self, tmp_path):
-        """Pair trade events by matching timestamp."""
+    def test_loads_trades_from_raw_mfl_json(self, tmp_path):
+        """Loader reads player IDs from raw_mfl_json, not structured fields.
+
+        This is the key regression test for the trade-loader bug: the old
+        loader read empty structured fields and silently dropped every
+        trade event. The new loader reads from raw_mfl_json where MFL
+        actually puts the player IDs.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _insert_trade_event(con, league_id=LEAGUE, season=SEASON,
+                            franchise_a="F1", franchise_b="F2",
+                            gave_a=["PA"], gave_b=["PB"],
+                            occurred_at="2024-10-01T12:00:00Z")
+        con.commit()
+        con.close()
+
+        trades = _load_season_trades(db_path, LEAGUE, SEASON)
+        assert len(trades) == 1
+        t = trades[0]
+        assert t.franchise_a_id == "F1"
+        assert t.franchise_b_id == "F2"
+        assert "PA" in t.franchise_a_gave_up
+        assert "PB" in t.franchise_b_gave_up
+
+    def test_deduplicates_canonical_duplicates(self, tmp_path):
+        """Multiple canonical rows for the same logical trade collapse to one.
+
+        Production data shows 3 canonical rows per logical trade (the
+        canonicalize layer surfaces multiple representations). The loader
+        deduplicates on (occurred_at, frozenset({franchise_a, franchise_b})).
+        """
         db_path = _fresh_db(tmp_path)
         con = sqlite3.connect(db_path)
         ts = "2024-10-01T12:00:00Z"
-        _insert_transaction(con, league_id=LEAGUE, season=SEASON,
-                             event_type="TRANSACTION_TRADE",
-                             franchise_id="F1",
-                             players_added_ids="PA",
-                             players_dropped_ids="PB",
-                             occurred_at=ts)
-        _insert_transaction(con, league_id=LEAGUE, season=SEASON,
-                             event_type="TRANSACTION_TRADE",
-                             franchise_id="F2",
-                             players_added_ids="PB",
-                             players_dropped_ids="PA",
-                             occurred_at=ts)
+        for i in range(3):
+            _insert_trade_event(con, league_id=LEAGUE, season=SEASON,
+                                franchise_a="F1", franchise_b="F2",
+                                gave_a=["PA"], gave_b=["PB"],
+                                occurred_at=ts, _suffix=f"_{i}")
         con.commit()
         con.close()
 
-        pairs = _load_season_trades(db_path, LEAGUE, SEASON)
-        assert len(pairs) == 1
-        side_a, side_b = pairs[0]
-        assert side_a.franchise_id == "F1"
-        assert side_b.franchise_id == "F2"
-        assert "PA" in side_a.players_added
-        assert "PB" in side_b.players_added
+        trades = _load_season_trades(db_path, LEAGUE, SEASON)
+        assert len(trades) == 1  # deduplicated from 3 rows
 
-    def test_unpaired_trade_discarded(self, tmp_path):
-        """A trade with only one side recorded is discarded."""
+    def test_self_trade_discarded(self, tmp_path):
+        """A trade where franchise == franchise2 is silently discarded."""
         db_path = _fresh_db(tmp_path)
         con = sqlite3.connect(db_path)
-        _insert_transaction(con, league_id=LEAGUE, season=SEASON,
-                             event_type="TRANSACTION_TRADE",
-                             franchise_id="F1",
-                             players_added_ids="PA",
-                             players_dropped_ids="PB",
-                             occurred_at="2024-10-01T12:00:00Z")
+        _insert_trade_event(con, league_id=LEAGUE, season=SEASON,
+                            franchise_a="F1", franchise_b="F1",
+                            gave_a=["PA"], gave_b=["PB"])
         con.commit()
         con.close()
 
-        pairs = _load_season_trades(db_path, LEAGUE, SEASON)
-        assert len(pairs) == 0
+        trades = _load_season_trades(db_path, LEAGUE, SEASON)
+        assert len(trades) == 0
 
     def test_loads_drops(self, tmp_path):
         """Load drop records from various transaction types."""
@@ -1872,18 +1939,11 @@ class TestFullPipelineDimension4:
         db_path = _fresh_db(tmp_path)
         con = sqlite3.connect(db_path)
         ts = "2024-09-15T12:00:00Z"
-        _insert_transaction(con, league_id=LEAGUE, season=SEASON,
-                             event_type="TRANSACTION_TRADE",
-                             franchise_id="F1",
-                             players_added_ids="PA",
-                             players_dropped_ids="PB",
-                             occurred_at=ts)
-        _insert_transaction(con, league_id=LEAGUE, season=SEASON,
-                             event_type="TRANSACTION_TRADE",
-                             franchise_id="F2",
-                             players_added_ids="PB",
-                             players_dropped_ids="PA",
-                             occurred_at=ts)
+        # F1 gave PB to F2, F2 gave PA to F1
+        _insert_trade_event(con, league_id=LEAGUE, season=SEASON,
+                            franchise_a="F1", franchise_b="F2",
+                            gave_a=["PB"], gave_b=["PA"],
+                            occurred_at=ts)
         for w in range(1, 6):
             _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=w,
                                   franchise_id="F1", player_id="PA", score=25.0)

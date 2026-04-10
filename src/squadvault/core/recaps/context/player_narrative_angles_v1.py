@@ -302,12 +302,20 @@ def _load_all_matchup_opponents(
 
 
 @dataclass(frozen=True)
-class _TradeMove:
-    """One side of a trade: which franchise added/dropped which players."""
+class _Trade:
+    """A complete bilateral trade between two franchises.
+
+    MFL emits a single canonical event per trade containing both sides.
+    ``franchise_a`` is the trade initiator (the ``franchise`` field in the
+    MFL payload) and ``franchise_b`` is the counterparty (``franchise2``).
+    Each ``gave_up`` tuple lists the player IDs that franchise sent to the
+    other side.
+    """
     season: int
-    franchise_id: str
-    players_added: tuple[str, ...]
-    players_dropped: tuple[str, ...]
+    franchise_a_id: str
+    franchise_b_id: str
+    franchise_a_gave_up: tuple[str, ...]   # players A sent to B
+    franchise_b_gave_up: tuple[str, ...]   # players B sent to A
     occurred_at: str
 
 
@@ -320,19 +328,61 @@ class _PlayerDrop:
     occurred_at: str
 
 
+def _parse_payload_dict(raw: object) -> dict | None:
+    """Parse a payload value (str or dict) into a dict, or None on failure.
+
+    Used by the trade loader to read nested ``raw_mfl_json`` consistently
+    with the rest of the module's payload handling.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw:
+        try:
+            obj = json.loads(raw)
+        except (ValueError, TypeError):
+            return None
+        return obj if isinstance(obj, dict) else None
+    return None
+
+
+def _split_csv_or_list(val: object) -> tuple[str, ...]:
+    """Convert a list-or-CSV value into a tuple of stripped non-empty IDs.
+
+    MFL payloads inconsistently use either a Python list or a comma-
+    separated string for player ID collections; both are accepted.
+    """
+    if isinstance(val, list):
+        return tuple(str(x).strip() for x in val if str(x).strip())
+    if isinstance(val, str) and val.strip():
+        return tuple(x.strip() for x in val.split(",") if x.strip())
+    return ()
+
+
 def _load_season_trades(
     db_path: str,
     league_id: str,
     season: int,
-) -> list[tuple[_TradeMove, _TradeMove]]:
-    """Load TRANSACTION_TRADE events for a season and pair them.
+) -> list[_Trade]:
+    """Load TRANSACTION_TRADE events as bilateral _Trade records.
 
-    Returns list of trade pairs. Each pair is two _TradeMove records
-    representing the two sides of a trade, matched by occurred_at timestamp.
-    Unpaired trade records are discarded (data integrity issue, silence over
-    fabrication).
+    MFL encodes each trade as a single canonical event whose
+    ``raw_mfl_json`` contains ``franchise``, ``franchise2``,
+    ``franchise1_gave_up``, and ``franchise2_gave_up``. The structured
+    ``players_added_ids`` / ``players_dropped_ids`` fields on the
+    canonical envelope are emitted empty for trade events, so this
+    loader reads directly from ``raw_mfl_json``.
+
+    The canonicalize layer can surface multiple representations of the
+    same logical trade (a 1-trade, 3-row pattern is common in production).
+    This loader deduplicates on the natural key
+    ``(occurred_at, frozenset({franchise_a, franchise_b}))``, keeping the
+    representation with the most populated player lists. Within a tie,
+    the earliest record (deterministic by sort order) wins.
+
+    Trades that cannot be parsed (missing fields, no players given up
+    on either side, self-trade) are silently discarded.
     """
-    moves: list[_TradeMove] = []
+    raw_trades: list[_Trade] = []
 
     with DatabaseSession(db_path) as con:
         rows = con.execute(
@@ -345,60 +395,56 @@ def _load_season_trades(
         ).fetchall()
 
     for row in rows:
-        try:
-            p = json.loads(row[0]) if isinstance(row[0], str) else row[0]
-        except (ValueError, TypeError):
-            continue
-        if not isinstance(p, dict):
+        top = _parse_payload_dict(row[0])
+        if top is None:
             continue
 
-        franchise_id = str(p.get("franchise_id", "")).strip()
-        if not franchise_id:
+        # Player IDs live inside raw_mfl_json for trade events.
+        inner = _parse_payload_dict(top.get("raw_mfl_json", ""))
+        if inner is None:
             continue
 
-        occurred_at = str(row[1] or "").strip()
-
-        added_raw = p.get("players_added_ids", "")
-        dropped_raw = p.get("players_dropped_ids", "")
-
-        def _split_ids(val) -> tuple[str, ...]:
-            if isinstance(val, list):
-                return tuple(str(x).strip() for x in val if str(x).strip())
-            if isinstance(val, str) and val.strip():
-                return tuple(x.strip() for x in val.split(",") if x.strip())
-            return ()
-
-        added = _split_ids(added_raw)
-        dropped = _split_ids(dropped_raw)
-
-        if not added and not dropped:
+        franchise_a = str(inner.get("franchise", "")).strip()
+        franchise_b = str(inner.get("franchise2", "")).strip()
+        if not franchise_a or not franchise_b or franchise_a == franchise_b:
             continue
 
-        moves.append(_TradeMove(
+        gave_a = _split_csv_or_list(inner.get("franchise1_gave_up", ""))
+        gave_b = _split_csv_or_list(inner.get("franchise2_gave_up", ""))
+
+        # A real trade must move at least one player on each side.
+        if not gave_a or not gave_b:
+            continue
+
+        raw_trades.append(_Trade(
             season=season,
-            franchise_id=franchise_id,
-            players_added=added,
-            players_dropped=dropped,
-            occurred_at=occurred_at,
+            franchise_a_id=franchise_a,
+            franchise_b_id=franchise_b,
+            franchise_a_gave_up=gave_a,
+            franchise_b_gave_up=gave_b,
+            occurred_at=str(row[1] or "").strip(),
         ))
 
-    # Pair trades by occurred_at timestamp
-    by_timestamp: dict[str, list[_TradeMove]] = {}
-    for m in moves:
-        if m.occurred_at not in by_timestamp:
-            by_timestamp[m.occurred_at] = []
-        by_timestamp[m.occurred_at].append(m)
+    # Deduplicate canonical-layer duplicates: same (occurred_at, unordered
+    # franchise pair) collapses to one logical trade. Prefer the row with
+    # the most total player IDs (most complete representation).
+    by_key: dict[tuple[str, frozenset[str]], _Trade] = {}
+    for t in raw_trades:
+        key = (t.occurred_at, frozenset({t.franchise_a_id, t.franchise_b_id}))
+        existing = by_key.get(key)
+        if existing is None:
+            by_key[key] = t
+            continue
+        new_total = len(t.franchise_a_gave_up) + len(t.franchise_b_gave_up)
+        old_total = len(existing.franchise_a_gave_up) + len(existing.franchise_b_gave_up)
+        if new_total > old_total:
+            by_key[key] = t
 
-    pairs: list[tuple[_TradeMove, _TradeMove]] = []
-    for ts in sorted(by_timestamp.keys()):
-        group = by_timestamp[ts]
-        if len(group) == 2:
-            # Deterministic ordering: lower franchise_id first
-            group.sort(key=lambda m: m.franchise_id)
-            pairs.append((group[0], group[1]))
-        # Unpaired or 3+ way: silence (data anomaly)
-
-    return pairs
+    # Deterministic sort by (occurred_at, franchise_a_id, franchise_b_id).
+    return sorted(
+        by_key.values(),
+        key=lambda t: (t.occurred_at, t.franchise_a_id, t.franchise_b_id),
+    )
 
 
 def _load_season_drops(
@@ -1571,7 +1617,7 @@ def detect_player_duel(
 
 def detect_trade_outcome(
     all_records: list[_CrossSeasonRecord],
-    trade_pairs: list[tuple[_TradeMove, _TradeMove]],
+    trades: list[_Trade],
     current_season: int,
     target_week: int,
     *,
@@ -1582,44 +1628,55 @@ def detect_trade_outcome(
 ) -> list[NarrativeAngle]:
     """Retrospective scoring comparison after a trade.
 
-    For each trade pair, computes total post-trade scoring for the key
-    players on each side. Reports when:
-    - Both sides have at least min_post_trade_weeks of data
-    - The point gap between the two sides exceeds min_point_gap
+    For each bilateral trade, computes total post-trade scoring for the
+    primary acquired player on each side. Reports a NarrativeAngle when:
+
+    - Both sides have at least ``min_post_trade_weeks`` of data on the
+      receiving franchise
+    - The point gap between the two sides exceeds ``min_point_gap``
+
+    The "primary acquired player" on each side is the first player ID in
+    the OTHER side's ``gave_up`` list (i.e., for franchise_a, it is
+    ``trade.franchise_b_gave_up[0]``). Player ID ordering is deterministic
+    from the canonical payload.
 
     Post-trade scoring is determined from WEEKLY_PLAYER_SCORE events:
-    the first week a player appears on the receiving franchise defines
-    the post-trade start.
+    only weeks where the player appears on the receiving franchise are
+    counted.
 
-    Constraint: retrospective only. Never frames as "who won." States numbers.
+    Constraint: retrospective only. Reports the numerical gap; never
+    frames the comparison as "who won."
     """
-    if not trade_pairs:
+    if not trades:
         return []
 
     angles: list[NarrativeAngle] = []
 
-    for side_a, side_b in trade_pairs:
-        # Key player for each side: the primary added player
-        if not side_a.players_added or not side_b.players_added:
+    for trade in trades:
+        # Defensive — the loader filters these out, but be safe.
+        if not trade.franchise_a_gave_up or not trade.franchise_b_gave_up:
             continue
 
-        # Track the most significant added player per side
-        # (the first in the list — deterministic from ingestion sort)
-        player_to_a = side_a.players_added[0]
-        player_to_b = side_b.players_added[0]
+        # Primary acquired player on each side. Each franchise's "primary
+        # acquired player" is the first ID in the OTHER side's gave_up list.
+        player_to_a = trade.franchise_b_gave_up[0]
+        player_to_b = trade.franchise_a_gave_up[0]
 
-        # Find post-trade scores for player_to_a on franchise side_a
+        # Post-trade scoring on the receiving franchise within the current
+        # season, up through the target week.
         scores_a = [
             r for r in all_records
-            if r.player_id == player_to_a and r.franchise_id == side_a.franchise_id
-            and r.season == current_season and r.week <= target_week
+            if r.player_id == player_to_a
+            and r.franchise_id == trade.franchise_a_id
+            and r.season == current_season
+            and r.week <= target_week
         ]
-
-        # Find post-trade scores for player_to_b on franchise side_b
         scores_b = [
             r for r in all_records
-            if r.player_id == player_to_b and r.franchise_id == side_b.franchise_id
-            and r.season == current_season and r.week <= target_week
+            if r.player_id == player_to_b
+            and r.franchise_id == trade.franchise_b_id
+            and r.season == current_season
+            and r.week <= target_week
         ]
 
         if len(scores_a) < min_post_trade_weeks or len(scores_b) < min_post_trade_weeks:
@@ -1632,20 +1689,21 @@ def detect_trade_outcome(
         if gap < min_point_gap:
             continue
 
-        # Determine which side is ahead
+        # Determine which side is ahead — descriptive only, never framed
+        # as winning or losing.
         if total_a >= total_b:
             leader_player = player_to_a
-            leader_franchise = side_a.franchise_id
+            leader_franchise = trade.franchise_a_id
             leader_total = total_a
             trailer_player = player_to_b
-            trailer_franchise = side_b.franchise_id
+            trailer_franchise = trade.franchise_b_id
             trailer_total = total_b
         else:
             leader_player = player_to_b
-            leader_franchise = side_b.franchise_id
+            leader_franchise = trade.franchise_b_id
             leader_total = total_b
             trailer_player = player_to_a
-            trailer_franchise = side_a.franchise_id
+            trailer_franchise = trade.franchise_a_id
             trailer_total = total_a
 
         strength = 2 if gap >= 40.0 else 1  # NOTABLE at 40+ gap, MINOR otherwise
@@ -1659,7 +1717,7 @@ def detect_trade_outcome(
             ),
             detail="",
             strength=strength,
-            franchise_ids=tuple(sorted([side_a.franchise_id, side_b.franchise_id])),
+            franchise_ids=tuple(sorted([trade.franchise_a_id, trade.franchise_b_id])),
         ))
 
     return angles
@@ -2066,10 +2124,10 @@ def detect_player_narrative_angles_v1(
         # ── Dimension 4: Trade & Transaction Outcomes ──
 
         # Detector 15: Trade outcome
-        trade_pairs = _load_season_trades(db_path, league_id, season)
-        if trade_pairs:
+        trades = _load_season_trades(db_path, league_id, season)
+        if trades:
             all_angles.extend(detect_trade_outcome(
-                all_seasons_records, trade_pairs, season, week, pname=pname, fname=fname,
+                all_seasons_records, trades, season, week, pname=pname, fname=fname,
             ))
 
         # Detector 16: The one that got away
