@@ -740,39 +740,82 @@ def detect_transaction_volume_identity(
     return []
 
 
+def _is_near_monotonic_growing(margins: list[float]) -> bool:
+    """True if removing any single element yields a strictly growing sequence.
+
+    A "near-growing" margin sequence has a clear upward trend with one
+    deviation. For example, [10, 15, 12, 20] is near-growing because
+    removing the 12 yields [10, 15, 20] which is strictly growing.
+
+    Requires the input sequence to have length ≥3 (so the reduced
+    sequence has length ≥2 for a meaningful monotonic check).
+    """
+    n = len(margins)
+    if n < 3:
+        return False
+    for j in range(n):
+        reduced = margins[:j] + margins[j + 1:]
+        if all(reduced[i] < reduced[i + 1] for i in range(len(reduced) - 1)):
+            return True
+    return False
+
+
+def _is_near_monotonic_shrinking(margins: list[float]) -> bool:
+    """True if removing any single element yields a strictly shrinking sequence.
+
+    Symmetric to ``_is_near_monotonic_growing``. See that function's
+    docstring for the design rationale.
+    """
+    n = len(margins)
+    if n < 3:
+        return False
+    for j in range(n):
+        reduced = margins[:j] + margins[j + 1:]
+        if all(reduced[i] > reduced[i + 1] for i in range(len(reduced) - 1)):
+            return True
+    return False
+
+
 def detect_scoring_momentum_in_streak(
     all_matchups: Sequence[HistoricalMatchup],
     current_season: int, target_week: int,
     fname: NameFn = _identity,
 ) -> list[NarrativeAngle]:
-    """Detector 49: Growing or shrinking margins during an active win streak.
+    """Detector 49: Directional margin momentum during an active win streak.
 
-    Walks backwards from ``target_week`` to find the franchise's current
-    consecutive-win streak, then reports when the margins move strictly
-    monotonically in one direction across the entire streak. Both
-    directions are reported with separate framing:
+    Walks backwards from ``target_week`` to find each franchise's current
+    consecutive-win streak, then classifies the chronological margin
+    sequence and fires when it shows clear directional movement. Requires
+    a streak of at least 4 consecutive wins.
 
-    - **Growing**: each win is by a wider margin than the last. The team
-      is pulling away.
-    - **Shrinking**: each win is by a narrower margin than the last. The
-      team is still winning, but opponents are catching up.
+    Four firing tiers, checked in priority order:
 
-    The two cases are mutually exclusive for any streak of length ≥2 with
-    distinct margins; equal margins (a "flat" streak) match neither.
+    1. **Strictly growing**: every margin strictly greater than the one
+       before. "Each win more dominant than the last."
+    2. **Strictly shrinking**: every margin strictly less than the one
+       before. "Still winning, but each result closer than the last."
+    3. **Mostly growing**: not strictly monotonic, but removing any one
+       margin yields a strictly growing sequence. "Margins mostly
+       growing" — clear upward trend with one deviation.
+    4. **Mostly shrinking**: symmetric to (3).
 
-    Requires a streak of at least 4 consecutive wins. Strict monotonic
-    comparison — a single non-monotonic step disqualifies the streak.
+    Flat (all equal) or genuinely mixed (multiple deviations) sequences
+    produce no angle — governance-compliant silence.
+
+    **Voice guardrail**: the headline ALWAYS includes the full chronological
+    margin sequence. For the "mostly" tiers, this anchors the claim in
+    exact data and protects against creative-layer rewriting that might
+    strip the "mostly" qualifier. The detail field names the directional
+    quality so the model can frame it honestly.
+
+    **Design note**: the near-monotonic tiers (3 & 4) exist because PFL
+    Buddies' 2024-2025 production data produced zero strictly-monotonic
+    4+ game streaks across 31 active-streak observations. The strict-only
+    gate was unreachable in practice. The "mostly" tiers catch ~45% of real
+    observations while preserving selectivity — genuinely mixed sequences
+    remain silent. Calibrated against ``scripts/diagnose_streak_momentum_gate.py``.
     """
-    # Find current win streaks
-    fid_results: dict[str, list[tuple[int, float]]] = {}  # fid -> [(week, margin)]
-    for m in all_matchups:
-        if m.season != current_season or m.week > target_week or m.is_tie:
-            continue
-        if m.winner_id not in fid_results:
-            fid_results[m.winner_id] = []
-        fid_results[m.winner_id].append((m.week, m.margin))
-
-    # Build full week results per franchise (W/L)
+    # Build full week results per franchise (W/L) for the current season.
     fid_weekly: dict[str, dict[int, tuple[bool, float]]] = {}
     for m in all_matchups:
         if m.season != current_season or m.week > target_week or m.is_tie:
@@ -798,40 +841,62 @@ def detect_scoring_momentum_in_streak(
             else:
                 break
 
-        if len(streak_margins) >= 4:
-            # Strict monotonic checks. The two cases are mutually exclusive
-            # for length ≥2 sequences with distinct values; flat or mixed
-            # sequences match neither.
-            growing = all(
-                streak_margins[i] < streak_margins[i + 1]
-                for i in range(len(streak_margins) - 1)
-            )
-            shrinking = all(
-                streak_margins[i] > streak_margins[i + 1]
-                for i in range(len(streak_margins) - 1)
-            )
-            if growing:
-                margin_str = ", ".join(f"{m:.0f}" for m in streak_margins)
-                angles.append(NarrativeAngle(
-                    category="SCORING_MOMENTUM_IN_STREAK",
-                    headline=(
-                        f"{fname(fid)}'s {len(streak_margins)}-game win streak "
-                        f"has growing margins: {margin_str}"
-                    ),
-                    detail="Each win more dominant than the last.",
-                    strength=1, franchise_ids=(fid,),
-                ))
-            elif shrinking:
-                margin_str = ", ".join(f"{m:.0f}" for m in streak_margins)
-                angles.append(NarrativeAngle(
-                    category="SCORING_MOMENTUM_IN_STREAK",
-                    headline=(
-                        f"{fname(fid)}'s {len(streak_margins)}-game win streak "
-                        f"has shrinking margins: {margin_str}"
-                    ),
-                    detail="Still winning, but each result closer than the last.",
-                    strength=1, franchise_ids=(fid,),
-                ))
+        if len(streak_margins) < 4:
+            continue
+
+        margin_str = ", ".join(f"{m:.0f}" for m in streak_margins)
+        n_games = len(streak_margins)
+
+        # ── Tier 1: strictly growing ──
+        if all(
+            streak_margins[i] < streak_margins[i + 1]
+            for i in range(len(streak_margins) - 1)
+        ):
+            angles.append(NarrativeAngle(
+                category="SCORING_MOMENTUM_IN_STREAK",
+                headline=(
+                    f"{fname(fid)}'s {n_games}-game win streak "
+                    f"has growing margins: {margin_str}"
+                ),
+                detail="Each win more dominant than the last.",
+                strength=1, franchise_ids=(fid,),
+            ))
+        # ── Tier 2: strictly shrinking ──
+        elif all(
+            streak_margins[i] > streak_margins[i + 1]
+            for i in range(len(streak_margins) - 1)
+        ):
+            angles.append(NarrativeAngle(
+                category="SCORING_MOMENTUM_IN_STREAK",
+                headline=(
+                    f"{fname(fid)}'s {n_games}-game win streak "
+                    f"has shrinking margins: {margin_str}"
+                ),
+                detail="Still winning, but each result closer than the last.",
+                strength=1, franchise_ids=(fid,),
+            ))
+        # ── Tier 3: mostly growing (1 blip from strictly growing) ──
+        elif _is_near_monotonic_growing(streak_margins):
+            angles.append(NarrativeAngle(
+                category="SCORING_MOMENTUM_IN_STREAK",
+                headline=(
+                    f"{fname(fid)}'s {n_games}-game win streak "
+                    f"has mostly growing margins: {margin_str}"
+                ),
+                detail="Winning by wider margins on balance.",
+                strength=1, franchise_ids=(fid,),
+            ))
+        # ── Tier 4: mostly shrinking (1 blip from strictly shrinking) ──
+        elif _is_near_monotonic_shrinking(streak_margins):
+            angles.append(NarrativeAngle(
+                category="SCORING_MOMENTUM_IN_STREAK",
+                headline=(
+                    f"{fname(fid)}'s {n_games}-game win streak "
+                    f"has mostly shrinking margins: {margin_str}"
+                ),
+                detail="Still winning, but margins tightening on balance.",
+                strength=1, franchise_ids=(fid,),
+            ))
     return angles
 
 

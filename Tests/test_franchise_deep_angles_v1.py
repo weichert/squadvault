@@ -29,6 +29,8 @@ from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
     detect_championship_history,
     detect_the_almost,
     detect_scoring_momentum_in_streak,
+    _is_near_monotonic_growing,
+    _is_near_monotonic_shrinking,
     detect_franchise_deep_angles_v1,
 )
 
@@ -621,8 +623,12 @@ class TestScoringMomentumInStreak:
         assert len(f1_angles) == 0
 
     def test_no_angle_for_mixed_margins(self):
-        """A 4-game streak with non-monotonic margins fires neither branch."""
-        matchups = self._streak_for_f1([10, 25, 15, 20])
+        """A 4-game streak with genuinely mixed margins fires no tier.
+
+        [20, 5, 25, 10] is truly mixed: removing any single element does
+        not yield a strictly monotonic sequence in either direction.
+        """
+        matchups = self._streak_for_f1([20, 5, 25, 10])
         angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
         f1_angles = [a for a in angles if "F1" in a.headline]
         assert len(f1_angles) == 0
@@ -642,3 +648,90 @@ class TestScoringMomentumInStreak:
         angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
         f1_angles = [a for a in angles if "F1" in a.headline]
         assert len(f1_angles) == 0
+
+    # ── Near-monotonic tiers (gate relaxation) ──
+
+    def test_detects_mostly_growing_margins(self):
+        """4-game streak with one dip from strictly growing fires tier 3.
+
+        [10, 15, 12, 20] is near-growing: removing 12 yields [10, 15, 20]
+        which is strictly growing. The headline includes 'mostly growing'
+        and the full margin sequence as a voice guardrail.
+        """
+        matchups = self._streak_for_f1([10, 15, 12, 20])
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 1
+        assert "mostly growing margins" in f1_angles[0].headline
+        assert "10, 15, 12, 20" in f1_angles[0].headline
+        assert f1_angles[0].category == "SCORING_MOMENTUM_IN_STREAK"
+
+    def test_detects_mostly_shrinking_margins(self):
+        """4-game streak with one bump from strictly shrinking fires tier 4.
+
+        [30, 22, 25, 10] is near-shrinking: removing 25 yields [30, 22, 10]
+        which is strictly shrinking.
+        """
+        matchups = self._streak_for_f1([30, 22, 25, 10])
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 1
+        assert "mostly shrinking margins" in f1_angles[0].headline
+        assert "30, 22, 25, 10" in f1_angles[0].headline
+
+    def test_strict_takes_priority_over_near(self):
+        """Strictly growing wins over near-growing (both could match).
+
+        For strictly monotonic sequences, the near-monotonic check would
+        also pass (removing any element still leaves a monotonic sequence).
+        The elif chain ensures strict classifications take priority.
+        """
+        matchups = self._streak_for_f1([10, 15, 20, 25])
+        angles = detect_scoring_momentum_in_streak(matchups, SEASON, 4)
+        f1_angles = [a for a in angles if "F1" in a.headline]
+        assert len(f1_angles) == 1
+        # Must be "growing margins" NOT "mostly growing margins"
+        assert "mostly" not in f1_angles[0].headline
+        assert "growing margins" in f1_angles[0].headline
+
+
+# ── Near-monotonic helper unit tests ─────────────────────────────────
+
+
+class TestNearMonotonicHelpers:
+    """Unit tests for _is_near_monotonic_growing/shrinking."""
+
+    def test_growing_with_dip(self):
+        assert _is_near_monotonic_growing([10, 15, 12, 20]) is True
+
+    def test_growing_with_dip_at_start(self):
+        assert _is_near_monotonic_growing([5, 3, 10, 15, 20]) is True
+
+    def test_growing_with_dip_at_end(self):
+        assert _is_near_monotonic_growing([10, 15, 20, 18]) is True
+
+    def test_strict_growing_is_not_near(self):
+        """Strict growing would match via the main branch; helper returns
+        True for it too, but the elif chain prevents tier 3 from firing."""
+        assert _is_near_monotonic_growing([10, 15, 20, 25]) is True
+
+    def test_shrinking_with_bump(self):
+        assert _is_near_monotonic_shrinking([30, 22, 25, 10]) is True
+
+    def test_shrinking_with_bump_at_start(self):
+        assert _is_near_monotonic_shrinking([35, 40, 30, 20, 10]) is True
+
+    def test_shrinking_with_bump_at_end(self):
+        assert _is_near_monotonic_shrinking([30, 22, 15, 18]) is True
+
+    def test_truly_mixed_neither(self):
+        assert _is_near_monotonic_growing([20, 5, 25, 10]) is False
+        assert _is_near_monotonic_shrinking([20, 5, 25, 10]) is False
+
+    def test_flat_is_not_near(self):
+        assert _is_near_monotonic_growing([15, 15, 15, 15]) is False
+        assert _is_near_monotonic_shrinking([15, 15, 15, 15]) is False
+
+    def test_too_short(self):
+        assert _is_near_monotonic_growing([10, 20]) is False
+        assert _is_near_monotonic_shrinking([20, 10]) is False
