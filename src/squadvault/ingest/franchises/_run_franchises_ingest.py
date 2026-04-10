@@ -109,6 +109,18 @@ class Row:
     raw_json: str
 
 
+def _normalize_apostrophes(s: str) -> str:
+    """Normalize curly/smart quotes to straight ASCII equivalents.
+
+    MFL sometimes delivers franchise names with U+2019 RIGHT SINGLE
+    QUOTATION MARK (e.g., "Miller\u2019s Genuine Draft") while all
+    other names use U+0027 APOSTROPHE. Normalizing at the data layer
+    ensures all consumers — creative layer, verifier, resolvers — see
+    consistent straight apostrophes without per-consumer workarounds.
+    """
+    return s.replace("\u2018", "'").replace("\u2019", "'")
+
+
 def _normalize_row(fr: dict[str, Any]) -> Row | None:
     """Normalize a raw franchise record to standard fields."""
     fid = fr.get("id")
@@ -118,8 +130,8 @@ def _normalize_row(fr: dict[str, Any]) -> Row | None:
     if not fid_s:
         return None
 
-    name = _clean_html(fr.get("name"))
-    owner = _clean_html(fr.get("owner_name"))
+    name = _normalize_apostrophes(_clean_html(fr.get("name")))
+    owner = _normalize_apostrophes(_clean_html(fr.get("owner_name")))
 
     raw_json = json.dumps(fr, ensure_ascii=False, sort_keys=True)
 
