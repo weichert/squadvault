@@ -808,6 +808,21 @@ _SNAP_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Possessive-object construction: "<Franchise>'s [N-game]? losing streak".
+# When the streak owner is explicitly named as the possessor of the streak
+# in the snap clause (e.g. "snapped Brandon's 11-game losing streak"), the
+# owner is unambiguous — no attribution heuristic needed. The capture group
+# yields the possessor name, which is looked up directly against
+# reverse_name_map. Case-sensitive leading capital requirement filters out
+# pronoun possessors ("his", "their", "the") that shouldn't be treated as
+# franchise references. See OBSERVATIONS_2026_04_14 backlog B.
+_POSSESSIVE_OBJECT_STREAK = re.compile(
+    r'\b([A-Z][\w&]*(?:\s+[A-Z&][\w&]*)*)'
+    r'(?:\'s|\u2019s)\s+'
+    r'(?:\d{1,2}[-\s]game\s+)?'
+    r'losing\s+streak',
+)
+
 
 def _compute_streaks(
     matchups: list[_MatchupFact],
@@ -940,6 +955,53 @@ def verify_streaks(
             r'from\s+\d{4}|in\s+\d{4}|back\s+in\s+\d{4})',
             _hist_context,
         ):
+            continue
+
+        # Possessive-object attribution: if the match span contains
+        # "<Franchise>'s [N-game]? losing streak", the streak owner is
+        # explicitly named in the prose — use that directly rather than
+        # falling through to the proximity heuristic, which can misattribute
+        # when the snap-verb subject has a short first name not in the
+        # alias map (e.g. "Ben snapped Brandon's losing streak" — pass 1
+        # of _find_nearby_franchise finds no "ben" alias, pass 2 picks up
+        # "brandon" inside the snap clause, and the failure cites Brandon
+        # as the snap-claim subject rather than the streak owner). See
+        # OBSERVATIONS_2026_04_14 backlog B, row 20 (2025 w11 attempt 1).
+        _match_text = recap_text[match.start():match.end()]
+        _possessive = _POSSESSIVE_OBJECT_STREAK.search(_match_text)
+        if _possessive:
+            _possessor_key = (
+                _normalize_apostrophes(_possessive.group(1)).lower().strip()
+            )
+            _possessor_fid = reverse_name_map.get(_possessor_key)
+            if _possessor_fid is None:
+                # Unmappable possessor (short first name, franchise not
+                # registered, or off-league reference). Silence over
+                # misattribution: do NOT fall through to the heuristic.
+                continue
+            _pre_streak = pre_week_streaks.get(_possessor_fid, 0)
+            _current_streak = actual_streaks.get(_possessor_fid, 0)
+            _fname = _resolve_display_name(_possessor_fid, reverse_name_map)
+            if _pre_streak >= 0:
+                failures.append(VerificationFailure(
+                    category="STREAK",
+                    severity="HARD",
+                    claim=f"{_fname}'s losing streak was snapped",
+                    evidence=(
+                        f"{_fname} had no losing streak entering Week "
+                        f"{week} (pre-week streak: {_pre_streak})."
+                    ),
+                ))
+            elif _current_streak < 0:
+                failures.append(VerificationFailure(
+                    category="STREAK",
+                    severity="HARD",
+                    claim=f"{_fname}'s losing streak was snapped",
+                    evidence=(
+                        f"{_fname} lost in Week {week} — losing streak "
+                        f"extended to {abs(_current_streak)}, not snapped."
+                    ),
+                ))
             continue
 
         franchise_id = _find_nearby_franchise(

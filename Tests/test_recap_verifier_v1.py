@@ -489,6 +489,160 @@ class TestVerifyStreaks:
         assert len(failures) == 1
         assert "extended" in failures[0].evidence.lower()
 
+    # ── Possessive-object attribution (backlog B, row 20 pattern) ────
+    # When the snap clause names the streak owner as a possessor
+    # ("X snapped Y's losing streak"), attribute to the possessor Y
+    # directly — the proximity heuristic otherwise misattributes when
+    # the subject X has a short first name absent from the alias map.
+
+    def test_snap_possessive_object_row20_pattern(self):
+        """Verbatim row 20 prose: 'Ben snapped Brandon's 11-game losing streak...'
+
+        Ben's Gods' first word is "ben" (3 chars, below 5-char alias
+        threshold). Under the pre-fix attribution heuristic, pass-1
+        before "snapped" found nothing and pass-2 picked up "brandon"
+        inside the snap clause — producing a failure citing Brandon
+        Knows Ball as the snap-claim subject. With possessive-object
+        attribution, Brandon is correctly identified as the streak
+        owner and the failure explicitly frames it that way.
+        """
+        # F_BEN beat F_BRANDON in w11. Brandon lost weeks 1-10 (to
+        # OTHER) and loses w11 to Ben — pre-week streak -10, current -11.
+        matchups = []
+        for w in range(1, 11):
+            matchups.append(_make_matchup(w, "OTHER", "F_BRANDON", 120, 90))
+        matchups.append(_make_matchup(11, "F_BEN", "F_BRANDON", 111.60, 104.15))
+        reverse = {
+            "Ben's Gods": "F_BEN", "ben's gods": "F_BEN",
+            "Brandon Knows Ball": "F_BRANDON",
+            "brandon knows ball": "F_BRANDON",
+            "brandon": "F_BRANDON",  # 7-char first-word alias (built in prod)
+            "Other Team": "OTHER", "other team": "OTHER",
+        }
+        text = (
+            "Ben snapped Brandon's 11-game losing streak with a "
+            "111.60-104.15 victory, though Brandon actually put up "
+            "his best score in weeks."
+        )
+        failures = verify_streaks(text, matchups, 11, reverse)
+        assert len(failures) == 1
+        # The failure must cite Brandon as the streak owner, not as the
+        # snap-claim subject — that's the correction backlog B targets.
+        assert "Brandon Knows Ball" in failures[0].claim
+        assert "losing streak was snapped" in failures[0].claim
+        assert "extended to 11" in failures[0].evidence
+        assert "not snapped" in failures[0].evidence
+
+    def test_snap_possessive_object_multiword_franchise(self):
+        """Possessor is a multi-word franchise name — still attributable."""
+        matchups = [
+            _make_matchup(1, "F_OTHER", "F_ITCAV", 120, 100),
+            _make_matchup(2, "F_OTHER", "F_ITCAV", 115, 105),
+            _make_matchup(3, "F_WINNER", "F_ITCAV", 130, 90),
+        ]
+        reverse = {
+            "Italian Cavallini": "F_ITCAV",
+            "italian cavallini": "F_ITCAV",
+            "italian": "F_ITCAV",
+            "Other Team": "F_OTHER", "other team": "F_OTHER",
+            "Winners": "F_WINNER", "winners": "F_WINNER",
+        }
+        text = (
+            "Winners snapped Italian Cavallini's 2-game losing streak "
+            "with a 130-90 win."
+        )
+        failures = verify_streaks(text, matchups, 3, reverse)
+        assert len(failures) == 1
+        assert "Italian Cavallini" in failures[0].claim
+        assert "extended to 3" in failures[0].evidence
+
+    def test_snap_possessive_object_unmappable_possessor_silenced(self):
+        """Unmappable possessor (short first name) → snap check is silent.
+
+        If we can't resolve the possessor to a franchise, silence is
+        preferred over misattribution. The pre-fix behaviour would fall
+        through to _find_nearby_franchise pass-2 and land on some other
+        franchise; the possessive path prevents that.
+
+        This test uses prose without an explicit game count so the
+        unrelated explicit-count check elsewhere in verify_streaks
+        doesn't fire — isolating the snap-check behaviour.
+        """
+        matchups = [
+            _make_matchup(1, "F_OTHER", "F_BEN", 120, 100),
+            _make_matchup(2, "F_OTHER", "F_BEN", 115, 105),
+            _make_matchup(3, "F_WINNER", "F_BEN", 130, 90),
+        ]
+        reverse = {
+            "Ben's Gods": "F_BEN", "ben's gods": "F_BEN",
+            # Note: "ben" NOT in map — below 5-char threshold
+            "Other Team": "F_OTHER", "other team": "F_OTHER",
+            "Winners": "F_WINNER", "winners": "F_WINNER",
+        }
+        text = "Winners snapped Ben's losing streak with a win."
+        failures = verify_streaks(text, matchups, 3, reverse)
+        # Ben unmappable → snap check emits no failure. Whether any
+        # other checks fire is out of scope for backlog B.
+        snap_failures = [
+            f for f in failures
+            if "snapped" in f.claim.lower()
+            or "snapped" in f.evidence.lower()
+        ]
+        assert snap_failures == []
+
+    def test_snap_possessive_object_pronoun_falls_through(self):
+        """Pronoun possessor ('his/their/the') → falls through to heuristic path."""
+        matchups = [
+            _make_matchup(1, "F_WINNER", "F1", 120, 100),
+            _make_matchup(2, "F_WINNER", "F1", 115, 105),
+            _make_matchup(3, "F_WINNER", "F1", 130, 90),
+        ]
+        reverse = {"Alpha Team": "F1", "alpha team": "F1",
+                    "Winner Team": "F_WINNER", "winner team": "F_WINNER"}
+        # "his" is lowercase → does NOT match possessive-object pattern
+        # (which requires a leading capital letter). Falls through to
+        # the normal subject-attribution path: Alpha Team is subject
+        # (before "snapped"), Alpha Team lost → streak extended, flag.
+        text = "Alpha Team snapped his losing streak."
+        failures = verify_streaks(text, matchups, 3, reverse)
+        assert len(failures) == 1
+        assert "extended" in failures[0].evidence.lower()
+
+    def test_snap_possessive_object_possessor_had_no_streak(self):
+        """Possessor is mappable but never had a losing streak → flag."""
+        matchups = [
+            _make_matchup(1, "F_BRANDON", "F_OTHER", 120, 100),  # Brandon won
+            _make_matchup(2, "F_BRANDON", "F_OTHER", 115, 105),  # Brandon won
+            _make_matchup(3, "F_WINNER", "F_BRANDON", 130, 90),  # Brandon lost once
+        ]
+        reverse = {
+            "Brandon Knows Ball": "F_BRANDON",
+            "brandon knows ball": "F_BRANDON",
+            "brandon": "F_BRANDON",
+            "Other Team": "F_OTHER", "other team": "F_OTHER",
+            "Winners": "F_WINNER", "winners": "F_WINNER",
+        }
+        # Brandon had NO losing streak entering w3 (coming off a 2-0 run).
+        text = "Winners snapped Brandon's losing streak this week."
+        failures = verify_streaks(text, matchups, 3, reverse)
+        assert len(failures) == 1
+        assert "no losing streak" in failures[0].evidence.lower()
+        assert "Brandon Knows Ball" in failures[0].claim
+
+    def test_snap_subject_attribution_still_works(self):
+        """Regression guard: non-possessive snap claims use heuristic unchanged."""
+        matchups = [
+            _make_matchup(1, "F2", "F1", 120, 100),
+            _make_matchup(2, "F2", "F1", 115, 105),
+            _make_matchup(3, "F1", "F2", 130, 90),
+        ]
+        reverse = {"Alpha Team": "F1", "alpha team": "F1",
+                    "Beta Squad": "F2", "beta squad": "F2"}
+        # No possessive construction — falls through to existing path.
+        text = "Alpha Team snapped their losing streak this week."
+        failures = verify_streaks(text, matchups, 3, reverse)
+        assert failures == []
+
     def test_no_franchise_near_streak_skipped(self):
         matchups, reverse = self._setup()
         text = "Someone has won 5 straight games."
