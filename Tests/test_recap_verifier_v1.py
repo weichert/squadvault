@@ -1176,3 +1176,182 @@ class TestCrossWeekSeriesConsistency:
         ]
         failures = verify_cross_week_consistency(weeks, reverse)
         assert failures == []
+
+
+# ── Regression: 2025 w11/w13 verifier false positives ────────────────
+#
+# These tests pin the three verifier parse bugs (V1, V2, V3) identified
+# in OBSERVATIONS_2026_04_14_Q4_SUPERLATIVE_DIAGNOSIS.md. Each test uses
+# prose drawn directly from the six rejected drafts in that diagnosis.
+# Companion tests verify that genuine violations are still caught so the
+# fix does not simply defang the check.
+
+
+class TestRegressionW11W13FalsePositives:
+    """Pin the V1/V2/V3 parse bugs surfaced in the 2026-04-14 diagnosis."""
+
+    # ── V1: "previous season high" ───────────────────────────────────
+
+    def _season_matchups_51_85(self):
+        # Team scores are irrelevant for this check — only the player
+        # season high (51.85) matters. Use any valid matchup shape.
+        return [_make_matchup(1, "F1", "F2", 120.00, 100.00)]
+
+    def test_v1_previous_season_high_not_flagged(self):
+        """w11 a1/a2/a3: 'breaks the previous season high of 48.10'.
+
+        51.85 is the current season high (Allen's Week 11 score). The
+        model is correctly positioning 48.10 as the *prior* high — a
+        temporally displaced claim we cannot evaluate. Skip.
+        """
+        matchups = self._season_matchups_51_85()
+        text = (
+            "Josh Allen dropped 51.85 — breaks the previous "
+            "season high of 48.10 and powered Miller to another win."
+        )
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, 51.85, None,
+        )
+        assert failures == [], (
+            f"expected no failures for 'previous season high' construction, "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_v1_prior_season_high_not_flagged(self):
+        """Synonym check: 'prior' should behave the same as 'previous'."""
+        matchups = self._season_matchups_51_85()
+        text = "That 51.85 topped the prior season high of 48.10."
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, 51.85, None,
+        )
+        assert failures == []
+
+    def test_v1_bare_season_high_still_flagged(self):
+        """Sanity: a bare (non-temporal-qualified) wrong claim is still caught.
+
+        Without 'previous/prior/former/past', a season-high claim remains
+        subject to the max comparison. 48.10 is not the actual season high.
+        """
+        matchups = self._season_matchups_51_85()
+        text = "Allen's 48.10 is the season high."
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, 51.85, None,
+        )
+        assert len(failures) == 1
+        assert failures[0].category == "SUPERLATIVE"
+        assert "48.10" in failures[0].claim
+
+    # ── V2: "all-time record of <integer>" ───────────────────────────
+
+    def test_v2_alltime_record_of_integer_not_flagged(self):
+        """w13 a3: '...27.95 points watching from the bench as the streak
+        marches toward the all-time record of 15.'
+
+        The '15' is the all-time losing-streak record (games), not a
+        scoring record. The 27.95 nearby is unrelated — Trevor Lawrence's
+        bench points. Verifier should recognize 'record of <integer>' as
+        a count claim and skip.
+        """
+        season = [_make_matchup(1, "F1", "F2", 150.00, 100.00)]
+        alltime = season + [_make_matchup(1, "F1", "F2", 198.80, 90.00)]
+        text = (
+            "Trevor Lawrence's 27.95 points watched from the bench as "
+            "the streak marches toward the all-time record of 15."
+        )
+        failures = verify_superlatives(
+            text, season, alltime, SEASON, None, 77.00,
+        )
+        assert failures == [], (
+            f"expected no failures for 'all-time record of 15' (count), "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_v2_alltime_record_of_decimal_still_flagged(self):
+        """Sanity: 'all-time record' with a decimal score nearby (not an
+        integer count) is still verified. An incorrect scoring claim
+        must still flag.
+        """
+        season = [_make_matchup(1, "F1", "F2", 160.00, 100.00)]
+        alltime = season + [_make_matchup(1, "F1", "F2", 198.80, 90.00)]
+        text = "That 145.30 is the all-time record."
+        failures = verify_superlatives(
+            text, season, alltime, SEASON, None, None,
+        )
+        assert len(failures) == 1
+        assert failures[0].category == "SUPERLATIVE"
+        assert "145.30" in failures[0].claim
+
+    # ── V3: " but " clause-break for PLAYER_SCORE ────────────────────
+
+    def _build_v3_db(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F1", name="Warmongers")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F2", name="Stu's Crew")
+
+        _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=13,
+                        winner_id="F1", loser_id="F2",
+                        winner_score=96.95, loser_score=94.60)
+
+        # Bowers' actual score is 20.30. The draft also mentions 53.90
+        # as a bench total (not a player score).
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=13,
+                             franchise_id="F1", player_id="P1",
+                             score=20.30)
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=13,
+                             franchise_id="F1", player_id="P2",
+                             score=27.20)
+
+        con.commit()
+        con.close()
+        return db_path
+
+    def test_v3_player_but_bench_total_not_flagged(self, tmp_path):
+        """w13 a1: 'got 20.30 from Brock Bowers but left 53.90 on the bench'.
+
+        53.90 is a bench total appearing after the clause-break 'but'.
+        Verifier must not fuse it into a Bowers attribution.
+        """
+        # Player directory entry — tests use a minimal player name map.
+        db_path = self._build_v3_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        # Insert player directory rows if schema supports it.
+        try:
+            con.execute(
+                "INSERT OR IGNORE INTO player_directory "
+                "(player_id, name, position) VALUES (?, ?, ?)",
+                ("P1", "Bowers, Brock", "TE"),
+            )
+            con.execute(
+                "INSERT OR IGNORE INTO player_directory "
+                "(player_id, name, position) VALUES (?, ?, ?)",
+                ("P2", "Goff, Jared", "QB"),
+            )
+            con.commit()
+        except sqlite3.OperationalError:
+            # Schema may differ; skip gracefully
+            pass
+        con.close()
+
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "The Warmongers got 20.30 from Brock Bowers but left 53.90 "
+            "on the bench, including Jared Goff's 27.20.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=13,
+        )
+        # No PLAYER_SCORE failure should be raised for Bowers/53.90.
+        player_score_failures = [
+            f for f in result.hard_failures if f.category == "PLAYER_SCORE"
+        ]
+        assert player_score_failures == [], (
+            f"expected no PLAYER_SCORE failures, got "
+            f"{[(f.claim, f.evidence) for f in player_score_failures]}"
+        )
+

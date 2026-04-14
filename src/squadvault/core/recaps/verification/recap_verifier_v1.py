@@ -558,6 +558,33 @@ def verify_scores(
 
 # ── Category 2: Superlative Verification ─────────────────────────────
 
+# Temporal-displacement qualifiers. When one of these appears in the
+# ~40 chars preceding a "season high" / "all-time record" keyword, the
+# model's claim is about a pre-existing record (e.g. "breaks the
+# previous season high of 48.10" — the 48.10 is the *old* high being
+# broken, not the current season max). This verifier does not have
+# week-filtered superlative data, so it cannot evaluate such claims;
+# silence over speculation.
+_PREVIOUS_QUALIFIER_PATTERN = re.compile(
+    r'\b(?:previous|prior|former|past)\b', re.IGNORECASE,
+)
+
+
+def _has_previous_qualifier(
+    text: str, pos: int, *, lookback: int = 40,
+) -> bool:
+    """Return True if a temporal qualifier precedes pos within lookback."""
+    start = max(0, pos - lookback)
+    return bool(_PREVIOUS_QUALIFIER_PATTERN.search(text[start:pos]))
+
+
+# After "all-time record" / "all-time high", a following integer count
+# (e.g. "of 15" meaning "15 games") is a non-scoring claim. Scoring
+# values in this league always use XX.XX format, so an integer in this
+# position indicates the claim refers to a count, not a score.
+_INTEGER_OBJECT_PATTERN = re.compile(r'\s*of\s+\d+\b(?!\s*\.\s*\d)')
+
+
 _SEASON_HIGH_PATTERN = re.compile(
     r'(?:season[- ]?high|highest[^.]{0,40}(?:this season|of the season|season))',
     re.IGNORECASE,
@@ -622,6 +649,12 @@ def verify_superlatives(
 
     # Check "season high" claims
     for match in _SEASON_HIGH_PATTERN.finditer(recap_text):
+        # Fix V1: "previous/prior season high of X" is a claim about the
+        # pre-existing record, not the current max. Skip — week-filtered
+        # superlative data isn't available here, so we can't evaluate it.
+        if _has_previous_qualifier(recap_text, match.start()):
+            continue
+
         claimed_score = _extract_nearby_score(recap_text, match.start())
         if claimed_score is None:
             continue
@@ -705,6 +738,18 @@ def verify_superlatives(
             r'most\s+productive\s+(?:auction|draft))',
             _auction_context,
         ):
+            continue
+
+        # Fix V1: "previous/prior all-time record of X" is a pre-existing
+        # record claim — skip, same reasoning as the season-high loop.
+        if _has_previous_qualifier(recap_text, match.start()):
+            continue
+
+        # Fix V2: "all-time record of <integer>" is a count claim (games,
+        # occurrences), not a scoring record. Scoring numbers in this
+        # league always use XX.XX format. Example: "the streak marches
+        # toward the all-time record of 15" — 15 is games, not a score.
+        if _INTEGER_OBJECT_PATTERN.match(recap_text, match.end()):
             continue
 
         claimed_score = _extract_nearby_score(recap_text, match.start())
@@ -1578,12 +1623,19 @@ def verify_player_scores(
                     ):
                         claimed_score = -claimed_score
 
-                # Guard: skip if a sentence break or "by" separator
+                # Guard: skip if a sentence break or clause-break separator
                 # appears between the name and the score. These indicate
                 # the score is about something else (matchup margin,
-                # team total, etc.), not the player.
+                # team total, bench total, etc.), not the player.
+                # " but " catches the pattern "got 20.30 from X but left
+                # 53.90 on the bench" where 53.90 is a bench total.
                 between = window[:m.start()]
-                if "." in between or " by " in between or "\n" in between:
+                if (
+                    "." in between
+                    or " by " in between
+                    or "\n" in between
+                    or " but " in between
+                ):
                     continue
 
                 # Guard: skip scores that match matchup numbers (team
