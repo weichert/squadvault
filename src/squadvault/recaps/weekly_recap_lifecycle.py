@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from squadvault.ai.creative_layer_v1 import draft_narrative_v1
 from squadvault.core.eal.consume_v1 import EALDirectivesV1, load_eal_directives_v1
@@ -71,6 +71,7 @@ from squadvault.core.tone.tone_profile_v1 import get_tone_preset
 from squadvault.core.tone.voice_profile_v1 import get_voice_profile
 from squadvault.errors import RecapDataError, RecapNotFoundError, RecapStateError
 from squadvault.recaps.preflight import check_duplicate_matchup_week
+from squadvault.recaps.writing_room.prompt_audit_v1 import maybe_capture_attempt
 
 ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 
@@ -561,6 +562,11 @@ class _PromptContext:
     tone_preset: str
     voice_profile: str
     seasons_count: int
+    # Hoisted for prompt-audit observability (edit A). These reach the
+    # `_generate_draft` retry loop via `_ctx.all_angles` / `_ctx.budgeted`
+    # so the audit sidecar can record which detectors fired per attempt.
+    all_angles: list[NarrativeAngle] = field(default_factory=list)
+    budgeted: list[NarrativeAngle] = field(default_factory=list)
 
 
 def _derive_prompt_context(
@@ -585,6 +591,11 @@ def _derive_prompt_context(
     _history_ctx = None
     _season_ctx = None
     _all_matchups = None
+    # Hoisted per edit A: ensure these exist regardless of try-block outcomes
+    # so the return-site construction of _PromptContext and downstream audit
+    # consumption are always safe.
+    _all_angles: list[NarrativeAngle] = []
+    budgeted: list[NarrativeAngle] = []
 
     # -- Name resolution --
     try:
@@ -671,8 +682,6 @@ def _derive_prompt_context(
 
     # -- Narrative angle detection (all 6 modules → unified budget) --
     try:
-        _all_angles: list[NarrativeAngle] = []
-
         if _season_ctx is not None:
             _cl_angles = detect_narrative_angles_v1(
                 season_ctx=_season_ctx,
@@ -734,7 +743,7 @@ def _derive_prompt_context(
         #   HEADLINE (strength 3): cap 3, NOTABLE (strength 2): cap 6,
         #   MINOR (strength 1): cap 4 (only if total < 12). Total cap: 15.
         if _all_angles:
-            budgeted: list[NarrativeAngle] = []
+            budgeted = []
             h_count = n_count = m_count = 0
             for a in _all_angles:
                 if a.strength >= 3 and h_count < 3:
@@ -873,6 +882,8 @@ def _derive_prompt_context(
         seasons_count=(
             len(_history_ctx.seasons_available) if _history_ctx is not None else 0
         ),
+        all_angles=_all_angles,
+        budgeted=budgeted,
     )
 
 
@@ -1115,6 +1126,24 @@ def generate_weekly_recap_draft(
                 logger.debug("Verification V1 failed on attempt %d: %s", _attempt, e)
                 _verification_result = None
                 break  # Verification error — keep this draft, don't retry
+
+            # SV_PROMPT_AUDIT_V1_HOOK — observation sidecar (edit B).
+            # Writes one row per prompt attempt when SQUADVAULT_PROMPT_AUDIT=1.
+            # Env-gated no-op by default; all exceptions are swallowed inside
+            # the hook so the draft pipeline cannot be blocked or mutated by
+            # audit failures. Observation-only: never feeds back into facts.
+            maybe_capture_attempt(
+                db_path,
+                league_id=league_id,
+                season=season,
+                week_index=week_index,
+                attempt=_attempt,
+                all_angles=_ctx.all_angles,
+                budgeted=_ctx.budgeted,
+                narrative_angles_text=_ctx.narrative_angles_text,
+                narrative_draft=_narrative_draft,
+                verification_result=_verification_result,
+            )
 
             if _verification_result.passed:
                 logger.debug(
