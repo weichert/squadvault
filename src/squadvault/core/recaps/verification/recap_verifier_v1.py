@@ -585,6 +585,102 @@ def _has_previous_qualifier(
 _INTEGER_OBJECT_PATTERN = re.compile(r'\s*of\s+\d+\b(?!\s*\.\s*\d)')
 
 
+# ── V4: ordinal-qualifier guard for SUPERLATIVE ─────────────────────
+# An ordinal prefix immediately before "highest"/"lowest" negates the
+# superlative. "His second-lowest output of the season" is a claim
+# about Brandon's #2-worst score, not the season minimum. The
+# _SEASON_{HIGH,LOW}_PATTERN matches anchor at "highest"/"lowest" and
+# do not consume the preceding "second-"/"third-"/"Nth-". Without a
+# guard, the pattern fires and _extract_nearby_score pulls an unrelated
+# score from the surrounding context.
+#
+# Shape mirrors V1: skip when an ordinal qualifier appears immediately
+# before the match, joined by hyphen or space. Personal-scoped
+# "Nth-lowest" data is not available here, so silence over speculation.
+_ORDINAL_QUALIFIER_PATTERN = re.compile(
+    r'\b(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|'
+    r'\d+(?:st|nd|rd|th))[- ]+$',
+    re.IGNORECASE,
+)
+
+
+def _has_ordinal_qualifier(
+    text: str, pos: int, *, lookback: int = 15,
+) -> bool:
+    """Return True if an ordinal prefix ('second-', 'third-', 'Nth-')
+    immediately precedes pos within lookback chars."""
+    start = max(0, pos - lookback)
+    return bool(_ORDINAL_QUALIFIER_PATTERN.search(text[start:pos]))
+
+
+# ── V5: possessive / personal-scope guard for SUPERLATIVE ───────────
+# A possessive pronoun ("his", "her", "their", "its") or a personal-
+# scope marker ("in N tries", "in N attempts", "in N games") scopes
+# the superlative to a person/team, not the league. Example prose:
+#   "Brandon's 116.75 — easily his highest output in nine tries this
+#   season."
+# The superlative is Brandon's personal best, not a league record; the
+# verifier compares against the league-wide max and misattributes.
+# Per-franchise/per-player historical bests are not available to this
+# verifier, so skip the check — silence over speculation.
+_POSSESSIVE_PRONOUN_PATTERN = re.compile(
+    r'\b(?:his|her|their|its)\b', re.IGNORECASE,
+)
+_PERSONAL_SCOPE_PATTERN = re.compile(
+    r'\bin\s+\w+\s+(?:tries|attempts|games|outings|starts|appearances)\b',
+    re.IGNORECASE,
+)
+
+
+def _has_possessive_scope(
+    text: str, match_start: int, match_end: int, *, lookback: int = 30,
+) -> bool:
+    """Return True if the superlative at [match_start:match_end] is
+    scoped to an individual/team via a preceding possessive pronoun or
+    a personal-scope marker within the match span."""
+    start = max(0, match_start - lookback)
+    if _POSSESSIVE_PRONOUN_PATTERN.search(text[start:match_start]):
+        return True
+    # Personal-scope marker may be consumed by the match itself, e.g.
+    # "highest output in nine tries this season" — _SEASON_HIGH_PATTERN's
+    # [^.]{0,40} filler captures "output in nine tries".
+    if _PERSONAL_SCOPE_PATTERN.search(text[match_start:match_end]):
+        return True
+    return False
+
+
+# ── V6: frequency-marker guard for SUPERLATIVE (all-time loop) ──────
+# "Nth time in league history" is an event-frequency construction, not
+# a scoring record. Example prose:
+#   "marking just the 323rd time in league history a starter has been
+#   completely shut out. Pat stayed perfect with a 125.30-111.95 win"
+# _ALLTIME_PATTERN fires on "league history" and
+# _extract_nearby_score picks up the team score 125.30 from an
+# unrelated adjacent clause. The existing series/rivalry and
+# auction/investment guards don't cover occurrence-count framing.
+#
+# Covered constructions: "Nth time", "only/first/last/sole/lone time",
+# "few times", "handful of times". Bare frequency adjectives like
+# "rare" are intentionally excluded — they co-occur with legitimate
+# scoring claims ("a rare feat in league history" describing the
+# 192.15 score) and would over-skip.
+_FREQUENCY_MARKER_PATTERN = re.compile(
+    r'\b(?:\d+(?:st|nd|rd|th)\s+time|'
+    r'(?:only|first|last|second|third|fourth|fifth|sole|lone)\s+time|'
+    r'few\s+times|handful\s+of\s+times)\b',
+    re.IGNORECASE,
+)
+
+
+def _has_frequency_marker(
+    text: str, pos: int, *, lookback: int = 40,
+) -> bool:
+    """Return True if a frequency-count marker ('Nth time', 'only
+    time', 'first time', 'few times') precedes pos within lookback."""
+    start = max(0, pos - lookback)
+    return bool(_FREQUENCY_MARKER_PATTERN.search(text[start:pos]))
+
+
 _SEASON_HIGH_PATTERN = re.compile(
     r'(?:season[- ]?high|highest[^.]{0,40}(?:this season|of the season|season))',
     re.IGNORECASE,
@@ -655,6 +751,19 @@ def verify_superlatives(
         if _has_previous_qualifier(recap_text, match.start()):
             continue
 
+        # Fix V4: ordinal-qualifier prefix ("second-highest", "3rd-highest")
+        # negates the superlative. The pattern anchors at "highest" and
+        # does not consume the preceding ordinal, so a bare match here
+        # would compare an unrelated nearby score against the league max.
+        if _has_ordinal_qualifier(recap_text, match.start()):
+            continue
+
+        # Fix V5: possessive pronoun or personal-scope marker scopes the
+        # superlative to an individual/team, not the league. We lack
+        # per-franchise/per-player history data, so skip.
+        if _has_possessive_scope(recap_text, match.start(), match.end()):
+            continue
+
         claimed_score = _extract_nearby_score(recap_text, match.start())
         if claimed_score is None:
             continue
@@ -694,6 +803,24 @@ def verify_superlatives(
 
     # Check "season low" claims
     for match in _SEASON_LOW_PATTERN.finditer(recap_text):
+        # Fix V1 (parity with season-high loop): "previous/prior season
+        # low of X" is a pre-existing record claim — week-filtered data
+        # isn't available, skip.
+        if _has_previous_qualifier(recap_text, match.start()):
+            continue
+
+        # Fix V4: "his second-lowest output of the season" — the ordinal
+        # prefix negates the superlative. The pattern anchors at
+        # "lowest" and does not consume "second-". Without this guard,
+        # _extract_nearby_score pulls an unrelated score and flags.
+        if _has_ordinal_qualifier(recap_text, match.start()):
+            continue
+
+        # Fix V5 (parity with season-high loop): possessive-scoped lows
+        # are personal, not league-wide. Skip.
+        if _has_possessive_scope(recap_text, match.start(), match.end()):
+            continue
+
         claimed_score = _extract_nearby_score(recap_text, match.start())
         if claimed_score is None:
             continue
@@ -750,6 +877,15 @@ def verify_superlatives(
         # league always use XX.XX format. Example: "the streak marches
         # toward the all-time record of 15" — 15 is games, not a score.
         if _INTEGER_OBJECT_PATTERN.match(recap_text, match.end()):
+            continue
+
+        # Fix V6: "Nth time in league history" / "only time in league
+        # history" is an event-frequency construction, not a scoring
+        # record. Example: "marking just the 323rd time in league
+        # history a starter has been completely shut out. Pat stayed
+        # perfect with a 125.30-111.95 win" — 125.30 is an unrelated
+        # adjacent score. Skip the check.
+        if _has_frequency_marker(recap_text, match.start()):
             continue
 
         claimed_score = _extract_nearby_score(recap_text, match.start())

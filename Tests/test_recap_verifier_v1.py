@@ -1509,3 +1509,299 @@ class TestRegressionW11W13FalsePositives:
             f"{[(f.claim, f.evidence) for f in player_score_failures]}"
         )
 
+
+# ─── V4/V5/V6 parse-false-positive regressions ───────────────────────
+#
+# Fixtures are reproduced from prompt_audit rows captured in the
+# 2026-04-14 wider SUPERLATIVE classification pass
+# (scripts/audit_queries/OBSERVATIONS_2026_04_14_SUPERLATIVE_WIDER_PASS.md).
+#
+# Source rows:
+#   V4: id=45 (2024 w13 a1), id=17b (2025 w10 a1)
+#   V5: id=14 (2025 w9 a1)
+#   V6: id=5  (2025 w3 a1)
+#
+# Each category has a companion "bare claim still flags" test that
+# guards against the fix simply defanging the check.
+class TestRegressionSuperlativeWiderPass:
+    """Pin V4/V5/V6 parse bugs surfaced in the 2026-04-14 wider pass."""
+
+    # ── V4: ordinal-qualifier prefix ("second-lowest", "3rd-highest") ─
+
+    def _season_low_matchups(self):
+        """Actual season low is 88.40; 120.20 is not the season low."""
+        return [
+            _make_matchup(1, "F1", "F2", 130.50, 110.20),
+            _make_matchup(2, "F3", "F4", 95.80, 88.40),
+            _make_matchup(3, "F1", "F3", 120.50, 100.10),
+        ]
+
+    def test_v4_second_lowest_not_flagged_row45(self):
+        """id=45 (2024 w13 a1): 'Steve falls to 8-5 after his second-
+        lowest output of the season. Stu edged Eddie 120.20-114.05.'
+
+        The ordinal 'second-' negates the 'lowest of the season'
+        superlative — this is Steve's #2-worst score, not the season
+        minimum. The nearby 120.20 is Stu's matchup score in the next
+        sentence, unrelated to the superlative. Skip.
+        """
+        text = (
+            "Steve falls to 8-5 after his second-lowest output of the "
+            "season. Stu edged Eddie 120.20-114.05."
+        )
+        failures = verify_superlatives(
+            text, self._season_low_matchups(), None, SEASON, None, None,
+        )
+        # Filter to SEASON-LOW-shaped failures to avoid conflation with
+        # any other check that might fire on this prose.
+        low_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "low" in f.claim.lower()
+        ]
+        assert low_failures == [], (
+            f"expected no season-low failure for 'second-lowest' "
+            f"(ordinal prefix), got {[(f.claim, f.evidence) for f in low_failures]}"
+        )
+
+    def test_v4_second_lowest_not_flagged_row17b(self):
+        """id=17b (2025 w10 a1): 'Brandon managed just 90.10 total —
+        his second-lowest score of the season.' Same shape as row 45."""
+        text = (
+            "Brandon managed just 90.10 total — his second-lowest "
+            "score of the season."
+        )
+        failures = verify_superlatives(
+            text, self._season_low_matchups(), None, SEASON, None, None,
+        )
+        low_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "low" in f.claim.lower()
+        ]
+        assert low_failures == [], (
+            f"expected no season-low failure for 'his second-lowest', "
+            f"got {[(f.claim, f.evidence) for f in low_failures]}"
+        )
+
+    def test_v4_numeric_ordinal_high_not_flagged(self):
+        """Numeric-ordinal variant: '3rd-highest' / '2nd-highest' —
+        same class as word-form ordinals."""
+        text = "The Warmongers posted their 3rd-highest score of the season at 145.30."
+        matchups = [
+            _make_matchup(1, "F1", "F2", 192.15, 100.00),  # actual high
+            _make_matchup(2, "F1", "F2", 160.00, 110.00),
+        ]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        high_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "high" in f.claim.lower()
+        ]
+        assert high_failures == [], (
+            f"expected no season-high failure for '3rd-highest', "
+            f"got {[(f.claim, f.evidence) for f in high_failures]}"
+        )
+
+    def test_v4_bare_season_low_still_flagged(self):
+        """Sanity: a bare 'lowest of the season' claim with a wrong
+        score still flags. The V4 guard must not defang genuine
+        violations.
+        """
+        text = "That 120.20 is the lowest score of the season."
+        failures = verify_superlatives(
+            text, self._season_low_matchups(), None, SEASON, None, None,
+        )
+        low_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "low" in f.claim.lower()
+        ]
+        assert len(low_failures) == 1, (
+            f"expected one season-low failure for bare wrong claim, "
+            f"got {[(f.claim, f.evidence) for f in low_failures]}"
+        )
+        assert "120.20" in low_failures[0].claim
+
+    # ── V5: possessive pronoun / personal-scope marker ───────────────
+
+    def test_v5_possessive_personal_high_not_flagged_row14(self):
+        """id=14 (2025 w9 a1): 'Brock Bowers (37.3) carried the
+        Warmongers past Brandon\'s 116.75 — easily his highest output
+        in nine tries this season.'
+
+        The superlative is scoped to Brandon personally via both
+        possessive 'his' and personal-scope marker 'in nine tries'.
+        The verifier lacks per-franchise/per-player season-high data,
+        so it should skip rather than compare to the league-wide max.
+        """
+        text = (
+            "Brock Bowers (37.3) carried the Warmongers past Brandon's "
+            "116.75 — easily his highest output in nine tries this "
+            "season."
+        )
+        # Actual league high is 192.15, well above the 116.75 the
+        # verifier would extract.
+        matchups = [
+            _make_matchup(1, "F1", "F2", 192.15, 100.00),
+            _make_matchup(9, "F3", "F4", 116.75, 105.00),
+        ]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        high_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "high" in f.claim.lower()
+        ]
+        assert high_failures == [], (
+            f"expected no season-high failure for possessive-scoped "
+            f"'his highest ... in nine tries', "
+            f"got {[(f.claim, f.evidence) for f in high_failures]}"
+        )
+
+    def test_v5_possessive_low_not_flagged(self):
+        """Parity: possessive-scoped season-low claim scopes to a
+        person/team, not the league."""
+        text = "Brandon managed 90.10 — his lowest output of the season."
+        matchups = [
+            _make_matchup(1, "F1", "F2", 130.50, 70.00),  # actual low
+            _make_matchup(2, "F3", "F4", 100.00, 90.10),
+        ]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        low_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "low" in f.claim.lower()
+        ]
+        assert low_failures == [], (
+            f"expected no season-low failure for 'his lowest output', "
+            f"got {[(f.claim, f.evidence) for f in low_failures]}"
+        )
+
+    def test_v5_bare_league_season_high_still_flagged(self):
+        """Sanity: a bare 'season high' claim without possessive or
+        personal-scope marker is still subject to the max check.
+        """
+        text = "That 116.75 is the season high."
+        matchups = [
+            _make_matchup(1, "F1", "F2", 192.15, 100.00),
+        ]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        high_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "high" in f.claim.lower()
+        ]
+        assert len(high_failures) == 1
+        assert "116.75" in high_failures[0].claim
+
+    # ── V6: frequency-marker guard for all-time loop ─────────────────
+
+    def test_v6_nth_time_in_league_history_not_flagged_row5(self):
+        """id=5 (2025 w3 a1): 'marking just the 323rd time in league
+        history a starter has been completely shut out. Pat stayed
+        perfect with a 125.30-111.95 win.'
+
+        'Nth time in league history' is an event-frequency claim, not
+        a scoring record. The verifier's all-time loop fires on
+        'league history' and extracts 125.30 from an unrelated
+        adjacent clause. Skip.
+        """
+        text = (
+            "Brandon's week got ugly when CeeDee Lamb put up a zero, "
+            "marking just the 323rd time in league history a starter "
+            "has been completely shut out. Pat stayed perfect with a "
+            "125.30-111.95 win."
+        )
+        season = [_make_matchup(3, "F1", "F2", 125.30, 111.95)]
+        # All-time high is much larger than any nearby extracted score,
+        # so a bare match would flag.
+        alltime = season + [_make_matchup(1, "F1", "F2", 198.80, 90.00)]
+        failures = verify_superlatives(
+            text, season, alltime, SEASON, None, None,
+        )
+        alltime_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "all-time" in f.claim.lower()
+        ]
+        assert alltime_failures == [], (
+            f"expected no all-time failure for 'Nth time in league "
+            f"history' (frequency construction), "
+            f"got {[(f.claim, f.evidence) for f in alltime_failures]}"
+        )
+
+    def test_v6_only_time_in_league_history_not_flagged(self):
+        """Synonym: 'only time in league history' is also a
+        frequency construction."""
+        text = (
+            "That zero is the only time in league history a starter "
+            "was benched mid-game. Final: 125.30-111.95."
+        )
+        season = [_make_matchup(3, "F1", "F2", 125.30, 111.95)]
+        alltime = season + [_make_matchup(1, "F1", "F2", 198.80, 90.00)]
+        failures = verify_superlatives(
+            text, season, alltime, SEASON, None, None,
+        )
+        alltime_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "all-time" in f.claim.lower()
+        ]
+        assert alltime_failures == []
+
+    def test_v6_first_time_in_league_history_not_flagged(self):
+        """Synonym: 'first time in league history' — frequency."""
+        text = (
+            "For the first time in league history, a team scored a zero. "
+            "Final: 125.30-111.95."
+        )
+        season = [_make_matchup(3, "F1", "F2", 125.30, 111.95)]
+        alltime = season + [_make_matchup(1, "F1", "F2", 198.80, 90.00)]
+        failures = verify_superlatives(
+            text, season, alltime, SEASON, None, None,
+        )
+        alltime_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "all-time" in f.claim.lower()
+        ]
+        assert alltime_failures == []
+
+    def test_v6_rare_in_league_history_still_verified(self):
+        """Sanity: the guard deliberately excludes bare frequency
+        adjectives like 'rare'. A claim that 192.15 is 'a rare feat
+        in league history' still verifies against the all-time max —
+        if it's wrong, it flags.
+        """
+        text = "That 145.30 is a rare feat in league history."
+        season = [_make_matchup(1, "F1", "F2", 145.30, 100.00)]
+        alltime = season + [_make_matchup(1, "F1", "F2", 198.80, 90.00)]
+        failures = verify_superlatives(
+            text, season, alltime, SEASON, None, None,
+        )
+        alltime_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "all-time" in f.claim.lower()
+        ]
+        assert len(alltime_failures) == 1, (
+            f"expected one all-time failure for 'rare feat in league "
+            f"history' (V6 does not guard bare 'rare'), "
+            f"got {[(f.claim, f.evidence) for f in alltime_failures]}"
+        )
+        assert "145.30" in alltime_failures[0].claim
+
+    def test_v6_bare_league_history_record_still_flagged(self):
+        """Sanity: 'league history' without a frequency marker still
+        verifies against the all-time max.
+        """
+        text = "That 145.30 is the best score in league history."
+        season = [_make_matchup(1, "F1", "F2", 145.30, 100.00)]
+        alltime = season + [_make_matchup(1, "F1", "F2", 198.80, 90.00)]
+        failures = verify_superlatives(
+            text, season, alltime, SEASON, None, None,
+        )
+        alltime_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "all-time" in f.claim.lower()
+        ]
+        assert len(alltime_failures) == 1
+        assert "145.30" in alltime_failures[0].claim
+
