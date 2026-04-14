@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from dataclasses import asdict
 
 from squadvault.recaps.weekly_recap_lifecycle import generate_weekly_recap_draft
 
@@ -27,7 +28,11 @@ def main() -> int:
         created_by=args.created_by,
     )
 
-    print(json.dumps(res.__dict__, indent=2, sort_keys=True))
+    # asdict() recurses into nested dataclasses (e.g. res.verification_result,
+    # which is a frozen VerificationResult containing tuples of
+    # VerificationFailure). res.__dict__ does not, so json.dumps crashes when
+    # verification_result is non-None. Frozen dataclasses are supported.
+    print(json.dumps(asdict(res), indent=2, sort_keys=True))
     return 0
 
 
