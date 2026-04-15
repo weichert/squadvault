@@ -1361,16 +1361,27 @@ def detect_player_vs_opponent(
     target_week: int,
     opponent_index: dict[tuple[int, int, str], str],
     *,
-    threshold: float = 30.0,
-    min_meetings: int = 3,
+    threshold: float = 25.0,
+    min_meetings: int = 2,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
 ) -> list[NarrativeAngle]:
-    """Detect players who consistently dominate a specific opposing franchise.
+    """Detect players who continue a dominance pattern against an opponent.
 
-    Looks at all prior meetings where the player was on the same franchise
-    and played against the same opponent. If the player scored >= threshold
-    in all N meetings (N >= min_meetings), flag it.
+    Fires only when this week's score ALSO meets the threshold — the angle
+    frames a current-week event with historical context, not a backward-
+    looking pattern. A player with strong history but who bombed this week
+    produces no angle (silence over a misleading hook).
+
+    Gate (all must be true):
+      1. Player started this week and scored >= threshold
+      2. Player has >= min_meetings prior career starts vs the same opponent
+         while on the same franchise
+      3. ALL of those prior starts were >= threshold
+
+    Strength uses the total qualifying career streak (prior + this week):
+      - 3 total: MINOR (e.g. 2 prior + this week)
+      - 4+ total: NOTABLE
     """
     # This week's starters
     this_week = [
@@ -1383,12 +1394,18 @@ def detect_player_vs_opponent(
     angles: list[NarrativeAngle] = []
 
     for r in sorted(this_week, key=lambda x: (x.franchise_id, x.player_id)):
+        # Gate 1: this week's performance must qualify too. Without this,
+        # the angle becomes a misleading historical footnote when the
+        # player bombed this week (e.g. 9.10 today, 39.60 prior average).
+        if r.score < threshold:
+            continue
+
         opponent_id = opponent_index.get((current_season, target_week, r.franchise_id))
         if not opponent_id:
             continue
 
-        # Find all prior meetings where this player was on this franchise
-        # and the franchise played this same opponent
+        # Find all prior career meetings (same player, same franchise,
+        # same opponent, starter only)
         prior_scores: list[float] = []
         for hr in all_records:
             if hr.player_id != r.player_id or hr.franchise_id != r.franchise_id:
@@ -1399,25 +1416,32 @@ def detect_player_vs_opponent(
             if opp == opponent_id and hr.is_starter:
                 prior_scores.append(hr.score)
 
+        # Gate 2: enough prior meetings
         if len(prior_scores) < min_meetings:
             continue
 
-        # Check if player scored >= threshold in ALL prior meetings
-        all_above = all(s >= threshold for s in prior_scores)
-        if all_above:
-            total_meetings = len(prior_scores)
-            strength = 2 if total_meetings >= 4 else 1  # NOTABLE at 4+, MINOR at 3
-            angles.append(NarrativeAngle(
-                category="PLAYER_VS_OPPONENT",
-                headline=(
-                    f"{pname(r.player_id)} has scored {threshold:.0f}+ in all "
-                    f"{total_meetings} career games against {fname(opponent_id)} "
-                    f"for {fname(r.franchise_id)}"
-                ),
-                detail=f"This week: {r.score:.2f} pts.",
-                strength=strength,
-                franchise_ids=(r.franchise_id, opponent_id),
-            ))
+        # Gate 3: ALL prior meetings must qualify
+        if not all(s >= threshold for s in prior_scores):
+            continue
+
+        # Streak count includes this week's qualifying performance
+        total_count = len(prior_scores) + 1
+        strength = 2 if total_count >= 4 else 1  # NOTABLE at 4+ total, MINOR at 3
+
+        angles.append(NarrativeAngle(
+            category="PLAYER_VS_OPPONENT",
+            headline=(
+                f"{pname(r.player_id)} scored {r.score:.2f} vs "
+                f"{fname(opponent_id)} — his {_ordinal(total_count)} straight "
+                f"{threshold:.0f}+ game vs that franchise"
+            ),
+            detail=(
+                f"On {fname(r.franchise_id)}. Previous "
+                f"{len(prior_scores)} meetings: all {threshold:.0f}+ pts."
+            ),
+            strength=strength,
+            franchise_ids=(r.franchise_id, opponent_id),
+        ))
 
     return angles
 

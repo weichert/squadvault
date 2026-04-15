@@ -26,45 +26,43 @@ import json
 import os
 import sqlite3
 
-
 from squadvault.core.recaps.context.player_narrative_angles_v1 import (
-    _PlayerWeekRecord,
+    _build_player_franchise_weeks,
     _CrossSeasonRecord,
-    _Trade,
-    _PlayerDrop,
     _FaabAcquisition,
-    _load_season_player_scores,
+    _load_all_matchup_opponents,
     _load_all_seasons_player_scores,
     _load_all_seasons_starter_zeros,
-    _load_all_matchup_opponents,
-    _load_season_trades,
+    _load_season_drafted_players,
     _load_season_drops,
     _load_season_faab_acquisitions,
-    _load_season_drafted_players,
-    _build_player_franchise_weeks,
+    _load_season_player_scores,
+    _load_season_trades,
     _ordinal,
-    detect_player_hot_streak,
-    detect_player_cold_streak,
-    detect_player_season_high,
+    _PlayerDrop,
+    _PlayerWeekRecord,
+    _Trade,
+    detect_career_milestone,
+    detect_faab_franchise_efficiency,
+    detect_faab_roi,
+    detect_player_alltime_high,
     detect_player_boom_bust,
     detect_player_breakout,
-    detect_zero_point_starter,
-    detect_player_alltime_high,
+    detect_player_cold_streak,
+    detect_player_duel,
     detect_player_franchise_record,
-    detect_career_milestone,
     detect_player_franchise_tenure,
+    detect_player_hot_streak,
     detect_player_journey,
+    detect_player_narrative_angles_v1,
+    detect_player_season_high,
     detect_player_vs_opponent,
     detect_revenge_game,
-    detect_player_duel,
-    detect_trade_outcome,
     detect_the_one_that_got_away,
-    detect_faab_roi,
-    detect_faab_franchise_efficiency,
+    detect_trade_outcome,
     detect_waiver_dependency,
-    detect_player_narrative_angles_v1,
+    detect_zero_point_starter,
 )
-
 
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"
@@ -1239,13 +1237,13 @@ def _make_opponent_index(matchups):
 
 class TestPlayerVsOpponent:
     def test_detects_dominance(self):
-        """Player scoring 30+ in all 3 prior meetings = MINOR."""
+        """Player with 3 qualifying prior meetings + qualifying this week."""
         records = [
             # P1 on F1, scoring 35+ in all 3 prior games vs F2
             _make_xseason(2022, 1, "F1", "P1", 35.0),
             _make_xseason(2023, 3, "F1", "P1", 38.0),
             _make_xseason(2023, 10, "F1", "P1", 32.0),
-            # This week
+            # This week — qualifies (>= 25)
             _make_xseason(2024, 5, "F1", "P1", 40.0),
         ]
         opp_index = _make_opponent_index([
@@ -1257,11 +1255,14 @@ class TestPlayerVsOpponent:
         angles = detect_player_vs_opponent(records, 2024, 5, opp_index)
         assert len(angles) == 1
         assert angles[0].category == "PLAYER_VS_OPPONENT"
-        assert "3" in angles[0].headline
+        # 3 prior + 1 this week = 4th straight
+        assert "4th straight" in angles[0].headline
         assert "P1" in angles[0].headline
+        # 4+ total → NOTABLE
+        assert angles[0].strength == 2
 
     def test_4_meetings_notable(self):
-        """4+ meetings with dominance = NOTABLE."""
+        """4+ prior meetings + qualifying this week = NOTABLE."""
         records = [_make_xseason(2020 + i, 1, "F1", "P1", 33.0) for i in range(4)]
         records.append(_make_xseason(2024, 5, "F1", "P1", 35.0))
         opp_index = _make_opponent_index(
@@ -1270,9 +1271,47 @@ class TestPlayerVsOpponent:
         angles = detect_player_vs_opponent(records, 2024, 5, opp_index)
         assert len(angles) == 1
         assert angles[0].strength == 2  # NOTABLE
+        assert "5th straight" in angles[0].headline
+
+    def test_2_prior_plus_this_week_minor(self):
+        """2 prior + qualifying this week = MINOR (3 total)."""
+        records = [
+            _make_xseason(2023, 1, "F1", "P1", 35.0),
+            _make_xseason(2023, 10, "F1", "P1", 28.0),
+            _make_xseason(2024, 5, "F1", "P1", 30.0),
+        ]
+        opp_index = _make_opponent_index([
+            (2023, 1, "F1", "F2"),
+            (2023, 10, "F1", "F2"),
+            (2024, 5, "F1", "F2"),
+        ])
+        angles = detect_player_vs_opponent(records, 2024, 5, opp_index)
+        assert len(angles) == 1
+        assert angles[0].strength == 1  # MINOR
+        assert "3rd straight" in angles[0].headline
+
+    def test_this_week_below_threshold_no_angle(self):
+        """Strong history but bombed this week → silence (the new gate)."""
+        records = [
+            # Strong prior pattern — 3 games well above threshold
+            _make_xseason(2022, 1, "F1", "P1", 35.0),
+            _make_xseason(2023, 3, "F1", "P1", 38.0),
+            _make_xseason(2023, 10, "F1", "P1", 40.0),
+            # This week — bombed (below 25)
+            _make_xseason(2024, 5, "F1", "P1", 9.0),
+        ]
+        opp_index = _make_opponent_index([
+            (2022, 1, "F1", "F2"),
+            (2023, 3, "F1", "F2"),
+            (2023, 10, "F1", "F2"),
+            (2024, 5, "F1", "F2"),
+        ])
+        angles = detect_player_vs_opponent(records, 2024, 5, opp_index)
+        # The angle would be misleading — player did NOT continue the pattern
+        assert len(angles) == 0
 
     def test_broken_dominance_no_angle(self):
-        """One bad game in the set breaks the dominance pattern."""
+        """One bad game in the prior set breaks the pattern."""
         records = [
             _make_xseason(2022, 1, "F1", "P1", 35.0),
             _make_xseason(2023, 3, "F1", "P1", 10.0),  # broke pattern
@@ -1288,8 +1327,8 @@ class TestPlayerVsOpponent:
         angles = detect_player_vs_opponent(records, 2024, 5, opp_index)
         assert len(angles) == 0
 
-    def test_fewer_than_3_meetings_silence(self):
-        """Fewer than 3 prior meetings = silence."""
+    def test_fewer_than_min_meetings_silence(self):
+        """Fewer than min_meetings prior meetings = silence."""
         records = [
             _make_xseason(2023, 1, "F1", "P1", 35.0),
             _make_xseason(2024, 5, "F1", "P1", 40.0),
@@ -1317,22 +1356,56 @@ class TestPlayerVsOpponent:
         assert len(angles) == 0
 
     def test_different_opponents_independent(self):
-        """Dominance is per-opponent, not aggregate."""
+        """Dominance is per-opponent; F3 meeting doesn't pool with F2."""
         records = [
-            _make_xseason(2022, 1, "F1", "P1", 35.0),  # vs F2
+            _make_xseason(2022, 1, "F1", "P1", 35.0),   # vs F2
             _make_xseason(2023, 3, "F1", "P1", 38.0),   # vs F3
-            _make_xseason(2023, 10, "F1", "P1", 32.0),  # vs F2
             _make_xseason(2024, 5, "F1", "P1", 40.0),   # vs F2 this week
         ]
         opp_index = _make_opponent_index([
             (2022, 1, "F1", "F2"),
             (2023, 3, "F1", "F3"),  # different opponent
+            (2024, 5, "F1", "F2"),
+        ])
+        angles = detect_player_vs_opponent(records, 2024, 5, opp_index)
+        # Only 1 prior meeting vs F2 (2022/1) — below min_meetings=2.
+        # The F3 meeting is excluded from the F2 count.
+        assert len(angles) == 0
+
+    def test_referenced_opponent_in_franchise_ids(self):
+        """franchise_ids must include both player's franchise and the opponent."""
+        records = [
+            _make_xseason(2023, 1, "F1", "P1", 35.0),
+            _make_xseason(2023, 10, "F1", "P1", 28.0),
+            _make_xseason(2024, 5, "F1", "P1", 30.0),
+        ]
+        opp_index = _make_opponent_index([
+            (2023, 1, "F1", "F2"),
             (2023, 10, "F1", "F2"),
             (2024, 5, "F1", "F2"),
         ])
         angles = detect_player_vs_opponent(records, 2024, 5, opp_index)
-        # Only 2 prior meetings vs F2 (weeks 2022/1 and 2023/10), not enough
-        assert len(angles) == 0
+        assert len(angles) == 1
+        assert "F1" in angles[0].franchise_ids
+        assert "F2" in angles[0].franchise_ids
+
+    def test_ordinal_phrasing(self):
+        """Headline uses correct ordinal: 1st/2nd/3rd/4th, not just 1/2/3/4."""
+        records = [
+            _make_xseason(2023, 1, "F1", "P1", 35.0),
+            _make_xseason(2023, 10, "F1", "P1", 28.0),
+            _make_xseason(2024, 5, "F1", "P1", 30.0),
+        ]
+        opp_index = _make_opponent_index([
+            (2023, 1, "F1", "F2"),
+            (2023, 10, "F1", "F2"),
+            (2024, 5, "F1", "F2"),
+        ])
+        angles = detect_player_vs_opponent(records, 2024, 5, opp_index)
+        assert len(angles) == 1
+        # 3 total → "3rd" — NOT "3" alone, NOT "3th"
+        assert "3rd" in angles[0].headline
+        assert "3th" not in angles[0].headline
 
 
 # ── Detector 13: REVENGE_GAME ────────────────────────────────────────
