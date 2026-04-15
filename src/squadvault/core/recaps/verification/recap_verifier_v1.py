@@ -1807,12 +1807,25 @@ def verify_player_scores(
                 except ValueError:
                     continue
 
+                score_abs_pos = window_start + m.start()
+
+                # P1 guard (digit-boundary): the _PLAYER_SCORE_PATTERN has
+                # no left boundary, so prose like "119.10-89.00" yields a
+                # spurious "19.10" match at offset 1 inside "119.10". A
+                # digit immediately before the match means we are inside
+                # a larger decimal number — skip rather than flag.
+                #
+                # Source: prompt_audit rows 40/41 (2024 w10) — "119.10-
+                # 89.00 win over Brandon" with a Ja'Marr Chase mention in
+                # range was flagging "19.10" against Chase.
+                if score_abs_pos > 0 and recap_text[score_abs_pos - 1].isdigit():
+                    continue
+
                 # Detect a leading minus sign immediately before the matched
                 # number. The regex captures only digits.dot.digits but
                 # negative scores ("-0.30" for defensive penalties) appear
                 # in actual prose. Without this check, the verifier extracts
                 # "0.30" and flags it as not matching canonical "-0.30".
-                score_abs_pos = window_start + m.start()
                 if score_abs_pos > 0 and recap_text[score_abs_pos - 1] == "-":
                     # Make sure this is a unary minus, not a hyphen between
                     # words/scores. Look at the char before the minus.
@@ -1833,6 +1846,29 @@ def verify_player_scores(
                     or " by " in between
                     or "\n" in between
                     or " but " in between
+                ):
+                    continue
+
+                # P2 guard (bench-aggregate): the stable signature of a
+                # bench-total clause is the trailing "points on the bench"
+                # construction. The existing " but " guard catches only
+                # one separator shape; captured prose uses " and ", ", "
+                # (after "leaving"), and a fresh "Miller left" sentence
+                # clause — all of which slip past the between-check. Peek
+                # forward from the matched score for the bench construction
+                # and skip if present.
+                #
+                # Source: prompt_audit rows 47 (2024 w14, "Aaron Rodgers
+                # and 47.60 points on the bench"), 9 (2025 w5, "51.50
+                # points on the bench with Stefon Diggs…"), 15 (2025 w9,
+                # "left 52.60 points on the bench, including…").
+                post_start = window_start + m.end()
+                post_end = min(len(recap_text), post_start + 30)
+                _post = recap_text[post_start:post_end].lower()
+                if re.match(
+                    r'\s*points?\s+(?:on|sitting\s+on|left\s+on)\s+'
+                    r'(?:the\s+|his\s+|her\s+)?bench',
+                    _post,
                 ):
                     continue
 

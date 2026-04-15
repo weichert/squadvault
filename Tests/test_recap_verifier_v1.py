@@ -1805,3 +1805,248 @@ class TestRegressionSuperlativeWiderPass:
         assert len(alltime_failures) == 1
         assert "145.30" in alltime_failures[0].claim
 
+
+# ─── P1/P2 PLAYER_SCORE parse-false-positive regressions ─────────────
+#
+# Fixtures reproduce prompt_audit rows captured in the 2026-04-14 Q5
+# resolution pass (OBSERVATIONS_2026_04_14_Q5_RESOLUTION.md):
+#
+#   P1: id=40 (2024 w10 a1), id=41 (2024 w10 a2)
+#   P2: id=47 (2024 w14 a1), id=9  (2025 w5 a1), id=15 (2025 w9 a2)
+#
+# Both classes have a companion "bare claim still flags" sanity test
+# to guard against the fix simply defanging verify_player_scores.
+#
+# Unlike TestRegressionW11W13FalsePositives (V3), the fixture below
+# includes league_id and season when inserting into player_directory.
+# Without them the INSERT OR IGNORE silently drops the row, the name
+# map is empty, and verify_player_scores returns [] — a trivial pass
+# that does not exercise the fix surface.
+class TestRegressionQ5PlayerScoreFalsePositives:
+    """Pin P1/P2 PLAYER_SCORE parse bugs (Q5 resolution)."""
+
+    def _build_db(
+        self, tmp_path, *, week, player_id, display_name, actual_score,
+        winner_score=98.00, loser_score=90.00,
+    ):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F1", name="Warmongers")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F2", name="Brandon")
+
+        _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=week,
+                        winner_id="F1", loser_id="F2",
+                        winner_score=winner_score, loser_score=loser_score)
+
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=week,
+                             franchise_id="F1", player_id=player_id,
+                             score=actual_score)
+
+        # Include league_id + season so the row actually lands. See class
+        # docstring for why this matters.
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, player_id, display_name, "WR"),
+        )
+
+        con.commit()
+        con.close()
+        return db_path
+
+    # ── P1: XX.XX substring inside XXX.XX game score ─────────────────
+
+    def test_p1_xx_xx_inside_game_score_not_flagged_row40(self, tmp_path):
+        """id=40 (2024 w10 a1): game score 119.10 contains substring
+        "19.10", which the unanchored XX.XX pattern matches at offset 1.
+        The digit-boundary guard must skip the match rather than flag
+        "19.10" against the nearest player (Ja'Marr Chase, whose actual
+        score is 23.45).
+        """
+        db_path = self._build_db(
+            tmp_path, week=10, player_id="P1",
+            display_name="Chase, Ja'Marr", actual_score=23.45,
+            winner_score=119.10, loser_score=89.00,
+        )
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Ja'Marr Chase cruised to a 119.10-89.00 beatdown.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=10,
+        )
+        player_score_failures = [
+            f for f in result.hard_failures if f.category == "PLAYER_SCORE"
+        ]
+        assert player_score_failures == [], (
+            f"expected no PLAYER_SCORE failures (19.10 is a substring "
+            f"inside 119.10, not a standalone attribution), "
+            f"got {[(f.claim, f.evidence) for f in player_score_failures]}"
+        )
+
+    def test_p1_xx_xx_inside_game_score_not_flagged_row41(self, tmp_path):
+        """id=41 (2024 w10 a2): same prose pattern, different attempt.
+        Confirms the guard holds across variant phrasings of the same
+        XXX.XX-XX.XX construction."""
+        db_path = self._build_db(
+            tmp_path, week=10, player_id="P1",
+            display_name="Chase, Ja'Marr", actual_score=23.45,
+            winner_score=119.10, loser_score=89.00,
+        )
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Ja'Marr Chase showed out in the 119.10-89.00 rout.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=10,
+        )
+        player_score_failures = [
+            f for f in result.hard_failures if f.category == "PLAYER_SCORE"
+        ]
+        assert player_score_failures == [], (
+            f"expected no PLAYER_SCORE failures, "
+            f"got {[(f.claim, f.evidence) for f in player_score_failures]}"
+        )
+
+    def test_p1_bare_xx_xx_misattribution_still_flagged(self, tmp_path):
+        """Sanity: a true XX.XX misattribution (not a digit-prefixed
+        substring) must still flag. The digit-boundary guard skips
+        substring matches inside larger decimals only — it does not
+        defang the check for standalone claims."""
+        db_path = self._build_db(
+            tmp_path, week=10, player_id="P1",
+            display_name="Chase, Ja'Marr", actual_score=23.45,
+        )
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Ja'Marr Chase posted 19.10 in the blowout.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=10,
+        )
+        player_score_failures = [
+            f for f in result.hard_failures if f.category == "PLAYER_SCORE"
+        ]
+        assert len(player_score_failures) == 1, (
+            f"expected exactly one PLAYER_SCORE failure for 19.10 vs "
+            f"actual 23.45, got "
+            f"{[(f.claim, f.evidence) for f in player_score_failures]}"
+        )
+        assert "19.10" in player_score_failures[0].claim
+
+    # ── P2: bench-aggregate past the existing " but " separator ──────
+
+    def test_p2_bench_and_separator_not_flagged_row47(self, tmp_path):
+        """id=47 (2024 w14 a1): "leaving Aaron Rodgers and 47.60 points
+        on the bench". The separator between the player name and the
+        bench total is " and ", which is not caught by the existing
+        " but " guard. The P2 guard catches it via the trailing
+        "points on the bench" construction."""
+        db_path = self._build_db(
+            tmp_path, week=14, player_id="P1",
+            display_name="Rodgers, Aaron", actual_score=15.00,
+        )
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "They fell short, leaving Aaron Rodgers and 47.60 points "
+            "on the bench.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+        )
+        player_score_failures = [
+            f for f in result.hard_failures if f.category == "PLAYER_SCORE"
+        ]
+        assert player_score_failures == [], (
+            f"expected no PLAYER_SCORE failures (47.60 is a bench total "
+            f"past the ' and ' separator), "
+            f"got {[(f.claim, f.evidence) for f in player_score_failures]}"
+        )
+
+    def test_p2_bench_with_trailing_clause_not_flagged_row9(self, tmp_path):
+        """id=9 (2025 w5 a1): "Saquon Barkley and 51.50 points on the
+        bench with Stefon Diggs posting 19.60". The bench construction
+        immediately follows the flagged score; the trailing " with …"
+        clause does not interfere with the forward-peek guard."""
+        db_path = self._build_db(
+            tmp_path, week=5, player_id="P1",
+            display_name="Barkley, Saquon", actual_score=22.50,
+        )
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Saquon Barkley and 51.50 points on the bench told the "
+            "story of the week.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=5,
+        )
+        player_score_failures = [
+            f for f in result.hard_failures if f.category == "PLAYER_SCORE"
+        ]
+        assert player_score_failures == [], (
+            f"expected no PLAYER_SCORE failures (51.50 is a bench total), "
+            f"got {[(f.claim, f.evidence) for f in player_score_failures]}"
+        )
+
+    def test_p2_bench_fresh_clause_not_flagged_row15(self, tmp_path):
+        """id=15 (2025 w9 a2): "Chuba Hubbard, meanwhile, left 52.60
+        points on the bench, including …". Neither ' and ' nor ' but '
+        separates the name from the bench total — the prose uses a
+        fresh "NAME … left N.NN" construction. The trailing "points on
+        the bench" marker carries the signal."""
+        db_path = self._build_db(
+            tmp_path, week=9, player_id="P1",
+            display_name="Hubbard, Chuba", actual_score=18.40,
+        )
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Chuba Hubbard, meanwhile, left 52.60 points on the bench, "
+            "including a 14.60 performance from another starter.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=9,
+        )
+        player_score_failures = [
+            f for f in result.hard_failures if f.category == "PLAYER_SCORE"
+        ]
+        assert player_score_failures == [], (
+            f"expected no PLAYER_SCORE failures (52.60 is a bench total), "
+            f"got {[(f.claim, f.evidence) for f in player_score_failures]}"
+        )
+
+    def test_p2_bare_misattribution_still_flagged(self, tmp_path):
+        """Sanity: a misattributed score without the "points on the
+        bench" construction must still flag. The forward-peek guard is
+        signature-specific, not a blanket suppression."""
+        db_path = self._build_db(
+            tmp_path, week=14, player_id="P1",
+            display_name="Rodgers, Aaron", actual_score=15.00,
+        )
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Aaron Rodgers posted 47.60 in the comeback win.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+        )
+        player_score_failures = [
+            f for f in result.hard_failures if f.category == "PLAYER_SCORE"
+        ]
+        assert len(player_score_failures) == 1, (
+            f"expected exactly one PLAYER_SCORE failure for 47.60 vs "
+            f"actual 15.00, got "
+            f"{[(f.claim, f.evidence) for f in player_score_failures]}"
+        )
+        assert "47.60" in player_score_failures[0].claim
