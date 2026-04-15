@@ -569,13 +569,74 @@ _PREVIOUS_QUALIFIER_PATTERN = re.compile(
     r'\b(?:previous|prior|former|past)\b', re.IGNORECASE,
 )
 
+# ── V7: forward-lookback "superseding comparison" qualifier ─────────
+# Captured prose (row 17, 2025 w10 a1):
+#   "That's the highest individual score by any starter this season,
+#    topping the previous mark of 46.75."
+# The _PREVIOUS_QUALIFIER_PATTERN backward scan from "highest" misses
+# because the disambiguating phrase ("topping the previous mark") sits
+# AFTER the superlative trigger. Without a forward scan, the verifier
+# extracts 103.10 (the losing team's game score in the prior sentence,
+# nearest XX.XX to "highest") and flags a false SUPERLATIVE.
+#
+# Fix shape: symmetric forward-lookback, strictly additive. The helper
+# only fires forward when backward returns False AND the forward window
+# (bounded by the first sentence-terminal punctuation) contains a
+# recognised "comparison-verb + qualifier" construction — e.g.
+# "topping the previous", "breaking the old record of", "surpassing
+# the previous mark", "eclipsing the prior mark", "beating the
+# previous best". Conservative-guard discipline: a present forward
+# qualifier can only CAUSE a skip, never flip a skip to a flag.
+#
+# Narrow scope: verb+qualifier, not bare "previous". The backward
+# helper's bare "previous|prior" pattern is safe because the 40-char
+# window tightly constrains what phrases can land there; a forward
+# slice to end-of-sentence is wider and more forgiving, so the
+# forward pattern requires explicit comparison-verb framing to avoid
+# over-skipping prose like "...the season high; his previous game
+# was only 80" where "previous" is narratively unrelated.
+_SUPERSEDING_QUALIFIER_PATTERN = re.compile(
+    r'\b(?:top(?:ping|ped|s)|'
+    r'break(?:ing|s)?|broke|broken|'
+    r'surpass(?:ing|es|ed)?|'
+    r'eclips(?:ing|es|ed)?|'
+    r'beat(?:ing|s|en)?|'
+    r'exceed(?:ing|s|ed)?|'
+    r'overtak(?:ing|es|en)|overtook)'
+    r'\s+(?:the\s+)?(?:previous|prior|former|past|old)\b',
+    re.IGNORECASE,
+)
+_SENTENCE_TERMINAL_PATTERN = re.compile(r'[.!?]')
+
 
 def _has_previous_qualifier(
-    text: str, pos: int, *, lookback: int = 40,
+    text: str,
+    pos: int,
+    *,
+    lookback: int = 40,
+    match_end: int | None = None,
+    forward_window: int = 120,
 ) -> bool:
-    """Return True if a temporal qualifier precedes pos within lookback."""
+    """Return True if a temporal qualifier precedes pos within lookback,
+    OR (V7) a superseding-comparison construction follows the match in
+    the same sentence.
+
+    The forward scan begins at ``match_end`` when provided (cleaner
+    semantics — skips the match body), otherwise at ``pos``. It is
+    bounded by the first sentence-terminal punctuation in the forward
+    window so qualifiers from unrelated adjacent sentences cannot leak
+    in.
+    """
     start = max(0, pos - lookback)
-    return bool(_PREVIOUS_QUALIFIER_PATTERN.search(text[start:pos]))
+    if _PREVIOUS_QUALIFIER_PATTERN.search(text[start:pos]):
+        return True
+    forward_start = match_end if match_end is not None else pos
+    forward_end = min(len(text), forward_start + forward_window)
+    forward_slice = text[forward_start:forward_end]
+    terminal = _SENTENCE_TERMINAL_PATTERN.search(forward_slice)
+    if terminal is not None:
+        forward_slice = forward_slice[: terminal.start()]
+    return bool(_SUPERSEDING_QUALIFIER_PATTERN.search(forward_slice))
 
 
 # After "all-time record" / "all-time high", a following integer count
@@ -745,10 +806,13 @@ def verify_superlatives(
 
     # Check "season high" claims
     for match in _SEASON_HIGH_PATTERN.finditer(recap_text):
-        # Fix V1: "previous/prior season high of X" is a claim about the
-        # pre-existing record, not the current max. Skip — week-filtered
-        # superlative data isn't available here, so we can't evaluate it.
-        if _has_previous_qualifier(recap_text, match.start()):
+        # Fix V1/V7: "previous/prior season high of X" (backward) or
+        # "highest ... topping the previous mark of X" (forward). Both
+        # are pre-existing-record claims — skip, week-filtered
+        # superlative data isn't available here.
+        if _has_previous_qualifier(
+            recap_text, match.start(), match_end=match.end(),
+        ):
             continue
 
         # Fix V4: ordinal-qualifier prefix ("second-highest", "3rd-highest")
@@ -803,10 +867,12 @@ def verify_superlatives(
 
     # Check "season low" claims
     for match in _SEASON_LOW_PATTERN.finditer(recap_text):
-        # Fix V1 (parity with season-high loop): "previous/prior season
-        # low of X" is a pre-existing record claim — week-filtered data
-        # isn't available, skip.
-        if _has_previous_qualifier(recap_text, match.start()):
+        # Fix V1/V7 (parity): backward "previous/prior season low of X"
+        # or forward "lowest ... undercutting the previous mark of X"
+        # — both pre-existing-record claims, skip.
+        if _has_previous_qualifier(
+            recap_text, match.start(), match_end=match.end(),
+        ):
             continue
 
         # Fix V4: "his second-lowest output of the season" — the ordinal
@@ -867,9 +933,13 @@ def verify_superlatives(
         ):
             continue
 
-        # Fix V1: "previous/prior all-time record of X" is a pre-existing
-        # record claim — skip, same reasoning as the season-high loop.
-        if _has_previous_qualifier(recap_text, match.start()):
+        # Fix V1/V7: "previous/prior all-time record of X" (backward)
+        # or "all-time high ... breaking the previous record of X"
+        # (forward) — pre-existing record claim, skip (same reasoning
+        # as the season-high loop).
+        if _has_previous_qualifier(
+            recap_text, match.start(), match_end=match.end(),
+        ):
             continue
 
         # Fix V2: "all-time record of <integer>" is a count claim (games,

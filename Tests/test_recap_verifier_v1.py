@@ -2345,3 +2345,265 @@ class TestRegressionQ5SeriesFalsePositives:
             f"H2H), got {[(f.claim, f.evidence) for f in series_failures]}"
         )
         assert "20-8" in series_failures[0].claim
+
+
+# ─── V7 SUPERLATIVE forward-lookback regressions ─────────────────────
+#
+# Captured prompt_audit row 17 (2025 w10 a1):
+#   "...That's the highest individual score by any starter this
+#    season, topping the previous mark of 46.75."
+#
+# _has_previous_qualifier's 40-char backward window missed the
+# disambiguating phrase because "topping the previous mark" sits
+# AFTER the "highest" trigger. Without a forward scan, the verifier
+# pulled 103.10 (the losing team's game score in the prior sentence,
+# nearest XX.XX to "highest") and flagged a false SUPERLATIVE.
+#
+# The fix is strictly additive: backward scan runs first and returns
+# early on match; the forward scan only runs on a backward miss, is
+# bounded by the first sentence-terminal punctuation, and requires an
+# explicit comparison-verb + qualifier construction (not bare
+# "previous") to avoid over-skipping narratively unrelated prose.
+class TestRegressionV7SuperlativeForwardLookback:
+    """Pin the V7 forward-lookback fix for _has_previous_qualifier."""
+
+    # ── V7: captured-prose target (row 17) ───────────────────────────
+
+    def test_v7_captured_row17_topping_previous_mark_not_flagged(self):
+        """id=17 (2025 w10 a1) captured prose:
+
+            "Jonathan Taylor posted 48.10 points for Paradis' Playmakers
+             in their 137.50-103.10 win over Italian Cavallini. That's
+             the highest individual score by any starter this season,
+             topping the previous mark of 46.75."
+
+        Before V7: backward window from "highest" sees only
+        "...over Italian Cavallini. That's the " — no qualifier — so
+        the helper returned False and _extract_nearby_score pulled
+        103.10 (nearest XX.XX to "highest"), which matches neither
+        actual_season_high_team (137.50) nor season_player_high
+        (48.10) → false SUPERLATIVE flag. After V7: forward scan sees
+        "topping the previous mark" in the same sentence → skip.
+        """
+        text = (
+            "Jonathan Taylor posted 48.10 points for Paradis' Playmakers "
+            "in their 137.50-103.10 win over Italian Cavallini. That's "
+            "the highest individual score by any starter this season, "
+            "topping the previous mark of 46.75."
+        )
+        matchups = [_make_matchup(10, "F1", "F2", 137.50, 103.10)]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, 48.10, None,
+        )
+        high_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "high" in f.claim.lower()
+        ]
+        assert high_failures == [], (
+            f"expected no season-high failure for 'topping the "
+            f"previous mark' (V7 forward-lookback), "
+            f"got {[(f.claim, f.evidence) for f in high_failures]}"
+        )
+
+    # ── V7: symmetric coverage across the three superlative loops ────
+
+    def test_v7_season_low_breaking_prior_not_flagged(self):
+        """Symmetric SEASON_LOW case: 'breaking the prior low of X'
+        after the 'lowest of the season' trigger must also skip.
+
+        Fixture shape mirrors the captured row-17 structure: the
+        nearest XX.XX to the 'lowest' trigger is a score from the
+        prior clause (92.10, one side of the reported matchup), NOT
+        the actual season minimum (80.00 from a different matchup).
+        Without V7 the verifier would extract 92.10 and flag against
+        actual 80.00; with V7 the forward scan finds 'breaking the
+        prior low' and skips.
+        """
+        text = (
+            "Italian Cavallini's 92.10 loss in the 137.50-92.10 "
+            "matchup was the lowest of the season, breaking the "
+            "prior low of 45.00."
+        )
+        matchups = [
+            _make_matchup(1, "F1", "F2", 137.50, 92.10),
+            _make_matchup(2, "F3", "F4", 130.00, 80.00),  # actual low = 80
+        ]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        low_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "low" in f.claim.lower()
+        ]
+        assert low_failures == [], (
+            f"expected no season-low failure for 'breaking the prior "
+            f"low' (V7 forward-lookback, SEASON_LOW parity), "
+            f"got {[(f.claim, f.evidence) for f in low_failures]}"
+        )
+
+    def test_v7_alltime_surpassing_previous_record_not_flagged(self):
+        """Symmetric ALLTIME case: 'surpassing the previous record of
+        X' after the 'league history' trigger must also skip.
+
+        Fixture shape mirrors row 17: nearest XX.XX to 'league
+        history' is 103.10 (the losing team in a prior-sentence
+        matchup), NOT the actual all-time high (220.00 from an older
+        season). Without V7 the verifier flags 103.10 against 220.00;
+        with V7 'surpassing the previous record' skips.
+        """
+        text = (
+            "Bob won 137.50-103.10 over Carl in a blowout. That "
+            "result was the highest in league history, surpassing "
+            "the previous record of 198.80."
+        )
+        season = [_make_matchup(1, "F1", "F2", 137.50, 103.10)]
+        alltime = season + [_make_matchup(1, "F1", "F2", 220.00, 90.00)]
+        failures = verify_superlatives(
+            text, season, alltime, SEASON, None, None,
+        )
+        alltime_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "all-time" in f.claim.lower()
+        ]
+        assert alltime_failures == [], (
+            f"expected no all-time failure for 'surpassing the "
+            f"previous record' (V7 forward-lookback, ALLTIME parity), "
+            f"got {[(f.claim, f.evidence) for f in alltime_failures]}"
+        )
+
+    def test_v7_synonym_verbs_eclipsing_beating_exceeded(self):
+        """Synonym sweep: the full verb set recognised by the forward
+        pattern (topping/breaking/surpassing/eclipsing/beating/
+        exceeding/overtaking/overtook) must each trigger the skip.
+
+        Fixture shape mirrors row 17 so the extracted nearby score
+        (103.10, losing team from prior sentence) differs from the
+        actual season-high (137.50) — i.e. the unfixed verifier would
+        flag on every variant below.
+        """
+        variants = [
+            "Bob won 137.50-103.10. That's the highest of the season, eclipsing the prior mark of 48.10.",
+            "Bob won 137.50-103.10. That's the highest of the season, beating the previous best of 48.10.",
+            "Bob won 137.50-103.10. That's the highest of the season, exceeded the old record of 48.10.",
+            "Bob won 137.50-103.10. That's the highest of the season, overtook the prior high of 48.10.",
+            "Bob won 137.50-103.10. That's the highest of the season, broke the previous mark of 48.10.",
+        ]
+        matchups = [_make_matchup(1, "F1", "F2", 137.50, 103.10)]
+        for text in variants:
+            failures = verify_superlatives(
+                text, matchups, None, SEASON, None, None,
+            )
+            high_failures = [
+                f for f in failures if f.category == "SUPERLATIVE"
+                and "high" in f.claim.lower()
+            ]
+            assert high_failures == [], (
+                f"expected no season-high failure for V7 verb variant "
+                f"{text!r}, got {[(f.claim, f.evidence) for f in high_failures]}"
+            )
+
+    # ── V7: conservative-guard boundaries ────────────────────────────
+
+    def test_v7_forward_qualifier_past_period_does_not_skip(self):
+        """Sentence-boundary guard: a 'topping the previous' phrase
+        sitting in the NEXT sentence must not leak backward and cause
+        a spurious skip. The period between the two sentences stops
+        the forward scan.
+
+        Wrong claim: 103.10 is NOT the season high (137.50 is). The
+        unrelated "topping the previous week's mark" in the next
+        sentence must not defang the verifier.
+        """
+        text = (
+            "That 103.10 is the season high. Bob kept topping the "
+            "previous week's mark all year."
+        )
+        matchups = [_make_matchup(1, "F1", "F2", 137.50, 103.10)]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        high_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "high" in f.claim.lower()
+        ]
+        assert len(high_failures) == 1, (
+            f"expected one season-high failure — V7 forward scan must "
+            f"not cross a sentence-terminal '.', "
+            f"got {[(f.claim, f.evidence) for f in high_failures]}"
+        )
+        assert "103.10" in high_failures[0].claim
+
+    def test_v7_comparison_verb_without_qualifier_does_not_skip(self):
+        """Narrow-scope guard: the forward pattern requires a
+        recognised qualifier (previous/prior/former/past/old) in
+        addition to the comparison verb. A verb-only phrase like
+        'topping teammate Bob's earlier 118' is NOT disambiguating
+        and must not cause a skip.
+
+        Wrong claim: 103.10 is not the season high.
+        """
+        text = (
+            "That 103.10 was the season high, topping teammate Bob's "
+            "earlier 118 with room to spare."
+        )
+        matchups = [_make_matchup(1, "F1", "F2", 137.50, 103.10)]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        high_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "high" in f.claim.lower()
+        ]
+        assert len(high_failures) == 1, (
+            f"expected one season-high failure — V7 forward pattern "
+            f"requires verb+qualifier, not bare verb, "
+            f"got {[(f.claim, f.evidence) for f in high_failures]}"
+        )
+        assert "103.10" in high_failures[0].claim
+
+    def test_v7_bare_previous_without_comparison_verb_does_not_skip(self):
+        """Narrow-scope guard: a bare 'previous' forward — without a
+        recognised comparison verb — must not cause a skip. This is
+        the wider-slice parity of the backward helper's tightness:
+        the forward window is wider (to end-of-sentence, up to 120
+        chars), so it requires explicit verb framing.
+
+        Wrong claim: 103.10 is not the season high; 'his previous
+        game was only 80' is narratively unrelated to the superlative.
+        """
+        text = (
+            "That 103.10 was the season high this week, while his "
+            "previous game was only 80 points."
+        )
+        matchups = [_make_matchup(1, "F1", "F2", 137.50, 103.10)]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        high_failures = [
+            f for f in failures if f.category == "SUPERLATIVE"
+            and "high" in f.claim.lower()
+        ]
+        assert len(high_failures) == 1, (
+            f"expected one season-high failure — bare forward "
+            f"'previous' without comparison verb must not skip, "
+            f"got {[(f.claim, f.evidence) for f in high_failures]}"
+        )
+        assert "103.10" in high_failures[0].claim
+
+    # ── V7: V1-corpus compatibility (backward path unchanged) ────────
+
+    def test_v7_backward_qualifier_still_skips_unchanged(self):
+        """V1 backward-path parity: prose with 'previous' BEFORE the
+        trigger still skips via the unchanged backward scan. V7 is
+        purely additive — backward returns True first and short-
+        circuits before the forward scan runs.
+        """
+        text = "That 51.85 topped the previous season high of 48.10."
+        matchups = [_make_matchup(1, "F1", "F2", 120.00, 100.00)]
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, 51.85, None,
+        )
+        assert failures == [], (
+            f"expected no failures — backward 'previous' still skips "
+            f"(V1 path unchanged), got {[(f.claim, f.evidence) for f in failures]}"
+        )
