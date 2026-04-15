@@ -10,19 +10,18 @@ import json
 import os
 import sqlite3
 
-
-from squadvault.core.recaps.context.season_context_v1 import (
-    derive_season_context_v1,
-)
 from squadvault.core.recaps.context.league_history_v1 import (
     derive_league_history_v1,
 )
 from squadvault.core.recaps.context.narrative_angles_v1 import (
-    _detect_upsets,
-    _detect_streaks,
-    _detect_scoring_anomalies,
     _detect_margin_stories,
+    _detect_scoring_anomalies,
+    _detect_streaks,
+    _detect_upsets,
     detect_narrative_angles_v1,
+)
+from squadvault.core.recaps.context.season_context_v1 import (
+    derive_season_context_v1,
 )
 
 SCHEMA_PATH = os.path.join(
@@ -187,6 +186,52 @@ class TestStreakDetection:
         loss_streaks = [a for a in streaks if "losing" in a.headline.lower() or "lost" in a.headline.lower()]
         assert len(loss_streaks) >= 1
         assert any("B" in a.franchise_ids for a in loss_streaks)
+
+    def test_losing_streak_detail_says_extended(self, tmp_path):
+        """Detail for a losing streak must say 'extended, not snapped'.
+
+        Data-layer fix: the model receives the explicit conclusion rather
+        than being asked to derive snap vs. extend from matchup results.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        for w in range(1, 5):
+            _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=w,
+                            winner_id="A", loser_id="B",
+                            winner_score=100 + w, loser_score=90)
+        con.commit()
+        con.close()
+
+        ctx = derive_season_context_v1(
+            db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=4
+        )
+        streaks = _detect_streaks(ctx)
+        loss_streaks = [a for a in streaks if "B" in a.franchise_ids and "los" in a.headline.lower()]
+        assert len(loss_streaks) == 1
+        detail = loss_streaks[0].detail
+        assert "Lost to A" in detail
+        assert "extended, not snapped" in detail
+
+    def test_win_streak_detail_says_continues(self, tmp_path):
+        """Detail for a win streak must say 'continues'."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        for w in range(1, 5):
+            _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=w,
+                            winner_id="A", loser_id="B",
+                            winner_score=100 + w, loser_score=90)
+        con.commit()
+        con.close()
+
+        ctx = derive_season_context_v1(
+            db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=4
+        )
+        streaks = _detect_streaks(ctx)
+        win_streaks = [a for a in streaks if "A" in a.franchise_ids and "win" in a.headline.lower()]
+        assert len(win_streaks) == 1
+        detail = win_streaks[0].detail
+        assert "Beat B" in detail
+        assert "continues" in detail
 
 
 # ── Scoring anomaly detection ────────────────────────────────────────

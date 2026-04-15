@@ -134,17 +134,45 @@ def _detect_upsets(ctx: SeasonContextV1) -> list[NarrativeAngle]:
 
 
 def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> list[NarrativeAngle]:
-    """Detect notable streak milestones."""
+    """Detect notable streak milestones.
+
+    Outcome annotation: each angle's detail includes the explicit week
+    outcome (won/lost + opponent) so the creative layer receives the
+    conclusion directly.  This prevents MODEL_SIDE fabrication where
+    the model writes "snapped" when the streak was actually extended.
+    Data-layer fix: give the model the fact, don't ask it to derive it.
+    """
     angles: list[NarrativeAngle] = []
+
+    # Build week-outcome lookup: franchise_id -> (won: bool, opponent_id)
+    # A tie yields won=None (streak would be 0, so no angle fires).
+    week_outcome: dict[str, tuple[bool, str]] = {}
+    for wm in ctx.week_matchups:
+        if wm.is_tie:
+            continue
+        week_outcome[wm.winner_id] = (True, wm.loser_id)
+        week_outcome[wm.loser_id] = (False, wm.winner_id)
+
+    def _outcome_detail(fid: str, rec_str: str) -> str:
+        """Build detail string with explicit week outcome."""
+        outcome = week_outcome.get(fid)
+        if outcome is None:
+            return f"Record: {rec_str}."
+        won, opp_id = outcome
+        opp_name = fname(opp_id)
+        if won:
+            return f"Record: {rec_str}. Beat {opp_name} this week — streak continues."
+        return f"Record: {rec_str}. Lost to {opp_name} this week — streak extended, not snapped."
 
     for rec in ctx.standings:
         streak = rec.current_streak
+        rec_str = f"{rec.wins}-{rec.losses}"
 
         if streak >= 4:
             angles.append(NarrativeAngle(
                 category="STREAK",
                 headline=f"{fname(rec.franchise_id)} on {streak}-game win streak",
-                detail=f"Record: {rec.wins}-{rec.losses}.",
+                detail=_outcome_detail(rec.franchise_id, rec_str),
                 strength=3 if streak >= 5 else 2,
                 franchise_ids=(rec.franchise_id,),
             ))
@@ -152,7 +180,7 @@ def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> list[
             angles.append(NarrativeAngle(
                 category="STREAK",
                 headline=f"{fname(rec.franchise_id)} has won 3 straight",
-                detail=f"Record: {rec.wins}-{rec.losses}.",
+                detail=_outcome_detail(rec.franchise_id, rec_str),
                 strength=1,
                 franchise_ids=(rec.franchise_id,),
             ))
@@ -160,7 +188,7 @@ def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> list[
             angles.append(NarrativeAngle(
                 category="STREAK",
                 headline=f"{fname(rec.franchise_id)} on {abs(streak)}-game losing streak",
-                detail=f"Record: {rec.wins}-{rec.losses}.",
+                detail=_outcome_detail(rec.franchise_id, rec_str),
                 strength=3 if streak <= -5 else 2,
                 franchise_ids=(rec.franchise_id,),
             ))
@@ -168,7 +196,7 @@ def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> list[
             angles.append(NarrativeAngle(
                 category="STREAK",
                 headline=f"{fname(rec.franchise_id)} has lost 3 straight",
-                detail=f"Record: {rec.wins}-{rec.losses}.",
+                detail=_outcome_detail(rec.franchise_id, rec_str),
                 strength=1,
                 franchise_ids=(rec.franchise_id,),
             ))
