@@ -359,3 +359,26 @@ CREATE INDEX IF NOT EXISTS idx_prompt_audit_captured_at
 
 CREATE INDEX IF NOT EXISTS idx_prompt_audit_league_week
     ON prompt_audit (league_id, season, week_index);
+
+-- =========================
+-- Prompt audit reverify sidecar (Phase 10 observation)
+-- Mirror of migration 0008. Append-only re-verification results.
+-- =========================
+
+CREATE TABLE IF NOT EXISTS prompt_audit_reverify (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    prompt_audit_id       INTEGER NOT NULL,
+    reverified_at         TEXT    NOT NULL,
+    verifier_tag          TEXT    NOT NULL,
+    passed                INTEGER NOT NULL,
+    hard_failure_count    INTEGER NOT NULL,
+    soft_failure_count    INTEGER NOT NULL,
+    result_json           TEXT    NOT NULL,
+    FOREIGN KEY (prompt_audit_id) REFERENCES prompt_audit(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reverify_source
+    ON prompt_audit_reverify (prompt_audit_id);
+
+CREATE INDEX IF NOT EXISTS idx_reverify_tag
+    ON prompt_audit_reverify (verifier_tag);
