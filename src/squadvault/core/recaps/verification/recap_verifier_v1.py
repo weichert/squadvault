@@ -1496,11 +1496,11 @@ def verify_series_records(
 
         # Check if the claimed record matches ANY pair of nearby franchises
         matched = False
-        for fid_a in nearby_fids:
-            for fid_b in nearby_fids:
-                if fid_a >= fid_b:
+        for candidate_a in nearby_fids:
+            for candidate_b in nearby_fids:
+                if candidate_a >= candidate_b:
                     continue
-                pair_key = frozenset({fid_a, fid_b})
+                pair_key = frozenset({candidate_a, candidate_b})
                 if pair_key not in h2h_records:
                     continue
                 a_wins, b_wins, _fa, _fb = h2h_records[pair_key]
@@ -1944,18 +1944,18 @@ def verify_player_scores(
 
     # Build display_name -> player_id map for callback verification
     display_to_pid: dict[str, str] = {}
-    for pid, display in player_name_map.items():
+    for player_id, display in player_name_map.items():
         if not display:
             continue
         if ", " in display:
             parts = display.split(", ", 1)
             first_last = f"{parts[1]} {parts[0]}".strip().lower()
             if first_last not in display_to_pid:
-                display_to_pid[first_last] = pid
+                display_to_pid[first_last] = player_id
         else:
             key = display.strip().lower()
             if key not in display_to_pid:
-                display_to_pid[key] = pid
+                display_to_pid[key] = player_id
 
     # Load all-season scores per player (for callback verification —
     # the model can legitimately reference a player's prior-week score
@@ -1972,12 +1972,12 @@ def verify_player_scores(
     matchup_numbers: set[float] = set()
     try:
         week_matchups_list = _load_season_matchups(db_path, league_id, season)
-        for m in week_matchups_list:
-            if m.week != week:
+        for matchup in week_matchups_list:
+            if matchup.week != week:
                 continue
-            matchup_numbers.add(round(m.winner_score, 2))
-            matchup_numbers.add(round(m.loser_score, 2))
-            matchup_numbers.add(round(abs(m.winner_score - m.loser_score), 2))
+            matchup_numbers.add(round(matchup.winner_score, 2))
+            matchup_numbers.add(round(matchup.loser_score, 2))
+            matchup_numbers.add(round(abs(matchup.winner_score - matchup.loser_score), 2))
     except Exception:
         pass
 
