@@ -49,6 +49,18 @@ def apply_migrations(db_path: str) -> list[str]:
     """Apply all pending migrations to the database.
 
     Returns list of newly applied version strings.
+
+    ADD COLUMN idempotency: SQLite has no `ALTER TABLE ADD COLUMN IF NOT
+    EXISTS`. Migrations that add a column will fail with `duplicate
+    column name` on a fresh install via `init_and_migrate`, because
+    schema.sql (the canonical post-migration state) already created the
+    column. The runner treats this specific error as "schema.sql has
+    already satisfied this migration" — mark it applied and continue.
+    This mirrors the spirit of `CREATE TABLE IF NOT EXISTS` used by
+    earlier migrations to remain safe against schema.sql co-execution.
+    Convention for future ADD COLUMN migrations: one ADD COLUMN per
+    migration file (a multi-statement script that fails on its first
+    ADD COLUMN will silently skip subsequent statements).
     """
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
@@ -61,7 +73,13 @@ def apply_migrations(db_path: str) -> list[str]:
         for version, sql in migrations:
             if version in applied:
                 continue
-            con.executescript(sql)
+            try:
+                con.executescript(sql)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e).lower():
+                    raise
+                # ADD COLUMN already satisfied by schema.sql co-execution.
+                # Mark applied so subsequent runs see it as done.
             con.execute(
                 "INSERT INTO _schema_migrations (version) VALUES (?)",
                 (version,),

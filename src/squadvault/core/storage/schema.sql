@@ -336,7 +336,12 @@ CREATE TABLE IF NOT EXISTS league_voice_profiles (
 
 -- =========================
 -- Prompt audit (Phase 10 observation sidecar)
--- Mirror of migration 0007. Append-only, never gates publication.
+-- Mirror of migrations 0007 + 0009. Append-only, never gates publication.
+-- prompt_text (added per migration 0009 / OBSERVATIONS_2026_04_15
+-- Finding 2) captures the full assembled user-turn prompt the model
+-- received. NOT NULL DEFAULT '' mirrors the existing TEXT column
+-- convention and keeps schema-init-path columns identical to the
+-- migrated path (enforced by test_schema_init_migrate_equivalence_v1).
 -- =========================
 
 CREATE TABLE IF NOT EXISTS prompt_audit (
@@ -351,7 +356,8 @@ CREATE TABLE IF NOT EXISTS prompt_audit (
     narrative_angles_text    TEXT    NOT NULL,
     narrative_draft          TEXT    NOT NULL,
     verification_passed      INTEGER NOT NULL,
-    verification_result_json TEXT    NOT NULL
+    verification_result_json TEXT    NOT NULL,
+    prompt_text              TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_prompt_audit_captured_at

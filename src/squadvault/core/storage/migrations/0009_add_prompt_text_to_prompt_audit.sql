@@ -1,0 +1,47 @@
+-- Migration 0009: add prompt_text column to prompt_audit.
+--
+-- Resolves OBSERVATIONS_2026_04_15 Finding 2.
+--
+-- Background: prompt_audit (created in migration 0007) captures three
+-- fields tracing back to the NARRATIVE ANGLES block of the assembled
+-- user-turn prompt only:
+--     * narrative_angles_text   (rendered angles for prompt)
+--     * angles_summary_json     (full angle inventory, including omitted)
+--     * budgeted_summary_json   (budgeting metadata)
+--
+-- _build_user_prompt in src/squadvault/ai/creative_layer_v1.py assembles
+-- the user-turn prompt from up to seven blocks (eight on retry):
+--     1. Header (league/season/week/EAL)
+--     2. SEASON CONTEXT (standings, streaks, scoring)
+--     3. LEAGUE HISTORY (all-time records, cross-season)
+--     4. NARRATIVE ANGLES (detected story hooks)            <- captured
+--     5. WRITER ROOM (scoring deltas, FAAB spending)
+--     6. PLAYER HIGHLIGHTS (individual player performances)
+--     7. VERIFIED FACTS (canonical, authoritative)
+--     8. VERIFICATION CORRECTIONS (only on retry)
+--
+-- The other six (or seven) blocks reach the model but were not
+-- persisted, leaving most diagnostic questions answerable only via
+-- prompt-assembly code archaeology (e.g. tracing whether a "$20 FAAB
+-- pickup" claim came from the WRITER ROOM block required reading
+-- creative_layer_v1.py rather than the audit table).
+--
+-- This migration adds prompt_text to capture the full assembled
+-- user-turn prompt at write time. Process-layer fix only: it does not
+-- alter what reaches the model, only what is observable about what
+-- reached the model. Fully append-only, fully consistent with the
+-- constitution's facts-immutable principle.
+--
+-- Conventions:
+--   * NOT NULL DEFAULT '' mirrors the existing prompt_audit pattern
+--     (every TEXT column is NOT NULL). SQLite requires a default for
+--     ADD COLUMN NOT NULL, so existing rows take the empty default.
+--   * No backfill: pre-migration rows have '' which is honest about
+--     what was observable at capture time. The audit sidecar's whole
+--     purpose is recording what was visible *at write time*; pretending
+--     to reconstruct prompts post-hoc would violate that contract.
+--   * Mirrored in src/squadvault/core/storage/schema_prompt_audit.sql
+--     (the standalone schema file used by audit-test fixtures); the
+--     two definitions are kept in lockstep deliberately.
+
+ALTER TABLE prompt_audit ADD COLUMN prompt_text TEXT NOT NULL DEFAULT '';

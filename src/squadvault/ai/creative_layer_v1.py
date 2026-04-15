@@ -354,6 +354,7 @@ def draft_narrative_v1(
     seasons_count: int = 0,
     verification_feedback: str = "",
     temperature_override: float | None = None,
+    prompt_capture: list[str] | None = None,
 ) -> str | None:
     """Attempt to produce a governed prose narrative draft.
 
@@ -369,6 +370,16 @@ def draft_narrative_v1(
     - narrative_angles: rendered detected story hooks text
     - writer_room_context: rendered scoring deltas + FAAB spending text
     - player_highlights: rendered per-franchise player scoring context text
+
+    Observation sink (optional):
+    - prompt_capture: if a list is supplied, the assembled user-turn
+      prompt is appended to it after assembly. This exists so the
+      Writing Room lifecycle can persist the full prompt to the
+      prompt_audit sidecar without re-computing or recovering it from
+      logs. The sink is filled only on the path where the prompt is
+      actually built and sent (i.e. after EAL/key/facts gating but
+      regardless of API success/failure). Pure observation: never
+      affects what reaches the model.
 
     Callers must treat None as 'use deterministic facts-only output.'
     This function never raises — all failures return None.
@@ -423,6 +434,14 @@ def draft_narrative_v1(
         seasons_count=seasons_count,
         verification_feedback=verification_feedback,
     )
+
+    # Observation sink: when a capture list is supplied (Writing Room
+    # lifecycle for the prompt_audit sidecar), append the assembled
+    # prompt before the API call. Filled even if the API call later
+    # fails — what we recorded is "what the model received," not
+    # "what produced a usable response."
+    if prompt_capture is not None:
+        prompt_capture.append(user_prompt)
 
     # EAL-modulated temperature (override available for retry decay)
     temperature = (

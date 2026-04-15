@@ -182,6 +182,7 @@ def maybe_capture_attempt(
     narrative_angles_text: str,
     narrative_draft: str,
     verification_result: Any,
+    prompt_text: str = "",
 ) -> None:
     """Capture one prompt attempt row if the audit env gate is enabled.
 
@@ -191,6 +192,14 @@ def maybe_capture_attempt(
     Opens a short-lived DatabaseSession internally; the caller's session
     lifetime is not coupled to this write. Errors are swallowed silently —
     an observation sidecar must never block or mutate the draft pipeline.
+
+    `prompt_text` is the full assembled user-turn prompt the model
+    received (header + SEASON CONTEXT + LEAGUE HISTORY + NARRATIVE
+    ANGLES + WRITER ROOM + PLAYER HIGHLIGHTS + VERIFIED FACTS, plus
+    VERIFICATION CORRECTIONS on retries). Default empty string keeps
+    legacy callers (e.g. unit-test fixtures that do not exercise the
+    full lifecycle) working unchanged. Storage size is unbounded by the
+    schema; production W14 captures are expected in the low tens of KB.
     """
     if os.environ.get(AUDIT_ENV_VAR) != "1":
         return
@@ -209,6 +218,7 @@ def maybe_capture_attempt(
             str(narrative_draft or ""),
             1 if passed else 0,
             _serialize(verification_result),
+            str(prompt_text or ""),
         )
         with DatabaseSession(db_path) as con:
             con.execute(
@@ -224,8 +234,9 @@ def maybe_capture_attempt(
                     narrative_angles_text,
                     narrative_draft,
                     verification_passed,
-                    verification_result_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    verification_result_json,
+                    prompt_text
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 row,
             )

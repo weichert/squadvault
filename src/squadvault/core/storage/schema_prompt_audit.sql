@@ -15,6 +15,12 @@
 --     Append-only semantics mean duplicate keys are valid history, not
 --     integrity violations. The `id` PK alone is sufficient.
 --   * Index on captured_at to support time-windowed audit scans.
+--
+-- prompt_text (added in lockstep with migration 0009) captures the full
+-- assembled user-turn prompt the model received. NOT NULL DEFAULT ''
+-- mirrors the existing column convention; the default keeps fixture
+-- code that does not supply a prompt_text working unchanged. See
+-- migrations/0009_add_prompt_text_to_prompt_audit.sql for the rationale.
 
 CREATE TABLE IF NOT EXISTS prompt_audit (
     id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,7 +34,8 @@ CREATE TABLE IF NOT EXISTS prompt_audit (
     narrative_angles_text   TEXT    NOT NULL,
     narrative_draft         TEXT    NOT NULL,
     verification_passed     INTEGER NOT NULL,
-    verification_result_json TEXT   NOT NULL
+    verification_result_json TEXT   NOT NULL,
+    prompt_text             TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_prompt_audit_captured_at

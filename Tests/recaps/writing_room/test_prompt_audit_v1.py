@@ -1,9 +1,11 @@
 """Tests for the Prompt Audit sidecar (v2 contract, rev3).
 
-With rev3's completed CATEGORY_TO_DETECTOR map, all 5 tests should pass.
-The drift detector test remains in place as a standing guardrail: any future
-narrative-angle category added to the source without a corresponding map
-entry will fail this test with an explicit missing-keys list.
+With rev3's completed CATEGORY_TO_DETECTOR map, all 5 original tests
+pass. Migration 0009 adds prompt_text capture; tests 6 and 7 cover that
+column. The drift detector test remains in place as a standing
+guardrail: any future narrative-angle category added to the source
+without a corresponding map entry will fail this test with an explicit
+missing-keys list.
 """
 from __future__ import annotations
 
@@ -210,3 +212,123 @@ def test_category_to_detector_drift_detector() -> None:
         "CATEGORY_TO_DETECTOR is out of sync with live detector output. "
         f"Missing keys ({len(missing)}): {missing}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 6 — prompt_text populates when supplied (Migration 0009 / Finding 2)
+#
+# Confirms the new prompt_text column round-trips a non-trivial assembled
+# prompt — including all eight user-prompt block headers — through the
+# audit write path. The prompt body here mirrors the structure
+# _build_user_prompt produces in creative_layer_v1; the test does not
+# call the LLM but does exercise the full INSERT path against the
+# real schema.
+# ---------------------------------------------------------------------------
+_ASSEMBLED_PROMPT_FIXTURE = (
+    "League: 70985 | Season: 2025 | Week 7\n"
+    "EAL directive: HIGH_CONFIDENCE_ALLOWED — Use confident, declarative tone.\n"
+    "\n"
+    "=== SEASON CONTEXT (standings, streaks, scoring) ===\n"
+    "Standings: ...\n"
+    "\n"
+    "=== LEAGUE HISTORY (all-time records, cross-season — REFERENCE THIS) ===\n"
+    "All-time high: ...\n"
+    "\n"
+    "=== NARRATIVE ANGLES (detected story hooks — USE THESE) ===\n"
+    "PLAYER_BOOM_BUST: ...\n"
+    "\n"
+    "=== WRITER ROOM (scoring deltas, FAAB spending) ===\n"
+    "FAAB: $20 on Watson\n"
+    "\n"
+    "=== PLAYER HIGHLIGHTS (individual player performances — USE THESE) ===\n"
+    "QB1: 28.4 pts\n"
+    "\n"
+    "=== VERIFIED FACTS (canonical, authoritative — these are your source of truth) ===\n"
+    "- Franchise A defeated Franchise B 142.3 to 118.7\n"
+    "\n"
+    "=== VERIFICATION CORRECTIONS (your previous draft was rejected) ===\n"
+    "- ERROR: ... CORRECTION: ...\n"
+    "\n"
+    "Write the recap now."
+)
+
+
+def test_maybe_capture_attempt_writes_prompt_text(
+    db_path: str, audit_env: None
+) -> None:
+    maybe_capture_attempt(
+        db_path,
+        league_id="70985",
+        season=2025,
+        week_index=7,
+        attempt=2,
+        all_angles=[_make_angle("PLAYER_BOOM_BUST")],
+        budgeted=[_make_angle("PLAYER_BOOM_BUST")],
+        narrative_angles_text="PLAYER_BOOM_BUST: ...",
+        narrative_draft="Draft prose here.",
+        verification_result=_make_verification_result(passed=True),
+        prompt_text=_ASSEMBLED_PROMPT_FIXTURE,
+    )
+
+    con = sqlite3.connect(db_path)
+    try:
+        rows = con.execute(
+            "SELECT prompt_text, length(prompt_text) FROM prompt_audit"
+        ).fetchall()
+    finally:
+        con.close()
+
+    assert len(rows) == 1
+    captured_prompt, captured_len = rows[0]
+    assert captured_prompt == _ASSEMBLED_PROMPT_FIXTURE
+    assert captured_len == len(_ASSEMBLED_PROMPT_FIXTURE)
+    # All eight assembled block headers must round-trip — this is the
+    # observability guarantee the column exists to provide.
+    for header in (
+        "League: 70985 | Season: 2025 | Week 7",
+        "=== SEASON CONTEXT",
+        "=== LEAGUE HISTORY",
+        "=== NARRATIVE ANGLES",
+        "=== WRITER ROOM",
+        "=== PLAYER HIGHLIGHTS",
+        "=== VERIFIED FACTS",
+        "=== VERIFICATION CORRECTIONS",
+    ):
+        assert header in captured_prompt
+
+
+# ---------------------------------------------------------------------------
+# Test 7 — prompt_text default-empty backward-compat
+#
+# Confirms callers that omit prompt_text (the kw-only param defaults to
+# "") still write a valid row. Two assertions: (a) the omitted-call
+# write succeeds, and (b) readers see an empty string, not a NULL —
+# the schema is NOT NULL DEFAULT '' to mirror the existing TEXT column
+# convention.
+# ---------------------------------------------------------------------------
+def test_maybe_capture_attempt_default_prompt_text_empty(
+    db_path: str, audit_env: None
+) -> None:
+    # Legacy-style call: prompt_text omitted entirely.
+    maybe_capture_attempt(
+        db_path,
+        league_id="70985",
+        season=2025,
+        week_index=8,
+        attempt=1,
+        all_angles=[_make_angle("PLAYER_BOOM_BUST")],
+        budgeted=[],
+        narrative_angles_text="",
+        narrative_draft="",
+        verification_result=_make_verification_result(passed=True),
+    )
+
+    con = sqlite3.connect(db_path)
+    try:
+        rows = con.execute(
+            "SELECT prompt_text, prompt_text IS NULL FROM prompt_audit"
+        ).fetchall()
+    finally:
+        con.close()
+
+    assert rows == [("", 0)]

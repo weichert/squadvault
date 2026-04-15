@@ -1116,6 +1116,12 @@ def generate_weekly_recap_draft(
             # Reset to pre-narrative state
             rendered_text = _base_rendered_text
 
+            # Observation sink for prompt_audit — filled inside
+            # draft_narrative_v1 after _build_user_prompt assembles the
+            # user-turn prompt. Reset per attempt so retry corrections
+            # are visible in the captured prompt for that attempt.
+            _prompt_capture: list[str] = []
+
             _narrative_draft = draft_narrative_v1(
                 facts_bullets=_creative_bullets,
                 eal_directive=editorial_attunement_v1,
@@ -1132,6 +1138,7 @@ def generate_weekly_recap_draft(
                 seasons_count=_ctx.seasons_count,
                 verification_feedback=_retry_feedback,
                 temperature_override=_temp_override,
+                prompt_capture=_prompt_capture,
             )
 
             if not _narrative_draft:
@@ -1165,6 +1172,12 @@ def generate_weekly_recap_draft(
             # Env-gated no-op by default; all exceptions are swallowed inside
             # the hook so the draft pipeline cannot be blocked or mutated by
             # audit failures. Observation-only: never feeds back into facts.
+            #
+            # prompt_text: the full assembled user-turn prompt the model
+            # received this attempt (filled by draft_narrative_v1 via the
+            # prompt_capture sink). Empty string fallback if the sink was
+            # not populated, which would indicate a control-flow change in
+            # creative_layer_v1 worth investigating.
             maybe_capture_attempt(
                 db_path,
                 league_id=league_id,
@@ -1176,6 +1189,7 @@ def generate_weekly_recap_draft(
                 narrative_angles_text=_ctx.narrative_angles_text,
                 narrative_draft=_narrative_draft,
                 verification_result=_verification_result,
+                prompt_text=_prompt_capture[0] if _prompt_capture else "",
             )
 
             if _verification_result.passed:
