@@ -2050,3 +2050,298 @@ class TestRegressionQ5PlayerScoreFalsePositives:
             f"{[(f.claim, f.evidence) for f in player_score_failures]}"
         )
         assert "47.60" in player_score_failures[0].claim
+
+
+# ─── S1/S2 SERIES parse-false-positive regressions ───────────────────
+#
+# Fixtures reproduce prompt_audit rows captured in the 2026-04-14 Q5
+# resolution pass (OBSERVATIONS_2026_04_14_Q5_RESOLUTION.md):
+#
+#   S1: id=3  (2025 w2 a1)  — 3-part W-L-T misread as 2-part W-L
+#   S2: id=18 (2025 w10 a2) — season record confused with H2H record
+#
+# Both classes have companion sanity tests to guard against defanging
+# verify_series_records.
+class TestRegressionQ5SeriesFalsePositives:
+    """Pin S1/S2 SERIES parse bugs (Q5 resolution)."""
+
+    def _reverse(self):
+        return {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Beta Squad": "F2", "beta squad": "F2",
+            "Miller": "F3", "miller": "F3",
+            "Eddie": "F4", "eddie": "F4",
+        }
+
+    # ── S1: 3-part W-L-T misread as 2-part W-L ───────────────────────
+
+    def _s1_matchups(self):
+        """Build Alpha vs Beta all-time record of 16 wins, 12 losses.
+        Ties are not tracked in h2h_records, so the W-L comparison
+        against a 16-12-1 claim will match on W=16, L=12."""
+        matchups = []
+        for w in range(1, 17):
+            matchups.append(_make_matchup(w, "F1", "F2", 120.0, 100.0))
+        for w in range(17, 29):
+            matchups.append(_make_matchup(w, "F2", "F1", 115.0, 105.0))
+        return matchups
+
+    def test_s1_three_part_wlt_not_misread_as_wl_row3(self):
+        """id=3 (2025 w2 a1): "extending their series lead to 16-12-1
+        across 29 all-time meetings".
+
+        Before the fix: greedy [^.]{0,40} backtracked to 11 chars ("lead
+        to 16-"), where "12-1" became a valid W-L match with the tie
+        group unfilled — misreading 16-12-1 as 12-1 and flagging it
+        against a 16-12 actual. The extended lookbehind (?<![\\d-])
+        forbids the match from starting after a hyphen, forcing greedy
+        to find a boundary where the full triple is captured.
+        """
+        matchups = self._s1_matchups()
+        reverse = self._reverse()
+        text = (
+            "Alpha Team is extending their series lead to 16-12-1 across "
+            "29 all-time meetings with Beta Squad."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert series_failures == [], (
+            f"expected no SERIES failures (16-12-1 is the correct 3-part "
+            f"record against a 16-12 actual W-L), "
+            f"got {[(f.claim, f.evidence) for f in series_failures]}"
+        )
+
+    def test_s1_three_part_wlt_wrong_flags_with_correct_claim_string(self):
+        """Parse-correctness: when a 3-part W-L-T claim is wrong (20-8-1
+        vs actual 16-12), the failure must carry the full "20-8-1"
+        claim string — not a mangled "8-1" from the same S1 parse bug.
+
+        On unfixed code: the verifier flags but misreads 20-8-1 as 8-1,
+        producing claim "Series record 8-1" — a second manifestation of
+        the S1 bug that would be silently shipped to commissioner review
+        with wrong content. The extended lookbehind forces greedy to
+        capture the full triple, and the claim string becomes accurate.
+
+        Combines defanging-sanity (wrong claim still flags) with parse-
+        correctness (claim string matches the prose). The upstream
+        TestVerifySeriesRecords::test_wrong_series_record_fails covers
+        pure defanging for 2-part W-L shapes.
+        """
+        matchups = self._s1_matchups()
+        reverse = self._reverse()
+        text = (
+            "Alpha Team is extending their series lead to 20-8-1 across "
+            "29 all-time meetings with Beta Squad."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected exactly one SERIES failure (claimed 20-8-1 vs "
+            f"actual 16-12), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "20-8-1" in series_failures[0].claim, (
+            f"expected claim string to carry the full 3-part record "
+            f"20-8-1 (not the S1-mangled 8-1), "
+            f"got claim={series_failures[0].claim!r}"
+        )
+
+    def test_s1_two_part_wl_still_parses_correctly(self):
+        """Sanity: a 2-part W-L record (no tie) must still parse and
+        verify correctly. The lookbehind change affects where the match
+        can start, not whether the optional tie group participates."""
+        matchups = self._s1_matchups()
+        reverse = self._reverse()
+        text = (
+            "Alpha Team is extending their series lead to 16-12 against "
+            "Beta Squad."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        assert failures == [], (
+            f"expected no failures for correct 16-12 claim, "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    # ── S2: season record confused with H2H series record ────────────
+
+    def _s2_matchups(self):
+        """Miller vs Eddie H2H: neither 7-3 nor reversed. Actual record
+        is 4-3 (Miller leads). The 7-3 claim is Miller's SEASON record,
+        not their rivalry vs Eddie."""
+        matchups = []
+        for w in range(1, 5):
+            matchups.append(_make_matchup(w, "F3", "F4", 120.0, 100.0))
+        for w in range(5, 8):
+            matchups.append(_make_matchup(w, "F4", "F3", 115.0, 105.0))
+        return matchups
+
+    def test_s2_season_record_not_misread_as_h2h_row18(self):
+        """id=18 (2025 w10 a2): "Josh Allen's 26.40 points led Miller
+        to his second straight win and a 7-3 record".
+
+        Before the fix: "7-3 record" matched via the second branch
+        (record keyword), proximity picked Miller-Eddie as the nearest
+        pair, and the Miller-Eddie H2H (4-3) failed the comparison
+        → false flag. The S2 guard detects the single-team determiner
+        "a " before "7-3" combined with the absence of H2H markers in
+        match text and post-context, and skips the comparison.
+        """
+        matchups = self._s2_matchups()
+        reverse = self._reverse()
+        text = (
+            "Josh Allen's 26.40 points led Miller to his second straight "
+            "win and a 7-3 record. Eddie was competitive throughout."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert series_failures == [], (
+            f"expected no SERIES failures (7-3 is Miller's season W-L, "
+            f"not a rivalry total vs Eddie), "
+            f"got {[(f.claim, f.evidence) for f in series_failures]}"
+        )
+
+    def test_s2_h2h_record_vs_opponent_still_flagged(self):
+        """Sanity: a genuine H2H claim with 'vs/against' in post-context
+        must still verify. The S2 guard only suppresses when the
+        post-context lacks an H2H marker."""
+        matchups = self._s2_matchups()
+        reverse = self._reverse()
+        text = (
+            "Miller improved to a 7-3 record against Eddie in their "
+            "all-time series."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (7-3 claim vs actual 4-3 "
+            f"H2H, with 'against' + 'all-time series' making the claim "
+            f"unambiguously head-to-head), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "7-3" in series_failures[0].claim
+
+    def test_s2_series_keyword_in_match_overrides_determiner(self):
+        """Sanity: when the match text itself contains an unambiguous
+        H2H marker ("series", "rivalry", "all-time", "lead"), the S2
+        guard does not fire regardless of determiner pre-context. The
+        guard is keyed on the AMBIGUOUS "record" keyword only."""
+        matchups = self._s2_matchups()
+        reverse = self._reverse()
+        # "a 7-3 series lead" has "series" in match text AND "lead" —
+        # determiner "a" before 7-3 should NOT suppress verification.
+        text = "Miller holds a 7-3 series lead over Eddie."
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (unambiguous H2H claim via "
+            f"'series lead'), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "7-3" in series_failures[0].claim
+
+    # ── S3: franchise short-form matches inside player names ─────────
+
+    def test_s3_short_form_alias_inside_player_name_not_matched(self):
+        """id=3 (2025 w2 a1), second manifestation: the "brandon" short-
+        form alias was matching inside the kicker name "Brandon Aubrey"
+        via bare substring search, causing Brandon Knows Ball to be
+        added to nearby_fids. With a canonical Brandon-vs-Ben H2H pair
+        in the matchups table whose actual record doesn't match the
+        claim, the misattribution fires a false SERIES flag.
+
+        The real franchise in the row 3 prose ("Paradis' Playmakers")
+        sits outside the 300-char context window, so the correct
+        outcome after removing the short-form hazard is silence:
+        nearby_fids drops below two and the check skips without
+        flagging.
+
+        Fixture reproduces the bug: Brandon-vs-Ben canonical record is
+        10-5 (not 16-12-1), and the prose claims 16-12-1. On unfixed
+        code the short-form match fires the flag; on fixed code the
+        short-form is rejected and the check silently skips.
+        """
+        # Build matchups where Brandon Knows Ball (F5) vs Ben's Gods
+        # (F6) actual record is 10-5. The 16-12-1 claim in prose does
+        # not match this — on unfixed code, the nearby-pair check picks
+        # up both franchises (brandon-inside-Aubrey + ben's-gods-full)
+        # and the false-attribution path fires.
+        matchups = []
+        for w in range(1, 11):
+            matchups.append(_make_matchup(w, "F5", "F6", 120.0, 100.0))
+        for w in range(11, 16):
+            matchups.append(_make_matchup(w, "F6", "F5", 115.0, 105.0))
+        reverse = {
+            "Brandon Knows Ball": "F5",
+            "brandon knows ball": "F5",
+            "brandon": "F5",  # single-word alias — the hazard surface
+            "Ben's Gods": "F6",
+            "ben's gods": "F6",
+        }
+        text = (
+            "Jonathan Taylor led the charge with 28.50 points, while "
+            "Brandon Aubrey kicked his way to 24.50 points. Ben's Gods "
+            "lost the matchup 169.60-128.75, extending the series lead "
+            "to 16-12-1 across 29 all-time meetings."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        # Brandon Knows Ball should NOT be added to nearby_fids via the
+        # "brandon" short-form match inside "Brandon Aubrey". With only
+        # Ben's Gods correctly identified, nearby_fids has one entry
+        # and verify_series_records exits silently.
+        assert series_failures == [], (
+            f"expected no SERIES failures (brandon short-form inside "
+            f"'Brandon Aubrey' should not add Brandon Knows Ball to "
+            f"nearby_fids), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+
+    def test_s3_short_form_alias_as_franchise_subject_still_matches(self):
+        """Sanity: a legitimate franchise short-form used as a subject
+        (lowercase-verb follow like "Alpha won") must still match. The
+        lookahead rejects only whitespace + capital letter, not general
+        usage."""
+        matchups = self._s1_matchups()
+        reverse = {
+            "Alpha Team": "F1", "alpha team": "F1", "alpha": "F1",
+            "Beta Squad": "F2", "beta squad": "F2", "beta": "F2",
+        }
+        # Both short-forms used as franchise subjects followed by
+        # lowercase words — Alpha "extended" and "over Beta across".
+        # The 16-12 claim is correct; verifier should match the pair
+        # via short-form aliases and pass cleanly.
+        text = (
+            "Alpha extended their all-time series record over Beta to "
+            "16-12 across 28 meetings."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        assert failures == [], (
+            f"expected no failures — alpha/beta short-forms as "
+            f"franchise subjects should match and the 16-12 claim "
+            f"should verify correctly, "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_s3_multi_word_franchise_name_always_matches(self):
+        """Sanity: multi-word franchise names (interior whitespace)
+        use the simple \\b rule regardless of following capital — a
+        space inside the name already aligns it to franchise boundaries,
+        so "Brandon Knows Ball Aubrey" (hypothetical) would still
+        correctly match the franchise."""
+        matchups = self._s1_matchups()
+        reverse = {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Beta Squad": "F2", "beta squad": "F2",
+        }
+        # Multi-word "Alpha Team" directly in prose with a wrong claim.
+        text = (
+            "Alpha Team improved their all-time series record to 20-8 "
+            "against Beta Squad."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (20-8 claim vs actual 16-12 "
+            f"H2H), got {[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "20-8" in series_failures[0].claim

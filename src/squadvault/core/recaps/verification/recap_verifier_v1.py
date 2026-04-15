@@ -1177,17 +1177,76 @@ def verify_streaks(
 # ── Category 4: Series Record Verification ───────────────────────────
 
 # Pattern: "X-Y" (W-L record) near series/rivalry keywords
-# (?<!\d) prevents matching the tail of a larger number (e.g. "8-9" from "18-9")
+# Lookbehind (?<![\d-]) prevents matching:
+#   - tail of a larger number ("8-9" inside "18-9")
+#   - embedded W-L inside a 3-part W-L-T triple ("12-1" inside "16-12-1")
+# The second case (S1) is real: greedy [^.]{0,40} before the number
+# backtracks to 11 chars ("lead to 16-") where "12-1" becomes a valid
+# W-L match with tie group unfilled, misreading 16-12-1 as 12-1. The
+# hyphen-rejection anchor forces the match to start at a non-hyphen
+# position, where greedy backtracking correctly captures the full
+# 16-12-1 triple via the optional tie group.
+#
+# Source: prompt_audit row 3 (2025 w2 a1) — "extending their series
+# lead to 16-12-1 across 29 all-time meetings".
 _SERIES_RECORD_PATTERN = re.compile(
     r'(?:'
     r'(?:leads?|trails?|series|rivalry|all[- ]?time|meetings?|record)\s[^.]{0,40}'
-    r'(?<!\d)(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?'
+    r'(?<![\d-])(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?'
     r'|'
-    r'(?<!\d)(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?\s[^.]{0,40}'
+    r'(?<![\d-])(\d{1,2})-(\d{1,2})(?:-(\d{1,2}))?\s[^.]{0,40}'
     r'(?:series|rivalry|all[- ]?time|meetings?|record|lead)'
     r')',
     re.IGNORECASE,
 )
+
+
+def _franchise_name_matches_in_context(
+    name: str, context: str,
+) -> int:
+    """Return earliest match position of franchise `name` in `context`,
+    or -1 if no proper match is found.
+
+    `name` is a lowercase key from `reverse_name_map`. `context` should
+    have apostrophes normalized but case preserved (the single-word
+    lookahead inspects capital letters directly).
+
+    Matching rules:
+      - Multi-word names (contain a space): word-boundary match via \\b.
+        The interior whitespace already constrains the match to proper
+        franchise-name alignment; no further filtering needed.
+      - Single-word names (no spaces, i.e. short-form first-word aliases
+        like "brandon", "paradis", "miller"): word-boundary match PLUS
+        a negative lookahead rejecting whitespace + capital letter. A
+        capitalized word immediately after a franchise short-form is
+        almost always a player surname ("Brandon Aubrey" the kicker,
+        not the franchise Brandon Knows Ball), and allowing such matches
+        causes franchise misattribution.
+
+    Source: prompt_audit row 3 (2025 w2 a1) — the bare-substring match
+    for short-form alias "brandon" was hitting inside "Brandon Aubrey",
+    adding Brandon Knows Ball to the verify_series_records nearby_fids
+    set. The series-record claim 16-12-1 was then compared against the
+    (wrong) Ben's Gods vs Brandon Knows Ball pair, firing a false H2H
+    flag. The real H2H (Paradis' Playmakers vs Ben's Gods) sat outside
+    the 300-char context window; with the short-form hazard removed,
+    nearby_fids drops below two and the check correctly skips in
+    silence rather than misattributing.
+    """
+    escaped = re.escape(name)
+    if " " in name:
+        pattern = re.compile(r'\b' + escaped + r'\b', re.IGNORECASE)
+    else:
+        # (?-i:[A-Z]) resets case-insensitivity inside the lookahead —
+        # under IGNORECASE alone, [A-Z] would also match lowercase and
+        # the lookahead would reject every word boundary followed by
+        # any letter, not just capital-letter-starting tokens.
+        pattern = re.compile(
+            r'\b' + escaped + r'\b(?!\s+(?-i:[A-Z]))',
+            re.IGNORECASE,
+        )
+    m = pattern.search(context)
+    return m.start() if m else -1
 
 
 def _find_two_franchises(
@@ -1204,7 +1263,9 @@ def _find_two_franchises(
     """
     start = max(0, match_pos - window)
     end = min(len(text), match_pos + window)
-    context = _normalize_apostrophes(text[start:end]).lower()
+    # Case preserved for the single-word-alias capital-letter lookahead
+    # in _franchise_name_matches_in_context.
+    context = _normalize_apostrophes(text[start:end])
 
     found: list[tuple[int, str]] = []  # (position, franchise_id)
     seen_ids: set[str] = set()
@@ -1214,7 +1275,7 @@ def _find_two_franchises(
             continue
         if fid in seen_ids:
             continue
-        idx = context.find(name)
+        idx = _franchise_name_matches_in_context(name, context)
         if idx >= 0:
             found.append((idx, fid))
             seen_ids.add(fid)
@@ -1276,19 +1337,59 @@ def verify_series_records(
         ):
             continue
 
+        # S2 guard: season record vs H2H series record. The "record"
+        # keyword in _SERIES_RECORD_PATTERN is ambiguous — "all-time
+        # record between X and Y is 16-12" (H2H) vs "Miller improved
+        # to a 7-3 record" (single-team season W-L). Skip when:
+        #   1. the match text has no unambiguous H2H marker
+        #      (series/rivalry/meetings/all-time/lead/head-to-head);
+        #   2. pre-context ends with a single-team determiner
+        #      (a/an/his/her/their) plus whitespace — the structural
+        #      signal of a season-record attribution;
+        #   3. post-context within 40 chars lacks an H2H marker
+        #      (vs/versus/against/head-to-head/all-time) that would
+        #      override the season-record reading.
+        #
+        # Source: prompt_audit row 18 (2025 w10 a2) — "led Miller to
+        # his second straight win and a 7-3 record". The 7-3 is
+        # Miller's season W-L; proximity misattributed it to the
+        # Eddie-vs-Miller pair.
+        _s2_match_text = match.group(0).lower()
+        _s2_has_h2h_marker = bool(re.search(
+            r'\b(?:series|rivalry|meetings?|all[- ]?time|lead|head[- ]?to[- ]?head)\b',
+            _s2_match_text,
+        ))
+        if not _s2_has_h2h_marker:
+            _s2_pre_start = max(0, match.start() - 40)
+            _s2_pre = recap_text[_s2_pre_start:match.start()].lower()
+            _s2_post_end = min(len(recap_text), match.end() + 40)
+            _s2_post = recap_text[match.end():_s2_post_end].lower()
+            _s2_has_determiner = bool(re.search(
+                r'\b(?:a|an|his|her|their)\s+$',
+                _s2_pre,
+            ))
+            _s2_has_h2h_context = bool(re.search(
+                r'\b(?:vs\.?|versus|against|head[- ]?to[- ]?head|all[- ]?time)\b',
+                _s2_post,
+            ))
+            if _s2_has_determiner and not _s2_has_h2h_context:
+                continue
+
         # Find all franchises that appear in a wider window around the
         # record. The series record could belong to any pair of
         # franchises mentioned in the surrounding paragraph — not just
-        # the two closest.
+        # the two closest. Case preserved so the single-word-alias
+        # lookahead in _franchise_name_matches_in_context can inspect
+        # capital letters directly.
         _ctx_start = max(0, match.start() - 300)
         _ctx_end = min(len(recap_text), match.end() + 100)
-        _context = _normalize_apostrophes(recap_text[_ctx_start:_ctx_end]).lower()
+        _context = _normalize_apostrophes(recap_text[_ctx_start:_ctx_end])
 
         nearby_fids: set[str] = set()
         for name, fid in reverse_name_map.items():
             if not name.islower():
                 continue
-            if name in _context:
+            if _franchise_name_matches_in_context(name, _context) >= 0:
                 nearby_fids.add(fid)
 
         if len(nearby_fids) < 2:
