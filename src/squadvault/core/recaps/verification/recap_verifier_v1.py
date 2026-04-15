@@ -1270,6 +1270,27 @@ _SERIES_RECORD_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# S4 idiom set — season-record transitions and state locatives.
+# Used inside verify_series_records as an additional skip signal when the
+# match text has no narrow H2H marker and the pre-context ends with an
+# unambiguous single-franchise season-record attribution like "moved to"
+# or "sits at". Anchored with `$` so the idiom must land flush against
+# the W-L digits. Narrow verb set — only verbs that plausibly take a
+# single-franchise subject and transition/describe its season W-L.
+#
+# Source: prompt_audit row 17 (2025 w10 a1) — "KP's team moved to 8-2
+# and maintains the league's best record" and "Michele's Italian
+# Cavallini dropped to 5-5 after leaving 59.20 bench points". Neither
+# has a determiner (S2's shape), neither carries an H2H marker (S2's
+# h2h-marker shape). Both are unambiguous season-record attributions
+# that misattributed to an H2H pair.
+_SEASON_RECORD_IDIOM_PATTERN = re.compile(
+    r'\b(?:moved|dropped|fell|improved|climbed|rose|advanced)\s+to\s+$'
+    r'|\b(?:sits|stands)\s+at\s+$'
+    r'|\bnow\s+at\s+$',
+    re.IGNORECASE,
+)
+
 
 def _franchise_name_matches_in_context(
     name: str, context: str,
@@ -1414,16 +1435,18 @@ def verify_series_records(
         #   1. the match text has no unambiguous H2H marker
         #      (series/rivalry/meetings/all-time/lead/head-to-head);
         #   2. pre-context ends with a single-team determiner
-        #      (a/an/his/her/their) plus whitespace — the structural
-        #      signal of a season-record attribution;
+        #      (a/an/his/her/their) plus whitespace (S2's original
+        #      structural signal) OR a season-record idiom like
+        #      "moved to " / "dropped to " / "sits at " (S4, added for
+        #      row 17 where no determiner is present);
         #   3. post-context within 40 chars lacks an H2H marker
         #      (vs/versus/against/head-to-head/all-time) that would
         #      override the season-record reading.
         #
         # Source: prompt_audit row 18 (2025 w10 a2) — "led Miller to
-        # his second straight win and a 7-3 record". The 7-3 is
-        # Miller's season W-L; proximity misattributed it to the
-        # Eddie-vs-Miller pair.
+        # his second straight win and a 7-3 record" (S2 shape); and
+        # row 17 (2025 w10 a1) — "KP's team moved to 8-2 and maintains
+        # the league's best record" (S4 shape).
         _s2_match_text = match.group(0).lower()
         _s2_has_h2h_marker = bool(re.search(
             r'\b(?:series|rivalry|meetings?|all[- ]?time|lead|head[- ]?to[- ]?head)\b',
@@ -1442,7 +1465,13 @@ def verify_series_records(
                 r'\b(?:vs\.?|versus|against|head[- ]?to[- ]?head|all[- ]?time)\b',
                 _s2_post,
             ))
-            if _s2_has_determiner and not _s2_has_h2h_context:
+            _s4_has_season_idiom = bool(
+                _SEASON_RECORD_IDIOM_PATTERN.search(_s2_pre)
+            )
+            if (
+                (_s2_has_determiner or _s4_has_season_idiom)
+                and not _s2_has_h2h_context
+            ):
                 continue
 
         # Find all franchises that appear in a wider window around the

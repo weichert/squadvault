@@ -2346,6 +2346,214 @@ class TestRegressionQ5SeriesFalsePositives:
         )
         assert "20-8" in series_failures[0].claim
 
+    # ── S4: season-record idiom pre-context misread as H2H ───────────
+
+    def _s4_row17_matchups(self):
+        """Paradis' Playmakers vs Italian Cavallini H2H: 13-12 (25
+        meetings). Neither 8-2 nor 2-8. The 8-2 claim in the captured
+        row-17 prose is Paradis' season W-L after W10, not the
+        Paradis-vs-Italian rivalry total."""
+        matchups = []
+        for w in range(1, 14):
+            matchups.append(_make_matchup(w, "F_PP", "F_IC", 120.0, 100.0))
+        for w in range(14, 26):
+            matchups.append(_make_matchup(w, "F_IC", "F_PP", 115.0, 105.0))
+        return matchups
+
+    def _s4_row17_reverse(self):
+        """Reverse name map with Paradis' Playmakers / Italian
+        Cavallini plus the short-form owner aliases that appear in the
+        captured prose (KP, Michele, Paradis). Single-word aliases
+        pass the S3 word-boundary check in context."""
+        return {
+            "Paradis' Playmakers": "F_PP", "paradis' playmakers": "F_PP",
+            "paradis": "F_PP", "kp": "F_PP",
+            "Italian Cavallini": "F_IC", "italian cavallini": "F_IC",
+            "michele": "F_IC",
+        }
+
+    def test_s4_moved_to_idiom_not_misread_as_h2h_row17(self):
+        """id=17 (2025 w10 a1) captured prose middle paragraph:
+
+            "...KP's team moved to 8-2 and maintains the league's
+             best record despite leaving 36.45 points on the bench..."
+
+        Before S4: Branch-2 of _SERIES_RECORD_PATTERN fires on
+        "8-2 and maintains the league's best record" (38 chars
+        between "8-2" and "record", inside the 40-char window).
+        match text contains "record" but none of the narrow H2H
+        markers (series/rivalry/meetings/all-time/lead/head-to-head)
+        — S2's marker path does not trigger. Pre-context ends with
+        "moved to " — not a determiner — so S2's determiner path
+        does not trigger either. Falls through to H2H comparison,
+        which pulls Paradis' Playmakers and Italian Cavallini from
+        the 300-char window, compares claimed 8-2 to canonical
+        13-12, and flags.
+
+        After S4: idiom "moved to " at the end of the 40-char
+        pre-context matches _SEASON_RECORD_IDIOM_PATTERN. Since
+        post-context within 40 chars of match.end() has no H2H
+        marker either, the guard skips.
+        """
+        matchups = self._s4_row17_matchups()
+        reverse = self._s4_row17_reverse()
+        text = (
+            "The week belonged to Jonathan Taylor, who posted 48.10 "
+            "points for Paradis' Playmakers in their 137.50-103.10 "
+            "win over Italian Cavallini. That's the highest "
+            "individual score by any starter this season, topping "
+            "the previous mark of 46.75. KP's team moved to 8-2 and "
+            "maintains the league's best record despite leaving "
+            "36.45 points on the bench with Daniel Jones sitting at "
+            "20.05. Michele's Italian Cavallini dropped to 5-5 "
+            "after leaving 59.20 bench points, led by Tyler "
+            "Allgeier's 17.70."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert series_failures == [], (
+            f"expected no SERIES failures (8-2 is Paradis' season "
+            f"record after W10, not the Paradis-vs-Italian "
+            f"Cavallini 13-12 H2H), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+
+    def test_s4_dropped_to_idiom_with_record_keyword_skipped(self):
+        """Synthetic: "Miller dropped to 5-5 record after today's
+        loss." The pattern fires on 5-5 via Branch-2 trailing
+        "record". match text has "record" but no narrow H2H marker
+        — S2's marker path passes through. Pre-context ends with
+        "dropped to " — not a determiner — S2's determiner path
+        passes through. On unfixed code, the verifier falls to H2H
+        comparison: Miller (F3) and Eddie (F4) both appear in the
+        300-char window, canonical H2H is 4-3, 5-5 ≠ 4-3 and ≠ 3-4
+        → false SERIES flag. On fixed code, S4 idiom "dropped to "
+        catches it and skips.
+        """
+        matchups = self._s2_matchups()
+        reverse = self._reverse()
+        text = (
+            "Miller dropped to 5-5 record after today's loss. "
+            "Eddie remains one game back."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert series_failures == [], (
+            f"expected no SERIES failures (5-5 is Miller's season "
+            f"record; S4 'dropped to' idiom should skip), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+
+    def test_s4_idiom_verb_sweep(self):
+        """Every verb/locative in _SEASON_RECORD_IDIOM_PATTERN must
+        suppress a season-record misread. Each phrasing pairs a
+        wrong 5-5 claim with the Miller-vs-Eddie 4-3 canonical H2H
+        — if the idiom doesn't trigger the skip, the verifier flags.
+
+        Sweep covers all 10 idioms:
+          moved to, dropped to, fell to, improved to, climbed to,
+          rose to, advanced to, sits at, stands at, now at.
+        """
+        matchups = self._s2_matchups()
+        reverse = self._reverse()
+        variants = [
+            "Miller moved to 5-5 record after today's loss. Eddie remains one game back.",
+            "Miller dropped to 5-5 record after today's loss. Eddie remains one game back.",
+            "Miller fell to 5-5 record after today's loss. Eddie remains one game back.",
+            "Miller improved to 5-5 record after today's win. Eddie remains one game back.",
+            "Miller climbed to 5-5 record after today's win. Eddie remains one game back.",
+            "Miller rose to 5-5 record after today's win. Eddie remains one game back.",
+            "Miller advanced to 5-5 record after today's win. Eddie remains one game back.",
+            "Miller sits at 5-5 record after today's game. Eddie remains one game back.",
+            "Miller stands at 5-5 record after today's game. Eddie remains one game back.",
+            "Miller is now at 5-5 record after today's game. Eddie remains one game back.",
+        ]
+        for text in variants:
+            failures = verify_series_records(text, matchups, reverse)
+            series_failures = [
+                f for f in failures if f.category == "SERIES"
+            ]
+            assert series_failures == [], (
+                f"expected no SERIES failures for S4 idiom variant "
+                f"{text!r}, got "
+                f"{[(f.claim, f.evidence) for f in series_failures]}"
+            )
+
+    def test_s4_idiom_with_h2h_post_context_still_flagged(self):
+        """Scope-guard: S4 is gated by `not _s2_has_h2h_context`. An
+        idiom followed by an H2H marker in the 40-char post-context
+        ("vs/versus/against/head-to-head/all-time") must not
+        suppress a legitimately verifiable H2H claim.
+
+        "Miller moved to 7-3 record versus Eddie" — the Branch-2
+        match captures "7-3 record" (greedy `[^.]{0,40}` backtracks
+        to length 0 so "record" fits at offset 4). match text has
+        no narrow H2H marker. Pre-context has the "moved to " idiom
+        (S4 triggers). BUT post-context "versus Eddie." contains
+        "versus" → H2H context overrides → skip suppressed →
+        comparison runs → 7-3 ≠ actual 4-3 → flag.
+        """
+        matchups = self._s2_matchups()
+        reverse = self._reverse()
+        text = "Miller moved to 7-3 record versus Eddie."
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (7-3 claim with "
+            f"'versus Eddie' H2H post-context overrides S4 skip; "
+            f"vs canonical 4-3), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "7-3" in series_failures[0].claim
+
+    def test_s4_h2h_marker_in_match_text_overrides_idiom(self):
+        """Scope-guard: when the match text itself contains a narrow
+        H2H marker (series/rivalry/all-time/meetings/lead/head-to-
+        head), the S2/S4 branch is never entered. Idiom
+        pre-context cannot suppress in that case.
+
+        "Miller moved to 7-3 series lead over Eddie" — greedy
+        Branch-2 captures "7-3 series lead" (lead is further into
+        the trailing window than series, so greedy prefers it).
+        match text has both "series" and "lead" → h2h_marker True
+        → S4 branch not entered → comparison runs → 7-3 ≠ actual
+        4-3 → flag.
+        """
+        matchups = self._s2_matchups()
+        reverse = self._reverse()
+        text = "Miller moved to 7-3 series lead over Eddie."
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (unambiguous H2H claim "
+            f"via 'series lead' overrides idiom, 7-3 vs actual 4-3), "
+            f"got {[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "7-3" in series_failures[0].claim
+
+    def test_s4_absent_idiom_absent_determiner_falls_through(self):
+        """Regression guard: when pre-context has neither a
+        determiner (S2 shape) nor an idiom (S4 shape), the verifier
+        must still verify as before. "Miller's 7-3 record was
+        notable" fires Branch-2 on "7-3 record", has no determiner
+        or idiom in pre-context ("Miller's " alone), no H2H marker
+        in match or post-context → falls through to H2H comparison
+        → 7-3 ≠ actual 4-3 → flag. This test asserts S4 did not
+        broaden the skip set beyond its intended shape.
+        """
+        matchups = self._s2_matchups()
+        reverse = self._reverse()
+        text = "Miller's 7-3 record was notable. Eddie was in the game."
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (no determiner, no idiom; "
+            f"7-3 must still fall through to H2H comparison vs "
+            f"canonical 4-3), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "7-3" in series_failures[0].claim
+
 
 # ─── V7 SUPERLATIVE forward-lookback regressions ─────────────────────
 #
