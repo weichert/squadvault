@@ -2763,27 +2763,327 @@ class TestRegressionQ5SeriesFalsePositives:
         assert "7-3" in series_failures[0].claim
 
     def test_s4_absent_idiom_absent_determiner_falls_through(self):
-        """Regression guard: when pre-context has neither a
-        determiner (S2 shape) nor an idiom (S4 shape), the verifier
-        must still verify as before. "Miller's 7-3 record was
-        notable" fires Branch-2 on "7-3 record", has no determiner
-        or idiom in pre-context ("Miller's " alone), no H2H marker
-        in match or post-context → falls through to H2H comparison
-        → 7-3 ≠ actual 4-3 → flag. This test asserts S4 did not
-        broaden the skip set beyond its intended shape.
+        """Regression guard: when pre-context has no determiner
+        (S2 shape), no idiom (S4 shape), and no possessive-'s
+        (S6 shape), the verifier must still verify as before. The
+        test prose "The 7-3 record for Miller was notable" fires
+        Branch-2 on "7-3 record" (keyword "record" 13 chars after
+        the W-L, inside the 40-char window). Pre-context ends with
+        "The " — not a determiner, not an idiom, not a possessive.
+        Match text contains only "record" (ambiguous keyword, no
+        h2h marker), post-context has no H2H language → falls
+        through to H2H comparison → 7-3 ≠ actual 4-3 → flag. This
+        test asserts the skip heuristics did not broaden beyond
+        their intended shapes.
         """
         matchups = self._s2_matchups()
         reverse = self._reverse()
-        text = "Miller's 7-3 record was notable. Eddie was in the game."
+        text = "The 7-3 record for Miller was notable. Eddie was in the game."
         failures = verify_series_records(text, matchups, reverse)
         series_failures = [f for f in failures if f.category == "SERIES"]
         assert len(series_failures) == 1, (
-            f"expected one SERIES failure (no determiner, no idiom; "
-            f"7-3 must still fall through to H2H comparison vs "
-            f"canonical 4-3), got "
+            f"expected one SERIES failure (no determiner, no idiom, "
+            f"no possessive; 7-3 must still fall through to H2H "
+            f"comparison vs canonical 4-3), got "
             f"{[(f.claim, f.evidence) for f in series_failures]}"
         )
         assert "7-3" in series_failures[0].claim
+
+    # ── S5: parenthesized-WL standings list misread as H2H ───────────
+
+    def _s5_w13_matchups(self):
+        """Alpha Team vs Miller H2H: 4-1 (5 meetings). Neither 11-2
+        nor 9-4 nor 8-5. The W-Ls in the captured W13 row are
+        standings-list season records (KP at 11-2, Miller at 9-4,
+        Steve at 8-5, Pat at 8-5) — not any pair's rivalry total.
+        Under pre-S5 logic the match fell through to H2H comparison,
+        was misattributed to a pair pulled from the 300-char window,
+        and flagged against that pair's actual H2H."""
+        matchups = []
+        for w in range(1, 5):
+            matchups.append(_make_matchup(w, "F1", "F3", 120.0, 100.0))
+        matchups.append(_make_matchup(5, "F3", "F1", 115.0, 105.0))
+        return matchups
+
+    def _s5_w13_reverse(self):
+        """Reverse name map with the short-form aliases that appear
+        in the captured W13 prose (KP, Miller, Steve, Pat)."""
+        return {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Miller": "F3", "miller": "F3",
+            "Steve": "F5", "steve": "F5",
+            "KP": "F6", "kp": "F6",
+            "Pat": "F7", "pat": "F7",
+        }
+
+    def test_s5_paren_standings_list_not_misread_as_h2h_w13(self):
+        """2025 W13 approved recap captured prose:
+
+            "The playoff picture tightens with five weeks left. KP
+             holds a commanding lead at 11-2, while Miller (9-4),
+             Steve (8-5), and Pat (8-5) battle for the remaining
+             spots."
+
+        Before S5: greedy Branch-1 captures "lead at 11-2, while
+        Miller (9-4), Steve (8-5" — keyword "lead" + 37-char gap +
+        W-L "8-5". match.group(0) contains three W-L tokens
+        including `(9-4)` inside parens. has_h2h_marker=True
+        ("lead" in match), so the existing S2/S4 guard does NOT
+        skip. The verifier falls through to H2H comparison: nearby
+        franchises (KP, Miller, Steve, Pat) pull a pair from the
+        300-char window, claim 8-5 fails that pair's real H2H →
+        false SERIES flag.
+
+        After S5: `(9-4)` inside match.group(0) matches
+        _S5_PAREN_WL. S5 is evaluated BEFORE the has_h2h_marker
+        check, so the paren signal overrides the "lead" marker.
+        Skip fires.
+        """
+        matchups = self._s5_w13_matchups()
+        reverse = self._s5_w13_reverse()
+        text = (
+            "The playoff picture tightens with five weeks left. KP "
+            "holds a commanding lead at 11-2, while Miller (9-4), "
+            "Steve (8-5), and Pat (8-5) battle for the remaining spots."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert series_failures == [], (
+            f"expected no SERIES failures for paren-standings-list "
+            f"prose (W-L tokens are season records, parenthesized "
+            f"format is never used for H2H series), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+
+    def test_s5_paren_wl_overrides_h2h_marker_in_match(self):
+        """Scope-guard: S5 is evaluated BEFORE the has_h2h_marker
+        check and fires even when the match text contains an
+        unambiguous H2H marker like "lead"/"leads"/"series".
+        Rationale: in standings prose "lead" frames a conference
+        or division lead, not a series lead. The parenthesized
+        W-L format `(W-L)` is specific to standings listings and
+        never appears in real H2H series prose.
+
+        "Alpha Team leads the pack at 8-2, with Miller (6-4)
+        trailing behind." — greedy Branch-1 captures through the
+        "(6-4" paren. has_h2h_marker=True ("leads" in match).
+        Pre-S5, skip would be blocked by the h2h_marker veto →
+        falls through → Alpha-vs-Miller canonical 4-1 ≠ claimed
+        8-2 → flag. Post-S5, the paren-WL check fires first and
+        skips.
+        """
+        matchups = self._s5_w13_matchups()
+        reverse = self._s5_w13_reverse()
+        text = (
+            "Alpha Team leads the pack at 8-2, with Miller (6-4) "
+            "trailing behind."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert series_failures == [], (
+            f"expected no SERIES failures (paren W-L standings-list "
+            f"signal overrides h2h marker 'leads' in match), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+
+    def test_s5_no_paren_falls_through_to_h2h(self):
+        """Sanity: a bare "leads the series X-Y" claim without
+        any parenthesized W-L must still fall through to H2H
+        verification. Ensures S5 did not over-broaden into
+        unconditionally skipping any match containing a list-like
+        comma.
+
+        With Alpha vs Miller canonical H2H 4-1, claim "8-2" fails
+        comparison → flag."""
+        matchups = self._s5_w13_matchups()
+        reverse = self._s5_w13_reverse()
+        text = "Alpha Team leads the series 8-2 against Miller."
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (no paren W-L to trigger "
+            f"S5 skip; 8-2 claim vs canonical 4-1 H2H), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "8-2" in series_failures[0].claim
+
+    # ── S6: possessive proper-noun pre-context misread as H2H ────────
+
+    def _s6_w10_matchups(self):
+        """Purple Haze vs Stu's Crew H2H: 9-12 (21 meetings).
+        Neither 8-2 nor 2-8. The 8-2 claim in the captured W10 row
+        is Pat's season record, not a PH-vs-SC rivalry total."""
+        matchups = []
+        for w in range(1, 10):
+            matchups.append(_make_matchup(w, "F_PH", "F_SC", 120.0, 100.0))
+        for w in range(10, 22):
+            matchups.append(_make_matchup(w, "F_SC", "F_PH", 115.0, 105.0))
+        return matchups
+
+    def _s6_w10_reverse(self):
+        """Reverse name map for the W10 captured prose."""
+        return {
+            "Purple Haze": "F_PH", "purple haze": "F_PH",
+            "Stu's Crew": "F_SC", "stu's crew": "F_SC",
+            "stu": "F_SC",
+            "Pat": "F7", "pat": "F7",
+            "Steve": "F5", "steve": "F5",
+        }
+
+    def test_s6_possessive_season_record_not_misread_as_h2h_w10(self):
+        """2025 W10 approved recap captured prose:
+
+            "...Stu knocked off Purple Haze 112.70-93.40 despite
+             having two starters on bye — the most in the league
+             this week. Pat's 8-2 record took its first hit in two
+             weeks, but he's still tied for the division lead."
+
+        Before S6: Branch-2 of _SERIES_RECORD_PATTERN fires on
+        "8-2 record" (keyword "record" immediately after W-L).
+        match text contains "record" but no narrow H2H marker —
+        S2's marker path passes through. Pre-context ends with
+        "Pat's " — not in S2's determiner set (a/an/his/her/their),
+        not an S4 idiom. Falls through to H2H comparison: Purple
+        Haze and Stu's Crew both appear in the 300-char window,
+        claim 8-2 compared against their 9-12 canonical H2H →
+        false SERIES flag.
+
+        After S6: pre-40 "Pat's " matches \\w{2,}[\u2019']s\\s+$
+        possessive pattern → skip.
+        """
+        matchups = self._s6_w10_matchups()
+        reverse = self._s6_w10_reverse()
+        text = (
+            "Stu knocked off Purple Haze 112.70-93.40 despite having "
+            "two starters on bye — the most in the league this week. "
+            "Pat's 8-2 record took its first hit in two weeks, but "
+            "he's still tied for the division lead."
+        )
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert series_failures == [], (
+            f"expected no SERIES failures (8-2 is Pat's season "
+            f"record, marked by possessive 'Pat's' in pre-context, "
+            f"not a series record between any pair), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+
+    def test_s6_possessive_with_h2h_post_context_still_flagged(self):
+        """Scope-guard: S6, like S2/S4, is gated by
+        `not has_post_h2h`. A possessive construction followed by
+        an H2H marker like "vs"/"against" in the 40-char post-window
+        must not suppress a legitimately verifiable H2H claim.
+
+        "Pat's 7-3 record against Miller..." — pre-40 ends with
+        "Pat's " (S6 would fire alone), but post-40 contains
+        "against" (h2h context overrides) → skip suppressed →
+        comparison runs → 7-3 ≠ actual 4-1 → flag.
+        """
+        matchups = self._s5_w13_matchups()  # Alpha/Pat vs Miller 4-1
+        reverse = {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Miller": "F3", "miller": "F3",
+            # Alias Pat to Alpha's franchise so the nearby pair is
+            # (F1, F3) with canonical 4-1 H2H.
+            "Pat": "F1", "pat": "F1",
+        }
+        text = "Pat's 7-3 record against Miller tells the story."
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (possessive 'Pat's' + "
+            f"post-context 'against Miller' is a legitimate H2H "
+            f"claim; 7-3 vs canonical 4-1), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "7-3" in series_failures[0].claim
+
+    def test_s6_h2h_marker_in_match_text_overrides_possessive(self):
+        """Scope-guard: when match text itself contains a narrow
+        H2H marker (series/rivalry/all-time/meetings/lead/head-to-
+        head), _should_skip_series_match returns False before any
+        pre-context check runs. Possessive pre-context cannot
+        suppress in that case.
+
+        "Miller's 7-3 all-time record vs Alpha" — greedy Branch-2
+        captures with "all-time" and "record" inside match. match
+        text has "all-time" (h2h marker) → h2h_marker=True →
+        helper returns False immediately. Possessive "Miller's "
+        never gets evaluated. 7-3 ≠ canonical 4-1 → flag.
+        """
+        matchups = self._s5_w13_matchups()
+        reverse = self._s5_w13_reverse()
+        text = "Miller's 7-3 all-time record against Alpha Team."
+        failures = verify_series_records(text, matchups, reverse)
+        series_failures = [f for f in failures if f.category == "SERIES"]
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (unambiguous 'all-time' "
+            f"h2h marker in match overrides possessive pre-context; "
+            f"7-3 vs canonical 4-1), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "7-3" in series_failures[0].claim
+
+    def test_s6_possessive_apostrophe_sweep(self):
+        """The possessive-'s regex must handle both straight
+        (U+0027) and curly (U+2019) apostrophes — LLM outputs
+        freely mix both, and recap_text is not apostrophe-
+        normalized before the skip heuristic runs."""
+        matchups = self._s6_w10_matchups()
+        reverse = self._s6_w10_reverse()
+        variants = [
+            # Straight apostrophe (U+0027)
+            "Stu knocked off Purple Haze. Pat's 8-2 record took its first hit.",
+            # Curly apostrophe (U+2019)
+            "Stu knocked off Purple Haze. Pat\u2019s 8-2 record took its first hit.",
+        ]
+        for text in variants:
+            failures = verify_series_records(text, matchups, reverse)
+            series_failures = [
+                f for f in failures if f.category == "SERIES"
+            ]
+            assert series_failures == [], (
+                f"expected no SERIES failures for possessive-'s "
+                f"apostrophe variant {text!r}, got "
+                f"{[(f.claim, f.evidence) for f in series_failures]}"
+            )
+
+    def test_s5_s6_apply_in_cross_week_extract_too(self):
+        """Integration guard: _should_skip_series_match is called
+        from both verify_series_records AND _extract_series_claims
+        (which feeds verify_cross_week_consistency). The cross-week
+        consistency check must NOT extract claims from prose that
+        the per-week check correctly ignored — otherwise a
+        legitimate W4 series claim paired with a W10 possessive
+        season-record "claim" produces a false cross-week
+        CONSISTENCY flag even though the per-week SERIES check
+        passes W10.
+
+        This mirrors the 2025 W4/W10 cross-week flag observed
+        before S6 landed: W4 "leads the series 9-12" (real,
+        verified) paired with W10 "Pat's 8-2 record"
+        (fabrication-shaped, S6-skipped) must not produce a
+        cross-week CONSISTENCY failure.
+        """
+        reverse = self._s6_w10_reverse()
+        reverse.update({
+            "Alpha Team": "F_PH", "alpha team": "F_PH",
+        })
+        week_narratives = [
+            (4, "Alpha Team leads the series 9-12 against Stu's Crew."),
+            (10, "Pat's 8-2 record took its first hit in two weeks."),
+        ]
+        failures = verify_cross_week_consistency(week_narratives, reverse)
+        consistency_failures = [
+            f for f in failures if f.category == "CONSISTENCY"
+        ]
+        assert consistency_failures == [], (
+            f"expected no CONSISTENCY failures (W10 'Pat's 8-2 "
+            f"record' is a possessive season record, must not be "
+            f"extracted as a series claim against W4's legitimate "
+            f"9-12), got "
+            f"{[(f.claim, f.evidence) for f in consistency_failures]}"
+        )
 
 
 # ─── V7 SUPERLATIVE forward-lookback regressions ─────────────────────

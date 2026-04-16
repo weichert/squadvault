@@ -1427,6 +1427,121 @@ _SEASON_RECORD_IDIOM_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# S2 h2h-marker set — unambiguous head-to-head keywords. Promoted from
+# the inline regex previously built inside verify_series_records so the
+# same marker definition can be reused by _should_skip_series_match
+# (which is called from both verify_series_records and
+# _extract_series_claims). Note: "record" is deliberately excluded —
+# it's ambiguous between season and H2H framings, which is why the
+# skip guards below exist.
+_S2_H2H_MARKER = re.compile(
+    r'\b(?:series|rivalry|meetings?|all[- ]?time|lead|head[- ]?to[- ]?head)\b',
+    re.IGNORECASE,
+)
+
+# S2 post-context H2H markers — "vs X" / "against X" / "all-time" in
+# the 40-char post-window indicates a legitimate H2H claim that should
+# override a single-team skip signal in pre-context.
+_S2_POST_H2H_CONTEXT = re.compile(
+    r'\b(?:vs\.?|versus|against|head[- ]?to[- ]?head|all[- ]?time)\b',
+    re.IGNORECASE,
+)
+
+# S2 determiner — single-team possessive or article preceding a W-L,
+# indicating single-franchise season-record framing ("a 7-3 record",
+# "his 8-2 mark"). Promoted from inline regex.
+_S2_DETERMINER = re.compile(
+    r'\b(?:a|an|his|her|their)\s+$',
+    re.IGNORECASE,
+)
+
+# S5 (Phase 10, W13 observation): parenthesized W-L token inside the
+# match text is a standings-list signal. Real series-record prose
+# never parenthesizes the record — "Team (W-L)" is only used for
+# standings listings. Unambiguous enough to skip even when an h2h
+# marker like "lead" appears inside the match, because the greedy
+# _SERIES_RECORD_PATTERN backbone can pull "holds a commanding lead
+# at 11-2, while Miller (9-4), Steve (8-5)" into one match despite
+# the surface "lead" keyword being standings-framed, not H2H-framed.
+#
+# Source: 2025 W13 approved recap — "KP holds a commanding lead at
+# 11-2, while Miller (9-4), Steve (8-5), and Pat (8-5) battle for
+# the remaining spots." match.group(0) captured three W-L tokens
+# including one inside `(9-4)` parens.
+#
+# Only the opening paren and W-L are required; the closing paren may
+# lie outside match.group(0) depending on where _SERIES_RECORD_PATTERN's
+# 40-char gap terminates.
+_S5_PAREN_WL = re.compile(r'\(\s*\d{1,2}-\d{1,2}(?:-\d{1,2})?')
+
+# S6 (Phase 10, W10 observation): possessive proper-noun pre-context
+# indicating single-team season record. Structurally equivalent to the
+# S2 determiner set (which covers pronouns and articles) but for
+# possessive-'s forms — "Pat's 8-2 record", "Miller's 7-3 record",
+# "KP's 11-2 lead". The 's can be straight (U+0027) or curly (U+2019).
+#
+# Source: 2025 W10 approved recap — "Pat's 8-2 record took its first
+# hit in two weeks". The 8-2 is Pat's season W-L, not a series record
+# between any franchise pair. Under pre-S6 logic the match fell
+# through to H2H comparison, was misattributed to (Purple Haze,
+# Stu's Crew), and flagged against that pair's 9-12 all-time record.
+_S6_POSSESSIVE = re.compile(r"\b\w{2,}['\u2019]s\s+$", re.IGNORECASE)
+
+
+def _should_skip_series_match(
+    match: re.Match,
+    recap_text: str,
+) -> bool:
+    """Decide whether a _SERIES_RECORD_PATTERN match should be skipped
+    (not verified as a head-to-head series-record claim).
+
+    Centralizes the S2/S4/S5/S6 skip heuristics so the same decision
+    is applied by both verify_series_records (per-week Category 4) and
+    _extract_series_claims (feeds verify_cross_week_consistency). These
+    two call sites must agree — a match verify_series_records skips
+    should not be extracted as a cross-week claim either.
+
+    Skip signals (evaluated in order, any one of which skips):
+
+      S5 (standings-list): match.group(0) contains a parenthesized W-L
+        token (`(W-L`). Unconditional — "Team (W-L)" prose is only used
+        in standings listings, never in a real series-record claim.
+
+      S2 / S4 / S6 (single-team season-record attribution): match text
+        lacks a narrow H2H marker (series/rivalry/meetings/all-time/
+        lead/head-to-head) AND pre-context (40-char window) ends with
+        one of
+          - single-team determiner a/an/his/her/their [S2]
+          - season-record idiom "moved to "/"sits at "/"now at "/... [S4]
+          - possessive proper-noun form "X's "/"X\u2019s " [S6]
+        AND post-context (40-char window) lacks an overriding H2H
+        marker (vs/versus/against/head-to-head/all-time).
+    """
+    matched = match.group(0)
+
+    # S5: parenthesized W-L in match text — unambiguous standings-list
+    # signal, applies even when h2h markers like "lead" appear in the
+    # match (standings "lead" is framed differently than series "lead").
+    if _S5_PAREN_WL.search(matched):
+        return True
+
+    # S2 / S4 / S6: single-team season-record attribution
+    has_h2h_marker = bool(_S2_H2H_MARKER.search(matched))
+    if has_h2h_marker:
+        return False
+
+    pre_start = max(0, match.start() - 40)
+    pre40 = recap_text[pre_start:match.start()].lower()
+    post_end = min(len(recap_text), match.end() + 40)
+    post40 = recap_text[match.end():post_end].lower()
+
+    has_det = bool(_S2_DETERMINER.search(pre40))
+    has_idiom = bool(_SEASON_RECORD_IDIOM_PATTERN.search(pre40))
+    has_poss = bool(_S6_POSSESSIVE.search(pre40))
+    has_post_h2h = bool(_S2_POST_H2H_CONTEXT.search(post40))
+
+    return (has_det or has_idiom or has_poss) and (not has_post_h2h)
+
 
 def _franchise_name_matches_in_context(
     name: str, context: str,
@@ -1564,51 +1679,12 @@ def verify_series_records(
         ):
             continue
 
-        # S2 guard: season record vs H2H series record. The "record"
-        # keyword in _SERIES_RECORD_PATTERN is ambiguous — "all-time
-        # record between X and Y is 16-12" (H2H) vs "Miller improved
-        # to a 7-3 record" (single-team season W-L). Skip when:
-        #   1. the match text has no unambiguous H2H marker
-        #      (series/rivalry/meetings/all-time/lead/head-to-head);
-        #   2. pre-context ends with a single-team determiner
-        #      (a/an/his/her/their) plus whitespace (S2's original
-        #      structural signal) OR a season-record idiom like
-        #      "moved to " / "dropped to " / "sits at " (S4, added for
-        #      row 17 where no determiner is present);
-        #   3. post-context within 40 chars lacks an H2H marker
-        #      (vs/versus/against/head-to-head/all-time) that would
-        #      override the season-record reading.
-        #
-        # Source: prompt_audit row 18 (2025 w10 a2) — "led Miller to
-        # his second straight win and a 7-3 record" (S2 shape); and
-        # row 17 (2025 w10 a1) — "KP's team moved to 8-2 and maintains
-        # the league's best record" (S4 shape).
-        _s2_match_text = match.group(0).lower()
-        _s2_has_h2h_marker = bool(re.search(
-            r'\b(?:series|rivalry|meetings?|all[- ]?time|lead|head[- ]?to[- ]?head)\b',
-            _s2_match_text,
-        ))
-        if not _s2_has_h2h_marker:
-            _s2_pre_start = max(0, match.start() - 40)
-            _s2_pre = recap_text[_s2_pre_start:match.start()].lower()
-            _s2_post_end = min(len(recap_text), match.end() + 40)
-            _s2_post = recap_text[match.end():_s2_post_end].lower()
-            _s2_has_determiner = bool(re.search(
-                r'\b(?:a|an|his|her|their)\s+$',
-                _s2_pre,
-            ))
-            _s2_has_h2h_context = bool(re.search(
-                r'\b(?:vs\.?|versus|against|head[- ]?to[- ]?head|all[- ]?time)\b',
-                _s2_post,
-            ))
-            _s4_has_season_idiom = bool(
-                _SEASON_RECORD_IDIOM_PATTERN.search(_s2_pre)
-            )
-            if (
-                (_s2_has_determiner or _s4_has_season_idiom)
-                and not _s2_has_h2h_context
-            ):
-                continue
+        # S2/S4/S5/S6 skip decision: delegated to _should_skip_series_match
+        # so both this call site and _extract_series_claims (cross-week
+        # consistency) apply identical heuristics. The helper's docstring
+        # documents the individual skip signals.
+        if _should_skip_series_match(match, recap_text):
+            continue
 
         # Find all franchises that appear in a wider window around the
         # record. The series record could belong to any pair of
@@ -1810,6 +1886,13 @@ def _extract_series_claims(
     """Extract series record claims from a single week's recap."""
     claims: list[_SeriesClaim] = []
     for match in _SERIES_RECORD_PATTERN.finditer(narrative):
+        # Apply the same skip heuristics the per-week SERIES check
+        # uses — otherwise verify_cross_week_consistency can flag
+        # "inconsistencies" built from matches that would never have
+        # been verified per-week (e.g., "Pat's 8-2 record" [S6] or
+        # a parenthesized standings list [S5]).
+        if _should_skip_series_match(match, narrative):
+            continue
         if match.group(1) is not None:
             w_str, l_str = match.group(1), match.group(2)
         else:
