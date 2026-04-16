@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import sqlite3
@@ -764,7 +765,20 @@ def _derive_prompt_context(
                 elif a.strength <= 1:
                     minor_pool.append(a)
 
-            # Phase 2: MINOR — coverage-aware, category-diverse fill.
+            # Phase 2: MINOR — coverage-aware, category-diverse fill
+            # with deterministic week-seeded rotation.
+            #
+            # Prior behavior: alphabetical tiebreak within coverage tier,
+            # which permanently locked out categories starting with letters
+            # later in the alphabet (REVENGE_GAME, TRADE_OUTCOME, etc.).
+            # 19 detectors at 0% budget rate across 43 audit rows.
+            #
+            # Current behavior: hash(category + season + week) produces a
+            # different ordering each week. Over a season, every MINOR
+            # category gets multiple chances at the 4 MINOR slots. Same
+            # week always produces the same order (deterministic,
+            # reconstructable). Coverage-first and 1-per-category limits
+            # are preserved.
             if minor_pool and len(budgeted) < 12:
                 _covered_fids: set[str] = set()
                 for a in budgeted:
@@ -773,7 +787,10 @@ def _derive_prompt_context(
                 def _minor_key(a: NarrativeAngle) -> tuple[int, str, str]:
                     fids = set(a.franchise_ids)
                     is_covered = 1 if fids and fids.issubset(_covered_fids) else 0
-                    return (is_covered, a.category, a.headline)
+                    rotation = hashlib.md5(
+                        f"{a.category}:{season}:{week_index}".encode()
+                    ).hexdigest()
+                    return (is_covered, rotation, a.headline)
 
                 minor_pool.sort(key=_minor_key)
 
