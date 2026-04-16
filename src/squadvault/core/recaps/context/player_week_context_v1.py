@@ -13,6 +13,12 @@ WEEKLY_PLAYER_SCORE canonical events, with optional FAAB linkage from
 WAIVER_BID_AWARDED events. It provides the creative layer with player-level
 detail to produce recaps that reference individual performances.
 
+FAAB performer timelines (Finding 5 fix): for each player acquired via
+FAAB who scored this week, the module pre-derives their post-acquisition
+scoring history on the franchise. This removes the opportunity for
+model-side temporal fabrication ("first week since", "Nth straight")
+by providing pre-computed facts the model can cite directly.
+
 Governance:
 - Defers to Canonical Operating Constitution
 - Implements PLAYER_WEEK_CONTEXT contract card (v1.0, Tier 2)
@@ -22,7 +28,7 @@ Governance:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from squadvault.core.storage.session import DatabaseSession
@@ -49,6 +55,36 @@ class FaabPickup:
 
 
 @dataclass(frozen=True)
+class FaabWeekAppearance:
+    """A single week's scoring record for a FAAB-acquired player on a franchise."""
+    week: int
+    score: float
+    is_starter: bool
+
+
+@dataclass(frozen=True)
+class FaabPerformerTimeline:
+    """Pre-derived post-acquisition timeline for a FAAB pickup.
+
+    Provides the creative layer with explicit temporal facts so it
+    does not need to infer "first week since", "Nth start", etc.
+    All fields are derived from canonical WEEKLY_PLAYER_SCORE events.
+    """
+    player_id: str
+    franchise_id: str
+
+    # All weeks this player appeared on this franchise (prior to current week),
+    # sorted by week ascending.  Each entry is a FaabWeekAppearance.
+    prior_weeks: tuple[FaabWeekAppearance, ...]
+
+    # Derived counts (including current week)
+    weeks_on_roster: int       # total weeks with a scoring record on this franchise
+    starts_on_roster: int      # total weeks started (including current if starter)
+    is_first_start: bool       # True if no prior week had is_starter=True and current is starter
+    is_first_week_on_roster: bool  # True if this is the very first scoring week
+
+
+@dataclass(frozen=True)
 class FranchiseWeekContext:
     """Per-franchise player context for a single week."""
     franchise_id: str
@@ -69,6 +105,11 @@ class FranchiseWeekContext:
 
     # FAAB linkage (players acquired via FAAB who scored this week)
     faab_performers: tuple[tuple[PlayerScore, FaabPickup], ...]
+
+    # FAAB performer timelines — pre-derived temporal context for each
+    # FAAB performer, keyed by player_id for deterministic access.
+    # Empty tuple when season history is unavailable (backward compat).
+    faab_performer_timelines: tuple[FaabPerformerTimeline, ...] = field(default=())
 
 
 @dataclass(frozen=True)
@@ -203,6 +244,72 @@ def _load_faab_awards(
     return payloads
 
 
+def _load_season_player_history(
+    db_path: str,
+    league_id: str,
+    season: int,
+) -> dict[tuple[str, str], list[tuple[int, float, bool]]]:
+    """Load all WEEKLY_PLAYER_SCORE events for a season, organized by (franchise_id, player_id).
+
+    Returns a dict mapping (franchise_id, player_id) to a list of
+    (week, score, is_starter) tuples, sorted by week ascending.
+
+    Used for FAAB performer timeline derivation — provides the full
+    season view needed to pre-compute temporal facts like "weeks on
+    roster" and "first start" without inference.
+    """
+    raw: dict[tuple[str, str], list[tuple[int, float, bool]]] = {}
+
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT payload_json
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WEEKLY_PLAYER_SCORE'
+               ORDER BY payload_json ASC""",
+            (str(league_id), int(season)),
+        ).fetchall()
+
+    for row in rows:
+        try:
+            p = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+        except (ValueError, TypeError):
+            continue
+
+        if not isinstance(p, dict):
+            continue
+
+        franchise_id = str(p.get("franchise_id", "")).strip()
+        player_id = str(p.get("player_id", "")).strip()
+        if not franchise_id or not player_id:
+            continue
+
+        try:
+            week = int(p.get("week", -1))
+        except (ValueError, TypeError):
+            continue
+        if week < 0:
+            continue
+
+        try:
+            score = float(p.get("score", 0))
+        except (ValueError, TypeError):
+            score = 0.0
+
+        is_starter = bool(p.get("is_starter", False))
+
+        key = (franchise_id, player_id)
+        if key not in raw:
+            raw[key] = []
+        raw[key].append((week, score, is_starter))
+
+    # Sort each player's history by week ascending for determinism
+    for key in raw:
+        raw[key].sort(key=lambda t: t[0])
+
+    return raw
+
+
 def _build_faab_lookup(
     faab_payloads: list[dict[str, Any]],
 ) -> dict[str, list[FaabPickup]]:
@@ -257,6 +364,81 @@ def _build_faab_lookup(
     return lookup
 
 
+# ── FAAB performer timeline derivation ───────────────────────────────
+
+
+def _build_faab_performer_timelines(
+    faab_performers: list[tuple[PlayerScore, FaabPickup]],
+    franchise_id: str,
+    current_week: int,
+    season_history: dict[tuple[str, str], list[tuple[int, float, bool]]],
+) -> tuple[FaabPerformerTimeline, ...]:
+    """Build pre-derived timelines for FAAB performers on a franchise.
+
+    For each FAAB-acquired player who scored this week, looks up their
+    full scoring history on this franchise across the season and computes:
+    - Prior weeks on the roster (before current week)
+    - Total weeks/starts on roster (including current)
+    - Whether current week is their first start
+
+    Returns timelines sorted by player_id for determinism.
+
+    Contract compliance:
+    - Derived-only: reads from season_history (already loaded from canonical)
+    - Deterministic: sorted outputs, no randomness
+    - No inference: if season history is unavailable, returns empty
+    """
+    if not faab_performers or not season_history:
+        return ()
+
+    timelines: list[FaabPerformerTimeline] = []
+
+    for ps, pickup in faab_performers:
+        key = (franchise_id, ps.player_id)
+        history = season_history.get(key, [])
+
+        if not history:
+            # No season history available — silence over fabrication
+            continue
+
+        # Separate prior weeks (before current) from current week
+        prior: list[FaabWeekAppearance] = []
+        total_weeks = 0
+        total_starts = 0
+
+        for week_num, score, is_starter in history:
+            if week_num < current_week:
+                prior.append(FaabWeekAppearance(
+                    week=week_num,
+                    score=score,
+                    is_starter=is_starter,
+                ))
+                total_weeks += 1
+                if is_starter:
+                    total_starts += 1
+            elif week_num == current_week:
+                total_weeks += 1
+                if is_starter:
+                    total_starts += 1
+
+        # Derive temporal facts
+        prior_had_starts = any(pw.is_starter for pw in prior)
+
+        timelines.append(FaabPerformerTimeline(
+            player_id=ps.player_id,
+            franchise_id=franchise_id,
+            prior_weeks=tuple(prior),
+            weeks_on_roster=total_weeks,
+            starts_on_roster=total_starts,
+            is_first_start=ps.is_starter and not prior_had_starts,
+            is_first_week_on_roster=total_weeks == 1,
+        ))
+
+    # Sort by player_id for determinism
+    timelines.sort(key=lambda t: t.player_id)
+    return tuple(timelines)
+
+
 # ── Core derivation ─────────────────────────────────────────────────
 
 
@@ -264,8 +446,14 @@ def _build_franchise_context(
     franchise_id: str,
     player_payloads: list[dict[str, Any]],
     faab_lookup: dict[str, list[FaabPickup]],
+    season_history: dict[tuple[str, str], list[tuple[int, float, bool]]] | None = None,
+    current_week: int | None = None,
 ) -> FranchiseWeekContext:
-    """Build context for a single franchise from its player score payloads."""
+    """Build context for a single franchise from its player score payloads.
+
+    Optional season_history + current_week enable FAAB performer timeline
+    derivation. When not provided, timelines are empty (backward compat).
+    """
 
     starters: list[PlayerScore] = []
     bench: list[PlayerScore] = []
@@ -324,6 +512,13 @@ def _build_franchise_context(
     # Sort FAAB performers by score descending
     faab_performers.sort(key=lambda x: (-x[0].score, x[0].player_id))
 
+    # FAAB performer timelines — pre-derive temporal context
+    timelines: tuple[FaabPerformerTimeline, ...] = ()
+    if faab_performers and season_history is not None and current_week is not None:
+        timelines = _build_faab_performer_timelines(
+            faab_performers, franchise_id, current_week, season_history,
+        )
+
     return FranchiseWeekContext(
         franchise_id=franchise_id,
         starters=tuple(starters),
@@ -335,6 +530,7 @@ def _build_franchise_context(
         bench_points_over_starters=bench_points_over,
         best_bench_player=best_bench,
         faab_performers=tuple(faab_performers),
+        faab_performer_timelines=timelines,
     )
 
 
@@ -351,7 +547,8 @@ def derive_player_week_context_v1(
     """Derive player week context for a given week from canonical events.
 
     Returns a PlayerWeekContextV1 with per-franchise player scoring,
-    top/bust performers, bench analysis, and FAAB linkage.
+    top/bust performers, bench analysis, FAAB linkage, and FAAB performer
+    timelines (pre-derived temporal context).
 
     If no player scoring data exists for the week, returns empty context
     (silence over fabrication).
@@ -371,6 +568,12 @@ def derive_player_week_context_v1(
     faab_payloads = _load_faab_awards(db_path, league_id, season)
     faab_lookup = _build_faab_lookup(faab_payloads)
 
+    # Load season-wide player history for FAAB timeline derivation.
+    # Only loaded when FAAB data exists to avoid unnecessary DB work.
+    season_history: dict[tuple[str, str], list[tuple[int, float, bool]]] | None = None
+    if faab_lookup:
+        season_history = _load_season_player_history(db_path, league_id, season)
+
     # Group payloads by franchise
     by_franchise: dict[str, list[dict[str, Any]]] = {}
     for p in player_payloads:
@@ -383,7 +586,11 @@ def derive_player_week_context_v1(
     # Build per-franchise context
     franchise_contexts: list[FranchiseWeekContext] = []
     for fid in sorted(by_franchise.keys()):
-        ctx = _build_franchise_context(fid, by_franchise[fid], faab_lookup)
+        ctx = _build_franchise_context(
+            fid, by_franchise[fid], faab_lookup,
+            season_history=season_history,
+            current_week=week,
+        )
         franchise_contexts.append(ctx)
 
     # Week-level highlights
@@ -509,16 +716,63 @@ def render_player_highlights_for_prompt(
                 f"  Optimal lineup points left on bench: {fc.bench_points_over_starters:.2f}"
             )
 
-        # FAAB performers
+        # FAAB performers — with pre-derived temporal context
+        # Build a lookup for timelines by player_id
+        timeline_by_pid: dict[str, FaabPerformerTimeline] = {
+            t.player_id: t for t in fc.faab_performer_timelines
+        }
+
         for ps, pickup in fc.faab_performers:
             status = "starter" if ps.is_starter else "bench"
-            franchise_lines.append(
+            base = (
                 f"  FAAB pickup ${pickup.bid_amount:.0f}: {_player(ps.player_id)}"
                 f" — {ps.score:.2f} pts ({status})"
             )
+
+            timeline = timeline_by_pid.get(ps.player_id)
+            if timeline is not None:
+                temporal = _render_faab_timeline(timeline, player_resolver=_player)
+                if temporal:
+                    base += f". {temporal}"
+
+            franchise_lines.append(base)
 
         if franchise_lines:
             lines.append(f"{team_name} (starters: {fc.starter_total:.2f}, bench: {fc.bench_total:.2f}):")
             lines.extend(franchise_lines)
 
     return "\n".join(lines) + "\n"
+
+
+def _render_faab_timeline(
+    timeline: FaabPerformerTimeline,
+    *,
+    player_resolver: Any | None = None,
+) -> str:
+    """Render a FAAB performer timeline as a compact string for the prompt.
+
+    Produces factual, pre-derived temporal claims like:
+        "Week 3 on roster. First start. Prior: W12 7.40 (bench), W13 16.30 (bench)"
+
+    Returns empty string if there is nothing meaningful to add (e.g. first
+    week on roster with no prior history — the base FAAB line is sufficient).
+    """
+    parts: list[str] = []
+
+    if timeline.is_first_week_on_roster:
+        parts.append("First week on roster")
+    else:
+        parts.append(f"Week {timeline.weeks_on_roster} on roster")
+
+    if timeline.is_first_start:
+        parts.append("first start")
+
+    # Prior weeks — compact rendering
+    if timeline.prior_weeks:
+        prior_strs: list[str] = []
+        for pw in timeline.prior_weeks:
+            status = "starter" if pw.is_starter else "bench"
+            prior_strs.append(f"W{pw.week} {pw.score:.2f} ({status})")
+        parts.append("prior: " + ", ".join(prior_strs))
+
+    return ". ".join(parts) if parts else ""

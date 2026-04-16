@@ -1,6 +1,7 @@
 """Tests for squadvault.core.recaps.context.player_week_context_v1.
 
 Covers: data classes, _build_franchise_context, _build_faab_lookup,
+_build_faab_performer_timelines, _render_faab_timeline,
 derive_player_week_context_v1 (via DB fixture), render_player_highlights_for_prompt.
 """
 from __future__ import annotations
@@ -12,13 +13,18 @@ from pathlib import Path
 import pytest
 
 from squadvault.core.recaps.context.player_week_context_v1 import (
-    PlayerScore,
+    FaabPerformerTimeline,
     FaabPickup,
+    FaabWeekAppearance,
     FranchiseWeekContext,
+    PlayerScore,
     PlayerWeekContextV1,
-    _build_franchise_context,
     _build_faab_lookup,
+    _build_faab_performer_timelines,
+    _build_franchise_context,
     _empty_context,
+    _load_season_player_history,
+    _render_faab_timeline,
     derive_player_week_context_v1,
     render_player_highlights_for_prompt,
 )
@@ -470,3 +476,470 @@ class TestDerivePlayerWeekContextIntegration:
         assert "40.20" in result
         assert "0001" in result
         assert "0002" in result
+
+
+# ── _build_faab_performer_timelines ──────────────────────────────────
+
+
+class TestBuildFaabPerformerTimelines:
+    """Unit tests for FAAB performer timeline derivation (Finding 5 fix)."""
+
+    def test_watson_case_three_weeks_first_start(self):
+        """Finding 5 exact case: W12 bench, W13 bench, W14 starter → first start, week 3."""
+        ps = PlayerScore("15789", 22.90, True, False)
+        pickup = FaabPickup("15789", "0002", 20.0, 0)
+        faab_performers = [(ps, pickup)]
+
+        season_history = {
+            ("0002", "15789"): [
+                (12, 7.40, False),   # W12 bench
+                (13, 16.30, False),  # W13 bench
+                (14, 22.90, True),   # W14 starter (current week)
+            ],
+        }
+
+        timelines = _build_faab_performer_timelines(
+            faab_performers, "0002", current_week=14, season_history=season_history,
+        )
+
+        assert len(timelines) == 1
+        t = timelines[0]
+        assert t.player_id == "15789"
+        assert t.franchise_id == "0002"
+        assert t.weeks_on_roster == 3
+        assert t.starts_on_roster == 1
+        assert t.is_first_start is True
+        assert t.is_first_week_on_roster is False
+        assert len(t.prior_weeks) == 2
+        assert t.prior_weeks[0] == FaabWeekAppearance(week=12, score=7.40, is_starter=False)
+        assert t.prior_weeks[1] == FaabWeekAppearance(week=13, score=16.30, is_starter=False)
+
+    def test_player_with_prior_starts_not_first_start(self):
+        """Player who started in a prior week → is_first_start=False."""
+        ps = PlayerScore("11111", 18.00, True, False)
+        pickup = FaabPickup("11111", "0001", 15.0, 0)
+
+        season_history = {
+            ("0001", "11111"): [
+                (8, 12.00, True),    # W8 starter (prior start)
+                (9, 5.00, False),    # W9 bench
+                (10, 18.00, True),   # W10 starter (current)
+            ],
+        }
+
+        timelines = _build_faab_performer_timelines(
+            [(ps, pickup)], "0001", current_week=10, season_history=season_history,
+        )
+
+        assert len(timelines) == 1
+        t = timelines[0]
+        assert t.is_first_start is False
+        assert t.starts_on_roster == 2
+        assert t.weeks_on_roster == 3
+
+    def test_first_week_on_roster(self):
+        """Player's first scoring week → is_first_week_on_roster=True, no prior weeks."""
+        ps = PlayerScore("22222", 25.00, True, False)
+        pickup = FaabPickup("22222", "0003", 40.0, 0)
+
+        season_history = {
+            ("0003", "22222"): [
+                (14, 25.00, True),   # only week (current)
+            ],
+        }
+
+        timelines = _build_faab_performer_timelines(
+            [(ps, pickup)], "0003", current_week=14, season_history=season_history,
+        )
+
+        assert len(timelines) == 1
+        t = timelines[0]
+        assert t.is_first_week_on_roster is True
+        assert t.weeks_on_roster == 1
+        assert t.starts_on_roster == 1
+        assert t.is_first_start is True
+        assert t.prior_weeks == ()
+
+    def test_bench_player_current_week_not_first_start(self):
+        """Bench player this week → is_first_start=False even with no prior starts."""
+        ps = PlayerScore("33333", 8.00, False, False)  # bench this week
+        pickup = FaabPickup("33333", "0001", 10.0, 0)
+
+        season_history = {
+            ("0001", "33333"): [
+                (12, 3.00, False),
+                (13, 8.00, False),   # current week, bench
+            ],
+        }
+
+        timelines = _build_faab_performer_timelines(
+            [(ps, pickup)], "0001", current_week=13, season_history=season_history,
+        )
+
+        assert len(timelines) == 1
+        t = timelines[0]
+        assert t.is_first_start is False
+        assert t.starts_on_roster == 0
+
+    def test_empty_season_history_returns_empty(self):
+        """No season history → empty timelines."""
+        ps = PlayerScore("15789", 22.90, True, False)
+        pickup = FaabPickup("15789", "0002", 20.0, 0)
+
+        timelines = _build_faab_performer_timelines(
+            [(ps, pickup)], "0002", current_week=14, season_history={},
+        )
+        assert timelines == ()
+
+    def test_no_faab_performers_returns_empty(self):
+        """No FAAB performers → empty timelines."""
+        timelines = _build_faab_performer_timelines(
+            [], "0001", current_week=14,
+            season_history={("0001", "15789"): [(14, 22.90, True)]},
+        )
+        assert timelines == ()
+
+    def test_player_missing_from_history_skipped(self):
+        """FAAB performer not in season history → skipped (silence over fabrication)."""
+        ps = PlayerScore("99999", 10.00, True, False)
+        pickup = FaabPickup("99999", "0001", 5.0, 0)
+
+        season_history = {
+            ("0001", "11111"): [(14, 20.00, True)],  # different player
+        }
+
+        timelines = _build_faab_performer_timelines(
+            [(ps, pickup)], "0001", current_week=14, season_history=season_history,
+        )
+        assert timelines == ()
+
+    def test_deterministic_sorted_by_player_id(self):
+        """Multiple FAAB performers → sorted by player_id."""
+        ps_b = PlayerScore("22222", 15.00, True, False)
+        ps_a = PlayerScore("11111", 20.00, True, False)
+        pickup_b = FaabPickup("22222", "0001", 10.0, 0)
+        pickup_a = FaabPickup("11111", "0001", 25.0, 0)
+
+        season_history = {
+            ("0001", "22222"): [(14, 15.00, True)],
+            ("0001", "11111"): [(14, 20.00, True)],
+        }
+
+        # Feed in reverse order to verify sorting
+        timelines = _build_faab_performer_timelines(
+            [(ps_b, pickup_b), (ps_a, pickup_a)],
+            "0001", current_week=14, season_history=season_history,
+        )
+
+        assert len(timelines) == 2
+        assert timelines[0].player_id == "11111"
+        assert timelines[1].player_id == "22222"
+
+
+# ── _render_faab_timeline ────────────────────────────────────────────
+
+
+class TestRenderFaabTimeline:
+    """Unit tests for FAAB timeline prompt rendering."""
+
+    def test_watson_case_rendering(self):
+        """Finding 5 exact case renders correctly."""
+        timeline = FaabPerformerTimeline(
+            player_id="15789",
+            franchise_id="0002",
+            prior_weeks=(
+                FaabWeekAppearance(week=12, score=7.40, is_starter=False),
+                FaabWeekAppearance(week=13, score=16.30, is_starter=False),
+            ),
+            weeks_on_roster=3,
+            starts_on_roster=1,
+            is_first_start=True,
+            is_first_week_on_roster=False,
+        )
+
+        result = _render_faab_timeline(timeline)
+        assert "Week 3 on roster" in result
+        assert "first start" in result
+        assert "W12 7.40 (bench)" in result
+        assert "W13 16.30 (bench)" in result
+
+    def test_first_week_rendering(self):
+        """First week on roster renders appropriately."""
+        timeline = FaabPerformerTimeline(
+            player_id="22222",
+            franchise_id="0003",
+            prior_weeks=(),
+            weeks_on_roster=1,
+            starts_on_roster=1,
+            is_first_start=True,
+            is_first_week_on_roster=True,
+        )
+
+        result = _render_faab_timeline(timeline)
+        assert "First week on roster" in result
+        assert "first start" in result
+        assert "prior" not in result
+
+    def test_veteran_starter_rendering(self):
+        """Player with prior starts — no 'first start' claim."""
+        timeline = FaabPerformerTimeline(
+            player_id="11111",
+            franchise_id="0001",
+            prior_weeks=(
+                FaabWeekAppearance(week=8, score=12.00, is_starter=True),
+                FaabWeekAppearance(week=9, score=5.00, is_starter=False),
+            ),
+            weeks_on_roster=3,
+            starts_on_roster=2,
+            is_first_start=False,
+            is_first_week_on_roster=False,
+        )
+
+        result = _render_faab_timeline(timeline)
+        assert "Week 3 on roster" in result
+        assert "first start" not in result
+        assert "W8 12.00 (starter)" in result
+        assert "W9 5.00 (bench)" in result
+
+    def test_player_resolver_not_used(self):
+        """Timeline rendering does not use player names (IDs only in timeline)."""
+        timeline = FaabPerformerTimeline(
+            player_id="15789",
+            franchise_id="0002",
+            prior_weeks=(
+                FaabWeekAppearance(week=12, score=7.40, is_starter=False),
+            ),
+            weeks_on_roster=2,
+            starts_on_roster=1,
+            is_first_start=True,
+            is_first_week_on_roster=False,
+        )
+
+        def resolver(pid: str) -> str:
+            return "Watson"
+
+        result = _render_faab_timeline(timeline, player_resolver=resolver)
+        # Timeline content should not include player name — it's contextual
+        assert "W12 7.40 (bench)" in result
+
+
+# ── Render integration with timelines ────────────────────────────────
+
+
+class TestRenderPlayerHighlightsWithTimeline:
+    """Test that render_player_highlights_for_prompt includes timeline data."""
+
+    def _make_context(self, **kwargs):
+        defaults = dict(
+            league_id="70985",
+            season=2025,
+            week=14,
+            franchises=(),
+            week_top_scorer=None,
+            week_lowest_starter=None,
+            total_players=0,
+            total_starters=0,
+        )
+        defaults.update(kwargs)
+        return PlayerWeekContextV1(**defaults)
+
+    def test_faab_with_timeline_rendered(self):
+        """FAAB performer line includes pre-derived temporal context."""
+        ps = PlayerScore("15789", 22.90, True, False)
+        pickup = FaabPickup("15789", "0002", 20.0, 0)
+        timeline = FaabPerformerTimeline(
+            player_id="15789",
+            franchise_id="0002",
+            prior_weeks=(
+                FaabWeekAppearance(week=12, score=7.40, is_starter=False),
+                FaabWeekAppearance(week=13, score=16.30, is_starter=False),
+            ),
+            weeks_on_roster=3,
+            starts_on_roster=1,
+            is_first_start=True,
+            is_first_week_on_roster=False,
+        )
+        fc = FranchiseWeekContext(
+            franchise_id="0002",
+            starters=(ps,),
+            bench=(),
+            top_starter=ps,
+            bust_starter=ps,
+            starter_total=22.90,
+            bench_total=0.0,
+            bench_points_over_starters=0.0,
+            best_bench_player=None,
+            faab_performers=((ps, pickup),),
+            faab_performer_timelines=(timeline,),
+        )
+        ctx = self._make_context(
+            franchises=(fc,),
+            total_players=1,
+            total_starters=1,
+        )
+
+        result = render_player_highlights_for_prompt(ctx)
+        # Base FAAB line present
+        assert "FAAB pickup $20" in result
+        assert "22.90" in result
+        # Timeline appended
+        assert "Week 3 on roster" in result
+        assert "first start" in result
+        assert "W12 7.40 (bench)" in result
+
+    def test_faab_without_timeline_still_renders(self):
+        """FAAB performer without timeline renders the base line only (backward compat)."""
+        ps = PlayerScore("15789", 22.90, True, False)
+        pickup = FaabPickup("15789", "0002", 20.0, 0)
+        fc = FranchiseWeekContext(
+            franchise_id="0002",
+            starters=(ps,),
+            bench=(),
+            top_starter=ps,
+            bust_starter=ps,
+            starter_total=22.90,
+            bench_total=0.0,
+            bench_points_over_starters=0.0,
+            best_bench_player=None,
+            faab_performers=((ps, pickup),),
+            # No timelines (backward compat)
+        )
+        ctx = self._make_context(
+            franchises=(fc,),
+            total_players=1,
+            total_starters=1,
+        )
+
+        result = render_player_highlights_for_prompt(ctx)
+        assert "FAAB pickup $20" in result
+        assert "22.90" in result
+        # No timeline content
+        assert "on roster" not in result
+
+
+# ── DB-backed integration: FAAB timelines ────────────────────────────
+
+
+@pytest.fixture
+def db_with_faab(tmp_path):
+    """Create a test database with multi-week player scores and FAAB data.
+
+    Models the Finding 5 Watson case:
+    - Player 15789 acquired via FAAB ($20) by franchise 0002
+    - W12: 7.40 bench, W13: 16.30 bench, W14: 22.90 starter
+    """
+    db_path = str(tmp_path / "test_faab.sqlite")
+    schema = SCHEMA_PATH.read_text()
+    con = sqlite3.connect(db_path)
+    con.executescript(schema)
+
+    events: list[tuple[str, dict]] = []
+
+    # Franchise 0002 player 15789 — multi-week history (Watson case)
+    for week, score, is_starter in [(12, 7.40, False), (13, 16.30, False), (14, 22.90, True)]:
+        payload = _make_payload("0002", "15789", score, is_starter=is_starter, week=week)
+        events.append(("WEEKLY_PLAYER_SCORE", payload))
+
+    # Franchise 0002 another starter in W14 (so we have a valid matchup week)
+    events.append(("WEEKLY_PLAYER_SCORE", _make_payload("0002", "44444", 15.00, week=14)))
+
+    # Franchise 0001 starter in W14
+    events.append(("WEEKLY_PLAYER_SCORE", _make_payload("0001", "55555", 30.00, week=14)))
+
+    # FAAB award: franchise 0002 picked up player 15789 for $20
+    faab_payload = {
+        "player_id": "15789",
+        "franchise_id": "0002",
+        "bid_amount": "20",
+    }
+    events.append(("WAIVER_BID_AWARDED", faab_payload))
+
+    for i, (event_type, payload) in enumerate(events):
+        ext_id = f"test_faab_{i}"
+        con.execute(
+            """INSERT INTO memory_events
+               (league_id, season, event_type, external_source, external_id,
+                payload_json, ingested_at)
+               VALUES (?, ?, ?, ?, ?, ?, datetime('now'))""",
+            ("70985", 2025, event_type, "MFL", ext_id, json.dumps(payload)),
+        )
+
+    con.commit()
+    con.close()
+
+    from squadvault.core.canonicalize.run_canonicalize import canonicalize
+    canonicalize(league_id="70985", season=2025, db_path=db_path)
+
+    return db_path
+
+
+class TestFaabTimelineDbIntegration:
+    """DB-backed integration tests for FAAB performer timelines."""
+
+    def test_timeline_populated_from_db(self, db_with_faab):
+        """derive_player_week_context_v1 populates FAAB timelines from DB."""
+        ctx = derive_player_week_context_v1(
+            db_path=db_with_faab, league_id="70985", season=2025, week=14,
+        )
+        assert ctx.has_data is True
+
+        f0002 = [f for f in ctx.franchises if f.franchise_id == "0002"][0]
+
+        # FAAB performer linked
+        assert len(f0002.faab_performers) == 1
+        ps, pickup = f0002.faab_performers[0]
+        assert ps.player_id == "15789"
+        assert pickup.bid_amount == 20.0
+
+        # Timeline populated
+        assert len(f0002.faab_performer_timelines) == 1
+        t = f0002.faab_performer_timelines[0]
+        assert t.player_id == "15789"
+        assert t.weeks_on_roster == 3
+        assert t.is_first_start is True
+        assert t.is_first_week_on_roster is False
+        assert len(t.prior_weeks) == 2
+        assert t.prior_weeks[0].week == 12
+        assert t.prior_weeks[0].is_starter is False
+        assert t.prior_weeks[1].week == 13
+
+    def test_timeline_renders_in_prompt(self, db_with_faab):
+        """Full render pipeline includes timeline data."""
+        ctx = derive_player_week_context_v1(
+            db_path=db_with_faab, league_id="70985", season=2025, week=14,
+        )
+        result = render_player_highlights_for_prompt(ctx)
+        assert "FAAB pickup $20" in result
+        assert "Week 3 on roster" in result
+        assert "first start" in result
+        assert "W12 7.40 (bench)" in result
+
+    def test_season_player_history_loads(self, db_with_faab):
+        """_load_season_player_history returns all weeks for the season."""
+        history = _load_season_player_history(db_with_faab, "70985", 2025)
+
+        # Player 15789 on franchise 0002 should have 3 weeks
+        key = ("0002", "15789")
+        assert key in history
+        assert len(history[key]) == 3
+        assert history[key][0] == (12, 7.40, False)
+        assert history[key][1] == (13, 16.30, False)
+        assert history[key][2] == (14, 22.90, True)
+
+    def test_franchise_without_faab_has_empty_timelines(self, db_with_faab):
+        """Franchise with no FAAB performers has empty timelines tuple."""
+        ctx = derive_player_week_context_v1(
+            db_path=db_with_faab, league_id="70985", season=2025, week=14,
+        )
+        f0001 = [f for f in ctx.franchises if f.franchise_id == "0001"][0]
+        assert f0001.faab_performer_timelines == ()
+
+    def test_deterministic_with_faab(self, db_with_faab):
+        """Same inputs produce identical outputs including timelines."""
+        ctx1 = derive_player_week_context_v1(
+            db_path=db_with_faab, league_id="70985", season=2025, week=14,
+        )
+        ctx2 = derive_player_week_context_v1(
+            db_path=db_with_faab, league_id="70985", season=2025, week=14,
+        )
+        assert ctx1 == ctx2
