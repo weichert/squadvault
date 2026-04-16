@@ -1,10 +1,11 @@
-"""Tests for Recap Verifier v1 (Categories 1-3: Score, Superlative, Streak).
+"""Tests for Recap Verifier v1 (Categories 1-7).
 
 Exercises each verifier category against synthetic data:
 
 Category 1: SCORE — correct scores pass, wrong/transposed/invented fail
 Category 2: SUPERLATIVE — correct season-high/all-time pass, false claims fail
 Category 3: STREAK — correct streak counts pass, wrong counts and snap/extend logic fail
+Category 7: PLAYER_FRANCHISE — cross-franchise misattribution detection
 
 Also tests the full verification pipeline and SHAREABLE RECAP extraction.
 """
@@ -26,6 +27,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     _resolve_display_name,
     verify_banned_phrases,
     verify_cross_week_consistency,
+    verify_player_franchise,
     verify_recap_v1,
     verify_scores,
     verify_series_records,
@@ -692,7 +694,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 6
+        assert result.checks_run == 7
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -773,7 +775,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 6
+        assert result.checks_run == 7
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -2814,4 +2816,211 @@ class TestRegressionV7SuperlativeForwardLookback:
         assert failures == [], (
             f"expected no failures — backward 'previous' still skips "
             f"(V1 path unchanged), got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+
+# ── Category 7: Player-Franchise Attribution ────────────────────────
+
+
+class TestPlayerFranchiseAttribution:
+    """Pin Finding 4 from OBSERVATIONS_2026_04_15: cross-franchise
+    misattribution passes PLAYER_SCORE but should be caught by
+    PLAYER_FRANCHISE.
+
+    The Finding 4 pattern: Watson (franchise 0002) scored 22.90 but the
+    model wrote his score into a paragraph about Paradis' Playmakers
+    (franchise 0008) vs Brandon (franchise 0003). The score is real, so
+    PLAYER_SCORE passes. The franchise context is wrong.
+    """
+
+    def _build_db(self, tmp_path):
+        """Three-franchise setup: Watson on F_STEVE, matchup is F_KP vs F_BRANDON."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F_STEVE", name="Steve's Warmongers")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F_KP", name="Paradis' Playmakers")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F_BRANDON", name="Brandon Knows Ball")
+
+        # Watson is on F_STEVE, not F_KP
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=14,
+                             franchise_id="F_STEVE", player_id="P_WATSON",
+                             score=22.90)
+
+        # Taylor is on F_KP (correct attribution baseline)
+        _insert_player_score(con, league_id=LEAGUE, season=SEASON, week=14,
+                             franchise_id="F_KP", player_id="P_TAYLOR",
+                             score=48.10)
+
+        # Matchup: F_KP vs F_BRANDON (Watson's franchise not involved)
+        _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=14,
+                        winner_id="F_KP", loser_id="F_BRANDON",
+                        winner_score=150.00, loser_score=44.00)
+
+        # Matchup: F_STEVE vs some other team (not relevant to the test
+        # but ensures Watson's franchise has a matchup)
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F_OTHER", name="Other Team")
+        _insert_matchup(con, league_id=LEAGUE, season=SEASON, week=14,
+                        winner_id="F_STEVE", loser_id="F_OTHER",
+                        winner_score=120.00, loser_score=90.00)
+
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "P_WATSON", "Watson, Christian", "WR"),
+        )
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "P_TAYLOR", "Taylor, Jonathan", "RB"),
+        )
+
+        con.commit()
+        con.close()
+        return db_path
+
+    def test_wrong_franchise_flags_finding4_pattern(self, tmp_path):
+        """Finding 4: Watson (on Steve's) mentioned with score in a
+        paragraph about Paradis' Playmakers vs Brandon. Neither franchise
+        is Watson's. Must flag PLAYER_FRANCHISE HARD."""
+        db_path = self._build_db(tmp_path)
+        name_map = {"F_STEVE": "Steve's Warmongers",
+                     "F_KP": "Paradis' Playmakers",
+                     "F_BRANDON": "Brandon Knows Ball",
+                     "F_OTHER": "Other Team"}
+        reverse = _build_reverse_name_map(name_map)
+
+        text = (
+            "Paradis' Playmakers blew out Brandon Knows Ball by 106.60. "
+            "Christian Watson added 22.90 in his first week since a "
+            "$20 FAAB pickup."
+        )
+        failures = verify_player_franchise(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+            week=14, reverse_name_map=reverse,
+        )
+        pf = [f for f in failures if f.category == "PLAYER_FRANCHISE"]
+        assert len(pf) == 1, (
+            f"expected exactly 1 PLAYER_FRANCHISE failure, "
+            f"got {len(pf)}: {[(f.claim, f.evidence) for f in pf]}"
+        )
+        assert pf[0].severity == "HARD"
+        assert "christian watson" in pf[0].claim.lower()
+        assert "Steve's Warmongers" in pf[0].evidence
+
+    def test_correct_franchise_passes(self, tmp_path):
+        """Taylor (on F_KP) mentioned with score in a paragraph about
+        Paradis' Playmakers. Correct attribution — no failure."""
+        db_path = self._build_db(tmp_path)
+        name_map = {"F_STEVE": "Steve's Warmongers",
+                     "F_KP": "Paradis' Playmakers",
+                     "F_BRANDON": "Brandon Knows Ball",
+                     "F_OTHER": "Other Team"}
+        reverse = _build_reverse_name_map(name_map)
+
+        text = (
+            "Paradis' Playmakers blew out Brandon Knows Ball by 106.60. "
+            "Jonathan Taylor led the way with 48.10 points."
+        )
+        failures = verify_player_franchise(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+            week=14, reverse_name_map=reverse,
+        )
+        pf = [f for f in failures if f.category == "PLAYER_FRANCHISE"]
+        assert pf == [], (
+            f"expected no PLAYER_FRANCHISE failures for correct "
+            f"attribution, got {[(f.claim, f.evidence) for f in pf]}"
+        )
+
+    def test_player_near_own_franchise_and_opponent_passes(self, tmp_path):
+        """Taylor near both own franchise (Paradis') and opponent
+        (Brandon). Own franchise present → pass."""
+        db_path = self._build_db(tmp_path)
+        name_map = {"F_STEVE": "Steve's Warmongers",
+                     "F_KP": "Paradis' Playmakers",
+                     "F_BRANDON": "Brandon Knows Ball",
+                     "F_OTHER": "Other Team"}
+        reverse = _build_reverse_name_map(name_map)
+
+        text = (
+            "Paradis' Playmakers crushed Brandon Knows Ball 150-44. "
+            "Jonathan Taylor's 48.10 was the highlight of the beatdown."
+        )
+        failures = verify_player_franchise(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+            week=14, reverse_name_map=reverse,
+        )
+        pf = [f for f in failures if f.category == "PLAYER_FRANCHISE"]
+        assert pf == [], (
+            f"expected no failures when own franchise is in the window, "
+            f"got {[(f.claim, f.evidence) for f in pf]}"
+        )
+
+    def test_no_franchise_context_silence(self, tmp_path):
+        """Watson mentioned with score but no franchise names nearby.
+        No opinion is safer than a false positive → silence."""
+        db_path = self._build_db(tmp_path)
+        # Empty reverse map: no franchise names to find
+        reverse: dict[str, str] = {}
+
+        text = "Christian Watson scored 22.90 this week."
+        failures = verify_player_franchise(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+            week=14, reverse_name_map=reverse,
+        )
+        assert failures == [], (
+            f"expected silence when no franchise context available, "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_no_score_attribution_no_check(self, tmp_path):
+        """Watson mentioned near wrong franchise but WITHOUT an
+        attributed score. The franchise check requires a tightly
+        attributed score to trigger — casual mentions are not checked."""
+        db_path = self._build_db(tmp_path)
+        name_map = {"F_STEVE": "Steve's Warmongers",
+                     "F_KP": "Paradis' Playmakers",
+                     "F_BRANDON": "Brandon Knows Ball",
+                     "F_OTHER": "Other Team"}
+        reverse = _build_reverse_name_map(name_map)
+
+        # Watson near Paradis'/Brandon but no XX.XX score within 25 chars
+        text = (
+            "Paradis' Playmakers crushed Brandon Knows Ball. "
+            "Christian Watson was unavailable for comment."
+        )
+        failures = verify_player_franchise(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+            week=14, reverse_name_map=reverse,
+        )
+        assert failures == [], (
+            f"expected no failures when player has no attributed score, "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_integration_checks_run_includes_category_7(self, tmp_path):
+        """Full verify_recap_v1 includes Category 7 in checks_run count."""
+        db_path = self._build_db(tmp_path)
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Paradis' Playmakers blew out Brandon Knows Ball by 106.60. "
+            "Christian Watson added 22.90 in his first week.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+        )
+        assert result.checks_run == 7
+        pf = [f for f in result.hard_failures
+              if f.category == "PLAYER_FRANCHISE"]
+        assert len(pf) == 1, (
+            f"expected 1 PLAYER_FRANCHISE failure from full pipeline, "
+            f"got {len(pf)}: {[(f.claim, f.evidence) for f in pf]}"
         )

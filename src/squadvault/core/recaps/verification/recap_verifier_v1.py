@@ -10,9 +10,13 @@ Verification Categories (V1):
 1. SCORE — matchup scores mentioned in recap vs canonical WEEKLY_MATCHUP_RESULT
 2. SUPERLATIVE — "season high", "all-time record" claims vs actual MAX/MIN
 3. STREAK — "X-game streak", "snapped/extended" vs computed streaks
+4. SERIES — head-to-head series records vs computed H2H history
+5. BANNED_PHRASE — cliché / speculation detection (SOFT)
+6. PLAYER_SCORE — individual player scores vs canonical WEEKLY_PLAYER_SCORE
+7. PLAYER_FRANCHISE — player-franchise attribution vs canonical roster
 
-All three are HARD failure categories. A hard failure means the recap
-contains a provably false factual claim.
+Categories 1–4, 6–7 are HARD. Category 5 is SOFT. A hard failure means
+the recap contains a provably false factual claim.
 """
 
 from __future__ import annotations
@@ -29,8 +33,8 @@ from squadvault.core.storage.session import DatabaseSession
 @dataclass(frozen=True)
 class VerificationFailure:
     """A single verified-false claim in the recap text."""
-    category: str     # "SCORE", "SUPERLATIVE", "STREAK"
-    severity: str     # "HARD" (V1 only has HARD)
+    category: str     # "SCORE", "SUPERLATIVE", "STREAK", etc.
+    severity: str     # "HARD" or "SOFT"
     claim: str        # the extracted claim from recap text
     evidence: str     # what canonical data actually shows
 
@@ -2129,6 +2133,192 @@ def verify_player_scores(
     return failures
 
 
+# ── Category 7: Player-Franchise Attribution ────────────────────────
+
+
+def _load_week_player_franchise(
+    db_path: str, league_id: str, season: int, week: int,
+) -> dict[str, str]:
+    """Load player_id -> franchise_id for all players in a given week."""
+    mapping: dict[str, str] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT json_extract(payload_json, '$.player_id'),
+                      json_extract(payload_json, '$.franchise_id')
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WEEKLY_PLAYER_SCORE'
+                 AND CAST(json_extract(payload_json, '$.week') AS INTEGER) = ?""",
+            (str(league_id), int(season), int(week)),
+        ).fetchall()
+    for row in rows:
+        if row[0] and row[1]:
+            mapping[str(row[0]).strip()] = str(row[1]).strip()
+    return mapping
+
+
+def _find_nearby_franchise_ids(
+    text: str,
+    position: int,
+    reverse_name_map: dict[str, str],
+    *,
+    window: int = 200,
+) -> set[str]:
+    """Find all franchise_ids mentioned near a text position.
+
+    Scans *window* chars before and after *position* for franchise names
+    present in the reverse_name_map. Returns the set of franchise_ids
+    found. An empty set means no franchise context could be determined
+    (the caller should treat this as "no opinion", not "wrong franchise").
+    """
+    start = max(0, position - window)
+    end = min(len(text), position + window)
+    context = _normalize_apostrophes(text[start:end]).lower()
+
+    found: set[str] = set()
+    for name, fid in reverse_name_map.items():
+        if not name.islower():
+            continue
+        if name in context:
+            found.add(fid)
+    return found
+
+
+def verify_player_franchise(
+    recap_text: str,
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week: int,
+    reverse_name_map: dict[str, str],
+) -> list[VerificationFailure]:
+    """Verify that players with attributed scores belong to a franchise
+    in the surrounding text context.
+
+    Catches cross-franchise misattribution: a real player with a real
+    score placed in a paragraph about a matchup they were not involved
+    in. This is the gap identified in OBSERVATIONS_2026_04_15 Finding 4
+    (Watson 22.90 attributed to Paradis' Playmakers, actually on Steve's
+    Warmongers).
+
+    Gate: a player name must have a tightly attributed score (XX.XX
+    within 25 chars, same window as PLAYER_SCORE) to trigger the
+    franchise check. This limits the check to performance claims and
+    avoids false positives from casual player mentions in cross-matchup
+    comparisons.
+
+    When the player's actual franchise_id is NOT among the franchise
+    names found within 200 chars of the player mention, the check fires
+    as HARD. When no franchise names are found nearby, the check is
+    silent (no opinion is safer than a false positive).
+    """
+    failures: list[VerificationFailure] = []
+
+    player_franchise = _load_week_player_franchise(
+        db_path, league_id, season, week,
+    )
+    if not player_franchise:
+        return []
+
+    player_name_map = _load_player_name_map_for_verify(db_path, league_id)
+
+    # Build display_name -> (player_id, franchise_id)
+    display_to_info: dict[str, tuple[str, str]] = {}
+    for pid, display in player_name_map.items():
+        fid = player_franchise.get(pid)
+        if not display or not fid:
+            continue
+        if ", " in display:
+            parts = display.split(", ", 1)
+            first_last = f"{parts[1]} {parts[0]}".strip().lower()
+            if first_last not in display_to_info:
+                display_to_info[first_last] = (pid, fid)
+        else:
+            key = display.strip().lower()
+            if key not in display_to_info:
+                display_to_info[key] = (pid, fid)
+
+    text_lower = recap_text.lower()
+    checked: set[str] = set()  # one flag per player display name
+
+    for display_name, (pid, actual_fid) in display_to_info.items():
+        if len(display_name) <= 5:
+            continue
+        if display_name in checked:
+            continue
+
+        idx = text_lower.find(display_name)
+        while idx >= 0:
+            name_end = idx + len(display_name)
+
+            # Require a tightly attributed score (same 25-char window
+            # and guards as PLAYER_SCORE).
+            score_window_end = min(len(recap_text), name_end + 25)
+            score_window = recap_text[name_end:score_window_end]
+
+            has_attributed_score = False
+            for m in _PLAYER_SCORE_PATTERN.finditer(score_window):
+                score_abs_pos = name_end + m.start()
+                # P1 digit-boundary guard
+                if score_abs_pos > 0 and recap_text[score_abs_pos - 1].isdigit():
+                    continue
+                # Clause-break / separator guards
+                between = score_window[:m.start()]
+                if (
+                    "." in between
+                    or " by " in between
+                    or "\n" in between
+                    or " but " in between
+                ):
+                    continue
+                # Dollar sign guard
+                if score_abs_pos > 0 and recap_text[score_abs_pos - 1] == "$":
+                    continue
+                has_attributed_score = True
+                break
+
+            if has_attributed_score:
+                nearby_fids = _find_nearby_franchise_ids(
+                    recap_text, idx, reverse_name_map,
+                )
+
+                if nearby_fids and actual_fid not in nearby_fids:
+                    actual_fname = _resolve_display_name(
+                        actual_fid, reverse_name_map,
+                    )
+                    nearby_fnames = sorted(
+                        _resolve_display_name(fid, reverse_name_map)
+                        for fid in nearby_fids
+                    )
+                    failures.append(VerificationFailure(
+                        category="PLAYER_FRANCHISE",
+                        severity="HARD",
+                        claim=(
+                            f"{display_name.title()} mentioned in "
+                            f"context of "
+                            f"{', '.join(nearby_fnames)}"
+                        ),
+                        evidence=(
+                            f"{display_name.title()} was on "
+                            f"{actual_fname} in Week {week}, not "
+                            f"{' or '.join(nearby_fnames)}."
+                        ),
+                    ))
+                    checked.add(display_name)
+                    break  # one flag per player is sufficient
+
+                # Correctly attributed — mark checked to avoid
+                # flagging a later occurrence in a different paragraph
+                # where context might be ambiguous.
+                checked.add(display_name)
+                break
+
+            idx = text_lower.find(display_name, idx + 1)
+
+    return failures
+
+
 # ── Orchestrator ─────────────────────────────────────────────────────
 
 
@@ -2220,6 +2410,17 @@ def verify_recap_v1(
         league_id=league_id,
         season=season,
         week=week,
+    ))
+
+    # Category 7: Player-franchise attribution (HARD)
+    checks_run += 1
+    all_failures.extend(verify_player_franchise(
+        narrative,
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
+        week=week,
+        reverse_name_map=reverse_name_map,
     ))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")
