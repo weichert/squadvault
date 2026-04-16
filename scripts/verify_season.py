@@ -14,6 +14,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     _build_reverse_name_map,
     _extract_shareable_recap,
     _load_franchise_names,
+    _load_franchise_owner_names,
     verify_cross_week_consistency,
     verify_recap_v1,
 )
@@ -108,7 +109,8 @@ def main() -> None:
 
     # ── Cross-week consistency check ──
     name_map = _load_franchise_names(args.db, args.league, args.season)
-    reverse_name_map = _build_reverse_name_map(name_map)
+    owner_map = _load_franchise_owner_names(args.db, args.league, args.season)
+    reverse_name_map = _build_reverse_name_map(name_map, owner_map)
     week_narratives = [
         (w, _extract_shareable_recap(t)) for w, t in weeks
     ]

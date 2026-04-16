@@ -245,6 +245,61 @@ class TestBuildReverseNameMap:
         reverse = _build_reverse_name_map(name_map)
         assert "ben" not in reverse
 
+    def test_owner_alias_added_when_owner_map_supplied(self):
+        """Owner first names become aliases when owner_map is supplied.
+        Handles league-insider prose like 'Michele stayed perfect' or
+        'KP put up 169' where the owner's first name doesn't appear
+        anywhere in the franchise name."""
+        name_map = {
+            "F_CAVALLINI": "Italian Cavallini",
+            "F_KP": "Paradis' Playmakers",
+            "F_WEICHERT": "Weichert's Warmongers",
+        }
+        owner_map = {
+            "F_CAVALLINI": "Michele Baroi",
+            "F_KP": "KP Paradis",
+            "F_WEICHERT": "Steve Weichert",
+        }
+        reverse = _build_reverse_name_map(name_map, owner_map)
+        assert reverse.get("michele") == "F_CAVALLINI"
+        assert reverse.get("kp") == "F_KP"  # 2-char alias allowed
+        assert reverse.get("steve") == "F_WEICHERT"
+
+    def test_owner_alias_not_added_without_owner_map(self):
+        """No owner aliases when owner_map is None (backward compat)."""
+        name_map = {"F1": "Italian Cavallini"}
+        reverse = _build_reverse_name_map(name_map)
+        assert "michele" not in reverse
+
+    def test_owner_alias_does_not_override_existing_alias(self):
+        """If an owner's first name already matches a franchise alias,
+        the existing alias wins (no override)."""
+        name_map = {
+            "F1": "Miller's Genuine Draft",
+            "F2": "Purple Haze",
+        }
+        # Owner of F2 is hypothetically named "Miller" — collides with
+        # F1's first-word alias. Existing alias must win.
+        owner_map = {"F1": "Jon Doe", "F2": "Miller Smith"}
+        reverse = _build_reverse_name_map(name_map, owner_map)
+        assert reverse.get("miller") == "F1"  # still F1, not F2
+
+    def test_owner_alias_ambiguity_rejected(self):
+        """When two owners share the same first name, no alias is added."""
+        name_map = {"F1": "Alpha Team", "F2": "Beta Squad"}
+        owner_map = {"F1": "Steve Smith", "F2": "Steve Jones"}
+        reverse = _build_reverse_name_map(name_map, owner_map)
+        assert "steve" not in reverse
+
+    def test_owner_alias_skipped_for_unknown_franchise(self):
+        """Owner names for franchises not in name_map are silently
+        ignored (defensive against partial data)."""
+        name_map = {"F1": "Alpha Team"}
+        owner_map = {"F1": "Steve", "F_UNKNOWN": "Michele"}
+        reverse = _build_reverse_name_map(name_map, owner_map)
+        assert reverse.get("steve") == "F1"
+        assert "michele" not in reverse
+
 
 class TestFindNearbyFranchiseIds:
     """Word-boundary matching prevents substring misattribution hazards."""

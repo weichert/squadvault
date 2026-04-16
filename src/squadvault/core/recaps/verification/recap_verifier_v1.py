@@ -171,6 +171,33 @@ def _load_franchise_names(
     return name_map
 
 
+def _load_franchise_owner_names(
+    db_path: str,
+    league_id: str,
+    season: int,
+) -> dict[str, str]:
+    """Load franchise_id -> owner_name map for the season.
+
+    Owner names power the "short-form-by-owner" alias pass in
+    _build_reverse_name_map (e.g. recognizing "Michele" and "KP" as
+    references to Italian Cavallini and Paradis' Playmakers when the
+    model writes in league-insider voice). Returns only non-empty
+    owner names; missing entries are silently omitted.
+    """
+    owner_map: dict[str, str] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT franchise_id, owner_name
+               FROM franchise_directory
+               WHERE league_id = ? AND season = ?""",
+            (str(league_id), int(season)),
+        ).fetchall()
+    for row in rows:
+        if row[0] and row[1] and str(row[1]).strip():
+            owner_map[str(row[0]).strip()] = str(row[1]).strip()
+    return owner_map
+
+
 def _load_player_season_high(
     db_path: str,
     league_id: str,
@@ -259,18 +286,30 @@ def _normalize_apostrophes(text: str) -> str:
     return text.replace("\u2018", "'").replace("\u2019", "'")
 
 
-def _build_reverse_name_map(name_map: dict[str, str]) -> dict[str, str]:
+def _build_reverse_name_map(
+    name_map: dict[str, str],
+    owner_map: dict[str, str] | None = None,
+) -> dict[str, str]:
     """Build name -> franchise_id reverse lookup.
 
     Adds both exact-case and lowercased entries for robustness.
     Normalizes apostrophes so curly quotes match straight quotes.
 
-    Also adds first-word aliases (5+ chars, unique across all franchises)
-    to handle short-form references in recap prose. The model often writes
-    "Eddie snapped his streak" or "Brandon bounced back" rather than the
-    full franchise name. Without aliases, _find_nearby_franchise falls
-    back to AFTER-the-position matching and may attribute claims to the
-    wrong team.
+    Also adds short-form aliases to handle the ways the model refers to
+    teams in league-insider prose:
+      - Pass 2: first-word aliases from the franchise name (Eddie,
+        Brandon, Ben, Miller, Paradis, etc.)
+      - Pass 3: last-word aliases from the franchise name (Warmongers,
+        Playmakers, Raiders, Cavallini — the distinctive noun the league
+        commonly uses)
+      - Pass 4: owner first-name aliases when owner_map is supplied
+        (Michele, KP, Steve, Pat — owner names that never appear inside
+        the franchise name itself)
+
+    All alias passes require uniqueness and do not override existing
+    entries. Substring hazards are handled by word-boundary regex
+    matching at lookup time (_franchise_name_matches_in_context), not
+    by length thresholds here.
     """
     reverse: dict[str, str] = {}
 
@@ -338,6 +377,37 @@ def _build_reverse_name_map(name_map: dict[str, str]) -> dict[str, str]:
         fid = next(iter(fids))
         if alias not in reverse:
             reverse[alias] = fid
+
+    # Pass 4: Owner first-name aliases (when owner_map supplied).
+    # Picks up short-forms the model uses when writing in league-insider
+    # voice ("Michele stayed perfect", "KP put up 169.60", "Steve squeaked
+    # past Brandon") that don't appear anywhere in the franchise name
+    # itself. 2-char minimum catches "KP" — safe because word boundaries
+    # plus the capital-letter lookahead at match time prevent substring
+    # and player-name hazards. Does not override existing aliases.
+    if owner_map:
+        _owner_word_to_fids: dict[str, set[str]] = {}
+        for fid, owner in owner_map.items():
+            if fid not in name_map:
+                # Only alias owners for franchises we know by name
+                continue
+            normalized = _normalize_apostrophes(owner)
+            words = re.findall(r"\w+", normalized)
+            if not words:
+                continue
+            owner_first = words[0].lower()
+            if len(owner_first) < 2:
+                continue
+            if owner_first in _stop_words:
+                continue
+            _owner_word_to_fids.setdefault(owner_first, set()).add(fid)
+
+        for alias, fids in _owner_word_to_fids.items():
+            if len(fids) != 1:
+                continue
+            fid = next(iter(fids))
+            if alias not in reverse:
+                reverse[alias] = fid
 
     return reverse
 
@@ -2592,7 +2662,8 @@ def verify_recap_v1(
 
     season_matchups = _load_season_matchups(db_path, league_id, season)
     name_map = _load_franchise_names(db_path, league_id, season)
-    reverse_name_map = _build_reverse_name_map(name_map)
+    owner_map = _load_franchise_owner_names(db_path, league_id, season)
+    reverse_name_map = _build_reverse_name_map(name_map, owner_map)
 
     all_failures: list[VerificationFailure] = []
     checks_run = 0
