@@ -14,8 +14,9 @@ Verification Categories (V1):
 5. BANNED_PHRASE — cliché / speculation detection (SOFT)
 6. PLAYER_SCORE — individual player scores vs canonical WEEKLY_PLAYER_SCORE
 7. PLAYER_FRANCHISE — player-franchise attribution vs canonical roster
+8. FAAB_CLAIM — FAAB dollar amounts vs canonical WAIVER_BID_AWARDED
 
-Categories 1–4, 6–7 are HARD. Category 5 is SOFT. A hard failure means
+Categories 1–4, 6–8 are HARD. Category 5 is SOFT. A hard failure means
 the recap contains a provably false factual claim.
 """
 
@@ -2345,6 +2346,182 @@ def verify_player_franchise(
     return failures
 
 
+# ── Category 8: FAAB Transaction Verification ───────────────────────
+
+# Dollar amount pattern: $20, $20.00, $15.50
+_FAAB_DOLLAR_PATTERN = re.compile(r"\$(\d+(?:\.\d{1,2})?)")
+
+# Keywords that identify a dollar amount as a FAAB claim (not an
+# auction draft amount or budget reference). Must appear within
+# _FAAB_KEYWORD_WINDOW chars of the dollar sign.
+_FAAB_KEYWORD_PATTERN = re.compile(
+    r"\b(?:faab|waiver|pickup|pick-up|claim(?:ed)?|acquisition)\b",
+    re.IGNORECASE,
+)
+_FAAB_KEYWORD_WINDOW = 30
+
+
+def _load_faab_bids(
+    db_path: str, league_id: str, season: int,
+) -> dict[str, list[float]]:
+    """Load player_id -> list of FAAB bid amounts for the season.
+
+    Returns all canonical WAIVER_BID_AWARDED events. A player may
+    have multiple bids (dropped and re-added).
+    """
+    bids: dict[str, list[float]] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT payload_json
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WAIVER_BID_AWARDED'
+               ORDER BY occurred_at ASC NULLS LAST""",
+            (str(league_id), int(season)),
+        ).fetchall()
+
+    for row in rows:
+        try:
+            p = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(p, dict):
+            continue
+
+        player_id = str(p.get("player_id", "")).strip()
+        if not player_id:
+            added = p.get("players_added_ids")
+            if isinstance(added, str) and added.strip():
+                player_id = added.split(",")[0].strip()
+            elif isinstance(added, list) and added:
+                player_id = str(added[0]).strip()
+        if not player_id:
+            continue
+
+        try:
+            amount = float(p.get("bid_amount", 0))
+        except (ValueError, TypeError):
+            continue
+        if amount <= 0:
+            continue
+
+        bids.setdefault(player_id, []).append(amount)
+
+    return bids
+
+
+def verify_faab_claims(
+    recap_text: str,
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+) -> list[VerificationFailure]:
+    """Verify FAAB dollar amounts attributed to players in recap text.
+
+    Catches fabricated FAAB amounts: the model writes "$45 FAAB pickup"
+    when the canonical bid was $20. Source: OBSERVATIONS_2026_04_15
+    Finding 6 — FAAB dollar amounts were not verified by any existing
+    check category.
+
+    Gate: a dollar amount must appear within _FAAB_KEYWORD_WINDOW chars
+    of a FAAB-related keyword (faab, waiver, pickup, claim, acquisition)
+    to be treated as a FAAB claim. This avoids false positives from
+    auction draft amounts or budget references.
+
+    Matching tolerance: ±1.0 to handle rounding (model writes "$20"
+    for a canonical $20.45 bid).
+    """
+    failures: list[VerificationFailure] = []
+
+    faab_bids = _load_faab_bids(db_path, league_id, season)
+    if not faab_bids:
+        return []
+
+    player_name_map = _load_player_name_map_for_verify(db_path, league_id)
+
+    # Build display_name -> player_id
+    display_to_pid: dict[str, str] = {}
+    for pid, display in player_name_map.items():
+        if not display:
+            continue
+        if ", " in display:
+            parts = display.split(", ", 1)
+            first_last = f"{parts[1]} {parts[0]}".strip().lower()
+            if first_last not in display_to_pid:
+                display_to_pid[first_last] = pid
+        else:
+            key = display.strip().lower()
+            if key not in display_to_pid:
+                display_to_pid[key] = pid
+
+    text_lower = recap_text.lower()
+    checked: set[tuple[str, float]] = set()  # (display_name, claimed)
+
+    for dollar_match in _FAAB_DOLLAR_PATTERN.finditer(recap_text):
+        try:
+            claimed = float(dollar_match.group(1))
+        except ValueError:
+            continue
+
+        # Gate: FAAB keyword must appear near the dollar amount
+        kw_start = max(0, dollar_match.start() - _FAAB_KEYWORD_WINDOW)
+        kw_end = min(len(recap_text), dollar_match.end() + _FAAB_KEYWORD_WINDOW)
+        kw_context = recap_text[kw_start:kw_end]
+        if not _FAAB_KEYWORD_PATTERN.search(kw_context):
+            continue
+
+        # Find nearest player name within 100 chars
+        search_start = max(0, dollar_match.start() - 100)
+        search_end = min(len(text_lower), dollar_match.end() + 100)
+        search_context = text_lower[search_start:search_end]
+
+        best_name: str | None = None
+        best_dist = 101
+        for display_name, pid in display_to_pid.items():
+            if len(display_name) <= 5:
+                continue
+            if pid not in faab_bids:
+                continue
+            idx = search_context.find(display_name)
+            if idx >= 0:
+                # Distance from player name to dollar sign
+                dollar_offset = dollar_match.start() - search_start
+                dist = abs(idx - dollar_offset)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_name = display_name
+
+        if best_name is None:
+            continue
+
+        check_key = (best_name, claimed)
+        if check_key in checked:
+            continue
+        checked.add(check_key)
+
+        pid = display_to_pid[best_name]
+        canonical_amounts = faab_bids.get(pid, [])
+
+        # Match within ±1.0 to handle model rounding ($20 vs $20.45)
+        if not any(abs(claimed - ca) <= 1.0 for ca in canonical_amounts):
+            canonical_str = ", ".join(f"${a:.2f}" for a in canonical_amounts)
+            failures.append(VerificationFailure(
+                category="FAAB_CLAIM",
+                severity="HARD",
+                claim=(
+                    f"${claimed:.0f} FAAB attributed to "
+                    f"{best_name.title()}"
+                ),
+                evidence=(
+                    f"Canonical FAAB bids for {best_name.title()}: "
+                    f"{canonical_str if canonical_str else 'none found'}."
+                ),
+            ))
+
+    return failures
+
+
 # ── Orchestrator ─────────────────────────────────────────────────────
 
 
@@ -2447,6 +2624,15 @@ def verify_recap_v1(
         season=season,
         week=week,
         reverse_name_map=reverse_name_map,
+    ))
+
+    # Category 8: FAAB transaction verification (HARD)
+    checks_run += 1
+    all_failures.extend(verify_faab_claims(
+        narrative,
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
     ))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")

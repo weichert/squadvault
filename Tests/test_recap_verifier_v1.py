@@ -27,6 +27,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     _resolve_display_name,
     verify_banned_phrases,
     verify_cross_week_consistency,
+    verify_faab_claims,
     verify_player_franchise,
     verify_recap_v1,
     verify_scores,
@@ -112,6 +113,26 @@ def _make_matchup(week, winner_id, loser_id, winner_score, loser_score):
         week=week, winner_id=winner_id, loser_id=loser_id,
         winner_score=winner_score, loser_score=loser_score,
     )
+
+
+def _insert_faab_bid(con, *, league_id, season, franchise_id, player_id,
+                      bid_amount, timestamp="2024-10-15T12:00:00Z"):
+    payload = json.dumps({
+        "franchise_id": franchise_id, "player_id": player_id,
+        "bid_amount": bid_amount, "mfl_type": "BBID_WAIVER",
+    }, sort_keys=True)
+    ext_id = f"faab_{league_id}_{season}_{franchise_id}_{player_id}_{bid_amount}"
+    con.execute(
+        """INSERT INTO memory_events (league_id, season, external_source, external_id,
+           event_type, occurred_at, ingested_at, payload_json)
+           VALUES (?, ?, 'test', ?, 'WAIVER_BID_AWARDED', ?, ?, ?)""",
+        (league_id, season, ext_id, timestamp, timestamp, payload))
+    me_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+    con.execute(
+        """INSERT INTO canonical_events (league_id, season, event_type,
+           action_fingerprint, best_memory_event_id, best_score, updated_at, occurred_at)
+           VALUES (?, ?, 'WAIVER_BID_AWARDED', ?, ?, 100, ?, ?)""",
+        (league_id, season, f"fp_{ext_id}", me_id, timestamp, timestamp))
 
 
 # ── Unit: extraction helpers ────────────────────────────────────────
@@ -724,7 +745,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 7
+        assert result.checks_run == 8
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -805,7 +826,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 7
+        assert result.checks_run == 8
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -3047,7 +3068,7 @@ class TestPlayerFranchiseAttribution:
         result = verify_recap_v1(
             text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
         )
-        assert result.checks_run == 7
+        assert result.checks_run == 8
         pf = [f for f in result.hard_failures
               if f.category == "PLAYER_FRANCHISE"]
         assert len(pf) == 1, (
@@ -3133,3 +3154,137 @@ class TestRegressionV8SuperlativeMatchupLine:
             f"season-high claim, got {len(sup)}"
         )
         assert "103.10" in sup[0].claim
+
+
+# ── Category 8: FAAB Transaction Verification ───────────────────────
+
+
+class TestFaabClaimVerification:
+    """Pin Finding 6 from OBSERVATIONS_2026_04_15: FAAB dollar amounts
+    in prose were not verified against canonical WAIVER_BID_AWARDED.
+
+    The model writes "$20 FAAB pickup" and the verifier had no check
+    to confirm the amount. A future regen could invent "$45 FAAB pickup"
+    and pass verification cleanly.
+    """
+
+    def _build_db(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F1", name="Steve's Warmongers")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F2", name="Brandon Knows Ball")
+
+        # Watson picked up for $20.45 FAAB
+        _insert_faab_bid(con, league_id=LEAGUE, season=SEASON,
+                         franchise_id="F1", player_id="P_WATSON",
+                         bid_amount=20.45)
+
+        # Allen picked up for $21.00 FAAB
+        _insert_faab_bid(con, league_id=LEAGUE, season=SEASON,
+                         franchise_id="F2", player_id="P_ALLEN",
+                         bid_amount=21.00)
+
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "P_WATSON", "Watson, Christian", "WR"),
+        )
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "P_ALLEN", "Allen, Keenan", "WR"),
+        )
+
+        con.commit()
+        con.close()
+        return db_path
+
+    def test_correct_faab_amount_passes(self, tmp_path):
+        """$20 FAAB for Watson matches canonical $20.45 within ±1.0."""
+        db_path = self._build_db(tmp_path)
+        text = "Christian Watson added 22.90 after a $20 FAAB pickup."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        assert failures == [], (
+            f"expected no failures ($20 matches canonical $20.45), "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_exact_faab_amount_passes(self, tmp_path):
+        """$21 FAAB for Allen matches canonical $21.00 exactly."""
+        db_path = self._build_db(tmp_path)
+        text = "Keenan Allen ($21 FAAB) scored 15.60 this week."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        assert failures == [], (
+            f"expected no failures ($21 matches canonical $21.00), "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_fabricated_faab_amount_flags(self, tmp_path):
+        """$45 FAAB for Watson is fabricated — canonical is $20.45."""
+        db_path = self._build_db(tmp_path)
+        text = "Christian Watson, a $45 FAAB pickup, scored big."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 1, (
+            f"expected 1 FAAB_CLAIM failure, "
+            f"got {len(faab)}: {[(f.claim, f.evidence) for f in faab]}"
+        )
+        assert faab[0].severity == "HARD"
+        assert "$45" in faab[0].claim
+        assert "$20.45" in faab[0].evidence
+
+    def test_no_faab_keyword_no_check(self, tmp_path):
+        """Dollar amount without FAAB keyword is not checked (could be
+        auction draft amount)."""
+        db_path = self._build_db(tmp_path)
+        # "$45" near player but no FAAB/waiver/pickup keyword
+        text = "Christian Watson, a $45 draft investment, scored big."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        assert failures == [], (
+            f"expected no failures (no FAAB keyword), "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_waiver_keyword_triggers_check(self, tmp_path):
+        """'waiver' keyword also triggers the FAAB check."""
+        db_path = self._build_db(tmp_path)
+        text = "Christian Watson, claimed off waivers for $45, scored big."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        # "waiver" is in context, $45 doesn't match $20.45 → flags
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 1
+
+    def test_integration_checks_run_includes_category_8(self, tmp_path):
+        """Full pipeline includes FAAB check in checks_run."""
+        db_path = self._build_db(tmp_path)
+        _insert_matchup(
+            sqlite3.connect(db_path), league_id=LEAGUE, season=SEASON,
+            week=14, winner_id="F1", loser_id="F2",
+            winner_score=120.00, loser_score=90.00,
+        )
+        sqlite3.connect(db_path).commit()
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Christian Watson scored after a $20 FAAB pickup.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+        )
+        assert result.checks_run == 8
