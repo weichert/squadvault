@@ -281,8 +281,12 @@ def _build_reverse_name_map(name_map: dict[str, str]) -> dict[str, str]:
         reverse[normalized.lower()] = fid
 
     # Pass 2: First-word aliases for short-form references.
-    # Only add if 5+ chars (avoids substring matches like "ben" in "bench")
-    # and unique across franchises (avoids ambiguity).
+    # Matches short-forms like "Eddie" (for "Eddie & the Cruisers") or
+    # "Ben" (for "Ben's Gods"). Uniqueness across franchises is required
+    # to avoid ambiguity. Substring hazards (e.g. "ben" inside "bench",
+    # "brandon" inside "Brandon Aubrey") are handled by word-boundary
+    # regex matching in _franchise_name_matches_in_context — not by a
+    # length threshold here.
     _first_word_to_fids: dict[str, set[str]] = {}
     _stop_words = {"the", "and", "team", "club", "fantasy"}
     for fid, name in name_map.items():
@@ -291,13 +295,44 @@ def _build_reverse_name_map(name_map: dict[str, str]) -> dict[str, str]:
         if not words:
             continue
         first_word = words[0].lower()
-        if len(first_word) < 5:
+        if len(first_word) < 3:
             continue
         if first_word in _stop_words:
             continue
         _first_word_to_fids.setdefault(first_word, set()).add(fid)
 
     for alias, fids in _first_word_to_fids.items():
+        if len(fids) != 1:
+            continue
+        fid = next(iter(fids))
+        if alias not in reverse:
+            reverse[alias] = fid
+
+    # Pass 3: Last-word aliases for short-form references.
+    # Complements Pass 2 by picking up the common pattern where the model
+    # uses the distinctive last token of a multi-word franchise name
+    # ("Warmongers" for "Weichert's Warmongers", "Playmakers" for
+    # "Paradis' Playmakers", "Raiders" for "Robb's Raiders"). 5-char
+    # minimum keeps short generic nouns out; "draft" is stop-worded
+    # because it collides with fantasy-draft language in prose.
+    _last_word_to_fids: dict[str, set[str]] = {}
+    _last_word_stop_words = _stop_words | {"draft", "league", "bowl"}
+    for fid, name in name_map.items():
+        normalized = _normalize_apostrophes(name)
+        words = re.findall(r"\w+", normalized)
+        if len(words) < 2:
+            continue
+        # Skip the trailing possessive 's' token if present
+        last_word = words[-1].lower()
+        if last_word == "s" and len(words) >= 2:
+            last_word = words[-2].lower()
+        if len(last_word) < 5:
+            continue
+        if last_word in _last_word_stop_words:
+            continue
+        _last_word_to_fids.setdefault(last_word, set()).add(fid)
+
+    for alias, fids in _last_word_to_fids.items():
         if len(fids) != 1:
             continue
         fid = next(iter(fids))
@@ -2197,16 +2232,24 @@ def _find_nearby_franchise_ids(
     present in the reverse_name_map. Returns the set of franchise_ids
     found. An empty set means no franchise context could be determined
     (the caller should treat this as "no opinion", not "wrong franchise").
+
+    Uses _franchise_name_matches_in_context for robust matching: word
+    boundaries prevent substring hazards (e.g. "ben" inside "bench" or
+    "brandon" inside "Brandon Aubrey") and a capital-letter lookahead
+    prevents single-word aliases from matching inside player names.
+    Case is preserved in the scanned context so the lookahead works.
     """
     start = max(0, position - window)
     end = min(len(text), position + window)
-    context = _normalize_apostrophes(text[start:end]).lower()
+    # Case preserved — _franchise_name_matches_in_context inspects
+    # capital letters directly for the single-word-alias lookahead.
+    context = _normalize_apostrophes(text[start:end])
 
     found: set[str] = set()
     for name, fid in reverse_name_map.items():
         if not name.islower():
             continue
-        if name in context:
+        if _franchise_name_matches_in_context(name, context) >= 0:
             found.add(fid)
     return found
 

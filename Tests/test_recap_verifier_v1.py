@@ -172,6 +172,129 @@ class TestBuildReverseNameMap:
     def test_empty_map(self):
         assert _build_reverse_name_map({}) == {}
 
+    def test_first_word_alias_3_chars_allowed(self):
+        """First-word aliases as short as 3 chars are added (substring
+        hazards handled by word-boundary matching at lookup time, not by
+        a length threshold at map-build time)."""
+        name_map = {
+            "F1": "Ben's Gods",
+            "F2": "Stu's Crew",
+            "F3": "Robb's Raiders",
+        }
+        reverse = _build_reverse_name_map(name_map)
+        assert reverse.get("ben") == "F1"
+        assert reverse.get("stu") == "F2"
+        assert reverse.get("robb") == "F3"
+
+    def test_last_word_alias_added(self):
+        """Last-word aliases (≥5 chars, unique, stop-word filtered) are
+        added so short-forms like 'Warmongers' match 'Weichert's Warmongers'."""
+        name_map = {
+            "F1": "Weichert's Warmongers",
+            "F2": "Paradis' Playmakers",
+            "F3": "Robb's Raiders",
+        }
+        reverse = _build_reverse_name_map(name_map)
+        assert reverse.get("warmongers") == "F1"
+        assert reverse.get("playmakers") == "F2"
+        assert reverse.get("raiders") == "F3"
+
+    def test_last_word_alias_respects_min_length(self):
+        """Last-word aliases under 5 chars are not added ('gods', 'crew',
+        'haze', 'ball' are too short / too common)."""
+        name_map = {
+            "F1": "Ben's Gods",
+            "F2": "Stu's Crew",
+            "F3": "Purple Haze",
+            "F4": "Brandon Knows Ball",
+        }
+        reverse = _build_reverse_name_map(name_map)
+        assert "gods" not in reverse
+        assert "crew" not in reverse
+        assert "haze" not in reverse
+        assert "ball" not in reverse
+
+    def test_last_word_alias_stop_words_excluded(self):
+        """'draft' is stop-worded because it collides with fantasy-draft
+        language in prose ('auction draft', 'FAAB draft investment')."""
+        name_map = {"F1": "Miller's Genuine Draft"}
+        reverse = _build_reverse_name_map(name_map)
+        assert "draft" not in reverse
+        # Full name and first-word alias still work
+        assert reverse["Miller's Genuine Draft"] == "F1"
+        assert reverse["miller's genuine draft"] == "F1"
+        assert reverse.get("miller") == "F1"
+
+    def test_last_word_alias_ambiguity_rejected(self):
+        """When two franchises share the same last word, no alias is
+        added (same uniqueness rule as first-word aliases)."""
+        name_map = {
+            "F1": "Alpha Raiders",
+            "F2": "Beta Raiders",
+        }
+        reverse = _build_reverse_name_map(name_map)
+        assert "raiders" not in reverse
+
+    def test_first_word_alias_ambiguity_rejected(self):
+        """When two franchises share the same first word, no alias is
+        added — even after the threshold drop to 3 chars."""
+        name_map = {
+            "F1": "Ben's Gods",
+            "F2": "Ben's Gang",
+        }
+        reverse = _build_reverse_name_map(name_map)
+        assert "ben" not in reverse
+
+
+class TestFindNearbyFranchiseIds:
+    """Word-boundary matching prevents substring misattribution hazards."""
+
+    def test_short_alias_word_boundary_not_matched_inside_word(self):
+        """'ben' must not match inside 'bench' or 'forbidden'."""
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            _find_nearby_franchise_ids,
+        )
+        reverse = {"ben": "F1", "ben's gods": "F1"}
+        text = "The bench was forbidden to sit this week."
+        # Position doesn't matter much — the window covers the whole text.
+        found = _find_nearby_franchise_ids(text, 10, reverse)
+        assert "F1" not in found
+
+    def test_short_alias_matches_as_subject(self):
+        """'ben' must match 'Ben dropped to 3-7' as a legitimate subject."""
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            _find_nearby_franchise_ids,
+        )
+        reverse = {"ben": "F1", "ben's gods": "F1"}
+        text = "Ben dropped to 3-7 after the loss."
+        found = _find_nearby_franchise_ids(text, 10, reverse)
+        assert "F1" in found
+
+    def test_short_alias_not_matched_before_player_name(self):
+        """'brandon' as an alias must not match inside 'Brandon Aubrey'
+        (capital-letter lookahead rejects whitespace + capital letter)."""
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            _find_nearby_franchise_ids,
+        )
+        reverse = {"brandon": "F1", "brandon knows ball": "F1"}
+        text = "Brandon Aubrey kicked four field goals this week."
+        found = _find_nearby_franchise_ids(text, 10, reverse)
+        assert "F1" not in found
+
+    def test_last_word_alias_matches(self):
+        """'Warmongers' alone matches the Weichert's Warmongers franchise."""
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            _find_nearby_franchise_ids,
+        )
+        reverse = {
+            "weichert's warmongers": "F1",
+            "weichert": "F1",
+            "warmongers": "F1",
+        }
+        text = "Jahmyr Gibbs posted 36.70 points for the Warmongers."
+        found = _find_nearby_franchise_ids(text, 25, reverse)
+        assert "F1" in found
+
 
 class TestResolveDisplayName:
     def test_resolves_exact_case(self):
