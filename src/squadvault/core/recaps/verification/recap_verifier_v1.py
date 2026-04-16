@@ -764,7 +764,14 @@ _SEASON_LOW_PATTERN = re.compile(
 
 
 def _extract_nearby_score(text: str, match_pos: int, *, window: int = 100) -> float | None:
-    """Extract the closest score (XX.XX) near a superlative keyword."""
+    """Extract the closest score (XX.XX) near a superlative keyword.
+
+    V8 guard: skips scores that are part of a matchup-line format
+    (A.AA-B.BB or B.BB-A.AA), where the dash connects two team scores.
+    Source: OBSERVATIONS_2026_04_15 Finding 3, FP-SUPERLATIVE-MATCHUP-LINE.
+    Prose "in their 137.50-103.10 win" → 103.10 is a team score, not a
+    season-superlative claim.
+    """
     start = max(0, match_pos - window)
     end = min(len(text), match_pos + window)
     context = text[start:end]
@@ -775,6 +782,25 @@ def _extract_nearby_score(text: str, match_pos: int, *, window: int = 100) -> fl
             val = float(m.group(1))
         except ValueError:
             continue
+
+        # V8 matchup-line guard: skip scores connected by a dash to
+        # another score (e.g. "137.50-103.10"). These are team scores
+        # in a matchup line, not standalone player/season claims.
+        in_matchup_line = False
+        # Before: "137.50-[103.10]" — dash immediately preceding
+        if m.start() > 0 and context[m.start() - 1] == "-":
+            pre_start = max(0, m.start() - 8)
+            pre = context[pre_start:m.start() - 1]
+            if re.search(r"\d{2,3}\.\d{2}$", pre):
+                in_matchup_line = True
+        # After: "[103.10]-137.50" — dash immediately following
+        if not in_matchup_line and m.end() < len(context) and context[m.end()] == "-":
+            post = context[m.end() + 1:min(len(context), m.end() + 8)]
+            if re.match(r"\d{2,3}\.\d{2}", post):
+                in_matchup_line = True
+        if in_matchup_line:
+            continue
+
         keyword_offset = match_pos - start
         dist = abs(m.start() - keyword_offset)
         if dist < best_dist:

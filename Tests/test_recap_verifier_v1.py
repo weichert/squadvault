@@ -192,6 +192,36 @@ class TestExtractNearbyScore:
         result = _extract_nearby_score(text, 13)
         assert result is None
 
+    def test_v8_matchup_line_score_before_dash_skipped(self):
+        """V8: score in matchup line '137.50-103.10' is a team score,
+        not a superlative claim. The 103.10 after the dash must be
+        skipped. Source: Finding 3, FP-SUPERLATIVE-MATCHUP-LINE."""
+        text = "They cruised to a 137.50-103.10 win this season"
+        # "season" is near the end — _extract_nearby_score should not
+        # return 103.10 (part of matchup line) or 137.50 (also part).
+        pos = text.index("season")
+        result = _extract_nearby_score(text, pos)
+        assert result is None, (
+            f"expected None (both scores are matchup-line), got {result}"
+        )
+
+    def test_v8_matchup_line_score_after_dash_skipped(self):
+        """V8: reversed order '103.10-137.50' also detected."""
+        text = "Their 103.10-137.50 loss set a new season low"
+        pos = text.index("season")
+        result = _extract_nearby_score(text, pos)
+        assert result is None, (
+            f"expected None (both scores are matchup-line), got {result}"
+        )
+
+    def test_v8_standalone_score_still_extracted(self):
+        """V8 does not interfere with standalone scores."""
+        text = "Alpha posted a season-high 145.30 in the blowout."
+        pos = text.index("season")
+        result = _extract_nearby_score(text, pos)
+        assert result is not None
+        assert abs(result - 145.30) < 0.01
+
 
 # ── Unit: Category 1 — Score Verification ────────────────────────────
 
@@ -3024,3 +3054,82 @@ class TestPlayerFranchiseAttribution:
             f"expected 1 PLAYER_FRANCHISE failure from full pipeline, "
             f"got {len(pf)}: {[(f.claim, f.evidence) for f in pf]}"
         )
+
+
+# ── Regression: V8 FP-SUPERLATIVE-MATCHUP-LINE ─────────────────────
+
+
+class TestRegressionV8SuperlativeMatchupLine:
+    """Pin Finding 3 from OBSERVATIONS_2026_04_15: a team score in a
+    matchup-line format (A.AA-B.BB) gets extracted by
+    _extract_nearby_score and miscompared against the season
+    high/low, producing a false SUPERLATIVE failure.
+
+    Source: prompt_audit row 17 (2025 w10 a1) — prose contains
+    "in their 137.50-103.10 win over Italian Cavallini" and the
+    word "season" in the same paragraph. The verifier extracts
+    103.10 as the nearest score to "season" and flags it against
+    the actual season-high team score.
+    """
+
+    def test_v8_matchup_line_not_flagged_as_season_high(self):
+        """Row 17 pattern: matchup score 103.10 from '137.50-103.10 win'
+        must NOT be flagged as a season-high claim."""
+        matchups = [
+            _make_matchup(1, "F1", "F2", 145.30, 100.10),
+            _make_matchup(10, "F3", "F4", 137.50, 103.10),
+        ]
+        text = (
+            "F3 cruised to a 137.50-103.10 win over F4. It was the "
+            "best output of the season for F3."
+        )
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        sup = [f for f in failures if f.category == "SUPERLATIVE"]
+        assert sup == [], (
+            f"expected no SUPERLATIVE failures (103.10 and 137.50 are "
+            f"matchup-line scores, not standalone claims), "
+            f"got {[(f.claim, f.evidence) for f in sup]}"
+        )
+
+    def test_v8_matchup_line_not_flagged_as_season_low(self):
+        """Same pattern for season low — the losing score in a matchup
+        line must not be flagged."""
+        matchups = [
+            _make_matchup(1, "F1", "F2", 145.30, 100.10),
+            _make_matchup(10, "F3", "F4", 137.50, 90.10),
+        ]
+        text = (
+            "F4 managed just 90.10 in the 137.50-90.10 rout. It was "
+            "the second-lowest output of the season."
+        )
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        sup = [f for f in failures if f.category == "SUPERLATIVE"]
+        assert sup == [], (
+            f"expected no SUPERLATIVE failures (90.10 is in a matchup "
+            f"line AND has an ordinal qualifier), "
+            f"got {[(f.claim, f.evidence) for f in sup]}"
+        )
+
+    def test_v8_standalone_season_high_still_flagged(self):
+        """A genuine false season-high claim (standalone score, not in
+        a matchup line) must still flag. V8 only protects matchup-line
+        scores — it does not defang the check for standalone claims."""
+        matchups = [
+            _make_matchup(1, "F1", "F2", 145.30, 100.10),
+        ]
+        text = (
+            "F4 set a new season-high with 103.10 points."
+        )
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        sup = [f for f in failures if f.category == "SUPERLATIVE"]
+        assert len(sup) == 1, (
+            f"expected 1 SUPERLATIVE failure for false standalone "
+            f"season-high claim, got {len(sup)}"
+        )
+        assert "103.10" in sup[0].claim
