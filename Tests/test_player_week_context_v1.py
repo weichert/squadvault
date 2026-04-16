@@ -357,6 +357,49 @@ class TestRenderPlayerHighlights:
         result = render_player_highlights_for_prompt(ctx)
         assert "Optimal lineup points left on bench: 25.00" in result
 
+    def test_player_lines_carry_franchise_tag(self):
+        """Every per-franchise player line must include [Franchise] tag.
+
+        Prevents V7 PLAYER_FRANCHISE verifier failures caused by the model
+        confusing franchise attribution when composing matchup prose across
+        adjacent franchise sections. Regression lock for the data-layer fix.
+        """
+        ps_top = PlayerScore("11111", 30.00, True, True)
+        ps_bust = PlayerScore("22222", 5.00, True, False)
+        ps_bench = PlayerScore("33333", 20.00, False, True)
+        ps_faab = PlayerScore("44444", 18.50, True, False)
+        pickup = FaabPickup("44444", "0001", 25.0, 0)
+        fc = FranchiseWeekContext(
+            franchise_id="0001",
+            starters=(ps_top, ps_bust),
+            bench=(ps_bench,),
+            top_starter=ps_top,
+            bust_starter=ps_bust,
+            starter_total=35.00,
+            bench_total=20.00,
+            bench_points_over_starters=15.00,
+            best_bench_player=ps_bench,
+            faab_performers=((ps_faab, pickup),),
+        )
+        ctx = self._make_context(
+            franchises=(fc,),
+            total_players=4,
+            total_starters=2,
+        )
+
+        def team_res(fid):
+            return {"0001": "Miller's Genuine Draft"}.get(fid, fid)
+
+        result = render_player_highlights_for_prompt(
+            ctx, team_resolver=team_res,
+        )
+        tag = "[Miller's Genuine Draft]"
+        # Top, Bust, Bench > starter (2 players), FAAB = 5 occurrences
+        assert result.count(tag) >= 4, (
+            f"Expected [franchise] tag on every player line; "
+            f"found {result.count(tag)} occurrences in:\n{result}"
+        )
+
 
 # ── DB-backed integration test ───────────────────────────────────────
 

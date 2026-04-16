@@ -691,13 +691,13 @@ def render_player_highlights_for_prompt(
         # Top starter
         if fc.top_starter:
             franchise_lines.append(
-                f"  Top: {_player(fc.top_starter.player_id)} — {fc.top_starter.score:.2f} pts"
+                f"  Top: {_player(fc.top_starter.player_id)} [{team_name}] — {fc.top_starter.score:.2f} pts"
             )
 
         # Bust (only if different from top and there are multiple starters)
         if fc.bust_starter and fc.top_starter and fc.bust_starter != fc.top_starter:
             franchise_lines.append(
-                f"  Bust: {_player(fc.bust_starter.player_id)} — {fc.bust_starter.score:.2f} pts"
+                f"  Bust: {_player(fc.bust_starter.player_id)} [{team_name}] — {fc.bust_starter.score:.2f} pts"
             )
 
         # Bench analysis — only if there are bench points worth mentioning
@@ -705,9 +705,9 @@ def render_player_highlights_for_prompt(
             if fc.best_bench_player.score > fc.bust_starter.score:
                 franchise_lines.append(
                     f"  Bench > starter: {_player(fc.best_bench_player.player_id)}"
-                    f" ({fc.best_bench_player.score:.2f}) outscored"
+                    f" [{team_name}] ({fc.best_bench_player.score:.2f}) outscored"
                     f" {_player(fc.bust_starter.player_id)}"
-                    f" ({fc.bust_starter.score:.2f})"
+                    f" [{team_name}] ({fc.bust_starter.score:.2f})"
                 )
 
         # Points left on bench (shouldStart bench players)
@@ -726,7 +726,7 @@ def render_player_highlights_for_prompt(
             status = "starter" if ps.is_starter else "bench"
             base = (
                 f"  FAAB pickup ${pickup.bid_amount:.0f}: {_player(ps.player_id)}"
-                f" — {ps.score:.2f} pts ({status})"
+                f" [{team_name}] — {ps.score:.2f} pts ({status})"
             )
 
             timeline = timeline_by_pid.get(ps.player_id)
