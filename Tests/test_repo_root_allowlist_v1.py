@@ -31,6 +31,7 @@ ALLOWED_ROOT_DIRS = {
     "src",
     "Tests",
     "docs",
+    "_observations",
 }
 
 
