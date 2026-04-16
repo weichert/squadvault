@@ -28,6 +28,7 @@ Governance:
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -634,6 +635,7 @@ def render_player_highlights_for_prompt(
     *,
     team_resolver: Any | None = None,
     player_resolver: Any | None = None,
+    matchup_pairings: Sequence[tuple[str, str]] | None = None,
 ) -> str:
     """Render player week context as a text block for the creative layer prompt.
 
@@ -642,6 +644,11 @@ def render_player_highlights_for_prompt(
 
     team_resolver: optional callable (franchise_id -> display_name).
     player_resolver: optional callable (player_id -> display_name).
+    matchup_pairings: optional sequence of (franchise_id, franchise_id) tuples
+        representing this week's matchup pairs.  When provided, franchise
+        blocks are grouped under matchup headers so the model sees both
+        sides of each game together — prevents cross-franchise player
+        misattribution in narrative prose.
     If None, IDs are used directly.
     """
     if not ctx.has_data:
@@ -667,43 +674,27 @@ def render_player_highlights_for_prompt(
                 pass
         return pid
 
-    lines: list[str] = []
-
-    # Week-level highlights
-    if ctx.week_top_scorer:
-        fid, pid, score = ctx.week_top_scorer
-        lines.append(
-            f"Week {ctx.week} top scorer: {_player(pid)} ({_team(fid)}) — {score:.2f} pts"
-        )
-    if ctx.week_lowest_starter:
-        fid, pid, score = ctx.week_lowest_starter
-        lines.append(
-            f"Week {ctx.week} lowest starter: {_player(pid)} ({_team(fid)}) — {score:.2f} pts"
-        )
-
-    lines.append("")
-
-    # Per-franchise highlights (top performer, bust, bench analysis)
-    for fc in ctx.franchises:
+    def _franchise_block(fc: FranchiseWeekContext) -> list[str]:
+        """Render a single franchise's player lines (header + details)."""
         team_name = _team(fc.franchise_id)
-        franchise_lines: list[str] = []
+        detail_lines: list[str] = []
 
         # Top starter
         if fc.top_starter:
-            franchise_lines.append(
+            detail_lines.append(
                 f"  Top: {_player(fc.top_starter.player_id)} [{team_name}] — {fc.top_starter.score:.2f} pts"
             )
 
         # Bust (only if different from top and there are multiple starters)
         if fc.bust_starter and fc.top_starter and fc.bust_starter != fc.top_starter:
-            franchise_lines.append(
+            detail_lines.append(
                 f"  Bust: {_player(fc.bust_starter.player_id)} [{team_name}] — {fc.bust_starter.score:.2f} pts"
             )
 
         # Bench analysis — only if there are bench points worth mentioning
         if fc.best_bench_player and fc.bust_starter:
             if fc.best_bench_player.score > fc.bust_starter.score:
-                franchise_lines.append(
+                detail_lines.append(
                     f"  Bench > starter: {_player(fc.best_bench_player.player_id)}"
                     f" [{team_name}] ({fc.best_bench_player.score:.2f}) outscored"
                     f" {_player(fc.bust_starter.player_id)}"
@@ -712,12 +703,11 @@ def render_player_highlights_for_prompt(
 
         # Points left on bench (shouldStart bench players)
         if fc.bench_points_over_starters > 0:
-            franchise_lines.append(
+            detail_lines.append(
                 f"  Optimal lineup points left on bench: {fc.bench_points_over_starters:.2f}"
             )
 
         # FAAB performers — with pre-derived temporal context
-        # Build a lookup for timelines by player_id
         timeline_by_pid: dict[str, FaabPerformerTimeline] = {
             t.player_id: t for t in fc.faab_performer_timelines
         }
@@ -735,11 +725,56 @@ def render_player_highlights_for_prompt(
                 if temporal:
                     base += f". {temporal}"
 
-            franchise_lines.append(base)
+            detail_lines.append(base)
 
-        if franchise_lines:
-            lines.append(f"{team_name} (starters: {fc.starter_total:.2f}, bench: {fc.bench_total:.2f}):")
-            lines.extend(franchise_lines)
+        if not detail_lines:
+            return []
+
+        return [
+            f"{team_name} (starters: {fc.starter_total:.2f}, bench: {fc.bench_total:.2f}):",
+            *detail_lines,
+        ]
+
+    lines: list[str] = []
+
+    # Week-level highlights
+    if ctx.week_top_scorer:
+        fid, pid, score = ctx.week_top_scorer
+        lines.append(
+            f"Week {ctx.week} top scorer: {_player(pid)} ({_team(fid)}) — {score:.2f} pts"
+        )
+    if ctx.week_lowest_starter:
+        fid, pid, score = ctx.week_lowest_starter
+        lines.append(
+            f"Week {ctx.week} lowest starter: {_player(pid)} ({_team(fid)}) — {score:.2f} pts"
+        )
+
+    lines.append("")
+
+    # Per-franchise highlights — matchup-grouped when pairings are available
+    if matchup_pairings:
+        fc_map = {fc.franchise_id: fc for fc in ctx.franchises}
+        rendered_fids: set[str] = set()
+
+        for fid_a, fid_b in matchup_pairings:
+            lines.append(
+                f"--- MATCHUP: {_team(fid_a)} vs {_team(fid_b)} ---"
+            )
+            for fid in (fid_a, fid_b):
+                fc = fc_map.get(fid)
+                if fc is not None:
+                    lines.extend(_franchise_block(fc))
+                    rendered_fids.add(fid)
+            lines.append("")
+
+        # Any franchises not in matchup pairings (bye weeks, edge cases)
+        for fc in ctx.franchises:
+            if fc.franchise_id not in rendered_fids:
+                lines.extend(_franchise_block(fc))
+    else:
+        # Flat per-franchise rendering (backward compat)
+        for fc in ctx.franchises:
+            lines.extend(_franchise_block(fc))
 
     return "\n".join(lines) + "\n"
 

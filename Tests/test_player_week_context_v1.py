@@ -400,6 +400,79 @@ class TestRenderPlayerHighlights:
             f"found {result.count(tag)} occurrences in:\n{result}"
         )
 
+    def test_matchup_grouped_rendering(self):
+        """When matchup_pairings are provided, franchise blocks are grouped
+        under matchup headers — prevents cross-franchise player misattribution.
+        """
+        fc_a = FranchiseWeekContext(
+            franchise_id="0001",
+            starters=(PlayerScore("11111", 30.00, True, True),),
+            bench=(),
+            top_starter=PlayerScore("11111", 30.00, True, True),
+            bust_starter=PlayerScore("11111", 30.00, True, True),
+            starter_total=30.00,
+            bench_total=0.0,
+            bench_points_over_starters=0.0,
+            best_bench_player=None,
+            faab_performers=(),
+        )
+        fc_b = FranchiseWeekContext(
+            franchise_id="0002",
+            starters=(PlayerScore("22222", 25.00, True, True),),
+            bench=(),
+            top_starter=PlayerScore("22222", 25.00, True, True),
+            bust_starter=PlayerScore("22222", 25.00, True, True),
+            starter_total=25.00,
+            bench_total=0.0,
+            bench_points_over_starters=0.0,
+            best_bench_player=None,
+            faab_performers=(),
+        )
+        ctx = self._make_context(
+            franchises=(fc_a, fc_b),
+            total_players=2,
+            total_starters=2,
+        )
+
+        def team_res(fid):
+            return {"0001": "Team Alpha", "0002": "Team Beta"}.get(fid, fid)
+
+        result = render_player_highlights_for_prompt(
+            ctx,
+            team_resolver=team_res,
+            matchup_pairings=[("0001", "0002")],
+        )
+        # Matchup header present
+        assert "--- MATCHUP: Team Alpha vs Team Beta ---" in result
+        # Both franchises rendered under the header
+        header_pos = result.index("--- MATCHUP:")
+        alpha_pos = result.index("Team Alpha (starters:")
+        beta_pos = result.index("Team Beta (starters:")
+        assert header_pos < alpha_pos < beta_pos
+
+    def test_no_matchup_pairings_uses_flat_rendering(self):
+        """Without matchup_pairings, rendering is flat (backward compat)."""
+        fc = FranchiseWeekContext(
+            franchise_id="0001",
+            starters=(PlayerScore("11111", 30.00, True, True),),
+            bench=(),
+            top_starter=PlayerScore("11111", 30.00, True, True),
+            bust_starter=PlayerScore("11111", 30.00, True, True),
+            starter_total=30.00,
+            bench_total=0.0,
+            bench_points_over_starters=0.0,
+            best_bench_player=None,
+            faab_performers=(),
+        )
+        ctx = self._make_context(
+            franchises=(fc,),
+            total_players=1,
+            total_starters=1,
+        )
+        result = render_player_highlights_for_prompt(ctx)
+        assert "--- MATCHUP:" not in result
+        assert "0001 (starters:" in result
+
 
 # ── DB-backed integration test ───────────────────────────────────────
 

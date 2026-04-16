@@ -900,10 +900,18 @@ def _derive_prompt_context(
                 _ph_pres.load_for_ids(_ph_pids)
             if _ph_fids:
                 _ph_fres.load_for_ids(_ph_fids)
+            # Extract matchup pairings from season context for grouped rendering
+            _matchup_pairs: list[tuple[str, str]] | None = None
+            if _season_ctx is not None and _season_ctx.has_this_week_data:
+                _matchup_pairs = [
+                    (wm.winner_id, wm.loser_id)
+                    for wm in _season_ctx.week_matchups
+                ]
             player_highlights_text = render_player_highlights_for_prompt(
                 _player_ctx,
                 team_resolver=_ph_fres.one,
                 player_resolver=_ph_pres.one,
+                matchup_pairings=_matchup_pairs or None,
             )
     except Exception as e:
         logger.debug("Player highlights derivation failed: %s", e)
