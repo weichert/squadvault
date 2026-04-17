@@ -1,4 +1,4 @@
-"""Prompt Audit sidecar (v1 surface, v2 internals, rev3 map completion).
+"""Prompt Audit sidecar (v1 surface, v2 internals, rev4 map completion).
 
 Captures one row per prompt attempt inside the Writing Room's `_generate_draft`
 retry loop. Observation-only: never feeds back into facts, never alters drafts,
@@ -19,6 +19,14 @@ rev3 delta (from rev2):
       three canonical angle source files. Prior rev2 seed (32) was extended
       with the 18 keys surfaced by the drift detector test: the nine auction
       detectors (D20–D28) and the tail of Dimension 9 (D41–D48, D50).
+
+rev4 delta (from rev3):
+    * CATEGORY_TO_DETECTOR now covers all live category emissions across six
+      detector files (rev3 covered the three D-numbered files only). Adds
+      primordial matchup detectors (P1–P7) from narrative_angles_v1, bye-week
+      detectors (B1–B3) from bye_week_context_v1, and the scoring-structure
+      context detector (R1) from league_rules_context_v1.
+      Resolves Audit Surprise S2 (drift-detector scope gap).
 
 Governing principles (per SquadVault constitution):
     * Facts are immutable and append-only — this table never updates rows.
@@ -45,11 +53,10 @@ AUDIT_ENV_VAR = "SQUADVAULT_PROMPT_AUDIT"
 #
 # Maps narrative-angle `category` strings (as emitted by detector functions in
 # squadvault.core.recaps.context) to their owning detector ID. Covers every
-# D-attributable category present in the three canonical angle source files
-# as of this rev. The drift detector test
-# (test_category_to_detector_drift_detector) enforces continued completeness:
-# when a new category appears in the codebase, the test fails loudly and this
-# map must be extended.
+# live-emitting category present across the six detector source files as of
+# this rev. The drift detector test (test_category_to_detector_drift_detector)
+# enforces continued completeness: when a new category appears in the
+# codebase, the test fails loudly and this map must be extended.
 #
 # D4 (PLAYER_BOOM_BUST) and D49 (SCORING_MOMENTUM_IN_STREAK) are the explicit
 # audit anchors for the current phase of observation. D41
@@ -117,6 +124,29 @@ CATEGORY_TO_DETECTOR: dict[str, str] = {
     "REPEAT_MATCHUP_PATTERN": "D48",
     "SCORING_MOMENTUM_IN_STREAK": "D49",
     "THE_ALMOST": "D50",
+    # Primordial matchup detectors (P1–P7)
+    # Emitted by core/recaps/context/narrative_angles_v1.py.
+    # These predate the D-numbered Narrative Angles v2 work and operate
+    # on bare matchup outcomes rather than dimensional context.
+    # NOTE: narrative_angles_v1.py's docstring also lists STANDINGS_SHIFT,
+    # but no emit site exists in code. Excluded — the registry tracks
+    # categories that can actually appear in production audits.
+    "UPSET": "P1",
+    "STREAK": "P2",
+    "SCORING_ANOMALY": "P3",
+    "BLOWOUT": "P4",
+    "NAIL_BITER": "P5",
+    "SCORING_RECORD": "P6",
+    "RIVALRY": "P7",
+    # Bye week context (B1–B3)
+    # Emitted by core/recaps/context/bye_week_context_v1.py.
+    # Require nfl_bye_weeks metadata; silent if absent.
+    "BYE_WEEK_IMPACT": "B1",
+    "BYE_WEEK_CONFLICT": "B2",
+    "FRANCHISE_BYE_WEEK_RECORD": "B3",
+    # League rules context (R1)
+    # Emitted by core/recaps/context/league_rules_context_v1.py.
+    "SCORING_STRUCTURE_CONTEXT": "R1",
 }
 
 

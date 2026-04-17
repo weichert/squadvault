@@ -1,11 +1,12 @@
-"""Tests for the Prompt Audit sidecar (v2 contract, rev3).
+"""Tests for the Prompt Audit sidecar (v2 contract, rev4).
 
-With rev3's completed CATEGORY_TO_DETECTOR map, all 5 original tests
-pass. Migration 0009 adds prompt_text capture; tests 6 and 7 cover that
-column. The drift detector test remains in place as a standing
-guardrail: any future narrative-angle category added to the source
-without a corresponding map entry will fail this test with an explicit
-missing-keys list.
+With rev4's expanded scan scope, all live-emitting category source files
+are tracked by the drift detector (Test 5) and audited for completeness.
+Migration 0009 adds prompt_text capture; tests 6 and 7 cover that
+column. Test 8 (added in rev4) is the SCAN SCOPE GATE — it asserts that
+ANGLE_SOURCE_FILES itself stays complete by enumerating context files
+and requiring each be either scanned or explicitly listed as
+non-emitting. Origin: Audit Surprise S2.
 """
 from __future__ import annotations
 
@@ -21,7 +22,6 @@ from squadvault.recaps.writing_room.prompt_audit_v1 import (
     CATEGORY_TO_DETECTOR,
     maybe_capture_attempt,
 )
-
 
 SCHEMA_PATH = (
     Path(__file__).resolve().parents[3]
@@ -167,14 +167,21 @@ def test_append_only_behavior(db_path: str, audit_env: None) -> None:
 # ---------------------------------------------------------------------------
 # Test 4 — CATEGORY_TO_DETECTOR contains the current-phase audit anchors
 #
-# Sanity count set to 50: the complete set of D-attributable categories
-# across the three canonical angle source files (D1–D50, with D41 included
-# for coverage even though its detector is currently disabled).
+# Counts by prefix make additions explicit and surface drift early.
+# Adding a detector requires updating these counts, which forces a
+# deliberate decision rather than silently bumping a magic number.
+# Prefix scheme (rev4): D = dimensional Narrative Angles v2 detectors
+# (D1–D50, with D41 included though disabled); P = primordial matchup
+# detectors from narrative_angles_v1; B = bye-week context detectors
+# from bye_week_context_v1; R = league-rules context detectors.
 # ---------------------------------------------------------------------------
 def test_category_to_detector_includes_audit_anchors() -> None:
     assert CATEGORY_TO_DETECTOR["PLAYER_BOOM_BUST"] == "D4"
     assert CATEGORY_TO_DETECTOR["SCORING_MOMENTUM_IN_STREAK"] == "D49"
-    assert len(CATEGORY_TO_DETECTOR) == 50
+    by_prefix: dict[str, int] = {}
+    for v in CATEGORY_TO_DETECTOR.values():
+        by_prefix[v[0]] = by_prefix.get(v[0], 0) + 1
+    assert by_prefix == {"D": 50, "P": 7, "B": 3, "R": 1}
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +196,9 @@ ANGLE_SOURCE_FILES = [
     "src/squadvault/core/recaps/context/player_narrative_angles_v1.py",
     "src/squadvault/core/recaps/context/franchise_deep_angles_v1.py",
     "src/squadvault/core/recaps/context/auction_draft_angles_v1.py",
+    "src/squadvault/core/recaps/context/narrative_angles_v1.py",
+    "src/squadvault/core/recaps/context/bye_week_context_v1.py",
+    "src/squadvault/core/recaps/context/league_rules_context_v1.py",
 ]
 
 _CATEGORY_RE = re.compile(r'category\s*=\s*"([A-Z_][A-Z0-9_]*)"')
@@ -332,3 +342,55 @@ def test_maybe_capture_attempt_default_prompt_text_empty(
         con.close()
 
     assert rows == [("", 0)]
+
+
+# ---------------------------------------------------------------------------
+# Test 8 — SCAN SCOPE GATE.
+#
+# The drift detector test (Test 5) only catches missing CATEGORY_TO_DETECTOR
+# entries among files in ANGLE_SOURCE_FILES. If a new detector file is added
+# to core/recaps/context/ but not added to ANGLE_SOURCE_FILES, the drift
+# test scans nothing and silently misses the new categories.
+#
+# This test enumerates context files and asserts each is either scanned by
+# the drift detector or explicitly listed as a non-emitting context module.
+# Adding a new detector file requires updating one of the two lists, which
+# forces a deliberate decision.
+#
+# Origin: Audit Surprise S2 (drift-detector scope gap).
+# ---------------------------------------------------------------------------
+_NON_EMITTING_CONTEXT_MODULES: set[str] = {
+    "__init__.py",
+    "season_context_v1.py",
+    "league_history_v1.py",
+    "player_week_context_v1.py",
+    "writer_room_context_v1.py",
+}
+
+
+def test_drift_scan_covers_all_context_files() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    context_dir = repo_root / "src/squadvault/core/recaps/context"
+    actual_files = {p.name for p in context_dir.glob("*.py")}
+
+    scanned = {Path(p).name for p in ANGLE_SOURCE_FILES}
+    accounted_for = scanned | _NON_EMITTING_CONTEXT_MODULES
+
+    unaccounted = sorted(actual_files - accounted_for)
+    assert not unaccounted, (
+        f"Context files exist that are neither in ANGLE_SOURCE_FILES nor in "
+        f"_NON_EMITTING_CONTEXT_MODULES: {unaccounted}. "
+        f"Add to one or the other."
+    )
+
+    stale_scanned = sorted(scanned - actual_files)
+    stale_non_emitting = sorted(
+        _NON_EMITTING_CONTEXT_MODULES - actual_files - {"__init__.py"}
+    )
+    assert not stale_scanned, (
+        f"ANGLE_SOURCE_FILES references missing files: {stale_scanned}"
+    )
+    assert not stale_non_emitting, (
+        f"_NON_EMITTING_CONTEXT_MODULES references missing files: "
+        f"{stale_non_emitting}"
+    )
