@@ -230,13 +230,13 @@ def detect_scoring_volatility(
     if most_volatile[1] > most_consistent[1] * 2:
         angles.append(NarrativeAngle(
             category="SCORING_VOLATILITY",
-            headline=f"{most_consistent[0]} has the narrowest scoring range this season",
+            headline=f"{fname(most_consistent[0])} has the narrowest scoring range this season",
             detail=f"Range: {most_consistent[1]:.1f} pts between best and worst weeks.",
             strength=1, franchise_ids=(most_consistent[0],),
         ))
         angles.append(NarrativeAngle(
             category="SCORING_VOLATILITY",
-            headline=f"{most_volatile[0]} has the widest scoring range this season",
+            headline=f"{fname(most_volatile[0])} has the widest scoring range this season",
             detail=f"Range: {most_volatile[1]:.1f} pts between best and worst weeks.",
             strength=1, franchise_ids=(most_volatile[0],),
         ))

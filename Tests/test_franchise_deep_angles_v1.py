@@ -111,6 +111,55 @@ class TestScoringVolatility:
         assert any("F1" in h and "narrowest" in h for h in headlines)
         assert any("F2" in h and "widest" in h for h in headlines)
 
+    def test_fname_resolves_franchise_id_in_headline(self):
+        """Regression: headlines must wrap franchise_id with fname.
+
+        Prior bug: detect_scoring_volatility accepted an fname parameter
+        but the two SCORING_VOLATILITY headlines ("narrowest/widest
+        scoring range") emitted raw franchise IDs rather than resolved
+        names. Discovered in the 2026-04-16 Writing Room surfacing audit
+        when a production prompt for 2025 W10 contained the line:
+            [MINOR] [RE: Miller's Genuine Draft] 0006 has the
+            narrowest scoring range this season ...
+        The [RE: ...] tag resolved correctly via the lifecycle's
+        _name_map; the headline did not because the detector ignored
+        its own fname argument. This test prevents regression by
+        passing a non-identity fname and asserting the resolved name
+        appears in both headlines while the raw fid does not.
+        """
+        payloads = []
+        for w in range(1, 6):
+            payloads.append(_make_score_payload(w, "0001", "P1", 100.0))
+            payloads.append(_make_score_payload(w, "0002", "P2", 60.0 + w * 20))
+            payloads.append(_make_score_payload(w, "0003", "P3", 90.0 + w * 5))
+
+        name_map = {
+            "0001": "Italian Cavallini",
+            "0002": "Ben's Gods",
+            "0003": "Purple Haze",
+        }
+        angles = detect_scoring_volatility(
+            payloads, 5, fname=lambda fid: name_map.get(fid, fid)
+        )
+        assert len(angles) == 2
+        headlines = [a.headline for a in angles]
+        narrowest = next(h for h in headlines if "narrowest" in h)
+        widest = next(h for h in headlines if "widest" in h)
+
+        # Resolved names must appear; raw fids must not.
+        assert "Italian Cavallini" in narrowest
+        assert "0001" not in narrowest
+        assert "Ben's Gods" in widest
+        assert "0002" not in widest
+
+        # franchise_ids tuple still carries the raw fid for downstream
+        # [RE: ...] resolution — this is the correct shape and must
+        # remain unchanged.
+        narrowest_angle = next(a for a in angles if "narrowest" in a.headline)
+        widest_angle = next(a for a in angles if "widest" in a.headline)
+        assert narrowest_angle.franchise_ids == ("0001",)
+        assert widest_angle.franchise_ids == ("0002",)
+
 
 class TestStarExplosionCount:
     def test_detects_explosion_leader(self):
