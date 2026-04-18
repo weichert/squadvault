@@ -1,8 +1,9 @@
 """Tests for squadvault.ingest.transactions.
 
 Covers: _safe_get, _stable_external_id, _truncate_raw_json, _extract_type,
-_extract_franchise_id, _extract_timestamp_unix, _extract_bid_amount,
-_parse_mfl_transaction_field, derive_transaction_event_envelopes.
+_extract_franchise_id, _extract_all_franchise_ids, _extract_timestamp_unix,
+_extract_bid_amount, _parse_mfl_transaction_field,
+derive_transaction_event_envelopes.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from squadvault.ingest.transactions import (
     _truncate_raw_json,
     _extract_type,
     _extract_franchise_id,
+    _extract_all_franchise_ids,
     _extract_timestamp_unix,
     _extract_bid_amount,
     _parse_mfl_transaction_field,
@@ -91,6 +93,51 @@ class TestExtractFranchiseId:
 
     def test_missing(self):
         assert _extract_franchise_id({}) == ""
+
+
+# ── _extract_all_franchise_ids (S10 promotion helper) ────────────────
+
+class TestExtractAllFranchiseIds:
+    def test_single_franchise_non_trade(self):
+        """Non-trade transactions: only the initiator is surfaced."""
+        assert _extract_all_franchise_ids({"@franchise": "0001"}) == ["0001"]
+
+    def test_franchise_key_only(self):
+        """'franchise' key (no '@') is equally valid as initiator."""
+        assert _extract_all_franchise_ids({"franchise": "0004"}) == ["0004"]
+
+    def test_trade_with_counterparty(self):
+        """Trade: initiator first, counterparty second, in MFL key order."""
+        txn = {"@franchise": "0001", "franchise2": "0010", "type": "TRADE"}
+        assert _extract_all_franchise_ids(txn) == ["0001", "0010"]
+
+    def test_trade_with_multiple_counterparties(self):
+        """Three-way trades are represented as the full franchise list."""
+        txn = {"franchise": "0001", "franchise2": "0010", "franchise3": "0007"}
+        assert _extract_all_franchise_ids(txn) == ["0001", "0010", "0007"]
+
+    def test_dedupes_initiator_appearing_twice(self):
+        """If both '@franchise' and 'franchise' carry the same value, only once in output."""
+        txn = {"@franchise": "0001", "franchise": "0001", "franchise2": "0010"}
+        assert _extract_all_franchise_ids(txn) == ["0001", "0010"]
+
+    def test_at_prefixed_counterparties(self):
+        """@franchise2 (some feed shapes) is recognized."""
+        txn = {"@franchise": "0001", "@franchise2": "0010"}
+        assert _extract_all_franchise_ids(txn) == ["0001", "0010"]
+
+    def test_empty_values_skipped(self):
+        """Empty strings do not enter the result."""
+        txn = {"franchise": "0001", "franchise2": "", "franchise3": "0007"}
+        assert _extract_all_franchise_ids(txn) == ["0001", "0007"]
+
+    def test_non_string_values_skipped(self):
+        """Defensive: non-string values are not coerced."""
+        txn = {"franchise": "0001", "franchise2": 12, "franchise3": None}
+        assert _extract_all_franchise_ids(txn) == ["0001"]
+
+    def test_empty_input(self):
+        assert _extract_all_franchise_ids({}) == []
 
 
 # ── _extract_timestamp_unix ──────────────────────────────────────────
@@ -182,6 +229,15 @@ class TestDeriveTransactionEventEnvelopes:
         assert evt["external_source"] == "MFL"
         assert len(evt["external_id"]) == 24
 
+    def test_free_agent_franchise_ids_involved_contains_initiator_only(self):
+        """S10: non-trade canonical list contains just the initiator."""
+        txns = [{"type": "FREE_AGENT", "franchise": "0001", "timestamp": "1700000000",
+                 "transaction": "16207,|14108,"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["franchise_ids_involved"] == ["0001"]
+
     def test_excludes_auction_won(self):
         txns = [{"type": "AUCTION_WON", "franchise": "0001", "timestamp": "1700000000"}]
         result = derive_transaction_event_envelopes(
@@ -216,6 +272,21 @@ class TestDeriveTransactionEventEnvelopes:
         )
         assert len(result) == 1
         assert result[0]["event_type"] == "TRANSACTION_TRADE"
+
+    def test_trade_event_promotes_counterparties_to_canonical_payload(self):
+        """S10: franchise_ids_involved is written at ingest, no downstream raw parsing needed."""
+        txns = [{
+            "type": "TRADE",
+            "franchise": "0001",
+            "franchise2": "0010",
+            "timestamp": "1700000000",
+        }]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        payload = result[0]["payload"]
+        assert payload["franchise_id"] == "0001"
+        assert payload["franchise_ids_involved"] == ["0001", "0010"]
 
     def test_occurred_at_from_timestamp(self):
         txns = [{"type": "FREE_AGENT", "franchise": "0001", "timestamp": "1704067200"}]

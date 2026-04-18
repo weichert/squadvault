@@ -1,8 +1,14 @@
-"""Franchise-scoped event query helpers."""
+"""Franchise-scoped event query helpers.
+
+Reads only canonical payload fields — never parses adapter-specific raw
+payloads. Adapter-specific parsing (e.g. pulling franchise counterparties
+out of an MFL raw transaction dict) belongs in ``ingest/`` and must be
+promoted into the canonical payload by the ingest layer before query
+helpers can consume it.
+"""
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable
 from typing import Any
 
@@ -13,29 +19,48 @@ from squadvault.core.storage.sqlite_store import SQLiteStore
 
 def _franchise_ids_from_payload(event: dict[str, Any]) -> set[str]:
     """
-    Extract all franchise IDs involved in an event.
+    Extract every franchise ID involved in an event from canonical payload fields.
 
-    - Uses payload["franchise_id"] when present
-    - Also parses raw_mfl_json for keys like franchise2, franchise3 (trades)
+    Reads, in precedence order:
+
+    - ``franchise_ids_involved`` (list[str]): the structured list
+      written by ``ingest/transactions.py`` for events canonicalized
+      after that field was promoted. For trades this carries the
+      initiator plus each counterparty; for non-trade transactions it
+      carries the initiator only.
+    - ``franchise_id`` (str | list[str]): the scalar initiator. Used
+      alongside the list above (merged into the set) so events that
+      predate the new field still resolve to at least their initiator.
+
+    Known limitation:
+        Trade events ingested before ``franchise_ids_involved`` was
+        promoted retain their counterparty IDs only inside the raw
+        adapter payload. This helper deliberately does not parse
+        that payload — the layer boundary (core/ reads canonical;
+        ingest/ parses adapter payloads) is worth preserving, and a
+        backfill pass over historical memory events is a separate,
+        out-of-scope concern. For those historical trades, only the
+        scalar initiator surfaces here; counterparty reads will be
+        under-represented until a backfill is run or the affected
+        rows are re-ingested.
     """
     payload = event.get("payload") or {}
     out: set[str] = set()
 
+    # Preferred: the canonical list of all franchises involved.
+    involved = payload.get("franchise_ids_involved")
+    if isinstance(involved, (list, tuple)):
+        out.update(x for x in involved if isinstance(x, str) and x)
+
+    # Fallback / merge: the scalar initiator. Always unioned in — this
+    # covers both the backward-compat case (no involved list at all)
+    # and the defensive case (initiator listed via scalar but somehow
+    # missing from the list).
     fid = payload.get("franchise_id")
     if isinstance(fid, str) and fid:
         out.add(fid)
     elif isinstance(fid, (list, tuple, set)):
-        out.update([x for x in fid if isinstance(x, str) and x])
-
-    raw = payload.get("raw_mfl_json")
-    if isinstance(raw, str) and raw:
-        try:
-            obj = json.loads(raw)
-            for k, v in obj.items():
-                if isinstance(k, str) and k.startswith("franchise") and isinstance(v, str) and v:
-                    out.add(v)
-        except (ValueError, TypeError):
-            pass
+        out.update(x for x in fid if isinstance(x, str) and x)
 
     return out
 

@@ -43,8 +43,56 @@ def _extract_type(txn: dict[str, Any]) -> str:
 
 
 def _extract_franchise_id(txn: dict[str, Any]) -> str:
-    """Extract franchise ID from raw transaction data."""
+    """Extract franchise ID (initiator) from raw transaction data."""
     return str(_safe_get(txn, "@franchise", "franchise") or "")
+
+
+def _extract_all_franchise_ids(txn: dict[str, Any]) -> list[str]:
+    """
+    Extract every franchise ID referenced by a raw MFL transaction.
+
+    For trades, MFL records counterparties as sibling keys: the
+    initiator is under ``franchise`` (or ``@franchise``) and each
+    counterparty is under ``franchise2``, ``franchise3``, ... (with or
+    without the ``@`` prefix, depending on the feed shape). For non-trade
+    transactions, only the initiator is present.
+
+    Returns a deduplicated list with the initiator first (when
+    resolvable) and counterparties in MFL key order. Empty/non-string
+    values are skipped.
+
+    Promotion of this structure into the canonical payload is what
+    allows `core/queries/franchise_queries` to answer
+    "which franchises does this event involve?" without reaching into
+    raw_mfl_json — resolving the layer-boundary aspect of Audit
+    Surprise S10.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def _push(v: Any) -> None:
+        if isinstance(v, str) and v and v not in seen:
+            seen.add(v)
+            out.append(v)
+
+    # Initiator first, using the same precedence as _extract_franchise_id
+    # so the two helpers stay consistent on the "primary" franchise.
+    _push(_safe_get(txn, "@franchise", "franchise"))
+
+    # Then any franchise* / @franchise* keys in MFL's natural dict order.
+    # Matches the semantic predicate of the prior query-side parser:
+    # "any string key that starts with 'franchise'". Dedupe via `seen`
+    # ensures the initiator is not duplicated when both "@franchise" and
+    # "franchise" are present (or when the initiator's key is processed
+    # in the loop).
+    for k, v in txn.items():
+        if not isinstance(k, str):
+            continue
+        bare = k[1:] if k.startswith("@") else k
+        if bare.startswith("franchise"):
+            _push(v)
+
+    return out
 
 
 def _extract_timestamp_unix(txn: dict[str, Any]) -> int | None:
@@ -129,6 +177,7 @@ def derive_transaction_event_envelopes(
         occurred_at = unix_seconds_to_iso_z(ts_unix) if ts_unix else None
 
         franchise_id = _extract_franchise_id(txn)
+        franchise_ids_involved = _extract_all_franchise_ids(txn)
 
         # Parse players
         added_ids, dropped_ids = _parse_mfl_transaction_field(txn)
@@ -174,6 +223,7 @@ def derive_transaction_event_envelopes(
                 "payload": {
                     "mfl_type": t,
                     "franchise_id": franchise_id,
+                    "franchise_ids_involved": franchise_ids_involved,
                     "player_id": primary_player_id,
                     "players_added_ids": added_ids,
                     "players_dropped_ids": dropped_ids,
