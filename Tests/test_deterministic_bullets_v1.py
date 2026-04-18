@@ -499,3 +499,93 @@ class TestMaxBulletsCountsRendered:
         ]
         bullets = render_deterministic_bullets_v1(bbid_rows + matchup_rows)
         assert len(bullets) == MAX_BULLETS
+
+
+# ── Canonical trade-fields path (post-S10 leak #2/#4) ────────────────
+
+class TestTradeCanonicalPath:
+    """Verifies the canonical-first trade rendering path introduced by
+    S10 leak #4 resolution. Post-promotion trade events carry
+    ``trade_franchise_a_gave_up`` / ``trade_franchise_b_gave_up`` on
+    the canonical envelope; the renderer must consume these directly
+    without reaching into ``raw_mfl_json``.
+    """
+
+    def test_canonical_path_renders_bullet_with_resolvers(self):
+        # Canonical fields only; no raw_mfl_json.
+        team_res = lambda fid: {"0004": "Eagles", "0010": "Hawks"}.get(fid, fid)
+        player_res = lambda pid: {
+            "15754": "Chris Olave", "16214": "Sam LaPorta",
+        }.get(pid, pid)
+        row = _row(event_type="TRANSACTION_TRADE", payload={
+            "mfl_type": "TRADE",
+            "franchise_id": "0004",
+            "franchise_ids_involved": ["0004", "0010"],
+            "player_id": None,
+            "trade_franchise_a_gave_up": ["15754"],
+            "trade_franchise_b_gave_up": ["16214"],
+        })
+        bullets = render_deterministic_bullets_v1(
+            [row], team_resolver=team_res, player_resolver=player_res,
+        )
+        assert bullets == ["Eagles traded Chris Olave to Hawks for Sam LaPorta."]
+
+    def test_canonical_priority_over_raw_mfl_json(self):
+        # Both canonical and raw_mfl_json present, with distinct IDs so
+        # a raw-parse result would produce a visibly different bullet.
+        # Canonical must win.
+        row = _row(event_type="TRANSACTION_TRADE", payload={
+            "mfl_type": "TRADE",
+            "franchise_id": "0004",
+            "franchise_ids_involved": ["0004", "0010"],
+            "trade_franchise_a_gave_up": ["CANON_A"],
+            "trade_franchise_b_gave_up": ["CANON_B"],
+            "raw_mfl_json": (
+                '{"franchise":"0004","franchise2":"0010",'
+                '"franchise1_gave_up":"RAW_A,","franchise2_gave_up":"RAW_B,",'
+                '"type":"TRADE"}'
+            ),
+        })
+        bullets = render_deterministic_bullets_v1([row])
+        assert len(bullets) == 1
+        assert "CANON_A" in bullets[0]
+        assert "CANON_B" in bullets[0]
+        assert "RAW_A" not in bullets[0]
+        assert "RAW_B" not in bullets[0]
+
+    def test_canonical_one_side_empty_produces_completed_trade(self):
+        # Post-promotion event with one side's gave-up list empty.
+        # Matches existing raw_mfl_json fallback behavior: emit
+        # "completed a trade" rather than a partial sentence.
+        row = _row(event_type="TRANSACTION_TRADE", payload={
+            "mfl_type": "TRADE",
+            "franchise_id": "0004",
+            "franchise_ids_involved": ["0004", "0010"],
+            "trade_franchise_a_gave_up": ["15754"],
+            "trade_franchise_b_gave_up": [],
+        })
+        bullets = render_deterministic_bullets_v1([row])
+        assert bullets == ["0004 and 0010 completed a trade."]
+
+    def test_canonical_missing_franchise_b_falls_back_to_raw(self):
+        # Canonical key is present (post-promotion signal) but
+        # franchise_ids_involved contains only A, so B cannot be
+        # derived. Renderer falls back to raw_mfl_json parsing.
+        row = _row(event_type="TRANSACTION_TRADE", payload={
+            "mfl_type": "TRADE",
+            "franchise_id": "0004",
+            "franchise_ids_involved": ["0004"],  # no B
+            "trade_franchise_a_gave_up": ["15754"],
+            "trade_franchise_b_gave_up": ["16214"],
+            "raw_mfl_json": (
+                '{"franchise":"0004","franchise2":"0010",'
+                '"franchise1_gave_up":"15754,","franchise2_gave_up":"16214,",'
+                '"type":"TRADE"}'
+            ),
+        })
+        bullets = render_deterministic_bullets_v1([row])
+        assert len(bullets) == 1
+        assert "0004" in bullets[0]
+        assert "0010" in bullets[0]
+        assert "15754" in bullets[0]
+        assert "16214" in bullets[0]

@@ -75,18 +75,86 @@ def _money(raw: Any) -> str:
 
 
 def _csv_ids(raw: str) -> list[str]:
-    """Split a comma-separated string of IDs, stripping whitespace."""
+    """Split a comma-separated string of IDs, stripping whitespace.
+
+    Retained only to support the pre-promotion ``raw_mfl_json`` fallback
+    path in ``_extract_mfl_trade``. Post-promotion trade events carry
+    player-ID lists as native ``list[str]`` on the canonical payload
+    (``trade_franchise_a_gave_up`` / ``trade_franchise_b_gave_up``) and
+    do not go through this helper.
+    """
     if not raw:
         return []
     return [x.strip() for x in raw.split(",") if x.strip()]
 
 
-def _extract_mfl_trade(p: dict[str, Any]) -> dict[str, Any] | None:
-    """Extract normalized trade fields from raw_mfl_json if present.
+def _extract_canonical_trade(p: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract bilateral trade structure from canonical payload fields.
 
-    MFL trades have: franchise, franchise2, franchise1_gave_up, franchise2_gave_up.
-    Returns a dict with franchise1_id, franchise2_id, franchise1_gave_up_ids,
-    franchise2_gave_up_ids, or None if raw_mfl_json is absent/unparseable.
+    Post-promotion (per S10 leak #2 resolution at b26e93f),
+    TRANSACTION_TRADE envelopes carry ``trade_franchise_a_gave_up`` and
+    ``trade_franchise_b_gave_up`` as native ``list[str]`` alongside the
+    already-promoted ``franchise_id`` (the initiator) and
+    ``franchise_ids_involved`` (all franchises referenced). Franchise B
+    is derived as the first member of ``franchise_ids_involved`` that is
+    not franchise A.
+
+    Key-presence on ``trade_franchise_a_gave_up`` is the post-promotion
+    signal. Returns None when the key is absent (caller should fall
+    back to ``_extract_mfl_trade``) or when A/B cannot be resolved
+    (no initiator, or ``franchise_ids_involved`` contains only A).
+    """
+    if "trade_franchise_a_gave_up" not in p:
+        return None
+
+    f_a = str(p.get("franchise_id") or "").strip()
+    if not f_a:
+        return None
+
+    involved = p.get("franchise_ids_involved") or []
+    if not isinstance(involved, list):
+        return None
+    f_b = ""
+    for fid in involved:
+        s = str(fid or "").strip()
+        if s and s != f_a:
+            f_b = s
+            break
+    if not f_b:
+        return None
+
+    gave_a_raw = p.get("trade_franchise_a_gave_up") or []
+    gave_b_raw = p.get("trade_franchise_b_gave_up") or []
+    if not isinstance(gave_a_raw, list) or not isinstance(gave_b_raw, list):
+        return None
+    gave_a = [str(x).strip() for x in gave_a_raw if str(x).strip()]
+    gave_b = [str(x).strip() for x in gave_b_raw if str(x).strip()]
+
+    return {
+        "franchise_a_id": f_a,
+        "franchise_b_id": f_b,
+        "franchise_a_gave_up_ids": gave_a,
+        "franchise_b_gave_up_ids": gave_b,
+    }
+
+
+def _extract_mfl_trade(p: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract normalized trade fields from ``raw_mfl_json`` (fallback).
+
+    Pre-promotion fallback path for TRANSACTION_TRADE events ingested
+    before the S10 leak #2 resolution promoted per-franchise trade
+    structure into the canonical payload. Post-promotion events carry
+    that structure as ``trade_franchise_a_gave_up`` /
+    ``trade_franchise_b_gave_up`` on the envelope and are handled by
+    ``_extract_canonical_trade``; this helper runs only when those
+    canonical fields are absent from the payload (memory ledger is
+    append-only, so old events retain their old shape).
+
+    MFL raw trades have ``franchise``, ``franchise2``,
+    ``franchise1_gave_up``, ``franchise2_gave_up``. Returns a dict with
+    ``franchise_a_id``, ``franchise_b_id``, ``franchise_a_gave_up_ids``,
+    ``franchise_b_gave_up_ids``, or None if ``raw_mfl_json`` is absent
+    or unparseable.
     """
     raw_str = p.get("raw_mfl_json")
     if not raw_str or not isinstance(raw_str, str):
@@ -102,10 +170,10 @@ def _extract_mfl_trade(p: dict[str, Any]) -> dict[str, Any] | None:
     if not f1 or not f2:
         return None
     return {
-        "franchise1_id": str(f1).strip(),
-        "franchise2_id": str(f2).strip(),
-        "franchise1_gave_up_ids": _csv_ids(raw.get("franchise1_gave_up", "")),
-        "franchise2_gave_up_ids": _csv_ids(raw.get("franchise2_gave_up", "")),
+        "franchise_a_id": str(f1).strip(),
+        "franchise_b_id": str(f2).strip(),
+        "franchise_a_gave_up_ids": _csv_ids(raw.get("franchise1_gave_up", "")),
+        "franchise_b_gave_up_ids": _csv_ids(raw.get("franchise2_gave_up", "")),
     }
 
 
@@ -162,7 +230,7 @@ def render_deterministic_bullets_v1(
         bullet = None
 
         if et in ("TRANSACTION_TRADE", "TRADE"):
-            # Try standard fields first
+            # Try standard fields first (test fixtures / synthetic shapes)
             from_id = p.get("from_franchise_id") or p.get("from_team_id")
             to_id = p.get("to_franchise_id") or p.get("to_team_id")
             pid = p.get("player_id") or p.get("player")
@@ -174,13 +242,15 @@ def render_deterministic_bullets_v1(
                 player = _player_pos(pid)
                 bullet = f"{to_team} acquired {player} from {from_team}."
             else:
-                # MFL trade format: extract from raw_mfl_json
-                mfl = _extract_mfl_trade(p)
-                if mfl:
-                    t1 = _team(team_resolver, mfl["franchise1_id"])
-                    t2 = _team(team_resolver, mfl["franchise2_id"])
-                    gave1 = [_player_pos(pid) for pid in mfl["franchise1_gave_up_ids"]]
-                    gave2 = [_player_pos(pid) for pid in mfl["franchise2_gave_up_ids"]]
+                # MFL trade: prefer canonical promoted fields; fall back to
+                # raw_mfl_json parsing for events ingested pre-promotion
+                # (S10 leak #2 at b26e93f / leak #4 at this commit).
+                trade = _extract_canonical_trade(p) or _extract_mfl_trade(p)
+                if trade:
+                    t1 = _team(team_resolver, trade["franchise_a_id"])
+                    t2 = _team(team_resolver, trade["franchise_b_id"])
+                    gave1 = [_player_pos(x) for x in trade["franchise_a_gave_up_ids"]]
+                    gave2 = [_player_pos(x) for x in trade["franchise_b_gave_up_ids"]]
                     if gave1 and gave2:
                         players1 = ", ".join(gave1)
                         players2 = ", ".join(gave2)
