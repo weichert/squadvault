@@ -177,6 +177,47 @@ def _parse_trade_gave_up(txn: dict[str, Any]) -> tuple[list[str], list[str]]:
     )
 
 
+def _extract_trade_comments(txn: dict[str, Any]) -> str | None:
+    """
+    Extract free-text trade commentary from a raw MFL trade dict.
+
+    MFL TRADE transactions can carry a ``comments`` sibling key holding
+    owner-authored notes about the deal (occasionally mirrored as
+    ``@comments`` in some feed shapes). Returns the string verbatim,
+    or None when the key is absent or the value is non-string.
+
+    Promotion of this field into the canonical trade payload at ingest
+    is the S10-pattern companion to ``_parse_trade_gave_up``. Consumer-
+    layer code reads canonical ``trade_comments`` first and falls back
+    to ``raw_mfl_json`` only for pre-promotion historical events.
+    """
+    v = _safe_get(txn, "comments", "@comments")
+    if v is None:
+        return None
+    return str(v) if isinstance(v, str) else None
+
+
+def _extract_trade_expires_timestamp(txn: dict[str, Any]) -> int | None:
+    """
+    Extract a trade's expiration Unix timestamp from a raw MFL trade dict.
+
+    MFL encodes the trade's expiration window as a Unix-seconds string
+    (or int) under the ``expires`` sibling key (occasionally mirrored
+    as ``@expires``). Returns an int; unparseable or absent values
+    yield None.
+
+    Promotion of this field into the canonical trade payload at ingest
+    is the S10-pattern companion to ``_parse_trade_gave_up``.
+    """
+    v = _safe_get(txn, "expires", "@expires")
+    if v is None:
+        return None
+    try:
+        return int(v)
+    except (ValueError, TypeError):
+        return None
+
+
 # ---------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------
@@ -228,20 +269,26 @@ def derive_transaction_event_envelopes(
 
         bid_amount = _extract_bid_amount(txn)
 
-        # Trade-specific player structure. For TRANSACTION_TRADE events,
-        # MFL encodes player movements under sibling keys on the raw
-        # transaction dict (franchise1_gave_up / franchise2_gave_up)
-        # rather than in the compact "transaction" string parsed above.
-        # Promoting these into the canonical payload at ingest is the
-        # S10-pattern resolution for the trade case — see
+        # Trade-specific structure. For TRANSACTION_TRADE events, MFL
+        # encodes player movements, commentary, and expiration under
+        # sibling keys on the raw transaction dict rather than in the
+        # compact "transaction" string parsed above. Promoting these
+        # into the canonical payload at ingest is the S10-pattern
+        # resolution for the trade case — see
         # _observations/OBSERVATIONS_2026_04_18_S10_SCOPE_CORRECTION.md.
-        # Fields are always present (empty lists for non-trades) so
-        # envelope shape stays stable across transaction types.
+        # Fields are always present on every envelope (with empty-list
+        # / None defaults for non-trades) so consumers can rely on
+        # key-presence as the post-promotion signal without per-type
+        # branching.
         if t == "TRADE":
             trade_franchise_a_gave_up, trade_franchise_b_gave_up = _parse_trade_gave_up(txn)
+            trade_comments = _extract_trade_comments(txn)
+            trade_expires_timestamp = _extract_trade_expires_timestamp(txn)
         else:
             trade_franchise_a_gave_up = []
             trade_franchise_b_gave_up = []
+            trade_comments = None
+            trade_expires_timestamp = None
 
         # TRUE MFL IDENTITY
         transaction_raw = str(txn.get("transaction") or txn.get("@transaction") or "")
@@ -271,6 +318,7 @@ def derive_transaction_event_envelopes(
                 "season": year,
                 "payload": {
                     "mfl_type": t,
+                    "mfl_timestamp": ts_unix,
                     "franchise_id": franchise_id,
                     "franchise_ids_involved": franchise_ids_involved,
                     "player_id": primary_player_id,
@@ -279,6 +327,8 @@ def derive_transaction_event_envelopes(
                     "player_ids_involved": involved_ids,
                     "trade_franchise_a_gave_up": trade_franchise_a_gave_up,
                     "trade_franchise_b_gave_up": trade_franchise_b_gave_up,
+                    "trade_comments": trade_comments,
+                    "trade_expires_timestamp": trade_expires_timestamp,
                     "bid_amount": bid_amount,
                     "source_url": source_url,
                     "raw_mfl_json": raw_json,

@@ -1,4 +1,15 @@
-"""Extract structured facts from canonical events for recap rendering."""
+"""Extract structured facts from canonical events for recap rendering.
+
+S10-pattern canonical-first reads. Each type-specific extractor prefers
+canonical payload fields (promoted at ingest in
+``src/squadvault/ingest/transactions.py``) and falls back to parsing
+``raw_mfl_json`` only for pre-promotion historical events. The fallback
+is retained deliberately: silently under-representing historical
+transactions would produce visibly degraded recaps on archived weeks,
+which is the same class of regression cost that kept b26e93f's
+trade-loader fallback alive. See
+``_observations/OBSERVATIONS_2026_04_18_S10_SCOPE_CORRECTION.md``.
+"""
 
 from __future__ import annotations
 
@@ -43,7 +54,20 @@ def _json_load(payload: str) -> dict[str, Any]:
 
 
 def _parse_raw_mfl_json(payload: dict[str, Any]) -> dict[str, Any]:
-    """Parse possibly double-encoded MFL JSON payload."""
+    """Parse possibly double-encoded MFL JSON payload.
+
+    Retained for two purposes after the S10 canonical-first refactor:
+
+    1. Fallback source for pre-promotion memory events whose canonical
+       payload does not yet carry the promoted fields (``mfl_timestamp``,
+       ``trade_franchise_a_gave_up``, ``trade_comments``, etc.).
+    2. ``d["raw_mfl"]`` stash consumed by
+       ``render_recap_text_from_facts_v1`` for transaction-type dispatch.
+
+    Post-promotion events do not strictly require this parse for field
+    extraction, but the render stash contract requires the parsed dict
+    remain available.
+    """
     raw = payload.get("raw_mfl_json")
     if not raw or not isinstance(raw, str):
         return {}
@@ -54,42 +78,89 @@ def _parse_raw_mfl_json(payload: dict[str, Any]) -> dict[str, Any]:
         return {"_parse_error": True, "_raw": raw}
 
 
-def _extract_bbid_waiver_fields(raw: dict[str, Any]) -> dict[str, Any]:
-    """
-    raw example:
-      {"franchise":"0004","timestamp":"1726102800","transaction":"14138,|0.50|16149,","type":"BBID_WAIVER"}
+def _mfl_timestamp_canonical_first(
+    payload: dict[str, Any], raw: dict[str, Any]
+) -> Any:
+    """Canonical-first read of the Unix timestamp with raw fallback.
 
-    transaction encoding is league/system specific; v1 parsing:
-    - split on '|'
-    - middle chunk is bid amount if parseable float
-    - left/right chunks contain comma-separated player ids (may include trailing commas)
+    Post-promotion: ``payload["mfl_timestamp"]`` is the canonical source
+    (int or None). Pre-promotion: the key is absent; fall back to
+    ``raw["timestamp"]`` with the same int-coercion behaviour the
+    legacy code path used.
+    """
+    if "mfl_timestamp" in payload:
+        return payload.get("mfl_timestamp")
+    ts = raw.get("timestamp") if isinstance(raw, dict) else None
+    try:
+        return int(ts) if ts is not None else None
+    except (ValueError, TypeError):
+        return ts
+
+
+def _extract_bbid_waiver_fields(
+    payload: dict[str, Any], raw: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Extract BBID_WAIVER normalized fields, canonical-first with raw fallback.
+
+    Canonical fields on post-promotion events:
+      - payload["players_added_ids"]:    list[str]  (pre-S10 promotion)
+      - payload["players_dropped_ids"]:  list[str]  (pre-S10 promotion)
+      - payload["bid_amount"]:           float | None  (pre-S10 promotion)
+      - payload["mfl_timestamp"]:        int | None (S10 this-pass)
+
+    Pre-promotion fallback: parses the compact pipe-delimited raw
+    ``transaction`` string:
+
+        "14138,|0.50|16149,"
+         ^^^^^  ^^^^ ^^^^^^
+         adds   bid  drops
+
+    Each field reads canonical first, falls back independently so
+    partially-promoted payloads are tolerated.
     """
     out: dict[str, Any] = {}
 
-    tx = raw.get("transaction")
+    # Parse raw["transaction"] once for fallback use.
+    tx_parts: list[str] = []
+    tx = raw.get("transaction") if isinstance(raw, dict) else None
     if isinstance(tx, str) and tx:
-        parts = tx.split("|")
-        # Expected: [adds, bid, drops] but keep defensive
-        if len(parts) >= 1:
-            adds = [p for p in parts[0].split(",") if p]
-            if adds:
-                out["add_player_ids"] = adds
-        if len(parts) >= 2:
-            try:
-                out["bid_amount"] = float(parts[1])
-            except (ValueError, TypeError):
-                out["bid_amount"] = parts[1]
-        if len(parts) >= 3:
-            drops = [p for p in parts[2].split(",") if p]
-            if drops:
-                out["drop_player_ids"] = drops
+        tx_parts = tx.split("|")
 
-    # Timestamp as int if possible
-    ts = raw.get("timestamp")
-    try:
-        out["mfl_timestamp"] = int(ts) if ts is not None else None
-    except (ValueError, TypeError):
-        out["mfl_timestamp"] = ts
+    # adds: canonical-first
+    if "players_added_ids" in payload:
+        adds = payload.get("players_added_ids") or []
+        if isinstance(adds, list) and adds:
+            out["add_player_ids"] = [str(x) for x in adds if x is not None]
+    elif len(tx_parts) >= 1:
+        adds_legacy = [p for p in tx_parts[0].split(",") if p]
+        if adds_legacy:
+            out["add_player_ids"] = adds_legacy
+
+    # drops: canonical-first
+    if "players_dropped_ids" in payload:
+        drops = payload.get("players_dropped_ids") or []
+        if isinstance(drops, list) and drops:
+            out["drop_player_ids"] = [str(x) for x in drops if x is not None]
+    elif len(tx_parts) >= 3:
+        drops_legacy = [p for p in tx_parts[2].split(",") if p]
+        if drops_legacy:
+            out["drop_player_ids"] = drops_legacy
+
+    # bid_amount: canonical-first
+    if "bid_amount" in payload:
+        bid = payload.get("bid_amount")
+        if bid is not None:
+            out["bid_amount"] = bid
+    elif len(tx_parts) >= 2:
+        try:
+            out["bid_amount"] = float(tx_parts[1])
+        except (ValueError, TypeError):
+            out["bid_amount"] = tx_parts[1]
+
+    # mfl_timestamp: canonical-first (always written for shape stability,
+    # preserving legacy behaviour of writing None when no source).
+    out["mfl_timestamp"] = _mfl_timestamp_canonical_first(payload, raw)
 
     return out
 
@@ -98,8 +169,8 @@ def _extract_details(event_type: str, payload: dict[str, Any]) -> dict[str, Any]
     """
     v2 extraction:
     - always include source_url, franchise_id, mfl_type when present
-    - parse raw_mfl_json (if string JSON)
-    - add event-type specific normalized fields
+    - parse raw_mfl_json (fallback source + render stash)
+    - add event-type specific normalized fields (canonical-first)
     - keep full payload for audit under payload
     """
     d: dict[str, Any] = {}
@@ -109,11 +180,20 @@ def _extract_details(event_type: str, payload: dict[str, Any]) -> dict[str, Any]
         if key in payload:
             d[key] = payload[key]
 
+    # Parse raw_mfl_json. For post-promotion events this serves the
+    # render-layer stash (render_recap_text_from_facts_v1 reads
+    # d["raw_mfl"]["type"]). For pre-promotion events this also
+    # supplies the fallback values the per-type extractors read when
+    # canonical keys are absent.
     raw = _parse_raw_mfl_json(payload)
     if raw:
         d["raw_mfl"] = raw
 
-        # Determine transaction type
+        # Dispatch by transaction type. Precedence preserved from
+        # pre-S10 behavior (raw["type"] first, then canonical mfl_type,
+        # then event_type) — in practice the two type signals always
+        # agree because payload["mfl_type"] is derived from raw["type"]
+        # at ingest.
         raw_type = raw.get("type") if isinstance(raw, dict) else None
         tx_type = str(raw_type or payload.get("mfl_type") or event_type)
 
@@ -122,7 +202,7 @@ def _extract_details(event_type: str, payload: dict[str, Any]) -> dict[str, Any]
             if event_type == "WAIVER_BID_AWARDED":
                 d["normalized"] = _extract_waiver_bid_awarded_fields(payload, raw)
             else:
-                d["normalized"] = _extract_bbid_waiver_fields(raw)
+                d["normalized"] = _extract_bbid_waiver_fields(payload, raw)
 
         # FREE_AGENT
         if tx_type == "FREE_AGENT":
@@ -168,8 +248,23 @@ def extract_recap_facts_v1(
         )
     return facts
 
-def _extract_waiver_bid_awarded_fields(payload: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
-    """Extract waiver bid fields from a canonical event payload."""
+def _extract_waiver_bid_awarded_fields(
+    payload: dict[str, Any], raw: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Extract WAIVER_BID_AWARDED normalized fields, canonical-first.
+
+    All fields except ``mfl_timestamp`` were already canonical pre-S10
+    (``bid_amount``, ``players_added_ids``, ``players_dropped_ids``,
+    ``player_id``). This pass adds canonical-first resolution for
+    ``mfl_timestamp`` with raw fallback.
+
+    Note: WAIVER_BID_AWARDED is emitted by ``ingest/waiver_bids.py``,
+    which has not yet been extended to promote ``mfl_timestamp``. For
+    events from that ingest path the canonical-first check misses and
+    the raw fallback supplies the value — consistent with the retained-
+    fallback policy. A future pass may promote at that ingest module.
+    """
     out: dict[str, Any] = {}
 
     # Prefer already-normalized payload fields if present
@@ -188,17 +283,20 @@ def _extract_waiver_bid_awarded_fields(payload: dict[str, Any], raw: dict[str, A
     if payload.get("player_id"):
         out["player_id"] = str(payload.get("player_id"))
 
-    # Timestamp from raw if available
-    ts = raw.get("timestamp") if isinstance(raw, dict) else None
-    try:
-        out["mfl_timestamp"] = int(ts) if ts is not None else None
-    except (ValueError, TypeError):
-        out["mfl_timestamp"] = ts
+    # Timestamp canonical-first.
+    out["mfl_timestamp"] = _mfl_timestamp_canonical_first(payload, raw)
 
     return out
 
-def _extract_free_agent_fields(payload: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
-    """Extract free agent transaction fields from a canonical event payload."""
+def _extract_free_agent_fields(
+    payload: dict[str, Any], raw: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Extract FREE_AGENT normalized fields, canonical-first.
+
+    All list/scalar fields were already canonical pre-S10. This pass
+    adds canonical-first resolution for ``mfl_timestamp``.
+    """
     out: dict[str, Any] = {}
 
     # Prefer already-normalized payload lists
@@ -218,12 +316,8 @@ def _extract_free_agent_fields(payload: dict[str, Any], raw: dict[str, Any]) -> 
     if payload.get("bid_amount") is not None:
         out["bid_amount"] = payload.get("bid_amount")
 
-    # Timestamp from raw
-    ts = raw.get("timestamp") if isinstance(raw, dict) else None
-    try:
-        out["mfl_timestamp"] = int(ts) if ts is not None else None
-    except (ValueError, TypeError):
-        out["mfl_timestamp"] = ts
+    # Timestamp canonical-first.
+    out["mfl_timestamp"] = _mfl_timestamp_canonical_first(payload, raw)
 
     return out
 
@@ -237,39 +331,106 @@ def _split_csv_ids(s: Any) -> list[str]:
     return [p for p in parts if p]
 
 
-def _extract_trade_fields(payload: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
-    """Extract trade fields from a canonical event payload."""
+def _extract_trade_fields(
+    payload: dict[str, Any], raw: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Extract TRADE normalized fields, canonical-first with raw fallback.
+
+    Canonical fields on post-promotion events:
+      - payload["franchise_ids_involved"]:         list[str]
+            positions [0]=initiator (franchise A), [1]=counterparty (B).
+            Promoted in 6eab1e0.
+      - payload["trade_franchise_a_gave_up"]:      list[str]
+      - payload["trade_franchise_b_gave_up"]:      list[str]
+            Promoted in b26e93f. Empty lists on non-TRADE envelopes for
+            shape stability.
+      - payload["trade_comments"]:                 str | None
+      - payload["trade_expires_timestamp"]:        int | None
+            Promoted in this pass. ``None`` on non-TRADE envelopes.
+      - payload["mfl_timestamp"]:                  int | None
+            Promoted in this pass.
+
+    Pre-promotion fallback paths read ``raw["franchise"]`` /
+    ``raw["franchise2"]`` / ``raw["franchise{1,2}_gave_up"]`` /
+    ``raw["comments"]`` / ``raw["expires"]`` / ``raw["timestamp"]``
+    respectively. Each field falls back independently so partially-
+    promoted historical payloads resolve correctly.
+    """
     out: dict[str, Any] = {}
 
-    f1 = raw.get("franchise") if isinstance(raw, dict) else None
-    f2 = raw.get("franchise2") if isinstance(raw, dict) else None
+    # franchise1_id / franchise2_id: canonical-first via
+    # franchise_ids_involved positions; pre-promotion fallback reads
+    # raw["franchise"] / raw["franchise2"].
+    involved = payload.get("franchise_ids_involved")
+    f1: Any = None
+    f2: Any = None
+    if isinstance(involved, list) and len(involved) >= 2:
+        f1, f2 = involved[0], involved[1]
+    elif isinstance(involved, list) and len(involved) == 1:
+        # Only the initiator resolvable at ingest (unusual for a valid
+        # trade, but tolerated); counterparty falls back to raw.
+        f1 = involved[0]
+        if isinstance(raw, dict):
+            f2_raw = raw.get("franchise2")
+            if f2_raw is not None:
+                f2 = f2_raw
+    else:
+        # Fully pre-promotion fallback.
+        if isinstance(raw, dict):
+            f1 = raw.get("franchise")
+            f2 = raw.get("franchise2")
 
     if f1 is not None:
         out["franchise1_id"] = str(f1)
     if f2 is not None:
         out["franchise2_id"] = str(f2)
 
-    f1_gave = raw.get("franchise1_gave_up") if isinstance(raw, dict) else None
-    f2_gave = raw.get("franchise2_gave_up") if isinstance(raw, dict) else None
+    # Trade gave-up lists: canonical-first (b26e93f), raw fallback.
+    if "trade_franchise_a_gave_up" in payload:
+        gave_a = payload.get("trade_franchise_a_gave_up") or []
+        if isinstance(gave_a, list):
+            out["franchise1_gave_up_player_ids"] = [
+                str(x) for x in gave_a if x is not None
+            ]
+        else:
+            out["franchise1_gave_up_player_ids"] = []
+    else:
+        f1_gave = raw.get("franchise1_gave_up") if isinstance(raw, dict) else None
+        out["franchise1_gave_up_player_ids"] = _split_csv_ids(f1_gave)
 
-    out["franchise1_gave_up_player_ids"] = _split_csv_ids(f1_gave)
-    out["franchise2_gave_up_player_ids"] = _split_csv_ids(f2_gave)
+    if "trade_franchise_b_gave_up" in payload:
+        gave_b = payload.get("trade_franchise_b_gave_up") or []
+        if isinstance(gave_b, list):
+            out["franchise2_gave_up_player_ids"] = [
+                str(x) for x in gave_b if x is not None
+            ]
+        else:
+            out["franchise2_gave_up_player_ids"] = []
+    else:
+        f2_gave = raw.get("franchise2_gave_up") if isinstance(raw, dict) else None
+        out["franchise2_gave_up_player_ids"] = _split_csv_ids(f2_gave)
 
-    # Optional fields (keep if present)
-    if isinstance(raw, dict) and raw.get("comments") is not None:
+    # Trade comments: canonical-first, raw fallback.
+    if "trade_comments" in payload:
+        comments = payload.get("trade_comments")
+        if comments is not None:
+            out["comments"] = str(comments)
+    elif isinstance(raw, dict) and raw.get("comments") is not None:
         out["comments"] = str(raw.get("comments"))
-    if isinstance(raw, dict) and raw.get("expires") is not None:
+
+    # Expires timestamp: canonical-first, raw fallback.
+    if "trade_expires_timestamp" in payload:
+        expires = payload.get("trade_expires_timestamp")
+        if expires is not None:
+            out["expires_timestamp"] = expires
+    elif isinstance(raw, dict) and raw.get("expires") is not None:
         try:
             out["expires_timestamp"] = int(raw["expires"])
         except (ValueError, TypeError):
             out["expires_timestamp"] = raw["expires"]
 
-    # Timestamp
-    ts = raw.get("timestamp") if isinstance(raw, dict) else None
-    try:
-        out["mfl_timestamp"] = int(ts) if ts is not None else None
-    except (ValueError, TypeError):
-        out["mfl_timestamp"] = ts
+    # mfl_timestamp: canonical-first.
+    out["mfl_timestamp"] = _mfl_timestamp_canonical_first(payload, raw)
 
     return out
-

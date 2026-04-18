@@ -3,6 +3,7 @@
 Covers: _safe_get, _stable_external_id, _truncate_raw_json, _extract_type,
 _extract_franchise_id, _extract_all_franchise_ids, _extract_timestamp_unix,
 _extract_bid_amount, _parse_mfl_transaction_field, _parse_trade_gave_up,
+_extract_trade_comments, _extract_trade_expires_timestamp,
 derive_transaction_event_envelopes.
 """
 from __future__ import annotations
@@ -20,6 +21,8 @@ from squadvault.ingest.transactions import (
     _extract_bid_amount,
     _parse_mfl_transaction_field,
     _parse_trade_gave_up,
+    _extract_trade_comments,
+    _extract_trade_expires_timestamp,
     derive_transaction_event_envelopes,
 )
 
@@ -279,6 +282,49 @@ class TestParseTradeGaveUp:
         assert b == []
 
 
+# ── _extract_trade_comments (S10 promotion helper) ───────────────────
+
+class TestExtractTradeComments:
+    """Unit tests for the trade-comments promotion helper.
+
+    S10 pattern: the helper surfaces ``comments`` from the raw MFL
+    trade dict so consumer-layer code can read it from the canonical
+    payload (``trade_comments``) without reaching into ``raw_mfl_json``.
+    """
+
+    def test_present(self):
+        assert _extract_trade_comments({"comments": "Rental deadline deal"}) == \
+            "Rental deadline deal"
+
+    def test_at_prefixed(self):
+        """MFL sometimes emits @comments; the helper accepts either shape."""
+        assert _extract_trade_comments({"@comments": "via DM"}) == "via DM"
+
+    def test_absent(self):
+        """Trades without a comments key yield None (consumer treats as no-comment)."""
+        assert _extract_trade_comments({}) is None
+
+
+# ── _extract_trade_expires_timestamp (S10 promotion helper) ──────────
+
+class TestExtractTradeExpiresTimestamp:
+    """Unit tests for the trade-expires promotion helper.
+
+    S10 pattern: surfaces the expiration Unix timestamp from the raw
+    MFL trade dict as an int so consumers don't re-parse raw_mfl_json.
+    """
+
+    def test_int_string(self):
+        assert _extract_trade_expires_timestamp({"expires": "1700100000"}) == 1700100000
+
+    def test_absent(self):
+        assert _extract_trade_expires_timestamp({}) is None
+
+    def test_garbage(self):
+        """Unparseable values yield None rather than raising."""
+        assert _extract_trade_expires_timestamp({"expires": "not_a_number"}) is None
+
+
 # ── derive_transaction_event_envelopes ───────────────────────────────
 
 class TestDeriveTransactionEventEnvelopes:
@@ -433,3 +479,85 @@ class TestDeriveTransactionEventEnvelopes:
         )
         assert len(result) == 1
         assert result[0]["occurred_at"] is None
+
+    # ── S10 promotion tests (this pass) ──────────────────────────────
+
+    def test_mfl_timestamp_promoted_on_free_agent(self):
+        """S10: Unix timestamp surfaces as canonical ``mfl_timestamp`` at ingest."""
+        txns = [{"type": "FREE_AGENT", "franchise": "0001", "timestamp": "1700000000",
+                 "transaction": "16207,|14108,"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["mfl_timestamp"] == 1700000000
+
+    def test_mfl_timestamp_promoted_on_trade(self):
+        """S10: mfl_timestamp is promoted on every envelope type, including TRADE."""
+        txns = [{"type": "TRADE", "franchise": "0001", "franchise2": "0010",
+                 "timestamp": "1700000000"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["mfl_timestamp"] == 1700000000
+
+    def test_mfl_timestamp_none_when_timestamp_absent(self):
+        """Missing timestamp is surfaced as None (shape stability)."""
+        txns = [{"type": "FREE_AGENT", "franchise": "0001"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["mfl_timestamp"] is None
+
+    def test_trade_comments_promoted_when_present(self):
+        """S10: trade comments are promoted to canonical ``trade_comments`` at ingest."""
+        txns = [{"type": "TRADE", "franchise": "0001", "franchise2": "0010",
+                 "timestamp": "1700000000", "comments": "Big rental deadline deal"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["trade_comments"] == "Big rental deadline deal"
+
+    def test_trade_comments_none_when_absent_on_trade(self):
+        """TRADE events without a ``comments`` key get None (shape stability)."""
+        txns = [{"type": "TRADE", "franchise": "0001", "franchise2": "0010",
+                 "timestamp": "1700000000"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["trade_comments"] is None
+
+    def test_trade_comments_none_on_non_trade_envelope(self):
+        """Non-TRADE envelopes always carry ``trade_comments`` = None (shape stability)."""
+        txns = [{"type": "FREE_AGENT", "franchise": "0001", "timestamp": "1700000000",
+                 "transaction": "16207,|14108,"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["trade_comments"] is None
+
+    def test_trade_expires_timestamp_promoted_when_present(self):
+        """S10: trade expiration timestamp is promoted to canonical payload at ingest."""
+        txns = [{"type": "TRADE", "franchise": "0001", "franchise2": "0010",
+                 "timestamp": "1700000000", "expires": "1700100000"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["trade_expires_timestamp"] == 1700100000
+
+    def test_trade_expires_timestamp_none_when_absent_on_trade(self):
+        """TRADE events without an ``expires`` key get None (shape stability)."""
+        txns = [{"type": "TRADE", "franchise": "0001", "franchise2": "0010",
+                 "timestamp": "1700000000"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["trade_expires_timestamp"] is None
+
+    def test_trade_expires_timestamp_none_on_non_trade_envelope(self):
+        """Non-TRADE envelopes always carry ``trade_expires_timestamp`` = None."""
+        txns = [{"type": "FREE_AGENT", "franchise": "0001", "timestamp": "1700000000",
+                 "transaction": "16207,|14108,"}]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        assert result[0]["payload"]["trade_expires_timestamp"] is None

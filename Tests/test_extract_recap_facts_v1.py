@@ -92,23 +92,59 @@ class TestSplitCsvIds:
 
 class TestExtractBbidWaiverFields:
     def test_basic_fields(self):
+        """Pre-promotion fallback: empty payload, raw carries all fields."""
         raw = {
             "transaction": "15754,|0.50|16149,",
             "type": "BBID_WAIVER",
             "franchise": "0001",
             "timestamp": "1700000000",
         }
-        result = _extract_bbid_waiver_fields(raw)
+        result = _extract_bbid_waiver_fields({}, raw)
         assert result["add_player_ids"] == ["15754"]
         assert result["bid_amount"] == 0.5
         assert result["drop_player_ids"] == ["16149"]
         assert result["mfl_timestamp"] == 1700000000
 
     def test_missing_timestamp(self):
+        """Pre-promotion fallback: raw has no timestamp, mfl_timestamp is None."""
         raw = {"transaction": "100,|5.00|"}
-        result = _extract_bbid_waiver_fields(raw)
+        result = _extract_bbid_waiver_fields({}, raw)
         assert "add_player_ids" in result
         assert result.get("mfl_timestamp") is None
+
+    def test_canonical_path_populated(self):
+        """S10: canonical payload fields populate normalized output; raw is not consulted."""
+        payload = {
+            "players_added_ids": ["CANON_ADD"],
+            "players_dropped_ids": ["CANON_DROP"],
+            "bid_amount": 99.5,
+            "mfl_timestamp": 1234567890,
+        }
+        # Empty raw: canonical path must supply everything.
+        result = _extract_bbid_waiver_fields(payload, {})
+        assert result["add_player_ids"] == ["CANON_ADD"]
+        assert result["drop_player_ids"] == ["CANON_DROP"]
+        assert result["bid_amount"] == 99.5
+        assert result["mfl_timestamp"] == 1234567890
+
+    def test_canonical_wins_over_raw(self):
+        """S10: when both canonical and raw carry values, canonical takes precedence."""
+        payload = {
+            "players_added_ids": ["CANON_ADD"],
+            "players_dropped_ids": ["CANON_DROP"],
+            "bid_amount": 99.5,
+            "mfl_timestamp": 1234567890,
+        }
+        # Divergent raw: must not leak through.
+        raw = {
+            "transaction": "RAW_ADD,|77.0|RAW_DROP,",
+            "timestamp": "9999999999",
+        }
+        result = _extract_bbid_waiver_fields(payload, raw)
+        assert result["add_player_ids"] == ["CANON_ADD"]
+        assert result["drop_player_ids"] == ["CANON_DROP"]
+        assert result["bid_amount"] == 99.5
+        assert result["mfl_timestamp"] == 1234567890
 
 
 # ── _extract_waiver_bid_awarded_fields ───────────────────────────────
@@ -133,6 +169,17 @@ class TestExtractWaiverBidAwardedFields:
         result = _extract_waiver_bid_awarded_fields({}, {})
         assert "bid_amount" not in result
 
+    def test_mfl_timestamp_canonical_wins_over_raw(self):
+        """S10: canonical mfl_timestamp is preferred over raw["timestamp"].
+
+        (Currently only applicable to synthetic fixtures; waiver_bids.py
+        ingest does not yet promote mfl_timestamp. See module docstring.)
+        """
+        payload = {"mfl_timestamp": 1234567890}
+        raw = {"timestamp": "9999999999"}
+        result = _extract_waiver_bid_awarded_fields(payload, raw)
+        assert result["mfl_timestamp"] == 1234567890
+
 
 # ── _extract_free_agent_fields ───────────────────────────────────────
 
@@ -150,11 +197,22 @@ class TestExtractFreeAgentFields:
         result = _extract_free_agent_fields({}, {})
         assert "add_player_ids" not in result
 
+    def test_mfl_timestamp_canonical_wins_over_raw(self):
+        """S10: canonical mfl_timestamp is preferred over raw["timestamp"]."""
+        payload = {
+            "players_added_ids": ["P1"],
+            "mfl_timestamp": 1234567890,
+        }
+        raw = {"timestamp": "9999999999"}
+        result = _extract_free_agent_fields(payload, raw)
+        assert result["mfl_timestamp"] == 1234567890
+
 
 # ── _extract_trade_fields ────────────────────────────────────────────
 
 class TestExtractTradeFields:
     def test_full_trade(self):
+        """Pre-promotion fallback: empty canonical, raw carries all fields."""
         raw = {
             "franchise": "F1",
             "franchise2": "F2",
@@ -184,6 +242,103 @@ class TestExtractTradeFields:
         result = _extract_trade_fields({}, raw)
         assert result["comments"] == "Test trade"
         assert result["expires_timestamp"] == 1700100000
+
+    def test_canonical_path_all_fields(self):
+        """S10: fully-promoted trade envelope resolves entirely from canonical payload.
+
+        Empty raw proves the canonical path isn't secretly relying on raw
+        fallback for any field.
+        """
+        payload = {
+            "franchise_ids_involved": ["F1", "F2"],
+            "trade_franchise_a_gave_up": ["P1", "P2"],
+            "trade_franchise_b_gave_up": ["P3"],
+            "trade_comments": "Rental deadline deal",
+            "trade_expires_timestamp": 1700100000,
+            "mfl_timestamp": 1700000000,
+        }
+        result = _extract_trade_fields(payload, {})
+        assert result["franchise1_id"] == "F1"
+        assert result["franchise2_id"] == "F2"
+        assert result["franchise1_gave_up_player_ids"] == ["P1", "P2"]
+        assert result["franchise2_gave_up_player_ids"] == ["P3"]
+        assert result["comments"] == "Rental deadline deal"
+        assert result["expires_timestamp"] == 1700100000
+        assert result["mfl_timestamp"] == 1700000000
+
+    def test_canonical_franchise_ids_from_involved(self):
+        """S10: franchise1/2 IDs are derived from ``franchise_ids_involved`` positions.
+
+        6eab1e0's query-side parser guarantees initiator is position [0]
+        and counterparty is position [1]. This test pins that contract
+        at the fact-extraction layer.
+        """
+        payload = {"franchise_ids_involved": ["INIT", "COUNTER"]}
+        raw = {"franchise": "RAW_INIT_WRONG", "franchise2": "RAW_COUNTER_WRONG"}
+        result = _extract_trade_fields(payload, raw)
+        # Canonical positions win, not raw franchise/franchise2 keys.
+        assert result["franchise1_id"] == "INIT"
+        assert result["franchise2_id"] == "COUNTER"
+
+    def test_canonical_wins_over_raw(self):
+        """S10: when canonical and raw disagree, canonical is authoritative.
+
+        Mirrors the discipline in b26e93f's trade-loader: the ingest-
+        promoted fields are the source of truth; raw is consulted only
+        for pre-promotion events.
+        """
+        payload = {
+            "franchise_ids_involved": ["CANON_A", "CANON_B"],
+            "trade_franchise_a_gave_up": ["CANON_P1"],
+            "trade_franchise_b_gave_up": ["CANON_P2"],
+            "trade_comments": "Canonical",
+            "trade_expires_timestamp": 1700100000,
+            "mfl_timestamp": 1700000000,
+        }
+        # Every raw field diverges from canonical.
+        raw = {
+            "franchise": "RAW_A",
+            "franchise2": "RAW_B",
+            "franchise1_gave_up": "RAW_P1,",
+            "franchise2_gave_up": "RAW_P2,",
+            "comments": "Raw",
+            "expires": "9999999999",
+            "timestamp": "9999999999",
+        }
+        result = _extract_trade_fields(payload, raw)
+        assert result["franchise1_id"] == "CANON_A"
+        assert result["franchise2_id"] == "CANON_B"
+        assert result["franchise1_gave_up_player_ids"] == ["CANON_P1"]
+        assert result["franchise2_gave_up_player_ids"] == ["CANON_P2"]
+        assert result["comments"] == "Canonical"
+        assert result["expires_timestamp"] == 1700100000
+        assert result["mfl_timestamp"] == 1700000000
+
+    def test_fallback_retained_for_pre_promotion(self):
+        """S10: empty canonical payload + populated raw = fully raw-sourced result.
+
+        This is the key test for historical events: the ledger is
+        append-only, so pre-promotion trades must continue to resolve
+        from raw_mfl_json indefinitely.
+        """
+        payload: dict[str, object] = {}
+        raw = {
+            "franchise": "HIST_A",
+            "franchise2": "HIST_B",
+            "franchise1_gave_up": "H1,H2,",
+            "franchise2_gave_up": "H3,",
+            "comments": "Historical deal",
+            "expires": "1600100000",
+            "timestamp": "1600000000",
+        }
+        result = _extract_trade_fields(payload, raw)
+        assert result["franchise1_id"] == "HIST_A"
+        assert result["franchise2_id"] == "HIST_B"
+        assert result["franchise1_gave_up_player_ids"] == ["H1", "H2"]
+        assert result["franchise2_gave_up_player_ids"] == ["H3"]
+        assert result["comments"] == "Historical deal"
+        assert result["expires_timestamp"] == 1600100000
+        assert result["mfl_timestamp"] == 1600000000
 
 
 # ── _extract_details routing ─────────────────────────────────────────
