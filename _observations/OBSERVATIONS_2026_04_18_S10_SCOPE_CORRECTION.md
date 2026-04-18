@@ -61,4 +61,20 @@ Two reasons. First, the audit stands in the repo; leaving its S10 overclaim unan
 
 ---
 
+## 2026-04-18 update: trade-loader leak closed
+
+The second "likely layer leak, larger scope" row in the inventory table — `core/recaps/context/player_narrative_angles_v1.py`, trade loader — has been resolved. The fix follows the same ingest-promotion / consumer-canonical-read pattern as the query-layer fix in commit `6eab1e0`, with one deliberate deviation.
+
+**Ingest-side promotion.** `derive_transaction_event_envelopes` now calls a new `_parse_trade_gave_up` helper that reads `franchise1_gave_up` / `franchise2_gave_up` from the raw MFL trade dict and promotes them into the canonical payload as `trade_franchise_a_gave_up` and `trade_franchise_b_gave_up`. Non-trade transactions receive these fields as empty lists so the envelope shape stays stable across transaction types — the same shape discipline `franchise_ids_involved` already follows.
+
+**Consumer-side canonical-first read.** `_load_season_trades` now delegates to a new `_resolve_trade_structure` helper which reads canonical fields first (trigger: `len(franchise_ids_involved) >= 2` AND either `trade_franchise_a_gave_up` or `trade_franchise_b_gave_up` key is present in the payload) and falls back to parsing `raw_mfl_json` when those conditions fail. A new test (`test_canonical_path_wins_over_raw_mfl_json_mismatch`) poisons `raw_mfl_json` with deliberately wrong values and asserts the canonical values surface — a regression guard against the consumer ever silently drifting back to raw-first reading.
+
+**Deliberate deviation from the query-layer fix.** The query-layer S10 fix (6eab1e0) accepted silent under-representation for pre-promotion events. For trades we kept the `raw_mfl_json` fallback instead, because silent under-representation on historical trade events would produce an immediately visible regression in TRADE_OUTCOME angle firing across every past season. The fallback is documented as the residual S10 touchpoint in `core/recaps/context/` pending an explicit historical-backfill decision. This decision deferral is recorded here rather than taken unilaterally.
+
+**Gate-test shape not yet achievable.** Because the consumer still references `raw_mfl_json` via the fallback path, a `test_*_layer_boundary` guard analogous to `Tests/test_core_queries_layer_boundary_v1.py` cannot be added to `core/recaps/context/` yet. Retiring the fallback — and with it, adding the gate — is bundled into the future backfill decision.
+
+**Remaining inventory.** Two "likely layer leak, larger scope" files remain untouched: `core/recaps/facts/extract_recap_facts_v1.py` and `core/recaps/render/deterministic_bullets_v1.py`. The inventory table above is unchanged so that the April 18 baseline it describes stays readable in its own right.
+
+---
+
 *End of document.*

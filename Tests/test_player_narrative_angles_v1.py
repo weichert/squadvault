@@ -1861,13 +1861,21 @@ class TestTheOneThatGotAway:
 
 
 def _insert_trade_event(con, *, league_id, season, franchise_a, franchise_b,
-                        gave_a, gave_b, occurred_at=None, _suffix=""):
-    """Insert a TRANSACTION_TRADE event mirroring the real MFL payload shape.
+                        gave_a, gave_b, occurred_at=None, _suffix="",
+                        promoted=False):
+    """Insert a TRANSACTION_TRADE event mirroring MFL's canonical payload shape.
 
-    The structured ``players_added_ids`` / ``players_dropped_ids`` fields
-    are emitted empty (matching what the canonicalize layer produces for
-    trade events). The actual player IDs live inside ``raw_mfl_json``
-    under ``franchise1_gave_up`` and ``franchise2_gave_up``.
+    By default (``promoted=False``) the inserted event matches the
+    shape of trade events ingested before the trade-player promotion
+    landed: the structured ``players_added_ids`` / ``players_dropped_ids``
+    fields are empty and the actual player IDs live only inside
+    ``raw_mfl_json`` under ``franchise1_gave_up`` / ``franchise2_gave_up``.
+    This exercises the consumer's raw_mfl_json fallback path.
+
+    When ``promoted=True``, the event additionally carries the
+    post-promotion canonical fields ``franchise_ids_involved``,
+    ``trade_franchise_a_gave_up``, and ``trade_franchise_b_gave_up``.
+    This exercises the consumer's canonical-first path.
 
     ``_suffix`` is appended to the external ID for tests that need
     multiple canonical rows for the same logical trade (deduplication).
@@ -1896,6 +1904,10 @@ def _insert_trade_event(con, *, league_id, season, franchise_a, franchise_b,
         "bid_amount": None,
         "raw_mfl_json": raw_inner,
     }
+    if promoted:
+        payload["franchise_ids_involved"] = [franchise_a, franchise_b]
+        payload["trade_franchise_a_gave_up"] = list(gave_a)
+        payload["trade_franchise_b_gave_up"] = list(gave_b)
     payload_json = json.dumps(payload, sort_keys=True)
     ext_id = f"trade_{league_id}_{season}_{franchise_a}_{franchise_b}_{occurred_at}{_suffix}"
     con.execute(
@@ -1919,12 +1931,17 @@ def _insert_trade_event(con, *, league_id, season, franchise_a, franchise_b,
 
 class TestTransactionLoading:
     def test_loads_trades_from_raw_mfl_json(self, tmp_path):
-        """Loader reads player IDs from raw_mfl_json, not structured fields.
+        """Loader falls back to raw_mfl_json when canonical trade fields absent.
 
-        This is the key regression test for the trade-loader bug: the old
-        loader read empty structured fields and silently dropped every
-        trade event. The new loader reads from raw_mfl_json where MFL
-        actually puts the player IDs.
+        Regression guard for trade events ingested before the
+        trade-player promotion landed. Such events lack the
+        ``trade_franchise_*_gave_up`` canonical fields and have empty
+        ``players_added_ids`` / ``players_dropped_ids``; the loader
+        parses ``raw_mfl_json`` as the documented fallback so these
+        events continue to surface TRADE_OUTCOME angles until a
+        historical backfill is decided. See the docstring on
+        ``_load_season_trades`` for the canonical-first / raw-fallback
+        split.
         """
         db_path = _fresh_db(tmp_path)
         con = sqlite3.connect(db_path)
@@ -1942,6 +1959,129 @@ class TestTransactionLoading:
         assert t.franchise_b_id == "F2"
         assert "PA" in t.franchise_a_gave_up
         assert "PB" in t.franchise_b_gave_up
+
+    def test_loads_trades_from_canonical_fields(self, tmp_path):
+        """Loader reads trade structure from canonical fields when present (S10 pattern).
+
+        Post-promotion events carry ``franchise_ids_involved``,
+        ``trade_franchise_a_gave_up``, and ``trade_franchise_b_gave_up``
+        as top-level canonical payload fields. The loader reads these
+        directly, without touching ``raw_mfl_json``. This is the
+        primary path going forward.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _insert_trade_event(con, league_id=LEAGUE, season=SEASON,
+                            franchise_a="F1", franchise_b="F2",
+                            gave_a=["PA", "PC"], gave_b=["PB"],
+                            occurred_at="2024-10-01T12:00:00Z",
+                            promoted=True)
+        con.commit()
+        con.close()
+
+        trades = _load_season_trades(db_path, LEAGUE, SEASON)
+        assert len(trades) == 1
+        t = trades[0]
+        assert t.franchise_a_id == "F1"
+        assert t.franchise_b_id == "F2"
+        assert "PA" in t.franchise_a_gave_up
+        assert "PC" in t.franchise_a_gave_up
+        assert "PB" in t.franchise_b_gave_up
+
+    def test_canonical_path_wins_over_raw_mfl_json_mismatch(self, tmp_path):
+        """When canonical fields are populated, the loader must not consult raw_mfl_json.
+
+        This is the S10-pattern correctness guard: we deliberately
+        poison ``raw_mfl_json`` with wrong values and verify the loader
+        returns the canonical values. Proves the canonical-first read
+        really does skip the raw parse — not just that it reads
+        canonical first when canonical and raw happen to agree.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+
+        # Deliberately mismatched: canonical says PA/PB; raw says WRONG_A/WRONG_B.
+        poisoned_raw = json.dumps({
+            "comments": "",
+            "expires": "0",
+            "franchise": "F1",
+            "franchise2": "F2",
+            "franchise1_gave_up": "WRONG_A,",
+            "franchise2_gave_up": "WRONG_B,",
+            "timestamp": "0",
+            "type": "TRADE",
+        }, sort_keys=True)
+        payload = {
+            "mfl_type": "TRADE",
+            "franchise_id": "F1",
+            "player_id": None,
+            "players_added_ids": [],
+            "players_dropped_ids": [],
+            "player_ids_involved": [],
+            "franchise_ids_involved": ["F1", "F2"],
+            "trade_franchise_a_gave_up": ["PA"],
+            "trade_franchise_b_gave_up": ["PB"],
+            "bid_amount": None,
+            "raw_mfl_json": poisoned_raw,
+        }
+        payload_json = json.dumps(payload, sort_keys=True)
+        occurred_at = "2024-10-01T12:00:00Z"
+        ext_id = f"trade_{LEAGUE}_{SEASON}_F1_F2_{occurred_at}_poison"
+        con.execute(
+            """INSERT INTO memory_events
+               (league_id, season, external_source, external_id, event_type,
+                occurred_at, ingested_at, payload_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (LEAGUE, SEASON, "test", ext_id, "TRANSACTION_TRADE",
+             occurred_at, occurred_at, payload_json),
+        )
+        me_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+        con.execute(
+            """INSERT INTO canonical_events
+               (league_id, season, event_type, action_fingerprint,
+                best_memory_event_id, best_score, updated_at, occurred_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (LEAGUE, SEASON, "TRANSACTION_TRADE",
+             f"fp_{ext_id}", me_id, 100, occurred_at, occurred_at),
+        )
+        con.commit()
+        con.close()
+
+        trades = _load_season_trades(db_path, LEAGUE, SEASON)
+        assert len(trades) == 1
+        t = trades[0]
+        # Canonical won; raw_mfl_json's WRONG_A / WRONG_B are not surfaced.
+        assert list(t.franchise_a_gave_up) == ["PA"]
+        assert list(t.franchise_b_gave_up) == ["PB"]
+        assert "WRONG_A" not in t.franchise_a_gave_up
+        assert "WRONG_B" not in t.franchise_b_gave_up
+
+    def test_mixed_promoted_and_unpromoted_events_both_surface(self, tmp_path):
+        """Canonical-path and raw-fallback events coexist in one season's results.
+
+        Mid-promotion seasons will have a mix of pre- and post-promotion
+        trade events. The loader must surface both.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _insert_trade_event(con, league_id=LEAGUE, season=SEASON,
+                            franchise_a="F1", franchise_b="F2",
+                            gave_a=["OLD_A"], gave_b=["OLD_B"],
+                            occurred_at="2024-09-01T12:00:00Z",
+                            promoted=False)
+        _insert_trade_event(con, league_id=LEAGUE, season=SEASON,
+                            franchise_a="F3", franchise_b="F4",
+                            gave_a=["NEW_A"], gave_b=["NEW_B"],
+                            occurred_at="2024-10-01T12:00:00Z",
+                            promoted=True)
+        con.commit()
+        con.close()
+
+        trades = _load_season_trades(db_path, LEAGUE, SEASON)
+        assert len(trades) == 2
+        by_pair = {frozenset({t.franchise_a_id, t.franchise_b_id}): t for t in trades}
+        assert "OLD_A" in by_pair[frozenset({"F1", "F2"})].franchise_a_gave_up
+        assert "NEW_A" in by_pair[frozenset({"F3", "F4"})].franchise_a_gave_up
 
     def test_deduplicates_canonical_duplicates(self, tmp_path):
         """Multiple canonical rows for the same logical trade collapse to one.

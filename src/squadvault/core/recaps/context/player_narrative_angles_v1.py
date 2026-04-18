@@ -365,19 +365,28 @@ def _load_season_trades(
 ) -> list[_Trade]:
     """Load TRANSACTION_TRADE events as bilateral _Trade records.
 
-    MFL encodes each trade as a single canonical event whose
-    ``raw_mfl_json`` contains ``franchise``, ``franchise2``,
-    ``franchise1_gave_up``, and ``franchise2_gave_up``. The structured
-    ``players_added_ids`` / ``players_dropped_ids`` fields on the
-    canonical envelope are emitted empty for trade events, so this
-    loader reads directly from ``raw_mfl_json``.
+    Reads the canonical trade-player fields first:
+    ``franchise_ids_involved`` (promoted at ingest in commit 6eab1e0)
+    supplies the franchise pair, and ``trade_franchise_a_gave_up`` /
+    ``trade_franchise_b_gave_up`` (promoted at ingest in the current
+    commit) supply the per-side player-ID lists. This is the
+    S10-pattern reading path for events ingested after the trade-player
+    promotion landed.
+
+    Events predating that promotion lack the trade-specific canonical
+    fields. For those, the loader falls back to parsing
+    ``raw_mfl_json`` — reading ``franchise`` / ``franchise2`` and
+    ``franchise1_gave_up`` / ``franchise2_gave_up`` from the sibling
+    keys on the raw MFL dict. This fallback is the documented residual
+    S10 touchpoint in ``core/recaps/context/``; retiring it requires an
+    explicit historical-backfill decision and is tracked separately.
 
     The canonicalize layer can surface multiple representations of the
-    same logical trade (a 1-trade, 3-row pattern is common in production).
-    This loader deduplicates on the natural key
-    ``(occurred_at, frozenset({franchise_a, franchise_b}))``, keeping the
-    representation with the most populated player lists. Within a tie,
-    the earliest record (deterministic by sort order) wins.
+    same logical trade (a 1-trade, 3-row pattern is common in
+    production). This loader deduplicates on the natural key
+    ``(occurred_at, frozenset({franchise_a, franchise_b}))``, keeping
+    the representation with the most populated player lists. Within a
+    tie, the earliest record (deterministic by sort order) wins.
 
     Trades that cannot be parsed (missing fields, no players given up
     on either side, self-trade) are silently discarded.
@@ -399,18 +408,10 @@ def _load_season_trades(
         if top is None:
             continue
 
-        # Player IDs live inside raw_mfl_json for trade events.
-        inner = _parse_payload_dict(top.get("raw_mfl_json", ""))
-        if inner is None:
-            continue
+        franchise_a, franchise_b, gave_a, gave_b = _resolve_trade_structure(top)
 
-        franchise_a = str(inner.get("franchise", "")).strip()
-        franchise_b = str(inner.get("franchise2", "")).strip()
         if not franchise_a or not franchise_b or franchise_a == franchise_b:
             continue
-
-        gave_a = _split_csv_or_list(inner.get("franchise1_gave_up", ""))
-        gave_b = _split_csv_or_list(inner.get("franchise2_gave_up", ""))
 
         # A real trade must move at least one player on each side.
         if not gave_a or not gave_b:
@@ -445,6 +446,53 @@ def _load_season_trades(
         by_key.values(),
         key=lambda t: (t.occurred_at, t.franchise_a_id, t.franchise_b_id),
     )
+
+
+def _resolve_trade_structure(
+    top: dict,
+) -> tuple[str, str, tuple[str, ...], tuple[str, ...]]:
+    """Resolve a trade's franchise pair and per-side gave-up lists from a canonical payload.
+
+    Canonical-first: when ``franchise_ids_involved`` has at least two
+    entries AND the trade-specific ``trade_franchise_*_gave_up`` keys
+    are present in the payload, read directly from those fields. This
+    is the post-promotion path and involves no ``raw_mfl_json`` parse.
+
+    Fallback: when either condition above fails, re-parse
+    ``raw_mfl_json`` for the MFL sibling keys ``franchise`` /
+    ``franchise2`` / ``franchise1_gave_up`` / ``franchise2_gave_up``.
+    This covers events ingested before the trade-player promotion
+    landed. See the docstring on ``_load_season_trades`` for why this
+    fallback exists rather than accepting silent under-representation.
+
+    Returns a 4-tuple of ``(franchise_a, franchise_b, gave_a, gave_b)``.
+    Empty strings and empty tuples indicate that the payload could not
+    be resolved; the caller applies the "real trade" guards.
+    """
+    fids = top.get("franchise_ids_involved") or []
+    canonical_a = str(fids[0]).strip() if len(fids) >= 1 else ""
+    canonical_b = str(fids[1]).strip() if len(fids) >= 2 else ""
+
+    has_canonical_trade_fields = (
+        "trade_franchise_a_gave_up" in top
+        or "trade_franchise_b_gave_up" in top
+    )
+
+    if canonical_a and canonical_b and has_canonical_trade_fields:
+        gave_a = _split_csv_or_list(top.get("trade_franchise_a_gave_up"))
+        gave_b = _split_csv_or_list(top.get("trade_franchise_b_gave_up"))
+        return (canonical_a, canonical_b, gave_a, gave_b)
+
+    # Fallback: pre-promotion events. Re-parse raw_mfl_json.
+    inner = _parse_payload_dict(top.get("raw_mfl_json", ""))
+    if inner is None:
+        return ("", "", (), ())
+
+    franchise_a = str(inner.get("franchise", "")).strip()
+    franchise_b = str(inner.get("franchise2", "")).strip()
+    gave_a = _split_csv_or_list(inner.get("franchise1_gave_up", ""))
+    gave_b = _split_csv_or_list(inner.get("franchise2_gave_up", ""))
+    return (franchise_a, franchise_b, gave_a, gave_b)
 
 
 def _load_season_drops(

@@ -143,6 +143,40 @@ def _parse_mfl_transaction_field(txn: dict[str, Any]) -> tuple[list[str], list[s
     return adds, drops
 
 
+def _parse_trade_gave_up(txn: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """
+    Parse trade-specific ``franchise1_gave_up`` / ``franchise2_gave_up`` lists.
+
+    MFL encodes bilateral trade player movements as sibling keys on the
+    raw transaction dict. ``franchise1_gave_up`` holds the player IDs
+    given up by the initiator (the ``franchise`` key); ``franchise2_gave_up``
+    holds the IDs given up by the counterparty (``franchise2``). The
+    format is comma-separated with a trailing empty tail: e.g.
+    ``"15648,15712,"``.
+
+    Returns ``(franchise_a_gave_up, franchise_b_gave_up)``. Empty lists
+    when the keys are absent or unparseable. Intended to be called only
+    for TRANSACTION_TRADE events; non-trade transactions will return
+    ``([], [])`` because the keys are not present on their raw dicts.
+
+    Promotion of these lists into the canonical trade payload at ingest
+    is the S10-pattern companion to ``_extract_all_franchise_ids``.
+    Together they let consumer-layer code read trade structure from
+    canonical fields without reaching into ``raw_mfl_json`` — resolving
+    the layer-boundary aspect of Audit Surprise S10 for the trade case
+    (see ``_observations/OBSERVATIONS_2026_04_18_S10_SCOPE_CORRECTION.md``).
+    """
+    def _split(s: Any) -> list[str]:
+        if not isinstance(s, str):
+            return []
+        return [p for p in s.split(",") if p]
+
+    return (
+        _split(_safe_get(txn, "franchise1_gave_up", "@franchise1_gave_up")),
+        _split(_safe_get(txn, "franchise2_gave_up", "@franchise2_gave_up")),
+    )
+
+
 # ---------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------
@@ -194,6 +228,21 @@ def derive_transaction_event_envelopes(
 
         bid_amount = _extract_bid_amount(txn)
 
+        # Trade-specific player structure. For TRANSACTION_TRADE events,
+        # MFL encodes player movements under sibling keys on the raw
+        # transaction dict (franchise1_gave_up / franchise2_gave_up)
+        # rather than in the compact "transaction" string parsed above.
+        # Promoting these into the canonical payload at ingest is the
+        # S10-pattern resolution for the trade case — see
+        # _observations/OBSERVATIONS_2026_04_18_S10_SCOPE_CORRECTION.md.
+        # Fields are always present (empty lists for non-trades) so
+        # envelope shape stays stable across transaction types.
+        if t == "TRADE":
+            trade_franchise_a_gave_up, trade_franchise_b_gave_up = _parse_trade_gave_up(txn)
+        else:
+            trade_franchise_a_gave_up = []
+            trade_franchise_b_gave_up = []
+
         # TRUE MFL IDENTITY
         transaction_raw = str(txn.get("transaction") or txn.get("@transaction") or "")
         ts_key = str(ts_unix) if ts_unix is not None else f"idx{idx}"
@@ -228,6 +277,8 @@ def derive_transaction_event_envelopes(
                     "players_added_ids": added_ids,
                     "players_dropped_ids": dropped_ids,
                     "player_ids_involved": involved_ids,
+                    "trade_franchise_a_gave_up": trade_franchise_a_gave_up,
+                    "trade_franchise_b_gave_up": trade_franchise_b_gave_up,
                     "bid_amount": bid_amount,
                     "source_url": source_url,
                     "raw_mfl_json": raw_json,

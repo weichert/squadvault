@@ -2,7 +2,7 @@
 
 Covers: _safe_get, _stable_external_id, _truncate_raw_json, _extract_type,
 _extract_franchise_id, _extract_all_franchise_ids, _extract_timestamp_unix,
-_extract_bid_amount, _parse_mfl_transaction_field,
+_extract_bid_amount, _parse_mfl_transaction_field, _parse_trade_gave_up,
 derive_transaction_event_envelopes.
 """
 from __future__ import annotations
@@ -19,6 +19,7 @@ from squadvault.ingest.transactions import (
     _extract_timestamp_unix,
     _extract_bid_amount,
     _parse_mfl_transaction_field,
+    _parse_trade_gave_up,
     derive_transaction_event_envelopes,
 )
 
@@ -209,6 +210,75 @@ class TestParseMflTransactionField:
         assert drops == ["300"]
 
 
+# ── _parse_trade_gave_up ─────────────────────────────────────────────
+
+class TestParseTradeGaveUp:
+    """Unit tests for the trade-specific gave-up parser.
+
+    S10 pattern: the parser promotes ``franchise1_gave_up`` /
+    ``franchise2_gave_up`` sibling keys from the raw MFL trade dict
+    into canonical list-of-str form so consumer-layer code can read
+    trade structure without reaching into ``raw_mfl_json``.
+    """
+
+    def test_both_populated(self):
+        a, b = _parse_trade_gave_up({
+            "franchise1_gave_up": "15648,15712,",
+            "franchise2_gave_up": "14213,",
+        })
+        assert a == ["15648", "15712"]
+        assert b == ["14213"]
+
+    def test_missing_keys(self):
+        """Non-trade dicts (or trades missing the keys) yield empty lists."""
+        a, b = _parse_trade_gave_up({})
+        assert a == []
+        assert b == []
+
+    def test_empty_strings(self):
+        a, b = _parse_trade_gave_up({
+            "franchise1_gave_up": "",
+            "franchise2_gave_up": "",
+        })
+        assert a == []
+        assert b == []
+
+    def test_at_prefixed(self):
+        """MFL sometimes emits @-prefixed variants; the parser accepts either."""
+        a, b = _parse_trade_gave_up({
+            "@franchise1_gave_up": "100,",
+            "@franchise2_gave_up": "200,",
+        })
+        assert a == ["100"]
+        assert b == ["200"]
+
+    def test_non_string_values_skipped(self):
+        a, b = _parse_trade_gave_up({
+            "franchise1_gave_up": None,
+            "franchise2_gave_up": 42,
+        })
+        assert a == []
+        assert b == []
+
+    def test_trailing_empty_tail_ignored(self):
+        """MFL's canonical comma-with-trailing-empty format is handled."""
+        a, b = _parse_trade_gave_up({
+            "franchise1_gave_up": "A,B,C,",
+            "franchise2_gave_up": "X,",
+        })
+        assert a == ["A", "B", "C"]
+        assert b == ["X"]
+
+    def test_one_side_empty(self):
+        """Only one side populated is returned as-is — the caller decides validity."""
+        a, b = _parse_trade_gave_up({
+            "franchise1_gave_up": "P1,",
+            "franchise2_gave_up": "",
+        })
+        assert a == ["P1"]
+        assert b == []
+
+
 # ── derive_transaction_event_envelopes ───────────────────────────────
 
 class TestDeriveTransactionEventEnvelopes:
@@ -287,6 +357,66 @@ class TestDeriveTransactionEventEnvelopes:
         payload = result[0]["payload"]
         assert payload["franchise_id"] == "0001"
         assert payload["franchise_ids_involved"] == ["0001", "0010"]
+
+    def test_trade_event_promotes_gave_up_lists_to_canonical_payload(self):
+        """S10: trade-specific player IDs are written at ingest from franchise*_gave_up sibling keys.
+
+        This is the ingest half of the trade-loader S10-pattern fix. The
+        consumer half lives in ``_load_season_trades``, which reads these
+        canonical fields first and only falls back to raw_mfl_json for
+        pre-promotion events.
+        """
+        txns = [{
+            "type": "TRADE",
+            "franchise": "0001",
+            "franchise2": "0010",
+            "franchise1_gave_up": "15648,15712,",
+            "franchise2_gave_up": "14213,",
+            "timestamp": "1700000000",
+        }]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        payload = result[0]["payload"]
+        assert payload["trade_franchise_a_gave_up"] == ["15648", "15712"]
+        assert payload["trade_franchise_b_gave_up"] == ["14213"]
+
+    def test_trade_event_without_gave_up_keys_gets_empty_lists(self):
+        """When MFL omits the gave-up keys, ingest still emits explicit empty lists.
+
+        Shape stability matters: the consumer uses key-presence as a
+        signal that the event is post-promotion (see
+        ``_resolve_trade_structure`` in player_narrative_angles_v1). A
+        trade event with neither gave-up side parseable is still a
+        post-promotion event — it just happens to be non-viable as a
+        trade, which the consumer's "must have players on both sides"
+        guard will reject.
+        """
+        txns = [{
+            "type": "TRADE",
+            "franchise": "0001",
+            "franchise2": "0010",
+            "timestamp": "1700000000",
+        }]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        payload = result[0]["payload"]
+        assert payload["trade_franchise_a_gave_up"] == []
+        assert payload["trade_franchise_b_gave_up"] == []
+
+    def test_non_trade_events_get_empty_trade_fields(self):
+        """Shape stability: the two trade-specific fields are always present, empty for non-trades."""
+        txns = [{
+            "type": "FREE_AGENT", "franchise": "0001", "timestamp": "1700000000",
+            "transaction": "16207,|14108,",
+        }]
+        result = derive_transaction_event_envelopes(
+            year=2024, league_id="L1", transactions=txns, source_url="http://test",
+        )
+        payload = result[0]["payload"]
+        assert payload["trade_franchise_a_gave_up"] == []
+        assert payload["trade_franchise_b_gave_up"] == []
 
     def test_occurred_at_from_timestamp(self):
         txns = [{"type": "FREE_AGENT", "franchise": "0001", "timestamp": "1704067200"}]
