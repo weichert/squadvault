@@ -2618,6 +2618,290 @@ class TestRegressionStreakSpelledCountPossessor:
         )
 
 
+# ─── _STREAK_PATTERN spelled-out count support regressions ────────────
+#
+# Pins the extension of _STREAK_PATTERN's explicit count group from
+# `(\d+)` to `(\d+|one|two|...|eighteen)` plus the _parse_count
+# translator that backs BOTH callsites (verify_streaks and
+# _extract_streak_claims). Directly parallel to
+# TestRegressionStreakSpelledCountPossessor (12bbadb, _POSSESSIVE_OBJECT_STREAK)
+# but covers a different regex with a different callsite shape.
+#
+# Reproduction evidence: 2026-04-18 digit-prefix scan rows 40, 41, 42
+# (2024 W10 attempts 0, 2, 3) — prose "Miller snapped a/his
+# nine/eight-game losing streak" with two different spelled counts
+# across three attempts of the same matchup. Pre-fix, _STREAK_PATTERN's
+# `\d+` count group missed spelled counts entirely, silencing
+# count-mismatch failures. Post-fix, spelled counts capture and
+# translate; the wrong counts are flagged.
+def _miller_losing_6_matchups():
+    """Miller loses weeks 1-6; enters week 7 with losing streak -6.
+
+    Matches the fixture topology in TestRegressionStreakSpelledCountPossessor
+    but with a generic "OTHER" victor and a 6-week streak length.
+    At through_week=6, _compute_streaks yields F_MILLER → -6. At
+    through_week=5 (pre_week), F_MILLER → -5.
+    """
+    matchups = []
+    for w in range(1, 7):
+        matchups.append(_make_matchup(w, "OTHER", "F_MILLER", 120, 90))
+    return matchups
+
+
+def _miller_winning_3_matchups():
+    """Miller wins weeks 1-3; enters week 4 with win streak +3.
+
+    Used for the "won <N> straight" alternative test. At
+    through_week=3, _compute_streaks yields F_MILLER → +3.
+    """
+    matchups = []
+    for w in range(1, 4):
+        matchups.append(_make_matchup(w, "F_MILLER", "OTHER", 120, 90))
+    return matchups
+
+
+def _miller_reverse():
+    """Alias map for F_MILLER and F_OTHER.
+
+    "Miller" (6 chars) is >=5-char first-word alias threshold, so it
+    is included as both the display-case key ("Miller") and the
+    lowercase lookup key ("miller"). _find_nearby_franchise uses only
+    the lowercase entries; _resolve_display_name uses only the
+    non-all-lowercase entries. Both shapes required.
+    """
+    return {
+        "Miller": "F_MILLER", "miller": "F_MILLER",
+        "Other Team": "OTHER", "other team": "OTHER",
+    }
+
+
+class TestRegressionStreakCountSpelledOut:
+    """Pin _STREAK_PATTERN spelled-out count support + translator.
+
+    Contract: when prose contains a spelled cardinal count 1-18 in
+    either regex alternative — "<N>-game (win|losing) streak" or
+    "(won|lost|losing) <N> (straight|consecutive|in a row)" — the
+    count is captured, translated via _parse_count, and compared
+    against the canonical streak value. Counts outside 1-18 silently
+    fall through (silence over speculation; the caller takes the
+    `parsed is None → continue` path).
+
+    Coverage includes both _STREAK_PATTERN callsites:
+    - verify_streaks explicit-count loop (tests a–d)
+    - _extract_streak_claims, used by verify_cross_week_consistency
+      (test e). Without the translator update at that callsite, the
+      regex extension alone would cause int("seven") → ValueError.
+    """
+
+    def test_eight_game_spelled_count_mismatch(self):
+        """Spelled count captured, translated, compared, flagged.
+
+        Fixture: Miller 0-6 entering week 7. Prose claims
+        "eight-game losing streak" at week 6 (actual 6, pre-week 5).
+        8 != 6 and 8 != 5 → HARD STREAK failure citing Miller.
+
+        Pre-fix contract: regex missed "eight", no capture, no count
+        check, silent pass. The test asserts the post-fix HARD
+        failure is emitted.
+        """
+        matchups = _miller_losing_6_matchups()
+        reverse = _miller_reverse()
+        text = "Miller is on an eight-game losing streak."
+        failures = verify_streaks(text, matchups, 6, reverse)
+        miller_failures = [
+            f for f in failures
+            if f.category == "STREAK"
+            and "Miller" in (f.claim + f.evidence)
+        ]
+        assert len(miller_failures) == 1, (
+            f"expected one STREAK count-mismatch failure citing "
+            f"Miller for spelled 'eight'; got: "
+            f"{[(f.claim, f.evidence) for f in failures]}"
+        )
+        assert "8" in miller_failures[0].claim
+        assert "losing" in miller_failures[0].claim
+
+    def test_digit_count_still_checked(self):
+        """Positive control — digit-prefix count still flagged.
+
+        Mirrors test_eight_game_spelled_count_mismatch with '8-game'
+        in place of 'eight-game'. If the regex change or translator
+        accidentally broke digit handling, this test would stop
+        producing a failure and silently pass.
+        """
+        matchups = _miller_losing_6_matchups()
+        reverse = _miller_reverse()
+        text = "Miller is on an 8-game losing streak."
+        failures = verify_streaks(text, matchups, 6, reverse)
+        miller_failures = [
+            f for f in failures
+            if f.category == "STREAK"
+            and "Miller" in (f.claim + f.evidence)
+        ]
+        assert len(miller_failures) == 1, (
+            f"expected one STREAK count-mismatch failure citing "
+            f"Miller for digit '8' (positive control); got: "
+            f"{[(f.claim, f.evidence) for f in failures]}"
+        )
+        assert "8" in miller_failures[0].claim
+
+    def test_won_four_straight_spelled_count(self):
+        """Second regex alternative: '(won|lost|losing) <N> (straight|...)'.
+
+        Fixture: Miller +3 win streak entering week 4. Prose claims
+        "won four straight" at week 3 (actual 3, pre-week 2).
+        4 != 3 and 4 != 2 → HARD STREAK failure (win-streak form).
+        Pins the second alternation branch, which was the other
+        ``\\d+`` occurrence the regex extension had to cover.
+        """
+        matchups = _miller_winning_3_matchups()
+        reverse = _miller_reverse()
+        text = "Miller has won four straight games."
+        failures = verify_streaks(text, matchups, 3, reverse)
+        miller_failures = [
+            f for f in failures
+            if f.category == "STREAK"
+            and "Miller" in (f.claim + f.evidence)
+        ]
+        assert len(miller_failures) == 1, (
+            f"expected one STREAK count-mismatch failure citing "
+            f"Miller for 'won four straight'; got: "
+            f"{[(f.claim, f.evidence) for f in failures]}"
+        )
+        assert "4" in miller_failures[0].claim
+        assert "win" in miller_failures[0].claim.lower()
+
+    def test_spelled_count_over_ceiling_silences(self):
+        """Counts >18 do not match — silence over guess.
+
+        Prose: "Miller is on a nineteen-game losing streak." The
+        _SPELLED_COUNTS_1_18 alternation stops at "eighteen", so
+        "nineteen" produces no capture. _SNAP_PATTERN doesn't fire
+        (no snap verb), _POSSESSIVE_OBJECT_STREAK doesn't fire (no
+        possessive). No STREAK failure should be emitted.
+
+        This pins the 1-18 ceiling as intentional and guards against
+        a future ceiling extension silently re-introducing matches
+        without the translator being updated to cover the new range.
+        """
+        matchups = _miller_losing_6_matchups()
+        reverse = _miller_reverse()
+        text = "Miller is on a nineteen-game losing streak."
+        failures = verify_streaks(text, matchups, 6, reverse)
+        streak_failures = [f for f in failures if f.category == "STREAK"]
+        assert streak_failures == [], (
+            f"expected no STREAK failures for over-ceiling spelled "
+            f"count (silence over speculation); got: "
+            f"{[(f.claim, f.evidence) for f in streak_failures]}"
+        )
+
+    def test_spelled_count_cross_week_consistency(self):
+        """Second callsite (_extract_streak_claims) handles spelled counts.
+
+        Pins that the cross-week callsite in _extract_streak_claims
+        (consumed by verify_cross_week_consistency) also routes
+        captured counts through _parse_count.
+
+        Pre-regex-extension: the regex wouldn't have matched spelled
+        counts, so zero claims extracted and the consistency check
+        wouldn't fire.
+
+        After regex extension alone (translator only at callsite #1,
+        not #2): int("seven") would raise ValueError here —
+        the secondary callsite would crash on any recap with spelled
+        streak counts.
+
+        Post-fix (translator + BOTH callsites updated): the spelled
+        counts parse to 7 and 4, and the consistency check flags the
+        decrease from week 5 to week 7 (gap 2, both >= 3, 4 < 7).
+        """
+        reverse = _miller_reverse()
+        weeks = [
+            (5, "Miller is on a seven-game losing streak."),
+            (7, "Miller is on a four-game losing streak."),
+        ]
+        failures = verify_cross_week_consistency(weeks, reverse)
+        miller_consistency = [
+            f for f in failures
+            if f.category == "CONSISTENCY"
+            and "Miller" in f.claim
+            and "losing" in f.claim
+        ]
+        assert len(miller_consistency) == 1, (
+            f"expected one CONSISTENCY failure from cross-week "
+            f"spelled-count decrease; got: "
+            f"{[(f.claim, f.evidence) for f in failures]}"
+        )
+        assert "7" in miller_consistency[0].claim
+        assert "4" in miller_consistency[0].claim
+
+    def test_embedded_possessor_decoy_silences(self):
+        """Embedded '<Possessor>'s N-game losing streak' with unmappable possessor.
+
+        Parallel to test_id25_purple_haze_momentum_not_flagged in
+        TestRegressionStreakPossessiveIdiomatic, but pinned against
+        the explicit-count loop in verify_streaks rather than the
+        _SNAP_PATTERN loop.
+
+        Pre-attribution-fix behavior (latent bug, exposed by the
+        spelled-count regex extension): the explicit-count loop
+        used proximity-only attribution. The "four-game losing
+        streak" captured in the secondary clause would be
+        misattributed to the nearest named franchise (Purple Haze
+        in this fixture), yielding a false HARD failure
+        "Purple Haze has/had a 4-game losing streak" despite the
+        prose clearly attributing the streak to Pat.
+
+        Post-fix: _resolve_streak_count_attribution runs
+        _POSSESSIVE_OBJECT_STREAK against the pre-match window,
+        recognises "Pat's four-game losing streak" as a possessive
+        construction, looks up "pat" in reverse_name_map
+        (intentionally absent), and returns None — silencing the
+        explicit-count check rather than misattributing.
+
+        Pin: if anyone narrows the 40-char pre-match window,
+        reverts the helper, or removes the unmappable-possessor
+        silence branch, this test will fail with the pre-fix
+        "Purple Haze has/had a 4-game" claim.
+        """
+        matchups = [
+            _make_matchup(1, "F_ROBB", "F_HAZE", 120, 100),
+            _make_matchup(2, "F_HAZE", "F_ROBB", 110, 90),
+            _make_matchup(3, "F_ROBB", "F_HAZE", 101, 97),
+        ]
+        reverse = {
+            "Robb's Team": "F_ROBB", "robb's team": "F_ROBB",
+            "Purple Haze": "F_HAZE", "purple haze": "F_HAZE",
+            "purple": "F_HAZE",
+            # "pat" intentionally NOT in map — decoy possessor
+            # whose streak clause must not be misattributed to
+            # the proximate Purple Haze.
+        }
+        text = (
+            "Robb snapped Purple Haze's modest momentum with a "
+            "101-97 victory, ending Pat's four-game losing streak "
+            "that defined his last month."
+        )
+        failures = verify_streaks(text, matchups, 3, reverse)
+        # Must not emit a STREAK failure attributing the 4-game
+        # claim to Purple Haze (the proximity-misattribution
+        # shape). The idiomatic-guard silence from the
+        # _SNAP_PATTERN loop is tested separately in
+        # test_id25_purple_haze_momentum_not_flagged — this test
+        # pins the explicit-count loop surface.
+        haze_streak_failures = [
+            f for f in failures
+            if f.category == "STREAK"
+            and "Purple Haze" in (f.claim + f.evidence)
+        ]
+        assert haze_streak_failures == [], (
+            f"expected no STREAK failure attributing the 4-game "
+            f"claim to Purple Haze (decoy possessor 'Pat' is "
+            f"unmappable → silence); got: "
+            f"{[(f.claim, f.evidence) for f in haze_streak_failures]}"
+        )
+
+
 # ─── P1/P2 PLAYER_SCORE parse-false-positive regressions ─────────────
 #
 # Fixtures reproduce prompt_audit rows captured in the 2026-04-14 Q5
