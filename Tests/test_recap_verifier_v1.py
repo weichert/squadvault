@@ -2037,6 +2037,258 @@ class TestRegressionSuperlativeWiderPass:
         assert "145.30" in alltime_failures[0].claim
 
 
+# ── Shared fixtures: STREAK idiomatic-possessor regression ──────────
+#
+# Reproduce the alias-map topology at the heart of the captured
+# id=54 / id=25 failures: the snap-verb subject has a short first
+# name ("ben", "kp") excluded from reverse_name_map by the len<5
+# substring-safety filter in _build_reverse_name_map. Without the
+# idiomatic guard, _find_nearby_franchise pass-2 lands on the
+# possessor after the snap verb, producing a wrong-subject
+# STREAK failure against prose that never claimed a literal streak
+# was snapped.
+
+def _brandon_losing_matchups():
+    """Brandon 0-10 entering week 11, loses W11 to Ben → 0-11.
+
+    Mirrors the fixture topology in test_snap_possessive_object_row20_pattern:
+    F_BRANDON loses weeks 1-10 to OTHER; in week 11, F_BEN beats
+    F_BRANDON 111.60-104.15. Shared across id=54 prose
+    (rhetorical target) and positive-control #5 (literal streak,
+    existing resolver still authoritative).
+    """
+    matchups = []
+    for w in range(1, 11):
+        matchups.append(_make_matchup(w, "OTHER", "F_BRANDON", 120, 90))
+    matchups.append(_make_matchup(11, "F_BEN", "F_BRANDON", 111.60, 104.15))
+    return matchups
+
+
+def _reverse_map_ben_brandon():
+    """Alias map where 'ben' is excluded (len<5 threshold).
+
+    Matches production behavior: _build_reverse_name_map includes
+    first-word aliases only when len>=5, so "Brandon" (7 chars) is
+    included but "ben" (3 chars) is not. This is the condition that
+    causes _find_nearby_franchise pass-1 to fall through to pass-2
+    when the snap subject is "Ben ...".
+    """
+    return {
+        "Ben's Gods": "F_BEN", "ben's gods": "F_BEN",
+        # Note: "ben" intentionally NOT in map (3 chars, below
+        # 5-char first-word alias threshold).
+        "Brandon Knows Ball": "F_BRANDON",
+        "brandon knows ball": "F_BRANDON",
+        "brandon": "F_BRANDON",  # 7-char first-word alias (built in prod)
+        "Other Team": "OTHER", "other team": "OTHER",
+    }
+
+
+class TestRegressionStreakPossessiveIdiomatic:
+    """Pin STREAK idiomatic-target possessive-scope fix.
+
+    Captured failures: id=54 (2025 W11 a1), id=25 (2025 W13).
+
+    Mechanism: _SNAP_PATTERN fires on a SOFT trailing keyword
+    (losing/winning/straight/consecutive) when the actual
+    streak-like noun is rhetorical ("season", "momentum", "run",
+    "slide"). The span ends before any literal "streak" noun, so
+    _POSSESSIVE_OBJECT_STREAK fails inside the span and
+    _find_nearby_franchise pass-2 picks up the possessor after the
+    snap verb, emitting a wrong-subject STREAK failure against
+    prose that never claimed a literal streak was snapped.
+
+    Fix: _has_idiomatic_snap_possessor guard silences snap checks
+    whose span (a) does NOT end with "streak"/"skid" AND (b)
+    contains a proper-noun possessor. Literal-streak spans pass
+    through to the existing resolvers, unchanged.
+
+    Out of scope: id=7 pronoun-possessive + short-alias subject
+    variant ("Robb snapped his losing streak") — span ends on
+    literal "streak" so this guard does not apply; remains in
+    backlog.
+    """
+
+    # ── Captured: id=54 (2025 W11 a1) ────────────────────────────
+    def test_id54_perfect_losing_season_not_flagged(self):
+        """Verbatim id=54 prose: 'snapped Brandon's perfect losing season...'
+
+        Span ends at "losing" — no literal "streak" noun follows.
+        Guard fires on the proper-noun possessor "Brandon's"; snap
+        check silences rather than falling through to pass-2
+        proximity attribution.
+        """
+        matchups = _brandon_losing_matchups()
+        reverse = _reverse_map_ben_brandon()
+        text = (
+            "Ben snapped Brandon's perfect losing season with a "
+            "111.60-104.15 victory, though Brandon actually put up "
+            "his best score in weeks."
+        )
+        failures = verify_streaks(text, matchups, 11, reverse)
+        streak_failures = [f for f in failures if f.category == "STREAK"]
+        assert streak_failures == [], (
+            f"expected no STREAK failures for idiomatic 'losing season' "
+            f"target; got: {[(f.claim, f.evidence) for f in streak_failures]}"
+        )
+
+    # ── Captured: id=25 (2025 W13) ───────────────────────────────
+    def test_id25_purple_haze_momentum_not_flagged(self):
+        """Verbatim id=25 prose: 'snapped Purple Haze's modest momentum...'
+
+        Greedy 80-char window consumes the possessor clause but
+        stops at "losing" before reaching the trailing "streak"
+        attached to a DIFFERENT possessor ("Pat's four-game losing
+        streak"). Guard fires on proper-noun possessor "Purple
+        Haze's"; snap check silences.
+        """
+        matchups = [
+            _make_matchup(1, "F_ROBB", "F_HAZE", 120, 100),
+            _make_matchup(2, "F_HAZE", "F_ROBB", 110, 90),
+            _make_matchup(3, "F_ROBB", "F_HAZE", 101, 97),
+        ]
+        reverse = {
+            "Robb's Team": "F_ROBB", "robb's team": "F_ROBB",
+            "Purple Haze": "F_HAZE", "purple haze": "F_HAZE",
+            "purple": "F_HAZE",
+        }
+        text = (
+            "Robb snapped Purple Haze's modest momentum with a "
+            "101-97 victory, ending Pat's four-game losing streak "
+            "that defined his last month."
+        )
+        failures = verify_streaks(text, matchups, 3, reverse)
+        # The second clause references Pat's streak but Pat is not
+        # in this fixture's matchups or alias map — intentional:
+        # the guard must silence the first clause regardless of
+        # what the unrelated second clause does.
+        streak_failures = [
+            f for f in failures if f.category == "STREAK"
+            and "Purple Haze" in (f.claim + f.evidence)
+        ]
+        assert streak_failures == [], (
+            f"expected no STREAK failure attributing to Purple Haze for "
+            f"idiomatic 'momentum' target; got: "
+            f"{[(f.claim, f.evidence) for f in streak_failures]}"
+        )
+
+    # ── Synthetic: idiomatic 'run' ───────────────────────────────
+    def test_idiomatic_synthetic_winning_run_not_flagged(self):
+        """'snapped Brandon's winning run' — idiomatic 'run' target.
+
+        SOFT trailing keyword "winning" fires _SNAP_PATTERN; span
+        ends at "winning" (the literal noun is "run", not "streak").
+        Guard fires on proper-noun possessor "Brandon's".
+        """
+        matchups = _brandon_losing_matchups()
+        reverse = _reverse_map_ben_brandon()
+        text = "Ben snapped Brandon's winning run with a 111.60-104.15 victory."
+        failures = verify_streaks(text, matchups, 11, reverse)
+        streak_failures = [f for f in failures if f.category == "STREAK"]
+        assert streak_failures == [], (
+            f"expected no STREAK failures for idiomatic 'winning run' "
+            f"target; got: {[(f.claim, f.evidence) for f in streak_failures]}"
+        )
+
+    # ── Synthetic: idiomatic 'slide' ─────────────────────────────
+    def test_idiomatic_synthetic_losing_slide_not_flagged(self):
+        """'snapped Brandon's multi-week losing slide' — idiomatic 'slide'.
+
+        Documented in the guard docstring. SOFT trailing keyword
+        "losing" fires _SNAP_PATTERN; span ends at "losing" (the
+        literal noun is "slide"). Guard fires on proper-noun
+        possessor "Brandon's".
+        """
+        matchups = _brandon_losing_matchups()
+        reverse = _reverse_map_ben_brandon()
+        text = (
+            "Ben snapped Brandon's multi-week losing slide with a "
+            "111.60-104.15 win."
+        )
+        failures = verify_streaks(text, matchups, 11, reverse)
+        streak_failures = [f for f in failures if f.category == "STREAK"]
+        assert streak_failures == [], (
+            f"expected no STREAK failures for idiomatic 'losing slide' "
+            f"target; got: {[(f.claim, f.evidence) for f in streak_failures]}"
+        )
+
+    # ── Positive control: literal 'streak' + possessive ──────────
+    def test_literal_streak_possessive_still_resolves(self):
+        """Pin that _POSSESSIVE_OBJECT_STREAK still fires on literal 'streak'.
+
+        Span ends on the literal "streak" noun, so the guard
+        returns False and the existing possessive-object resolver
+        takes over. Mirrors test_snap_possessive_object_row20_pattern
+        — if this regresses, the literal-streak passthrough branch
+        of the guard is broken.
+        """
+        matchups = _brandon_losing_matchups()
+        reverse = _reverse_map_ben_brandon()
+        # Same fixture, but prose names the literal streak — the
+        # captured failure from id=20 (already resolved by c103e4d).
+        # Brandon's pre-week streak is -10 (not -11), so the 11-game
+        # claim is false and the existing resolver must still raise
+        # the possessive-scoped failure.
+        text = (
+            "Ben snapped Brandon's 11-game losing streak with a "
+            "111.60-104.15 victory."
+        )
+        failures = verify_streaks(text, matchups, 11, reverse)
+        streak_failures = [f for f in failures if f.category == "STREAK"]
+        # The existing resolver emits a failure that cites Brandon
+        # Knows Ball as the streak owner (not as the snap-claim
+        # subject). Pre-week streak was -10, current is -11 →
+        # "extended" evidence branch.
+        assert len(streak_failures) == 1, (
+            f"expected exactly one STREAK failure from the existing "
+            f"possessive-object resolver; got: "
+            f"{[(f.claim, f.evidence) for f in streak_failures]}"
+        )
+        assert "Brandon Knows Ball" in streak_failures[0].claim
+        assert "losing streak was snapped" in streak_failures[0].claim
+        assert "extended to 11" in streak_failures[0].evidence
+        assert "not snapped" in streak_failures[0].evidence
+
+    # ── Positive control: literal 'streak' + pronoun ─────────────
+    def test_literal_streak_pronoun_unchanged(self):
+        """Pin that pronoun-possessive literal 'streak' still passes through.
+
+        Span ends on literal "streak", so the guard returns False.
+        Pronoun "their" fails _POSSESSIVE_OBJECT_STREAK's
+        leading-capital requirement, so the resolver also skips.
+        Falls through to _find_nearby_franchise pass-1, which picks
+        up "Alpha Team" before the snap verb. Alpha Team had no
+        losing streak entering this week → existing heuristic emits
+        a failure. This test pins that the guard does NOT silence
+        the existing subject-attribution path for literal-streak
+        claims.
+        """
+        matchups = [
+            _make_matchup(1, "F_ALPHA", "F_BETA", 120, 100),
+            _make_matchup(2, "F_ALPHA", "F_BETA", 115, 105),
+            _make_matchup(3, "F_ALPHA", "F_BETA", 130, 90),
+        ]
+        reverse = {
+            "Alpha Team": "F_ALPHA", "alpha team": "F_ALPHA",
+            "alpha": "F_ALPHA",
+            "Beta Squad": "F_BETA", "beta squad": "F_BETA",
+            "beta": "F_BETA",
+        }
+        # Alpha Team won all three weeks — no losing streak to snap.
+        # The literal-streak claim must still be caught by the
+        # existing proximity heuristic.
+        text = "Alpha Team snapped their losing streak with a 130-90 win."
+        failures = verify_streaks(text, matchups, 3, reverse)
+        streak_failures = [f for f in failures if f.category == "STREAK"]
+        assert len(streak_failures) == 1, (
+            f"expected exactly one STREAK failure from the existing "
+            f"proximity-heuristic path; got: "
+            f"{[(f.claim, f.evidence) for f in streak_failures]}"
+        )
+        assert "Alpha Team" in streak_failures[0].claim
+        assert "no losing streak" in streak_failures[0].evidence
+
+
 # ─── P1/P2 PLAYER_SCORE parse-false-positive regressions ─────────────
 #
 # Fixtures reproduce prompt_audit rows captured in the 2026-04-14 Q5

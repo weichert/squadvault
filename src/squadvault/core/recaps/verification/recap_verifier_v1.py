@@ -1165,6 +1165,54 @@ _POSSESSIVE_OBJECT_STREAK = re.compile(
     r'losing\s+streak',
 )
 
+# Idiomatic-target possessor in a snap clause. Matches a proper-noun
+# possessor ("Brandon's", "Purple Haze's") — case-sensitive leading
+# capital excludes pronoun possessors ("his", "their", "the"). Used
+# only by _has_idiomatic_snap_possessor to decide whether a
+# soft-trailing snap span ("snapped Brandon's perfect losing
+# season…") is an idiomatic rhetorical target rather than a literal
+# streak claim. See OBSERVATIONS_2026_04_15 D12 finding + backlog.
+_PROPER_NOUN_POSSESSOR_IN_SNAP = re.compile(
+    r'\b[A-Z][\w&]*(?:\s+[A-Z&][\w&]*)*(?:\'s|\u2019s)\b'
+)
+
+
+def _has_idiomatic_snap_possessor(match_text: str) -> bool:
+    """True when a snap clause targets an idiomatic possessor, not a literal streak.
+
+    The _SNAP_PATTERN can fire via a SOFT trailing keyword
+    (losing / winning / straight / consecutive) when the actual
+    streak-like noun in the clause is rhetorical — e.g. "Brandon's
+    perfect losing **season**" (id=54) or "Purple Haze's modest
+    **momentum**" (id=25) or "Brandon's losing **slide**" / "winning
+    **run**". In those cases the span ends BEFORE the literal "streak"
+    noun (either because no "streak" follows, or because the greedy
+    80-char window cannot stretch far enough).
+
+    Without this guard, _POSSESSIVE_OBJECT_STREAK fails on the span
+    (no literal "streak" noun), and _find_nearby_franchise pass-2
+    picks up the possessor after the snap verb, emitting a
+    wrong-subject STREAK failure against prose that never claimed
+    a literal streak was snapped.
+
+    Return contract:
+        True  → caller should `continue` (silence over speculation)
+        False → fall through to the existing resolvers
+                (_POSSESSIVE_OBJECT_STREAK, then proximity heuristic),
+                which correctly handle literal-streak claims
+
+    Literal claims — spans ending in "streak" or "skid" — always
+    return False here; _POSSESSIVE_OBJECT_STREAK and the proximity
+    heuristic remain authoritative for those. Pronoun-possessive
+    idiomatic cases (e.g. "snapped their winning run") also return
+    False because _PROPER_NOUN_POSSESSOR_IN_SNAP requires a
+    case-sensitive leading capital; those fall through unchanged.
+    """
+    low = match_text.lower()
+    if low.endswith("streak") or low.endswith("skid"):
+        return False  # literal → existing resolvers handle
+    return bool(_PROPER_NOUN_POSSESSOR_IN_SNAP.search(match_text))
+
 
 def _compute_streaks(
     matchups: list[_MatchupFact],
@@ -1299,6 +1347,18 @@ def verify_streaks(
         ):
             continue
 
+        _match_text = recap_text[match.start():match.end()]
+
+        # Idiomatic-target guard: if the snap clause fired via a SOFT
+        # trailing keyword (losing/winning/straight/consecutive) and
+        # targets a rhetorical possessor ("Brandon's perfect losing
+        # season", "Purple Haze's modest momentum", "winning run",
+        # "losing slide"), silence the check. The literal-streak
+        # resolvers below stay authoritative for spans ending in
+        # "streak" or "skid". See OBSERVATIONS_2026_04_15 D12.
+        if _has_idiomatic_snap_possessor(_match_text):
+            continue
+
         # Possessive-object attribution: if the match span contains
         # "<Franchise>'s [N-game]? losing streak", the streak owner is
         # explicitly named in the prose — use that directly rather than
@@ -1309,7 +1369,6 @@ def verify_streaks(
         # "brandon" inside the snap clause, and the failure cites Brandon
         # as the snap-claim subject rather than the streak owner). See
         # OBSERVATIONS_2026_04_14 backlog B, row 20 (2025 w11 attempt 1).
-        _match_text = recap_text[match.start():match.end()]
         _possessive = _POSSESSIVE_OBJECT_STREAK.search(_match_text)
         if _possessive:
             _possessor_key = (
