@@ -1158,10 +1158,25 @@ _SNAP_PATTERN = re.compile(
 # reverse_name_map. Case-sensitive leading capital requirement filters out
 # pronoun possessors ("his", "their", "the") that shouldn't be treated as
 # franchise references. See OBSERVATIONS_2026_04_14 backlog B.
+# Cardinal counts 1-18 (practical ceiling for fantasy-football streak
+# lengths — an 18-week regular season). Used by _POSSESSIVE_OBJECT_STREAK's
+# optional count prefix to accept spelled-out counts ("four-game",
+# "twelve-game") in addition to digits. All lowercase because captured
+# prose (rows 9, 10, 24, 25, 35, 36, 40, 41, 42, 47, 53, 56, 105, 112,
+# 113, 114 as of 2026-04-18) consistently lowercases these count words.
+# If future captures show Title-case ("Four-game") or SHOUTCASE, extend
+# here rather than adding re.IGNORECASE — the possessor group
+# ([A-Z][\w&]*) has a case-sensitive leading-capital requirement that
+# IGNORECASE would break (pronouns "his"/"their" would pass through).
+_SPELLED_COUNTS_1_18 = (
+    r'one|two|three|four|five|six|seven|eight|nine|ten|'
+    r'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen'
+)
+
 _POSSESSIVE_OBJECT_STREAK = re.compile(
     r'\b([A-Z][\w&]*(?:\s+[A-Z&][\w&]*)*)'
     r'(?:\'s|\u2019s)\s+'
-    r'(?:\d{1,2}[-\s]game\s+)?'
+    r'(?:(?:\d{1,2}|' + _SPELLED_COUNTS_1_18 + r')[-\s]game\s+)?'
     r'losing\s+streak',
 )
 

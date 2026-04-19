@@ -2474,6 +2474,150 @@ class TestRegressionStreakId7AliasFilter:
         )
 
 
+# ─── STREAK spelled-out-count digit-prefix gap regression ───────────
+#
+# Pins the fix for the _POSSESSIVE_OBJECT_STREAK digit-prefix gap —
+# the pattern originally required \d{1,2} before "-game", missing
+# spelled-out counts ("four-game", "eight-game", "twelve-game") that
+# the model uses frequently in captured prose.
+#
+# Captured evidence (from /tmp/sv_digit_prefix scan, 2026-04-18):
+#   - 16 prompt_audit rows contain spelled-out "-game losing streak"
+#     patterns across 2024 and 2025 seasons
+#   - 4 are third-party possessor cases (rows 24, 25, 113, 114 —
+#     "Robb snapped Pat's/Purple Haze's four-game losing streak")
+#     where the prose claim is factually false (Pat/Haze lost the
+#     featured matchup, so their streak extended, not snapped)
+#   - Pre-fix: _POSSESSIVE_OBJECT_STREAK regex failed on spelled-out
+#     counts, falling through to _find_nearby_franchise proximity
+#     heuristic which attributed to the snap-verb subject (Robb, who
+#     had won) instead of the prose's named possessor (Pat)
+#   - Silent miss: no STREAK failure emitted despite the factually
+#     wrong claim, because Robb happened to also be on a losing
+#     streak that genuinely snapped
+#   - If Robb had instead been on a winning streak, the same
+#     mechanism would have emitted a wrong-subject failure (flagging
+#     Robb for a claim that was actually about Pat)
+#
+# Fix (c739b8d..HEAD): _POSSESSIVE_OBJECT_STREAK's optional count
+# prefix now accepts spelled-out 1-18 in addition to \d{1,2}.
+# Module-level _SPELLED_COUNTS_1_18 constant keeps the alternation
+# reusable if future scoping of the adjacent _STREAK_PATTERN gap
+# warrants the same fix there.
+#
+# Out of scope (separate session):
+#   - _STREAK_PATTERN (explicit count verification) has the same
+#     digit-prefix gap but fixing it requires spelled-to-digit
+#     translation for count comparison — bigger change
+#   - franchise_directory.owner_name is empty for league 70985/2025;
+#     "pat"/"miller"/"steve" owner aliases are therefore absent
+#     from reverse_name_map in production. This test uses a
+#     hardcoded reverse_name_map that includes "pat" to exercise
+#     the fix's mappable-possessor path. Under current production
+#     state, the fix changes the captured mechanism from
+#     silent-miss-via-proximity-accident to silent-via-unmappable-
+#     possessor — a cleaner failure mode even without owner_map.
+class TestRegressionStreakSpelledCountPossessor:
+    """Pin _POSSESSIVE_OBJECT_STREAK spelled-out count support.
+
+    Captured reference rows: 24, 25, 113, 114 (2025 W13 third-party
+    possessor prose). Under pre-fix code the regex failed on
+    spelled-out counts and proximity attribution accidentally
+    silenced the false claim.
+
+    Post-fix contract: when the prose contains "<Franchise>'s
+    <spelled-count>-game losing streak" AND <Franchise> is mappable
+    in reverse_name_map, the verifier attributes to that franchise
+    directly (not via proximity) and correctly identifies the
+    snapped-vs-extended truth value.
+    """
+
+    def test_four_game_spelled_count_extended_not_snapped(self):
+        """Verbatim W13 false-claim prose resolved to Pat via possessive path.
+
+        Prose claim: "Robb snapped Pat's four-game losing streak".
+        Fixture: Pat had a 4-game losing streak entering Week 13 and
+        lost in Week 13 → streak extended to 5. Claim is factually
+        false. Post-fix, _POSSESSIVE_OBJECT_STREAK extracts "Pat" as
+        possessor and the streak resolver emits a HARD failure
+        citing Pat's franchise.
+        """
+        matchups = []
+        for w in range(9, 13):
+            matchups.append(_make_matchup(w, "OTHER", "F_PAT", 120, 100))
+        matchups.append(_make_matchup(13, "F_ROBB", "F_PAT", 101, 97))
+        reverse = {
+            "Robb's Raiders": "F_ROBB", "robb's raiders": "F_ROBB",
+            "robb": "F_ROBB", "raiders": "F_ROBB",
+            "Purple Haze": "F_PAT", "purple haze": "F_PAT",
+            "purple": "F_PAT", "pat": "F_PAT",
+            "Other Team": "OTHER", "other team": "OTHER",
+        }
+        text = "Robb snapped Pat's four-game losing streak with a 101-97 win over Purple Haze."
+        failures = verify_streaks(text, matchups, 13, reverse)
+        pat_streak_failures = [
+            f for f in failures
+            if f.category == "STREAK"
+            and "Purple Haze" in (f.claim + f.evidence)
+        ]
+        assert len(pat_streak_failures) == 1, (
+            f"expected exactly one STREAK failure citing Purple Haze "
+            f"as the streak owner (possessor-attribution path); got: "
+            f"{[(f.claim, f.evidence) for f in pat_streak_failures]}"
+        )
+        assert "losing streak was snapped" in pat_streak_failures[0].claim
+        assert "extended to 5" in pat_streak_failures[0].evidence
+        assert "not snapped" in pat_streak_failures[0].evidence
+
+    def test_digit_prefix_still_resolves_regression(self):
+        """Positive control — digit-prefix possessor still resolves.
+
+        Mirrors test_literal_streak_possessive_still_resolves in
+        TestRegressionStreakPossessiveIdiomatic. If the spelled-out
+        extension accidentally broke digit-prefix matching, this
+        test will fail.
+        """
+        matchups = _brandon_losing_matchups()
+        reverse = _reverse_map_ben_brandon()
+        text = (
+            "Ben snapped Brandon's 11-game losing streak with a "
+            "111.60-104.15 victory."
+        )
+        failures = verify_streaks(text, matchups, 11, reverse)
+        brandon_failures = [
+            f for f in failures
+            if f.category == "STREAK"
+            and "Brandon Knows Ball" in f.claim
+        ]
+        assert len(brandon_failures) == 1
+        assert "losing streak was snapped" in brandon_failures[0].claim
+        assert "extended to 11" in brandon_failures[0].evidence
+
+    def test_no_prefix_still_resolves_regression(self):
+        """Positive control — no-prefix possessor still resolves.
+
+        The optional count group must still match the empty case
+        after the spelled-out extension. If the group became
+        accidentally required (e.g., by a typo in the alternation),
+        plain "Brandon's losing streak" would stop matching and
+        this test will fail.
+        """
+        matchups = _brandon_losing_matchups()
+        reverse = _reverse_map_ben_brandon()
+        text = "Ben snapped Brandon's losing streak with a 111.60-104.15 win."
+        failures = verify_streaks(text, matchups, 11, reverse)
+        brandon_failures = [
+            f for f in failures
+            if f.category == "STREAK"
+            and "Brandon Knows Ball" in f.claim
+        ]
+        assert len(brandon_failures) == 1, (
+            f"expected one STREAK failure from possessive-object "
+            f"path (no-prefix variant); got: "
+            f"{[(f.claim, f.evidence) for f in brandon_failures]}"
+        )
+
+
 # ─── P1/P2 PLAYER_SCORE parse-false-positive regressions ─────────────
 #
 # Fixtures reproduce prompt_audit rows captured in the 2026-04-14 Q5
