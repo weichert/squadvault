@@ -2289,6 +2289,191 @@ class TestRegressionStreakPossessiveIdiomatic:
         assert "no losing streak" in streak_failures[0].evidence
 
 
+# ─── STREAK id=7 short first-word alias regression ──────────────────
+#
+# Pins the post-b58b1a2 attribution behavior for prompt_audit row 7
+# (captured 2026-04-14T10:02:35 UTC, league 70985 / season 2025 /
+# week 4 / attempt 0). Full mechanism analysis in
+# _observations/OBSERVATIONS_2026_04_18_STREAK_id7_SUPERSEDED.md.
+#
+# The b58b1a2 commit that resolved the capture-time misattribution
+# was PLAYER_FRANCHISE-motivated and landed without a STREAK-class
+# regression test. This block adds that test.
+#
+# Unlike _brandon_losing_matchups / _reverse_map_ben_brandon above,
+# this fixture uses the real 70985/2025 franchise_directory rows
+# verbatim (owner_name column empty for all 10) and calls
+# _build_reverse_name_map directly rather than hardcoding the map.
+# That choice is intentional: the regression hazard being pinned is
+# a change to the alias-building logic, so the test must exercise
+# that logic rather than bypass it.
+
+def _pfl_buddies_2025_name_map():
+    """franchise_directory rows for league 70985 season 2025.
+
+    Verbatim snapshot from live DB at 2026-04-18. owner_name column
+    is empty for all 10 rows in this league/season → owner_map={} in
+    production, Pass 4 (owner-name alias) contributes nothing.
+    """
+    return {
+        "0001": "Stu's Crew",
+        "0002": "Paradis' Playmakers",
+        "0003": "Purple Haze",
+        "0004": "Eddie & the Cruisers",
+        "0005": "Weichert's Warmongers",
+        "0006": "Miller's Genuine Draft",
+        "0007": "Robb's Raiders",
+        "0008": "Ben's Gods",
+        "0009": "Italian Cavallini",
+        "0010": "Brandon Knows Ball",
+    }
+
+
+def _row7_matchups_through_week4():
+    """Robb 0-3 entering W4 and wins W4; Brandon 0-3 entering W4 and loses.
+
+    Matches the prose's implicit streak state: "Robb snapped his
+    losing streak" (Robb pre-week -3, current +1) and "Brandon…
+    remains winless at 0-4" (Brandon pre-week -3, current -4).
+    Other franchises' exact records don't affect the claim under
+    test — stubbed via opponent franchise_ids that don't appear in
+    the snap clause's proximity window.
+    """
+    return [
+        _make_matchup(1, "0001", "0007", 120, 90),          # Robb L1
+        _make_matchup(1, "0002", "0010", 120, 90),          # Brandon L1
+        _make_matchup(2, "0003", "0007", 120, 90),          # Robb L2
+        _make_matchup(2, "0004", "0010", 120, 90),          # Brandon L2
+        _make_matchup(3, "0005", "0007", 120, 90),          # Robb L3
+        _make_matchup(3, "0006", "0010", 120, 90),          # Brandon L3
+        _make_matchup(4, "0007", "0010", 119.05, 98.60),    # W4 clash
+    ]
+
+
+# Verbatim prose from prompt_audit row 7.narrative_draft. Captured
+# 2026-04-14T10:02:35 UTC. Embedded here (not loaded from DB) so
+# tests remain reproducible without DB state.
+_ROW7_PROSE = (
+    "The undefeated teams stayed perfect, but barely. Ben's Gods "
+    "pulled off the upset of the week, squeaking past Italian "
+    "Cavallini 148.05-147.30 in a thriller that came down to "
+    "three-quarters of a point. Ben entered at 1-3 and knocked off "
+    "the 3-1 Cavallini in what amounts to a playoff-caliber game "
+    "in Week 4. Patrick Mahomes put up 38 for Michele, but it "
+    "wasn't enough to overcome Ben's balanced attack led by "
+    "Omarion Hampton's 25 points.\n\n"
+    "KP and the Playmakers stayed unbeaten with a 143-117 blowout "
+    "of Eddie's Cruisers, extending their perfect start behind Bo "
+    "Nix's 33 points. Eddie left 43 points on the bench with "
+    "Michael Pittman sitting there at 12.6 — the kind of lineup "
+    "decision that turns a competitive loss into a rout. Purple "
+    "Haze also moved to 4-0 with a narrow 120.75-115.55 win over "
+    "Stu's Crew, despite Dak Prescott torching them for 40 points. "
+    "Pat left massive production on his bench, including Jordan "
+    "Love's 35.65, but got enough from Josh Jacobs (29.7) to "
+    "survive.\n\n"
+    "Miller's Genuine Draft handled the Warmongers 109.65-92.15 "
+    "to move to 3-1, while Steve's team continues to struggle "
+    "despite investing heavily in waiver pickups. The Warmongers "
+    "are averaging just 8.5 points from $46 pickup Brock Bowers "
+    "through four starts — well below the league starter average "
+    "of 17.2. Robb snapped his losing streak with a 119.05-98.60 "
+    "win over Brandon, who remains winless at 0-4. Brandon's $51 "
+    "investment in Brian Thomas Jr. continues to underwhelm at "
+    "7.5 points per game.\n\n"
+    "The two 4-0 teams now sit atop the standings, with the "
+    "Playmakers leading on points scored at 549.5. Behind them, "
+    "a crowded middle tier of 3-1 and 2-2 teams are separated by "
+    "just a few points, while Brandon sits alone at the bottom "
+    "still searching for his first win.\n"
+)
+
+
+class TestRegressionStreakId7AliasFilter:
+    """Pin STREAK id=7 — short first-word alias subject attribution.
+
+    Captured failure: prompt_audit row 7 (2025 W4, attempt 0,
+    captured 2026-04-14T10:02:35 UTC).
+
+    Prose fragment of interest: "Robb snapped his losing streak
+    with a 119.05-98.60 win over Brandon, who remains winless at
+    0-4."
+
+    Mechanism at capture time (b55cc17):
+      - Pass 2 first-word alias filter was `len < 5` → "Robb"
+        (4 chars) excluded from reverse_name_map
+      - Pass 3 (last-word aliases) did not yet exist
+      - Only "robb's raiders" (full lowercased franchise name) was
+        present; the single "Robb" token before the snap verb does
+        not substring-match that alias
+      - _find_nearby_franchise pass-1 found nothing in the before
+        window, pass-2 scanned the after window, picked up
+        "Brandon" (7 chars, present as Pass 2 first-word alias)
+      - HARD STREAK failure attributed the snap claim to Brandon
+        Knows Ball, who had just lost in W4 (streak extended, not
+        snapped)
+
+    Resolved by b58b1a2 (2026-04-15): same commit relaxed Pass 2
+    filter to `len < 3` AND introduced Pass 3 (last-word aliases,
+    `len < 5` filter). Both changes independently cover row 7:
+      - "robb" now present via Pass 2 (primary fix for this class)
+      - "raiders" now present via Pass 3 (redundant coverage —
+        Pass-1 finds "robb" first because it is closer to the
+        snap verb in this prose)
+
+    This test pins the end-to-end resolution. If a future change
+    regresses BOTH mechanisms (e.g., re-tightens Pass 2 to `< 5`
+    AND removes Pass 3), this test will fail with an informative
+    message citing Brandon Knows Ball as the misattributed subject.
+
+    Sanity check (run locally, do NOT commit): verified 2026-04-18
+    that editing _build_reverse_name_map to restore Pass 2
+    `len < 5` AND disable Pass 3 (raise `len < 999`) causes this
+    test to fail with the exact capture-time failure prose:
+        [STREAK/HARD] "Brandon Knows Ball snapped a losing streak"
+        evidence: "Brandon Knows Ball lost in Week 4 — streak
+                   extended to 4, not snapped."
+
+    Reverting only Pass 2 is insufficient — Pass 3's "warmongers"
+    last-word alias still provides attribution (to Weichert's
+    Warmongers, a different wrong-subject) which does not match
+    the captured Brandon failure. The test's teeth require both
+    mechanisms to regress simultaneously; that coupling is
+    documented here rather than enforced by a separate assertion
+    so the test surface stays narrow to the captured failure.
+
+    See _observations/OBSERVATIONS_2026_04_18_STREAK_id7_SUPERSEDED.md.
+    """
+
+    def test_row7_prose_no_brandon_attribution(self):
+        """Verbatim row 7 prose + real 70985/2025 name_map → no Brandon failure.
+
+        Assertion is attribution-scoped: zero STREAK failures whose
+        claim or evidence cites Brandon Knows Ball. A correct
+        failure against any other franchise would not break this
+        test — the mechanism being pinned is subject attribution
+        for the specific captured failure class, not streak-fact
+        accuracy for any synthetic fixture.
+        """
+        matchups = _row7_matchups_through_week4()
+        name_map = _pfl_buddies_2025_name_map()
+        # Real production-path call — owner_map={} mirrors live DB
+        # state (franchise_directory.owner_name empty for 70985/2025).
+        reverse = _build_reverse_name_map(name_map, {})
+        failures = verify_streaks(_ROW7_PROSE, matchups, 4, reverse)
+        brandon_streak_failures = [
+            f for f in failures
+            if f.category == "STREAK"
+            and "Brandon Knows Ball" in (f.claim + f.evidence)
+        ]
+        assert brandon_streak_failures == [], (
+            f"expected no STREAK failure attributing row 7's snap "
+            f"claim to Brandon Knows Ball (Robb's Raiders is the "
+            f"correct subject at HEAD); got: "
+            f"{[(f.claim, f.evidence) for f in brandon_streak_failures]}"
+        )
+
+
 # ─── P1/P2 PLAYER_SCORE parse-false-positive regressions ─────────────
 #
 # Fixtures reproduce prompt_audit rows captured in the 2026-04-14 Q5
