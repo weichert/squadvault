@@ -198,6 +198,36 @@ def _load_franchise_owner_names(
     return owner_map
 
 
+def _load_franchise_nicknames(
+    db_path: str,
+    league_id: str,
+) -> dict[str, str]:
+    """Load franchise_id -> curated_nickname map for the league.
+
+    Commissioner-curated short-forms keyed cross-season by
+    (league_id, franchise_id). Consumed by _build_reverse_name_map
+    pass 4a to resolve league-insider references that neither the
+    franchise name nor the owner's first name would surface — e.g.
+    "KP" for Paradis' Playmakers in PFL Buddies.
+
+    An empty return value is the normal pre-curation state. Missing
+    table is a misconfigured-environment error and is propagated as
+    sqlite3.OperationalError rather than silently swallowed.
+    """
+    nickname_map: dict[str, str] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT franchise_id, nickname
+               FROM franchise_nicknames
+               WHERE league_id = ?""",
+            (str(league_id),),
+        ).fetchall()
+    for row in rows:
+        if row[0] and row[1] and str(row[1]).strip():
+            nickname_map[str(row[0]).strip()] = str(row[1]).strip()
+    return nickname_map
+
+
 def _load_player_season_high(
     db_path: str,
     league_id: str,
@@ -289,6 +319,7 @@ def _normalize_apostrophes(text: str) -> str:
 def _build_reverse_name_map(
     name_map: dict[str, str],
     owner_map: dict[str, str] | None = None,
+    nickname_map: dict[str, str] | None = None,
 ) -> dict[str, str]:
     """Build name -> franchise_id reverse lookup.
 
@@ -302,14 +333,20 @@ def _build_reverse_name_map(
       - Pass 3: last-word aliases from the franchise name (Warmongers,
         Playmakers, Raiders, Cavallini — the distinctive noun the league
         commonly uses)
-      - Pass 4: owner first-name aliases when owner_map is supplied
-        (Michele, KP, Steve, Pat — owner names that never appear inside
+      - Pass 4a: commissioner-curated nicknames when nickname_map is
+        supplied (the league-used short-form that neither the franchise
+        name nor the owner's first name surfaces — canonical example:
+        "KP" for Paradis' Playmakers in PFL Buddies)
+      - Pass 4b: owner first-name aliases when owner_map is supplied
+        (Michele, Steve, Pat — owner names that never appear inside
         the franchise name itself)
 
-    All alias passes require uniqueness and do not override existing
-    entries. Substring hazards are handled by word-boundary regex
-    matching at lookup time (_franchise_name_matches_in_context), not
-    by length thresholds here.
+    Pass 4a runs before pass 4b so curated nicknames take precedence
+    over owner-first-word extraction via the existing non-override
+    guard. All alias passes require uniqueness and do not override
+    existing entries. Substring hazards are handled by word-boundary
+    regex matching at lookup time (_franchise_name_matches_in_context),
+    not by length thresholds here.
     """
     reverse: dict[str, str] = {}
 
@@ -378,13 +415,46 @@ def _build_reverse_name_map(
         if alias not in reverse:
             reverse[alias] = fid
 
-    # Pass 4: Owner first-name aliases (when owner_map supplied).
+    # Pass 4a: Commissioner-curated nickname aliases (when nickname_map
+    # supplied). Runs before pass 4b so curated nicknames take precedence
+    # over owner-first-word extraction via the non-override guard.
+    # Canonical case: "KP" for Paradis' Playmakers in PFL Buddies — a
+    # short-form the league uses that neither the franchise name nor the
+    # owner's first name would surface. Uniqueness is required: if two
+    # franchises share a curated nickname, both are suppressed. 2-char
+    # minimum matches pass 4b; word-boundary regex at match time handles
+    # substring hazards.
+    if nickname_map:
+        _nickname_word_to_fids: dict[str, set[str]] = {}
+        for fid, nickname in nickname_map.items():
+            if fid not in name_map:
+                # Only alias nicknames for franchises we know by name
+                continue
+            normalized = _normalize_apostrophes(nickname)
+            words = re.findall(r"\w+", normalized)
+            if not words:
+                continue
+            nickname_first = words[0].lower()
+            if len(nickname_first) < 2:
+                continue
+            if nickname_first in _stop_words:
+                continue
+            _nickname_word_to_fids.setdefault(nickname_first, set()).add(fid)
+
+        for alias, fids in _nickname_word_to_fids.items():
+            if len(fids) != 1:
+                continue
+            fid = next(iter(fids))
+            if alias not in reverse:
+                reverse[alias] = fid
+
+    # Pass 4b: Owner first-name aliases (when owner_map supplied).
     # Picks up short-forms the model uses when writing in league-insider
-    # voice ("Michele stayed perfect", "KP put up 169.60", "Steve squeaked
-    # past Brandon") that don't appear anywhere in the franchise name
-    # itself. 2-char minimum catches "KP" — safe because word boundaries
-    # plus the capital-letter lookahead at match time prevent substring
-    # and player-name hazards. Does not override existing aliases.
+    # voice ("Michele stayed perfect", "Steve squeaked past Brandon")
+    # that don't appear anywhere in the franchise name itself. 2-char
+    # minimum — safe because word boundaries plus the capital-letter
+    # lookahead at match time prevent substring and player-name hazards.
+    # Does not override existing aliases (including pass 4a nicknames).
     if owner_map:
         _owner_word_to_fids: dict[str, set[str]] = {}
         for fid, owner in owner_map.items():
@@ -2942,7 +3012,8 @@ def verify_recap_v1(
     season_matchups = _load_season_matchups(db_path, league_id, season)
     name_map = _load_franchise_names(db_path, league_id, season)
     owner_map = _load_franchise_owner_names(db_path, league_id, season)
-    reverse_name_map = _build_reverse_name_map(name_map, owner_map)
+    nickname_map = _load_franchise_nicknames(db_path, league_id)
+    reverse_name_map = _build_reverse_name_map(name_map, owner_map, nickname_map)
 
     all_failures: list[VerificationFailure] = []
     checks_run = 0

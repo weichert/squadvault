@@ -335,6 +335,24 @@ CREATE TABLE IF NOT EXISTS league_voice_profiles (
 );
 
 -- =========================
+-- Franchise nicknames (commissioner-curated short-forms for alias derivation)
+-- Mirror of migration 0010. Consumed by _build_reverse_name_map pass 4a
+-- to resolve league-insider references (e.g. "KP" for Paradis' Playmakers)
+-- that neither the franchise name nor the owner's first name would surface.
+-- Cross-season: keyed by (league_id, franchise_id), not by season.
+-- =========================
+
+CREATE TABLE IF NOT EXISTS franchise_nicknames (
+  league_id     TEXT    NOT NULL,
+  franchise_id  TEXT    NOT NULL,
+  nickname      TEXT    NOT NULL,
+  curated_by    TEXT    NOT NULL DEFAULT 'commissioner',
+  curated_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (league_id, franchise_id)
+);
+
+-- =========================
 -- Prompt audit (Phase 10 observation sidecar)
 -- Mirror of migrations 0007 + 0009. Append-only, never gates publication.
 -- prompt_text (added per migration 0009 / OBSERVATIONS_2026_04_15

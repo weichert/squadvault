@@ -300,6 +300,87 @@ class TestBuildReverseNameMap:
         assert reverse.get("steve") == "F1"
         assert "michele" not in reverse
 
+    # ── Nickname override layer (Option B, per 58521ba scoping memo) ──
+
+    def test_nickname_resolves_shape_b_dead_alias(self):
+        """N1 — Shape B dead-alias resolved via curated nickname.
+
+        When the owner's first name happens to collide with another
+        franchise's first-word alias (the "Shape B" pattern from the
+        04-19 decision memo), pass 4b cannot produce an owner alias
+        for that franchise. Pass 4a — a commissioner-curated nickname
+        keyed cross-season — restores the short-form the league
+        actually uses. Canonical case: "KP" for Paradis' Playmakers.
+        """
+        name_map = {
+            "F_KP": "Paradis' Playmakers",
+            "F_OTHER": "Kent's Kangaroos",
+        }
+        owner_map = {"F_KP": "Kent Paradis", "F_OTHER": "Joe Smith"}
+        nickname_map = {"F_KP": "KP"}
+        reverse = _build_reverse_name_map(name_map, owner_map, nickname_map)
+        # Curated nickname resolves to F_KP
+        assert reverse.get("kp") == "F_KP"
+        # Pass 4b owner-first-word "kent" is shadowed by F_OTHER's
+        # first-word alias (non-override guard); verifying that
+        # nicknaming F_KP did not accidentally resolve "kent"
+        assert reverse.get("kent") == "F_OTHER"
+
+    def test_nickname_empty_preserves_pass_4b_extraction(self):
+        """N2 — Shape A no regression when nickname_map is empty.
+
+        Pass 4b owner-first-word extraction continues to work exactly
+        as before when nickname_map is empty or unsupplied. The
+        additive signature extension must not alter the existing
+        owner-alias behavior.
+        """
+        name_map = {"F_PAT": "Pat's Playoff Pirates"}
+        owner_map = {"F_PAT": "Pat Nocero"}
+        # Empty nickname_map — pass 4a is a no-op
+        reverse = _build_reverse_name_map(name_map, owner_map, {})
+        # Pass 2 first-word already placed "pat"
+        assert reverse.get("pat") == "F_PAT"
+
+    def test_nickname_missing_under_shape_b_stays_broken(self):
+        """N3 — cold-start state: nickname missing, Shape B unresolved.
+
+        Documents the pre-curation behavior: when nickname_map is
+        empty, Shape B franchises (owner-first-word shadowed by
+        another franchise's pass-2 alias) have no path to a short-
+        form alias. The commissioner must curate a nickname to
+        resolve this. Silence over speculation — the verifier does
+        not invent an alias.
+        """
+        name_map = {
+            "F_KP": "Paradis' Playmakers",
+            "F_OTHER": "Kent's Kangaroos",
+        }
+        owner_map = {"F_KP": "Kent Paradis", "F_OTHER": "Joe Smith"}
+        # Empty nickname_map — Shape B stays unresolved
+        reverse = _build_reverse_name_map(name_map, owner_map, {})
+        # No "kp" alias of any casing
+        assert "kp" not in reverse
+        assert "KP" not in reverse
+        # Pass 2 "kent" resolves to F_OTHER; "paradis" to F_KP
+        assert reverse.get("kent") == "F_OTHER"
+        assert reverse.get("paradis") == "F_KP"
+
+    def test_nickname_collision_suppressed(self):
+        """N4 — when two franchises share a curated nickname, both
+        are suppressed. Uniqueness guard mirrors pass 4b. No
+        silent tie-breaking; the commissioner must resolve the
+        collision upstream by editing franchise_nicknames."""
+        name_map = {"F_A": "Alpha Team", "F_B": "Beta Squad"}
+        owner_map = {"F_A": "Anne Smith", "F_B": "Bob Jones"}
+        nickname_map = {"F_A": "Ace", "F_B": "Ace"}
+        reverse = _build_reverse_name_map(name_map, owner_map, nickname_map)
+        # Colliding nickname is suppressed entirely — neither franchise
+        # wins the "ace" alias
+        assert "ace" not in reverse
+        # Pass 4b still places unambiguous owner-first-word aliases
+        assert reverse.get("anne") == "F_A"
+        assert reverse.get("bob") == "F_B"
+
 
 class TestFindNearbyFranchiseIds:
     """Word-boundary matching prevents substring misattribution hazards."""
