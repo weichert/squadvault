@@ -188,6 +188,7 @@ def derive_waiver_bid_event_envelopes_from_transactions(
 
         payload: dict[str, Any] = {
             "mfl_type": t,
+            "mfl_timestamp": ts_unix,
             "franchise_id": franchise_id,
             "source_url": source_url,
             "raw_mfl_json": raw_json,

@@ -259,11 +259,11 @@ def _extract_waiver_bid_awarded_fields(
     ``player_id``). This pass adds canonical-first resolution for
     ``mfl_timestamp`` with raw fallback.
 
-    Note: WAIVER_BID_AWARDED is emitted by ``ingest/waiver_bids.py``,
-    which has not yet been extended to promote ``mfl_timestamp``. For
-    events from that ingest path the canonical-first check misses and
-    the raw fallback supplies the value — consistent with the retained-
-    fallback policy. A future pass may promote at that ingest module.
+    ``ingest/waiver_bids.py`` now also promotes ``mfl_timestamp`` on
+    every WAIVER_BID_* envelope (S10 leak #4 follow-up), so the
+    canonical-first path resolves directly for post-promotion events.
+    The raw fallback remains active for pre-promotion events per the
+    append-only ledger invariant.
     """
     out: dict[str, Any] = {}
 
