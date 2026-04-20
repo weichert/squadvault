@@ -1,0 +1,54 @@
+-- scripts/cleanup_legacy_migrations_row.sql
+--
+-- Deletes a single stale row from _schema_migrations left behind by
+-- the pre-NNNN_ naming discipline. The row records a migration
+-- version that no longer corresponds to any file in
+-- src/squadvault/core/storage/migrations/.
+--
+-- Background: before the four-digit-prefix convention tightened, a
+-- migration file was landed with "000X" as a literal placeholder
+-- prefix. The file was subsequently renamed to
+-- 0003_create_recap_selections.sql, but the tracking row with the
+-- "000X_" version string remained in .local_squadvault.sqlite's
+-- _schema_migrations table. The canonical 0003_create_recap_selections
+-- row is separately present and correct; this script removes only
+-- the literal "000X_create_recap_selections" row.
+--
+-- Inert in the runner: apply_migrations() in migrate.py skips any
+-- version already in _schema_migrations but only ever compares
+-- against versions discovered from files in migrations/. The stale
+-- "000X_" row matches no discovered file, so the runner never
+-- consults it. Deletion is therefore safe for runner behavior; its
+-- only effect is a clean tracking table.
+--
+-- Not a migration: data-correction of a metadata tracking row, not
+-- schema DDL. Preserves the DDL-only invariant of migrations/ named
+-- in commit 2ce7356 (Alt A seed precedent) where all ten existing
+-- migration files are CREATE TABLE or ADD COLUMN. Run intentionally
+-- by the operator against the specific DB that needs it; do not
+-- wire into the migration runner. Fresh-init DBs (init_and_migrate
+-- against a clean file) never carry the stale row and will not need
+-- this script. The CI fixture at fixtures/ci_squadvault.sqlite is
+-- rebuilt from schema.sql alone by scripts/regenerate_fixture_db.py
+-- and has no _schema_migrations table at all; it is also unaffected.
+--
+-- Literal-only filter: the DELETE matches the exact literal version
+-- string. Pattern-based filtering (e.g. versions not matching
+-- ^[0-9]{4}_) was considered and rejected in favor of the explicit
+-- literal — auditable, and cannot catch anything unintended.
+--
+-- Idempotent: re-running on a cleaned DB deletes zero rows;
+-- re-running on a DB that never had the row deletes zero rows. Safe
+-- in all states.
+--
+-- Usage:
+--   sqlite3 .local_squadvault.sqlite < scripts/cleanup_legacy_migrations_row.sql
+--
+-- Verification after apply:
+--   sqlite3 .local_squadvault.sqlite \
+--     "SELECT version FROM _schema_migrations
+--      WHERE version LIKE '%create_recap_selections%';"
+--   -- Expect: exactly one row, 0003_create_recap_selections.
+
+DELETE FROM _schema_migrations
+WHERE version = '000X_create_recap_selections';
