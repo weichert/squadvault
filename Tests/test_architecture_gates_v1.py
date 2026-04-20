@@ -13,11 +13,17 @@ import ast
 import glob
 import os
 import py_compile
+import re
 
 import pytest
 
 
 SRC = os.path.join(os.path.dirname(__file__), "..", "src")
+
+# Matches both the bare form ("except Exception:") and any captured form
+# ("except Exception as exc:", "except Exception as e:", etc.) — used by
+# TestBroadExceptionLimit.
+_BROAD_EXCEPT_RE = re.compile(r"^\s*except\s+Exception\s*(?:as\s+\w+\s*)?:")
 
 
 def _get_imports(filepath: str) -> list[str]:
@@ -203,11 +209,18 @@ class TestBroadExceptionLimit:
                 continue
             with open(f) as fh:
                 for line in fh:
-                    if line.strip() in ("except Exception:", "except Exception as e:"):
+                    if _BROAD_EXCEPT_RE.match(line):
                         count += 1
-        # Baseline: 6 legitimate fail-safe guards in renderers/canonicalize.
-        # 2 in canonicalize (ROLLBACK guard), 2 in deterministic_bullets (resolver fallback),
-        # 2 in render_recap_text_from_facts (str fallback + bullet enrichment guard).
+        # Baseline: 7 legitimate broad-exception guards in core/ at this HEAD.
+        # 2 in recaps/context/ (bye_week_context, league_rules_context —
+        #   optional-table read guards returning empty/None),
+        # 2 in recaps/render/deterministic_bullets_v1 (team/player resolver
+        #   fallbacks returning "Unknown team"/"Unknown player"),
+        # 1 in recaps/verification/recap_verifier_v1 (bare form — numeric
+        #   collection guard around matchup_numbers set-build),
+        # 2 in resolvers.py (player/franchise name-map loader fallbacks).
+        # Allows <=8 with one-handler cushion; a new broad handler should
+        # bump this baseline in its own commit with justification.
         assert count <= 8, (
             f"Core broad exception count grew to {count}. "
             f"Expected <=8. Narrow new handlers to specific exception types."
