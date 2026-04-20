@@ -94,6 +94,8 @@ sqlite3 -separator $'\t' -header .local_squadvault.sqlite < scripts/audit_querie
 | `08_failure_category_frequency.sql`               | Which verifier categories actually fail (SCORE, SUPERLATIVE, etc.)?   |
 | `09_unmapped_categories.sql`                      | Drift-detector cross-check: any UNMAPPED categories slipping through? |
 | `10_final_outcome_per_week.sql`                   | Per-week rollup: clean / passed-after-retry / exhausted-retries       |
+| `11_superlative_failure_prose.sql`                | For each SUPERLATIVE hard_failure: claim, evidence, and prose         |
+| `12_tarball_gap_rows_prose.sql`                   | Recover prose for five rows missing from the 04-19 scan tarball       |
 
 ## Pairing queries with prose notes
 
