@@ -61,12 +61,8 @@ def _parse_raw_mfl_json(payload: dict[str, Any]) -> dict[str, Any]:
     1. Fallback source for pre-promotion memory events whose canonical
        payload does not yet carry the promoted fields (``mfl_timestamp``,
        ``trade_franchise_a_gave_up``, ``trade_comments``, etc.).
-    2. ``d["raw_mfl"]`` stash consumed by
-       ``render_recap_text_from_facts_v1`` for transaction-type dispatch.
-
-    Post-promotion events do not strictly require this parse for field
-    extraction, but the render stash contract requires the parsed dict
-    remain available.
+    2. Local transaction-type dispatch in the caller: the per-type
+       extractor is selected by ``raw.get("type")``.
     """
     raw = payload.get("raw_mfl_json")
     if not raw or not isinstance(raw, str):
@@ -180,11 +176,12 @@ def _extract_details(event_type: str, payload: dict[str, Any]) -> dict[str, Any]
         if key in payload:
             d[key] = payload[key]
 
-    # Parse raw_mfl_json. For post-promotion events this serves the
-    # render-layer stash (render_recap_text_from_facts_v1 reads
-    # d["raw_mfl"]["type"]). For pre-promotion events this also
-    # supplies the fallback values the per-type extractors read when
-    # canonical keys are absent.
+    # Parse raw_mfl_json. Live uses: (a) transaction-type dispatch
+    # below via raw.get("type"), (b) pre-promotion fallback when
+    # per-type extractors need values absent from canonical keys.
+    # The d["raw_mfl"] stash written below is retained pending scope
+    # decision; former consumer render_recap_text_from_facts_v1 was
+    # retired (see memo 0b280cb). No current reader.
     raw = _parse_raw_mfl_json(payload)
     if raw:
         d["raw_mfl"] = raw
