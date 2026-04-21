@@ -31,6 +31,7 @@ warn() { echo "ERROR: $@" 1>&2; }
 
 filter_exclusions() {
   grep -v -E '^scripts/_graveyard/' | \
+  grep -v -E '^scripts/_archive/' | \
   grep -v -E 'scripts/(patch_|_patch_|_diag_).*' | \
   grep -v -E 'scripts/check_filesystem_ordering_determinism\.sh' | \
   grep -v "SV_ALLOW_UNSORTED_FS_ORDER"
