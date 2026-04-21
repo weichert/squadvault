@@ -8,8 +8,11 @@
 #   SV_SKIP_PRECOMMIT=1 -> skip checks, exit 0
 #
 # Notes:
-#   - This file is repo-tracked. It is installed into .git/hooks/pre-commit
-#     by scripts/install_git_hooks_v1.sh (installer is idempotent).
+#   - This file is repo-tracked. Install manually into .git/hooks/pre-commit:
+#       cp scripts/git-hooks/pre-commit_v1.sh .git/hooks/pre-commit
+#       chmod +x .git/hooks/pre-commit
+#     Re-run after any changes to this file to keep the installed hook in
+#     sync with the tracked version.
 #   - Keep bash3-safe.
 
 set -euo pipefail

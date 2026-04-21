@@ -147,6 +147,17 @@ Ingestion and historical setup notes: docs/ingestion-mfl-notion.md
 
 ---
 
+## Developer Setup
+
+If you'll be committing to this repo, install the pre-commit hook after cloning:
+
+    cp scripts/git-hooks/pre-commit_v1.sh .git/hooks/pre-commit
+    chmod +x .git/hooks/pre-commit
+
+The hook runs three gates before each commit (terminal banner paste, no-xtrace, repo-root allowlist). To bypass in an emergency, set `SV_SKIP_PRECOMMIT=1`. Re-run the install step whenever `scripts/git-hooks/pre-commit_v1.sh` changes to keep the installed hook in sync.
+
+---
+
 ## Status
 
 The Creative Layer is complete and locked:
