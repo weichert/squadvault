@@ -9,7 +9,6 @@
 - scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh — Ops guardrails entrypoint block exactness gate (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_parity_v1.sh — Ops guardrails entrypoint parity gate (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_registry_completeness_v1.sh — CI Guardrails Ops Entrypoint Registry Completeness (v1)
-- scripts/gate_ci_guardrails_ops_entrypoints_section_v2.sh — CI Guardrails ops entrypoints section + TOC (v2)
 - scripts/gate_ci_guardrails_ops_renderer_shape_v1.sh — Ops guardrails entrypoint renderer shape gate (v1)
 - scripts/gate_no_xtrace_v1.sh — No forbidden set -x in prove/gate scripts (v1)
 - scripts/gate_cwd_independence_shims_v1.sh — CWD independence shims gate (v1)
