@@ -30,4 +30,7 @@ bash scripts/gate_no_terminal_banner_paste_v1.sh
 echo "==> pre-commit: no-xtrace guardrail gate"
 bash scripts/gate_no_xtrace_v1.sh
 
+echo "==> pre-commit: repo-root allowlist gate"
+bash scripts/gate_repo_root_allowlist_v1.sh
+
 echo "OK: pre-commit checks passed."

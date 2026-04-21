@@ -245,6 +245,7 @@ bash scripts/gate_pytest_tracked_tests_only_v1.sh
 
 # Creative surface fingerprint canonical drift gate (v1)
 bash scripts/gate_repo_clean_after_proofs_v1.sh
+bash scripts/gate_repo_root_allowlist_v1.sh
 bash scripts/gate_rivalry_chronicle_contract_linkage_v1.sh
 bash scripts/gate_standard_show_input_need_coverage_v1.sh
 
