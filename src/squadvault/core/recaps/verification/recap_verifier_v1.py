@@ -63,6 +63,7 @@ class VerificationResult:
 @dataclass(frozen=True)
 class _MatchupFact:
     """A canonical matchup result for verification."""
+    season: int
     week: int
     winner_id: str
     loser_id: str
@@ -100,6 +101,7 @@ def _load_season_matchups(
             continue
         try:
             results.append(_MatchupFact(
+                season=int(season),
                 week=int(p.get("week", 0)),
                 winner_id=str(winner_id).strip(),
                 loser_id=str(loser_id).strip(),
@@ -114,22 +116,36 @@ def _load_season_matchups(
 def _load_all_matchups(
     db_path: str,
     league_id: str,
+    *,
+    as_of_season: int,
+    as_of_week: int,
 ) -> list[_MatchupFact]:
-    """Load ALL WEEKLY_MATCHUP_RESULT events across all seasons."""
+    """Load WEEKLY_MATCHUP_RESULT events across seasons, scoped to the window.
+
+    Results are filtered to events at or before (as_of_season, as_of_week) —
+    inclusive of that week, exclusive of every subsequent week. This is the
+    verifier's private analog to league_history_v1.load_all_matchups; the
+    cutoff is required here because every caller is on a recap path where
+    the Weekly Recap Context Temporal Scoping Addendum (v1.0) Hard Invariant
+    applies.
+
+    Cutoff filtering is applied post-parse (the week is inside payload_json,
+    so a SQL cutoff would require v_canonical_best_events changes).
+    """
     results: list[_MatchupFact] = []
     with DatabaseSession(db_path) as con:
         rows = con.execute(
-            """SELECT payload_json
+            """SELECT season, payload_json
                FROM v_canonical_best_events
                WHERE league_id = ?
                  AND event_type = 'WEEKLY_MATCHUP_RESULT'
-               ORDER BY occurred_at ASC NULLS LAST""",
+               ORDER BY season ASC, occurred_at ASC NULLS LAST""",
             (str(league_id),),
         ).fetchall()
 
     for row in rows:
         try:
-            p = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+            p = json.loads(row[1]) if isinstance(row[1], str) else row[1]
         except (ValueError, TypeError):
             continue
         if not isinstance(p, dict):
@@ -140,6 +156,7 @@ def _load_all_matchups(
             continue
         try:
             results.append(_MatchupFact(
+                season=int(row[0]),
                 week=int(p.get("week", 0)),
                 winner_id=str(winner_id).strip(),
                 loser_id=str(loser_id).strip(),
@@ -148,6 +165,14 @@ def _load_all_matchups(
             ))
         except (ValueError, TypeError, KeyError):
             continue
+
+    cutoff_season = int(as_of_season)
+    cutoff_week = int(as_of_week)
+    results = [
+        m for m in results
+        if m.season < cutoff_season
+        or (m.season == cutoff_season and m.week <= cutoff_week)
+    ]
     return results
 
 
@@ -3029,7 +3054,9 @@ def verify_recap_v1(
     all_matchups: list[_MatchupFact] | None = None
     alltime_player_high: float | None = None
     if _ALLTIME_PATTERN.search(narrative):
-        all_matchups = _load_all_matchups(db_path, league_id)
+        all_matchups = _load_all_matchups(
+            db_path, league_id, as_of_season=season, as_of_week=week,
+        )
         alltime_player_high = _load_alltime_player_high(db_path, league_id)
 
     season_player_high: float | None = None
@@ -3060,7 +3087,9 @@ def verify_recap_v1(
     checks_run += 1
     if _SERIES_RECORD_PATTERN.search(narrative):
         if all_matchups is None:
-            all_matchups = _load_all_matchups(db_path, league_id)
+            all_matchups = _load_all_matchups(
+                db_path, league_id, as_of_season=season, as_of_week=week,
+            )
         all_failures.extend(verify_series_records(
             narrative, all_matchups or [], reverse_name_map,
         ))

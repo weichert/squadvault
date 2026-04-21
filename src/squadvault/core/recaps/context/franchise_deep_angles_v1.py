@@ -93,11 +93,26 @@ def _load_player_positions(
 
 
 def _load_all_matchups_flat(
-    db_path: str, league_id: str,
+    db_path: str,
+    league_id: str,
+    *,
+    as_of_season: int,
+    as_of_week: int,
 ) -> list[HistoricalMatchup]:
-    """Load all WEEKLY_MATCHUP_RESULT events. Reuses league_history_v1 pattern."""
+    """Load WEEKLY_MATCHUP_RESULT events through the as-of window.
+
+    Thin forwarder to league_history_v1.load_all_matchups. Required to
+    accept and forward the cutoff under the Weekly Recap Context Temporal
+    Scoping Addendum (v1.0), since the sole caller is the recap's
+    franchise deep angle detection pipeline.
+    """
     from squadvault.core.recaps.context.league_history_v1 import load_all_matchups
-    return load_all_matchups(db_path, league_id)
+    return load_all_matchups(
+        db_path,
+        league_id,
+        as_of_season=as_of_season,
+        as_of_week=as_of_week,
+    )
 
 
 def _load_season_transaction_counts(
@@ -1529,7 +1544,9 @@ def detect_franchise_deep_angles_v1(
     Returns empty list when insufficient data exists.
     """
     score_payloads = _load_season_player_scores_flat(db_path, league_id, season)
-    all_matchups = _load_all_matchups_flat(db_path, league_id)
+    all_matchups = _load_all_matchups_flat(
+        db_path, league_id, as_of_season=season, as_of_week=week,
+    )
     positions = _load_player_positions(db_path, league_id, season)
 
     all_angles: list[NarrativeAngle] = []

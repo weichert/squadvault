@@ -23,6 +23,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     _extract_nearby_score,
     _extract_shareable_recap,
     _find_nearby_franchise,
+    _load_all_matchups,
     _MatchupFact,
     _resolve_display_name,
     verify_banned_phrases,
@@ -108,8 +109,9 @@ def _insert_franchise(con, *, league_id, season, franchise_id, name):
         (league_id, season, franchise_id, name))
 
 
-def _make_matchup(week, winner_id, loser_id, winner_score, loser_score):
+def _make_matchup(week, winner_id, loser_id, winner_score, loser_score, *, season=2024):
     return _MatchupFact(
+        season=season,
         week=week, winner_id=winner_id, loser_id=loser_id,
         winner_score=winner_score, loser_score=loser_score,
     )
@@ -4712,3 +4714,74 @@ class TestFaabClaimVerification:
             text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
         )
         assert result.checks_run == 8
+
+
+# ── Phase 2 addendum conformance: as-of-week scoping ─────────────────
+
+
+class TestAsOfCutoffCorrectness:
+    """Verifier loader honors the Weekly Recap Context Temporal Scoping
+    Addendum (v1.0) Hard Invariant: cross-season matchup loads scoped to
+    an approved week (as_of_season, as_of_week) exclude all subsequent
+    weeks, inclusive of that week."""
+
+    def test_load_all_matchups_respects_cutoff(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        # Prior season — always in-window for any later-season cutoff.
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2023, week=17,
+            winner_id="F1", loser_id="F2",
+            winner_score=110.0, loser_score=90.0,
+        )
+        # Cutoff season — weeks straddling the (2024, 13) boundary.
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2024, week=12,
+            winner_id="F1", loser_id="F2",
+            winner_score=100.0, loser_score=80.0,
+        )
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2024, week=13,
+            winner_id="F2", loser_id="F1",
+            winner_score=105.0, loser_score=95.0,
+        )
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2024, week=14,
+            winner_id="F1", loser_id="F2",
+            winner_score=115.0, loser_score=85.0,
+        )
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2024, week=17,
+            winner_id="F2", loser_id="F1",
+            winner_score=120.0, loser_score=100.0,
+        )
+        # Post-cutoff season — must never appear.
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2025, week=1,
+            winner_id="F1", loser_id="F2",
+            winner_score=130.0, loser_score=70.0,
+        )
+        con.commit()
+        con.close()
+
+        rows = _load_all_matchups(
+            db_path, LEAGUE, as_of_season=2024, as_of_week=13,
+        )
+
+        # Post-cutoff rows absent.
+        post_cutoff = [
+            m for m in rows
+            if m.season > 2024 or (m.season == 2024 and m.week > 13)
+        ]
+        assert post_cutoff == [], (
+            f"expected no rows past (2024, 13); got {post_cutoff!r}"
+        )
+        # In-window rows present and season field populated.
+        in_window = [(m.season, m.week) for m in rows]
+        assert (2023, 17) in in_window
+        assert (2024, 12) in in_window
+        assert (2024, 13) in in_window
+        # Boundary-exclusive check.
+        assert (2024, 14) not in in_window
+        assert (2024, 17) not in in_window
+        assert (2025, 1) not in in_window

@@ -31,6 +31,7 @@ from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
     detect_scoring_momentum_in_streak,
     _is_near_monotonic_growing,
     _is_near_monotonic_shrinking,
+    _load_all_matchups_flat,
     detect_franchise_deep_angles_v1,
 )
 
@@ -784,3 +785,66 @@ class TestNearMonotonicHelpers:
     def test_too_short(self):
         assert _is_near_monotonic_growing([10, 20]) is False
         assert _is_near_monotonic_shrinking([20, 10]) is False
+
+
+# ── Phase 2 addendum conformance: as-of-week scoping ─────────────────
+
+
+class TestLoadAllMatchupsFlatCutoff:
+    """_load_all_matchups_flat honors the Weekly Recap Context Temporal
+    Scoping Addendum (v1.0) Hard Invariant. Thin forwarder to
+    league_history_v1.load_all_matchups — this doubles as a smoke test
+    for the forwarding contract."""
+
+    def test_respects_cutoff(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        # Prior season — in-window for any later-season cutoff.
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2023, week=17,
+            winner_id="F1", loser_id="F2",
+            winner_score=110.0, loser_score=90.0,
+        )
+        # Cutoff season — weeks straddling (2024, 10) boundary.
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2024, week=9,
+            winner_id="F1", loser_id="F2",
+            winner_score=100.0, loser_score=80.0,
+        )
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2024, week=10,
+            winner_id="F2", loser_id="F1",
+            winner_score=105.0, loser_score=95.0,
+        )
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2024, week=11,
+            winner_id="F1", loser_id="F2",
+            winner_score=115.0, loser_score=85.0,
+        )
+        # Post-cutoff season — must never appear.
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2025, week=1,
+            winner_id="F1", loser_id="F2",
+            winner_score=130.0, loser_score=70.0,
+        )
+        con.commit()
+        con.close()
+
+        rows = _load_all_matchups_flat(
+            db_path, LEAGUE, as_of_season=2024, as_of_week=10,
+        )
+
+        post_cutoff = [
+            m for m in rows
+            if m.season > 2024 or (m.season == 2024 and m.week > 10)
+        ]
+        assert post_cutoff == [], (
+            f"expected no rows past (2024, 10); got {post_cutoff!r}"
+        )
+        in_window = {(m.season, m.week) for m in rows}
+        assert (2023, 17) in in_window
+        assert (2024, 9) in in_window
+        assert (2024, 10) in in_window
+        # Boundary-exclusive.
+        assert (2024, 11) not in in_window
+        assert (2025, 1) not in in_window
