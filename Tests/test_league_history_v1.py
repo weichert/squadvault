@@ -24,6 +24,7 @@ from squadvault.core.recaps.context.league_history_v1 import (
     build_cross_season_name_resolver,
     compute_head_to_head,
     derive_league_history_v1,
+    load_all_matchups,
     render_league_history_for_prompt,
     resolve_franchise_name_any_season,
 )
@@ -293,7 +294,10 @@ class TestDeriveLeagueHistory:
         _seed_multi_season(con)
         con.close()
 
-        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        ctx = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2024, as_of_week=3,
+        )
 
         assert ctx.has_history
         assert ctx.is_multi_season
@@ -324,14 +328,20 @@ class TestDeriveLeagueHistory:
         con.commit()
         con.close()
 
-        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        ctx = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2024, as_of_week=1,
+        )
         assert ctx.has_history
         assert not ctx.is_multi_season
         assert ctx.seasons_available == (2024,)
 
     def test_no_data(self, tmp_path):
         db_path = _fresh_db(tmp_path)
-        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        ctx = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2024, as_of_week=1,
+        )
         assert not ctx.has_history
         assert ctx.all_time_records == ()
 
@@ -341,9 +351,277 @@ class TestDeriveLeagueHistory:
         _seed_multi_season(con)
         con.close()
 
-        ctx1 = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
-        ctx2 = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        ctx1 = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2024, as_of_week=3,
+        )
+        ctx2 = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2024, as_of_week=3,
+        )
         assert ctx1 == ctx2
+
+
+# ── Addendum conformance: as-of-week temporal scoping ────────────────
+#
+# The following tests are the behavioral expression of the Weekly Recap
+# Context Temporal Scoping Addendum (v1.0) Hard Invariant: derived context
+# composed into a weekly recap for approved week (season, week) must reflect
+# ledger state as of that week's approved end — inclusive of that week,
+# exclusive of every subsequent week. Regenerating a prior week's recap
+# against a grown ledger must yield the same derived context block as the
+# original generation.
+
+
+def _seed_cutoff_fixture(
+    con, league_id=LEAGUE, *, through_season: int, through_week: int,
+):
+    """Seed a 4-team fixture spanning 2024 W1–17 and 2025 W1–18.
+
+    Only games at or before (through_season, through_week) are inserted.
+    Callers set this to 2025 W18 for the full fixture, or to an earlier
+    cutoff to simulate a ledger that has not yet grown past that point.
+
+    Fixture invariants (relative to the full ledger):
+    - Franchise D has a 15-game cross-season loss streak ending 2025 W14
+      (2024 W17 plus 2025 W1–W14). At as_of=(2025, 13) the streak is
+      only 14 games and does not terminate at W14.
+    - Franchise A finishes 2025 with a 16-2 record. Reaching 16 wins
+      requires W14–W18 to exist; at as_of=(2025, 13) A's 2025 record
+      is at most 13-0.
+    - Franchise B posts an all-time-high score of 250.0 in 2025 W17.
+      At as_of=(2025, 13) that row is excluded and the highest score
+      in the ledger is materially lower.
+    """
+    all_games: list[tuple[int, int, str, str, float, float]] = []
+
+    # 2024 W1–W16: A beats B; D beats C. D accumulates wins so the loss
+    # streak has a defined starting point at 2024 W17.
+    for w in range(1, 17):
+        all_games.append((2024, w, "A", "B", 120.0, 100.0))
+        all_games.append((2024, w, "D", "C", 95.0, 85.0))
+    # 2024 W17: D loses — streak begins here.
+    all_games.append((2024, 17, "A", "D", 115.0, 80.0))
+    all_games.append((2024, 17, "B", "C", 110.0, 105.0))
+
+    # 2025 W1–W14: D loses every week. Streak hits 15 at end of W14.
+    # A wins all 14 of these; key to reaching the 16-2 end state.
+    for w in range(1, 15):
+        all_games.append((2025, w, "A", "D", 125.0, 78.0))
+        all_games.append((2025, w, "B", "C", 115.0, 95.0))
+    # 2025 W15: D finally wins — streak ends at length 15.
+    all_games.append((2025, 15, "D", "A", 105.0, 100.0))
+    all_games.append((2025, 15, "B", "C", 115.0, 95.0))
+    # 2025 W16
+    all_games.append((2025, 16, "A", "B", 120.0, 100.0))
+    all_games.append((2025, 16, "C", "D", 110.0, 90.0))
+    # 2025 W17: B posts the all-time-high score.
+    all_games.append((2025, 17, "B", "A", 250.0, 100.0))
+    all_games.append((2025, 17, "C", "D", 110.0, 90.0))
+    # 2025 W18: A closes its 16-2 line.
+    all_games.append((2025, 18, "A", "B", 120.0, 100.0))
+    all_games.append((2025, 18, "C", "D", 110.0, 90.0))
+
+    for s, w, winner, loser, ws, ls in all_games:
+        if s < through_season or (s == through_season and w <= through_week):
+            _insert_matchup(
+                con, league_id=league_id, season=s, week=w,
+                winner_id=winner, loser_id=loser,
+                winner_score=ws, loser_score=ls,
+            )
+    con.commit()
+
+
+class TestAsOfCutoffCorrectness:
+    """No derivation at cutoff may reference data from beyond the cutoff."""
+
+    def test_loader_excludes_post_cutoff_matchups(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_cutoff_fixture(con, through_season=2025, through_week=18)
+        con.close()
+
+        # Sanity: without a cutoff, the full ledger loads.
+        all_rows = load_all_matchups(db_path, LEAGUE)
+        post_cutoff_all = [
+            m for m in all_rows
+            if m.season > 2025 or (m.season == 2025 and m.week > 13)
+        ]
+        assert len(post_cutoff_all) > 0, \
+            "fixture regression: post-cutoff data is missing from the ledger"
+
+        # With cutoff: no post-cutoff rows escape the filter.
+        cut_rows = load_all_matchups(
+            db_path, LEAGUE,
+            as_of_season=2025, as_of_week=13,
+        )
+        post_cutoff_cut = [
+            m for m in cut_rows
+            if m.season > 2025 or (m.season == 2025 and m.week > 13)
+        ]
+        assert post_cutoff_cut == [], (
+            "load_all_matchups leaked post-cutoff rows: "
+            f"{[(m.season, m.week, m.winner_id, m.loser_id) for m in post_cutoff_cut]}"
+        )
+
+    def test_loader_mismatched_cutoff_args_raises(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        with pytest.raises(ValueError):
+            load_all_matchups(db_path, LEAGUE, as_of_season=2025)  # type: ignore[call-arg]
+        with pytest.raises(ValueError):
+            load_all_matchups(db_path, LEAGUE, as_of_week=13)  # type: ignore[call-arg]
+
+    def test_loss_streak_does_not_terminate_past_cutoff(self, tmp_path):
+        """The 15-game streak ending 2025 W14 must not appear at as_of=(2025, 13)."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_cutoff_fixture(con, through_season=2025, through_week=18)
+        con.close()
+
+        ctx = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2025, as_of_week=13,
+        )
+
+        streaks = [s for s in (ctx.longest_win_streak, ctx.longest_loss_streak) if s is not None]
+        past_cutoff_streaks = [
+            s for s in streaks
+            if s.end_season > 2025 or (s.end_season == 2025 and s.end_week > 13)
+        ]
+        assert past_cutoff_streaks == [], (
+            "streak ends past cutoff: "
+            f"{[(s.streak_type, s.length, s.end_season, s.end_week) for s in past_cutoff_streaks]}"
+        )
+
+        # Specific assertion against the fixture's post-cutoff 15-game streak.
+        loss = ctx.longest_loss_streak
+        if loss is not None:
+            assert not (loss.length == 15 and loss.end_season == 2025 and loss.end_week == 14), (
+                "longest_loss_streak at cutoff matches the fixture's post-cutoff "
+                f"15-game streak ending 2025 W14: {loss!r}"
+            )
+
+    def test_best_season_record_does_not_span_post_cutoff_weeks(self, tmp_path):
+        """best_season_record cannot reflect games that happened after cutoff."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_cutoff_fixture(con, through_season=2025, through_week=18)
+        con.close()
+
+        ctx = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2025, as_of_week=13,
+        )
+
+        offending = [
+            r for r in (ctx.best_season_record, ctx.worst_season_record)
+            if r is not None
+            and r.season == 2025
+            and (r.wins + r.losses + r.ties) > 13
+        ]
+        assert offending == [], (
+            "best/worst season record spans post-cutoff weeks: "
+            f"{[(r.franchise_id, r.season, r.wins, r.losses, r.ties) for r in offending]}"
+        )
+
+        # Specific assertion against the fixture's 16-2 end-state for A.
+        best = ctx.best_season_record
+        if best is not None:
+            assert not (best.season == 2025 and best.wins == 16 and best.losses == 2), (
+                "best_season_record at cutoff matches the fixture's post-cutoff "
+                f"16-2 end state: {best!r}"
+            )
+
+    def test_scoring_record_not_from_post_cutoff_week(self, tmp_path):
+        """The 250.0 score posted 2025 W17 must not be all_time_high at as_of=(2025, 13)."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _seed_cutoff_fixture(con, through_season=2025, through_week=18)
+        con.close()
+
+        ctx = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2025, as_of_week=13,
+        )
+
+        offending = [
+            r for r in (ctx.all_time_high, ctx.all_time_low)
+            if r is not None
+            and (r.season > 2025 or (r.season == 2025 and r.week > 13))
+        ]
+        assert offending == [], (
+            "scoring record sourced from post-cutoff week: "
+            f"{[(r.label, r.season, r.week, r.score) for r in offending]}"
+        )
+
+        high = ctx.all_time_high
+        if high is not None:
+            assert high.score != 250.0, (
+                "all_time_high at cutoff equals the fixture's post-cutoff value 250.0"
+            )
+
+
+class TestRegenReproducibility:
+    """A recap regenerated later must yield the same LEAGUE_HISTORY block.
+
+    This is the behavioral expression of the addendum's Hard Invariant:
+    the immutability guarantee attaches to the week as a temporal window,
+    not to the first approved artifact alone.
+    """
+
+    def test_grown_ledger_preserves_as_of_derivation(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+
+        # First generation: ledger contains only through-W13 data.
+        con = sqlite3.connect(db_path)
+        _seed_cutoff_fixture(con, through_season=2025, through_week=13)
+        con.close()
+
+        ctx_first = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2025, as_of_week=13,
+        )
+        assert ctx_first.has_history, (
+            "fixture regression: through-W13 seed produced empty history"
+        )
+
+        # Ledger grows: add all of W14–W18 for 2025.
+        # Inline delta — cannot re-call _seed_cutoff_fixture because
+        # the UNIQUE(external_source, external_id) index would reject
+        # overlapping rows.
+        remainder = [
+            (2025, 14, "A", "D", 125.0, 78.0),
+            (2025, 14, "B", "C", 115.0, 95.0),
+            (2025, 15, "D", "A", 105.0, 100.0),
+            (2025, 15, "B", "C", 115.0, 95.0),
+            (2025, 16, "A", "B", 120.0, 100.0),
+            (2025, 16, "C", "D", 110.0, 90.0),
+            (2025, 17, "B", "A", 250.0, 100.0),
+            (2025, 17, "C", "D", 110.0, 90.0),
+            (2025, 18, "A", "B", 120.0, 100.0),
+            (2025, 18, "C", "D", 110.0, 90.0),
+        ]
+        con = sqlite3.connect(db_path)
+        for s, w, winner, loser, ws, ls in remainder:
+            _insert_matchup(
+                con, league_id=LEAGUE, season=s, week=w,
+                winner_id=winner, loser_id=loser,
+                winner_score=ws, loser_score=ls,
+            )
+        con.commit()
+        con.close()
+
+        # Regenerate the recap for the same approved week against the grown ledger.
+        ctx_regen = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2025, as_of_week=13,
+        )
+
+        assert ctx_first == ctx_regen, (
+            "LEAGUE_HISTORY derivation at as_of=(2025, 13) changed after the "
+            "ledger grew — violates the Weekly Recap Context Temporal Scoping "
+            "Addendum Hard Invariant"
+        )
 
 
 # ── Integration: franchise name resolution ───────────────────────────
@@ -396,7 +674,10 @@ class TestHistoryPromptRendering:
         _seed_franchise_names(con)
         con.close()
 
-        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        ctx = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2024, as_of_week=3,
+        )
         name_map = build_cross_season_name_resolver(db_path, LEAGUE)
         text = render_league_history_for_prompt(ctx, name_map=name_map)
 
@@ -411,6 +692,9 @@ class TestHistoryPromptRendering:
 
     def test_empty_renders_cleanly(self, tmp_path):
         db_path = _fresh_db(tmp_path)
-        ctx = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        ctx = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=2024, as_of_week=1,
+        )
         text = render_league_history_for_prompt(ctx)
         assert "No league history" in text

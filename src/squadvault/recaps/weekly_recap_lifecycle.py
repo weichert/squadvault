@@ -664,8 +664,19 @@ def _derive_prompt_context(
         logger.debug("Player season high enrichment failed: %s", e)
 
     # -- League history --
+    # Scoped to the recap's approved window per the Weekly Recap Context
+    # Temporal Scoping Addendum (v1.0): derivations composed into the
+    # prompt for (season, week_index) reflect ledger state as of that
+    # week's approved end — inclusive of that week, exclusive of every
+    # subsequent week. Regenerating a prior week's recap against a grown
+    # ledger yields the same LEAGUE_HISTORY block as the original.
     try:
-        _history_ctx = derive_league_history_v1(db_path=db_path, league_id=league_id)
+        _history_ctx = derive_league_history_v1(
+            db_path=db_path,
+            league_id=league_id,
+            as_of_season=season,
+            as_of_week=week_index,
+        )
         _tenure_map = compute_franchise_tenures(db_path, league_id)
         league_history_text = render_league_history_for_prompt(
             _history_ctx, name_map=_name_map, tenure_map=_tenure_map,
@@ -675,8 +686,16 @@ def _derive_prompt_context(
         _history_ctx = None
 
     # -- Historical matchups --
+    # Scoped to the same approved window as LEAGUE_HISTORY above; this
+    # list is consumed by detect_narrative_angles_v1 below, which is
+    # itself part of the recap's derived context for (season, week_index).
     try:
-        _all_matchups = load_all_matchups(db_path, league_id)
+        _all_matchups = load_all_matchups(
+            db_path,
+            league_id,
+            as_of_season=season,
+            as_of_week=week_index,
+        )
     except Exception as e:
         logger.debug("Load all matchups failed: %s", e)
         _all_matchups = None

@@ -1,13 +1,18 @@
 """League History Context v1 — cross-season longitudinal derivation.
 
 Contract:
-- Derived-only: reads canonical events across ALL seasons, never writes back.
+- Derived-only: reads canonical events across approved history, never writes back.
 - Deterministic: identical inputs produce identical outputs.
 - Non-authoritative: context is for creative layer consumption, not fact.
 - Reconstructable: can be dropped and rebuilt from canonical events.
+- Temporally scoped: every derivation composed into a weekly recap prompt
+  reflects ledger state as of the approved window's end — inclusive of that
+  week, exclusive of every subsequent week. See the Weekly Recap Context
+  Temporal Scoping Addendum (v1.0) for the governing invariant.
 
-This module computes all-time records, head-to-head history, scoring
-records, and streak records across the full league history. It is the
+This module computes cross-season records, head-to-head history, scoring
+records, and streak records over the approved-history window determined by
+the (as_of_season, as_of_week) cutoff passed by the caller. It is the
 longitudinal companion to SeasonContextV1 (single-season).
 
 Together they give the creative layer the material for:
@@ -19,6 +24,7 @@ Together they give the creative layer the material for:
 Governance:
 - Defers to Canonical Operating Constitution
 - Aligned with PLAYER_WEEK_CONTEXT contract pattern (derived, non-authoritative)
+- Conforms to the Weekly Recap Context Temporal Scoping Addendum (v1.0)
 - No inference, projection, or gap-filling
 - Missing data stays missing
 """
@@ -205,11 +211,35 @@ def _parse_matchup(payload_json: str, season: int, fallback_week: int) -> Histor
     )
 
 
-def load_all_matchups(db_path: str, league_id: str) -> list[HistoricalMatchup]:
-    """Load ALL WEEKLY_MATCHUP_RESULT events across all seasons.
+def load_all_matchups(
+    db_path: str,
+    league_id: str,
+    *,
+    as_of_season: int | None = None,
+    as_of_week: int | None = None,
+) -> list[HistoricalMatchup]:
+    """Load WEEKLY_MATCHUP_RESULT events, optionally scoped to an as-of window.
 
     Returns parsed list sorted by (season, week, winner_id, loser_id).
+
+    as_of_season / as_of_week:
+        When both are provided, results are filtered to matchups occurring
+        at or before (as_of_season, as_of_week) — inclusive of that week,
+        exclusive of every subsequent week. When both are None (the default),
+        no cutoff is applied and all events are returned; this preserves
+        backward compatibility for consumers that legitimately operate over
+        the full history. Supplying exactly one of the two is a caller error
+        and raises ValueError.
+
+    Cutoff filtering is applied post-parse (the week is inside payload_json,
+    so a SQL cutoff would require v_canonical_best_events changes).
     """
+    if (as_of_season is None) != (as_of_week is None):
+        raise ValueError(
+            "as_of_season and as_of_week must both be provided or both be None; "
+            f"got as_of_season={as_of_season!r}, as_of_week={as_of_week!r}"
+        )
+
     matchups: list[HistoricalMatchup] = []
 
     with DatabaseSession(db_path) as con:
@@ -227,6 +257,15 @@ def load_all_matchups(db_path: str, league_id: str) -> list[HistoricalMatchup]:
         m = _parse_matchup(row[1], season=season, fallback_week=0)
         if m is not None:
             matchups.append(m)
+
+    if as_of_season is not None and as_of_week is not None:
+        cutoff_season = int(as_of_season)
+        cutoff_week = int(as_of_week)
+        matchups = [
+            m for m in matchups
+            if m.season < cutoff_season
+            or (m.season == cutoff_season and m.week <= cutoff_week)
+        ]
 
     matchups.sort(key=lambda m: (m.season, m.week, m.winner_id, m.loser_id))
     return matchups
@@ -603,13 +642,30 @@ def derive_league_history_v1(
     *,
     db_path: str,
     league_id: str,
+    as_of_season: int,
+    as_of_week: int,
 ) -> LeagueHistoryContextV1:
-    """Derive full longitudinal context for a league across all seasons.
+    """Derive full longitudinal context for a league through an as-of window.
 
-    Returns a LeagueHistoryContextV1 with all-time records, scoring records,
-    streak records, and best/worst seasons.
+    Returns a LeagueHistoryContextV1 computed over all WEEKLY_MATCHUP_RESULT
+    events at or before (as_of_season, as_of_week) — inclusive of that week,
+    exclusive of every subsequent week. Includes cross-season all-time
+    records, scoring records, streak records, and best/worst seasons within
+    that window.
+
+    The (as_of_season, as_of_week) cutoff is required by the Weekly Recap
+    Context Temporal Scoping Addendum (v1.0): derivations composed into a
+    weekly recap prompt must reflect ledger state as of the approved week's
+    end. Regenerating a prior week's recap against a grown ledger must yield
+    the same context block as the original generation. Making the cutoff
+    required surfaces any forgotten call site at import time.
     """
-    all_matchups = load_all_matchups(db_path, str(league_id))
+    all_matchups = load_all_matchups(
+        db_path,
+        str(league_id),
+        as_of_season=as_of_season,
+        as_of_week=as_of_week,
+    )
 
     if not all_matchups:
         return LeagueHistoryContextV1(

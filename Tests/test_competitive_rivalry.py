@@ -129,7 +129,14 @@ class TestCompetitiveRivalryFires:
             db_path=db_path, league_id=LEAGUE,
             season=last_season, week_index=1,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        # as_of_week=99 is a sentinel: these tests predate the Weekly Recap
+        # Context Temporal Scoping Addendum (v1.0) and exercise the loader's
+        # full-corpus behavior. The fixture's last season is last_season; any
+        # week value at or beyond the fixture's latest week preserves semantics.
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=last_season, as_of_week=99,
+        )
         all_matchups = load_all_matchups(db_path, LEAGUE)
 
         assert history.is_multi_season
@@ -156,7 +163,10 @@ class TestCompetitiveRivalryFires:
             db_path=db_path, league_id=LEAGUE,
             season=last_season, week_index=1,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=last_season, as_of_week=99,  # full-corpus; see above
+        )
         all_matchups = load_all_matchups(db_path, LEAGUE)
 
         angles = _detect_rivalry_angles(ctx, history, all_matchups)
@@ -173,7 +183,10 @@ class TestCompetitiveRivalryFires:
             db_path=db_path, league_id=LEAGUE,
             season=last_season, week_index=1,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=last_season, as_of_week=99,  # full-corpus; see above
+        )
         all_matchups = load_all_matchups(db_path, LEAGUE)
 
         angles = _detect_rivalry_angles(ctx, history, all_matchups)
@@ -195,7 +208,10 @@ class TestCompetitiveRivalryDoesNotFire:
             db_path=db_path, league_id=LEAGUE,
             season=last_season, week_index=1,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=last_season, as_of_week=99,  # full-corpus; see above
+        )
         all_matchups = load_all_matchups(db_path, LEAGUE)
 
         angles = _detect_rivalry_angles(ctx, history, all_matchups)
@@ -215,7 +231,10 @@ class TestCompetitiveRivalryDoesNotFire:
             db_path=db_path, league_id=LEAGUE,
             season=last_season, week_index=1,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=last_season, as_of_week=99,  # full-corpus; see above
+        )
         all_matchups = load_all_matchups(db_path, LEAGUE)
 
         angles = _detect_rivalry_angles(ctx, history, all_matchups)
@@ -234,7 +253,10 @@ class TestCompetitiveRivalryDoesNotFire:
             db_path=db_path, league_id=LEAGUE,
             season=last_season, week_index=1,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=last_season, as_of_week=99,  # full-corpus; see above
+        )
         all_matchups = load_all_matchups(db_path, LEAGUE)
 
         angles = _detect_rivalry_angles(ctx, history, all_matchups)

@@ -128,7 +128,13 @@ class TestStreakRecordSuppression:
         ctx = derive_season_context_v1(
             db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=6,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        # as_of_week=99 is a sentinel meaning 'through end of season'; these tests
+        # predate the Weekly Recap Context Temporal Scoping Addendum (v1.0) and
+        # exercise the loader's full-corpus behavior.
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=SEASON, as_of_week=99,
+        )
 
         assert not history.is_multi_season
         # A has a 6-game win streak — but with single season, this is suppressed
@@ -141,7 +147,10 @@ class TestStreakRecordSuppression:
     def test_multi_season_allows_streak_records(self, tmp_path):
         """With multiple seasons, streak records are allowed."""
         db_path = _build_multi_season(tmp_path)
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=SEASON, as_of_week=99,
+        )
         assert history.is_multi_season
 
 
@@ -157,7 +166,10 @@ class TestScoringRecordDepth:
         ctx = derive_season_context_v1(
             db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=6,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=SEASON, as_of_week=99,
+        )
 
         assert not history.is_multi_season
         angles = _detect_season_records(ctx, history)
@@ -180,7 +192,10 @@ class TestRivalrySuppression:
         ctx = derive_season_context_v1(
             db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=6,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=SEASON, as_of_week=99,
+        )
         all_matchups = load_all_matchups(db_path, LEAGUE)
 
         assert not history.is_multi_season
@@ -203,7 +218,10 @@ class TestFullPipelineDepthGuards:
         ctx = derive_season_context_v1(
             db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=6,
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=SEASON, as_of_week=99,
+        )
         all_matchups = load_all_matchups(db_path, LEAGUE)
 
         result = detect_narrative_angles_v1(
@@ -227,7 +245,10 @@ class TestRenderDepthCaveat:
 
     def test_single_season_includes_depth_warning(self, tmp_path):
         db_path = _build_single_season_with_streak(tmp_path)
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=SEASON, as_of_week=99,
+        )
 
         rendered = render_league_history_for_prompt(history)
 
@@ -240,7 +261,10 @@ class TestRenderDepthCaveat:
 
     def test_multi_season_no_depth_warning(self, tmp_path):
         db_path = _build_multi_season(tmp_path)
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=SEASON, as_of_week=99,
+        )
 
         rendered = render_league_history_for_prompt(history)
 

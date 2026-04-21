@@ -98,13 +98,29 @@ def detect_all_angles(
         season_ctx = None
 
     try:
-        history_ctx = derive_league_history_v1(db_path=db_path, league_id=league_id)
+        # Scoped to (season, week) per the Weekly Recap Context Temporal
+        # Scoping Addendum (v1.0). Mirrors the production recap pipeline
+        # so preview output reflects what the real recap would consume.
+        history_ctx = derive_league_history_v1(
+            db_path=db_path,
+            league_id=league_id,
+            as_of_season=season,
+            as_of_week=week,
+        )
     except Exception as exc:
         logger.debug("%s", exc)
         history_ctx = None
 
     try:
-        all_matchups = load_all_matchups(db_path, league_id)
+        # Scoped to the same approved window as history_ctx above, so
+        # the narrative angle detector receives the same inputs it would
+        # receive inside the production recap pipeline.
+        all_matchups = load_all_matchups(
+            db_path,
+            league_id,
+            as_of_season=season,
+            as_of_week=week,
+        )
     except Exception as exc:
         logger.debug("%s", exc)
         all_matchups = None

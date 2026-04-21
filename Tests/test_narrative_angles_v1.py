@@ -327,7 +327,13 @@ class TestFullDetection:
         ctx = derive_season_context_v1(
             db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=6
         )
-        history = derive_league_history_v1(db_path=db_path, league_id=LEAGUE)
+        # as_of_week=99 is a sentinel meaning 'through end of season'; these tests
+        # predate the Weekly Recap Context Temporal Scoping Addendum (v1.0) and
+        # exercise the loader's full-corpus behavior.
+        history = derive_league_history_v1(
+            db_path=db_path, league_id=LEAGUE,
+            as_of_season=SEASON, as_of_week=99,
+        )
 
         from squadvault.core.recaps.context.league_history_v1 import load_all_matchups
         all_matchups = load_all_matchups(db_path, LEAGUE)
