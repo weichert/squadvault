@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export LC_ALL=C
 
 # SquadVault — Contracts Index Discoverability Gate (v1)
 # Ensures docs/contracts/README.md indexes all versioned contract docs.

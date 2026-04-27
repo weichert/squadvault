@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export LC_ALL=C
 
 # CI gate: Proof Surface Registry must list exactly scripts/prove_*.sh (v1)
 

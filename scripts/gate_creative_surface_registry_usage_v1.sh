@@ -5,6 +5,7 @@
 # SV_CSRU_FILTER_PLUMBING_V26: drop plumbing tokens from extracted CREATIVE_SURFACE_* refs
 # SV_CSRU_EXTRACT_V24: extractor regex is full-token + quote-safe
 set -euo pipefail
+export LC_ALL=C
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"

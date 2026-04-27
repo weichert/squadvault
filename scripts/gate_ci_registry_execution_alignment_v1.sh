@@ -23,6 +23,7 @@
 #      # SV_CI_EXECUTION_CONDITIONAL_OK_v1_END scripts/prove_foo.sh
 
 set -euo pipefail
+export LC_ALL=C
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}"
