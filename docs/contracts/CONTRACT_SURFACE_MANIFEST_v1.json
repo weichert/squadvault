@@ -27,9 +27,9 @@
       "sha256": "96efcf997b94600eb9c5ca184729c34a8ad178dfeef7ba973cf0afe0215f1186"
     },
     {
-      "bytes": 3618,
+      "bytes": 3563,
       "path": "docs/contracts/rivalry_chronicle_contract_output_v1.md",
-      "sha256": "eea630428a1dcefd2a29f9deaca73769b003b3325db67cab238274fcf6cf48e9"
+      "sha256": "4ebf7988e42a0f708804501ed1a762922f18956dc96f8f361cf1e519d42ebea6"
     }
   ],
   "root": "docs/contracts",

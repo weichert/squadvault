@@ -1,7 +1,6 @@
 # Rivalry Chronicle Output Contract v1
 
 ## Enforced By
-- scripts/gate_rivalry_chronicle_output_contract_v1.sh
 - scripts/prove_rivalry_chronicle_end_to_end_v1.sh
 
 ## Purpose
