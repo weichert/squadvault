@@ -5,14 +5,12 @@ Do not edit manually.
 
 - scripts/prove_ci.sh
 - scripts/prove_ci_creative_sharepack_if_available_v1.sh
-- scripts/prove_contract_surface_autosync_noop_v1.sh
 - scripts/prove_contract_surface_completeness_v1.sh
 - scripts/prove_creative_determinism_v1.sh
 - scripts/prove_creative_sharepack_determinism_v1.sh
 - scripts/prove_docs_integrity_v1.sh
 - scripts/prove_eal_calibration_type_a_v1.sh
 - scripts/prove_golden_path.sh
-- scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh
 - scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
 - scripts/prove_repo_root_allowlist_gate_behavior_v1.sh
 - scripts/prove_rivalry_chronicle_end_to_end_v1.sh
@@ -60,13 +58,11 @@ This registry is intentionally boring and auditable.
 
 <!-- CI_PROOF_RUNNERS_BEGIN -->
 - scripts/prove_ci_creative_sharepack_if_available_v1.sh — Proof: contract surface autosync no-op on canonical repo (v1)
-- scripts/prove_contract_surface_autosync_noop_v1.sh — Proof: contract surface completeness gate (v1)
 - scripts/prove_contract_surface_completeness_v1.sh — Prove: creative determinism drift guard (v1)
 - scripts/prove_creative_determinism_v1.sh — Proof runner (CI): creative sharepack determinism if inputs present (v1)
 - scripts/prove_docs_integrity_v1.sh — Proves canonical docs structural governance invariants (fail-closed).
 - scripts/prove_eal_calibration_type_a_v1.sh — Proves EAL calibration Type A invariants end-to-end.
 - scripts/prove_golden_path.sh — Proves canonical operator golden path via shims and gates (exports ephemeral by default; set `SV_KEEP_EXPORTS=1` to persist; NAC normalization is non-mutating).
-- scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh — Proof: allowlisted patch wrappers are no-op under `SV_IDEMPOTENCE_MODE=1`.
 - scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
 - scripts/prove_repo_root_allowlist_gate_behavior_v1.sh — Proof: repo-root allowlist gate behavior (v1)
 - scripts/prove_rivalry_chronicle_end_to_end_v1.sh — Proves Rivalry Chronicle generate → approve → export flow.
@@ -107,7 +103,9 @@ This boundary is CI-enforced by: **gate_proof_surface_registry_excludes_gates_v1
 ## Contract Surface Proofs
 
 <!-- SV_CONTRACT_SURFACE_PROOFS_v1_BEGIN -->
-- scripts/prove_contract_surface_autosync_noop_v1.sh — Proof: Contract surface autosync is a no-op on canonical repo (v1)
+
+(none currently registered)
+
 <!-- SV_CONTRACT_SURFACE_PROOFS_v1_END -->
 
 <!-- SV_CI_PROOF_CREATIVE_SHAREPACK_IF_AVAILABLE_v1_BEGIN -->

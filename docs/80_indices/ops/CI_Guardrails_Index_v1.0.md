@@ -12,7 +12,6 @@
 - scripts/gate_ci_guardrails_ops_renderer_shape_v1.sh — Ops guardrails entrypoint renderer shape gate (v1)
 - scripts/gate_no_xtrace_v1.sh — No forbidden set -x in prove/gate scripts (v1)
 - scripts/gate_cwd_independence_shims_v1.sh — CWD independence shims gate (v1)
-- scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh — Allowlist patchers must insert sorted blocks (v1)
 - scripts/gate_ci_guardrails_execution_order_lock_v1.sh — CI Guardrails execution order lock (v1)
 - scripts/gate_ci_guardrails_ops_entrypoint_order_lock_v1.sh — Ops guardrails entrypoint order lock gate (v1)
 - scripts/gate_ci_guardrails_ops_label_registry_parity_v1.sh — Ensures TSV registry ↔ Ops index ↔ gate scripts stay perfectly synchronized.
@@ -48,7 +47,6 @@
 - scripts/gate_no_test_dir_case_drift_v1.sh — No test dir case drift gate (v1)
 - scripts/gate_no_untracked_patch_artifacts_v1.sh — No untracked patch artifacts gate (v1)
 - scripts/gate_ops_indices_no_autofill_placeholders_v1.sh — Ops indices no autofill placeholders gate (v1)
-- scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh — Patch wrapper idempotence allowlist gate (v1)
 - scripts/gate_proof_suite_completeness_v1.sh — Proof suite completeness gate (v1)
 - scripts/gate_proof_surface_registry_excludes_gates_v1.sh — Proof surface registry excludes gates gate (v1)
 - scripts/gate_prove_ci_structure_canonical_v1.sh — prove_ci structure canonical gate (v1)

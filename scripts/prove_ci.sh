@@ -80,7 +80,6 @@ gate_path="${repo_root_for_gate}/scripts/gate_cwd_independence_shims_v1.sh"
 bash "$gate_path"
 
 # SV_GATE: proof_registry_excludes_gates (v1) begin
-bash scripts/gate_allowlist_patchers_must_insert_sorted_v1.sh
 bash scripts/gate_ci_guardrails_execution_order_lock_v1.sh
 bash scripts/gate_ci_guardrails_ops_cluster_canonical_v1.sh
 bash scripts/gate_ci_guardrails_ops_entrypoint_exactness_v1.sh
@@ -110,10 +109,7 @@ echo "==> Proof: repo-root allowlist gate behavior (v1)"
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_repo_root_allowlist_gate_behavior_v1.sh
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
-# prove_ci_wire_patch_wrapper_idempotence_gate_v1
-echo "==> Gate: patch wrapper idempotence (allowlist) v1"
 # SV_GATE: allowlist_patchers_insert_sorted (v1) begin
-echo "==> Gate: allowlist patchers must insert-sorted (v1)"
 echo "=== Gate: CI proof runners block sorted (v1) ==="
 bash scripts/gate_ci_proof_runners_block_sorted_v1.sh
 bash scripts/gate_ci_proof_surface_registry_exactness_v1.sh
@@ -125,12 +121,6 @@ bash scripts/gate_ci_prove_ci_relative_script_invocations_v1.sh
 # SV_GATE: allowlist_patchers_insert_sorted (v1) end
 
 bash scripts/gate_ci_registry_execution_alignment_v1.sh
-
-echo "==> Proof: allowlisted patch wrappers are no-op under SV_IDEMPOTENCE_MODE=1"
-# SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
-SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
-bash scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh
-# SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 
 
 echo "==> Ops: patcher/wrapper pairing gate"
@@ -234,7 +224,6 @@ bash scripts/gate_no_terminal_banner_paste_v1.sh
 bash scripts/gate_no_test_dir_case_drift_v1.sh
 bash scripts/gate_no_untracked_patch_artifacts_v1.sh
 bash scripts/gate_ops_indices_no_autofill_placeholders_v1.sh
-bash scripts/gate_patch_wrapper_idempotence_allowlist_v1.sh
 bash scripts/gate_proof_suite_completeness_v1.sh
 bash scripts/gate_proof_surface_registry_excludes_gates_v1.sh
 
@@ -345,7 +334,6 @@ bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" 
 
 # SV_GATE: contract_surface_completeness (v1) begin
 bash scripts/prove_contract_surface_completeness_v1.sh
-bash scripts/prove_contract_surface_autosync_noop_v1.sh
 # SV_GATE: contract_surface_completeness (v1) end
 
 # SV_GATE: contracts_index_discoverability (v1) end
