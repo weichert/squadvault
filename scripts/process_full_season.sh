@@ -14,7 +14,7 @@ echo ""
 
 # Step 1: Select and create recap_runs for all 18 weeks
 echo "--- Step 1: Selection ---"
-PYTHONPATH=src python3 << PYEOF
+./scripts/py - << PYEOF
 from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
 from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
 
@@ -48,7 +48,7 @@ echo ""
 
 # Step 3: Review — check which weeks have events vs empty
 echo "--- Step 3: Review (event counts) ---"
-PYTHONPATH=src python3 << 'PYEOF'
+./scripts/py - << 'PYEOF'
 import sqlite3, json
 con = sqlite3.connect(".local_squadvault.sqlite")
 for week in range(1, 19):
@@ -75,7 +75,7 @@ done
 for WEEK in 17 18; do
   echo -n "  Week $WEEK: "
   # Get latest version
-  VERSION=$(PYTHONPATH=src python3 -c "
+  VERSION=$(./scripts/py -c "
 import sqlite3
 con = sqlite3.connect('$DB')
 row = con.execute(
@@ -99,7 +99,7 @@ echo "=== Season 2024 Complete ==="
 echo ""
 
 # Summary
-PYTHONPATH=src python3 << 'PYEOF'
+./scripts/py - << 'PYEOF'
 import sqlite3
 con = sqlite3.connect(".local_squadvault.sqlite")
 approved = con.execute(
