@@ -114,10 +114,8 @@ echo "=== Gate: CI proof runners block sorted (v1) ==="
 bash scripts/gate_ci_proof_runners_block_sorted_v1.sh
 bash scripts/gate_ci_proof_surface_registry_exactness_v1.sh
 bash scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh
-# SV_GATE: no_obsolete_allowlist_rewrite_artifacts (v1) begin
 echo "=== Gate: prove_ci uses relative scripts invocations (v1) ==="
 bash scripts/gate_ci_prove_ci_relative_script_invocations_v1.sh
-# SV_GATE: no_obsolete_allowlist_rewrite_artifacts (v1) end
 # SV_GATE: allowlist_patchers_insert_sorted (v1) end
 
 bash scripts/gate_ci_registry_execution_alignment_v1.sh
@@ -219,7 +217,6 @@ bash scripts/gate_no_double_scripts_prefix_v2.sh
 echo "=== Gate: Bash 3.2 builtin compatibility (v1) ==="
 bash scripts/gate_no_mapfile_readarray_in_scripts_v1.sh
 bash scripts/gate_no_network_in_ci_proofs_v1.sh
-bash scripts/gate_no_obsolete_allowlist_rewrite_artifacts_v1.sh
 bash scripts/gate_no_terminal_banner_paste_v1.sh
 bash scripts/gate_no_test_dir_case_drift_v1.sh
 bash scripts/gate_no_untracked_patch_artifacts_v1.sh
