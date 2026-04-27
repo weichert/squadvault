@@ -13,10 +13,8 @@ Do not edit manually.
 - scripts/prove_eal_calibration_type_a_v1.sh
 - scripts/prove_golden_path.sh
 - scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh
-- scripts/prove_local_clean_then_ci_v3.sh
-- scripts/prove_local_shell_hygiene_v1.sh
 - scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
-- scripts/prove_pytest_does_not_dirty_fixture_db_v1.sh
+- scripts/prove_repo_root_allowlist_gate_behavior_v1.sh
 - scripts/prove_rivalry_chronicle_end_to_end_v1.sh
 - scripts/prove_signal_scout_tier1_type_a_v1.sh
 - scripts/prove_tone_engine_type_a_v1.sh
@@ -70,6 +68,7 @@ This registry is intentionally boring and auditable.
 - scripts/prove_golden_path.sh — Proves canonical operator golden path via shims and gates (exports ephemeral by default; set `SV_KEEP_EXPORTS=1` to persist; NAC normalization is non-mutating).
 - scripts/prove_idempotence_allowlist_noop_in_idempotence_mode_v1.sh — Proof: allowlisted patch wrappers are no-op under `SV_IDEMPOTENCE_MODE=1`.
 - scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh — Proof: terminal banner paste gate behavior (v1)
+- scripts/prove_repo_root_allowlist_gate_behavior_v1.sh — Proof: repo-root allowlist gate behavior (v1)
 - scripts/prove_rivalry_chronicle_end_to_end_v1.sh — Proves Rivalry Chronicle generate → approve → export flow.
 - scripts/prove_signal_scout_tier1_type_a_v1.sh — Proves Signal Scout Tier-1 Type A derivation + determinism.
 - scripts/prove_tone_engine_type_a_v1.sh — Proves Tone Engine Type A contract/invariants.
@@ -85,16 +84,12 @@ This registry is intentionally boring and auditable.
 
 ### Local hygiene proofs (registered)
 
-- `scripts/prove_local_clean_then_ci_v3.sh`
-- `scripts/prove_local_shell_hygiene_v1.sh`
+(none currently registered)
 
 <!-- PROOF_SURFACE_REGISTRY_LOCAL_PROOFS_v1_END -->
 <!-- SV_CI_EXECUTION_EXEMPT_v1_BEGIN -->
 
 - scripts/prove_creative_sharepack_determinism_v1.sh
-scripts/prove_local_clean_then_ci_v3.sh # local-only: developer workflow proof (not executed in CI)
-scripts/prove_local_shell_hygiene_v1.sh # local-only: interactive shell hygiene proof (not executed in CI)
-scripts/prove_pytest_does_not_dirty_fixture_db_v1.sh
 
 <!-- SV_CI_EXECUTION_EXEMPT_v1_END -->
 

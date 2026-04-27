@@ -105,6 +105,11 @@ SV_WORKTREE_SNAP0="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_no_terminal_banner_paste_gate_behavior_v1.sh
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) end
+echo "==> Proof: repo-root allowlist gate behavior (v1)"
+# SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
+SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
+bash scripts/prove_repo_root_allowlist_gate_behavior_v1.sh
+# SV_GATE: worktree_cleanliness_wrap_proof (v1) end
 # prove_ci_wire_patch_wrapper_idempotence_gate_v1
 echo "==> Gate: patch wrapper idempotence (allowlist) v1"
 # SV_GATE: allowlist_patchers_insert_sorted (v1) begin
