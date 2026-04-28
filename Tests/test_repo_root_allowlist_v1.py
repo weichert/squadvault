@@ -8,9 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-
 # These are the ONLY files that should be tracked at repo root.
 # Delivery scripts (apply_*.py) should be archived after use.
 ALLOWED_ROOT_FILES = {
@@ -24,14 +21,15 @@ ALLOWED_ROOT_FILES = {
 # Directories expected at repo root
 ALLOWED_ROOT_DIRS = {
     ".git",
+    "_observations",
+    "archive",
     "artifacts",
+    "docs",
     "fixtures",
     "outputs",
     "scripts",
     "src",
     "Tests",
-    "docs",
-    "_observations",
 }
 
 
