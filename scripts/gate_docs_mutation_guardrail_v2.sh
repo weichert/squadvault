@@ -49,28 +49,18 @@ count_fixed() {
 echo "==> Docs mutation guardrail gate (v2)"
 
 RULES_DOC="docs/process/rules_of_engagement.md"
-CI_INDEX_DOC="docs/80_indices/ops/CI_Guardrails_Index_v1.0.md"
 
 need_file_tracked_or_present "$RULES_DOC"
-need_file_tracked_or_present "$CI_INDEX_DOC"
 
 # Rules-of-engagement must carry the enforced policy section (stable anchor)
 need_grep_fixed "## Docs + CI Mutation Policy (Enforced)" "$RULES_DOC"
 need_grep_fixed "scripts/_patch_" "$RULES_DOC"
 need_grep_fixed "scripts/patch_" "$RULES_DOC"
 
-# CI index must contain canonical marker + bullet exactly once
-marker="<!-- SV_DOCS_MUTATION_DISCOVERABILITY: rules_of_engagement (v1) -->"
-bullet="- docs/process/rules_of_engagement.md — Docs + CI Mutation Policy (Enforced)"
-
-mcount="$(count_fixed "$marker" "$CI_INDEX_DOC")"
-bcount="$(count_fixed "$bullet" "$CI_INDEX_DOC")"
-
-[[ "$mcount" == "1" ]] || fail "CI index marker must appear exactly once (found $mcount): $marker"
-[[ "$bcount" == "1" ]] || fail "CI index bullet must appear exactly once (found $bcount): $bullet"
-
-# Canonical patcher/wrapper example must exist
-need_file_tracked_or_present "scripts/_patch_example_noop_v1.py"
-need_file_tracked_or_present "scripts/patch_example_noop_v1.sh"
+# Removed checks (Phase 7.8 / 2dfb96e / Findings C+E retirement cluster):
+#   - CI Index discoverability marker/bullet (Index simplified to gate-list-only block)
+#   - scripts/_patch_example_noop_v1.{py,sh} existence (both files archived in 2dfb96e)
+# The rules-of-engagement.md anchor enforcement above is the surviving real-work
+# portion of this gate.
 
 echo "OK: docs mutation guardrail gate passed (v2)."

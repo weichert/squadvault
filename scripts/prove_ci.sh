@@ -113,7 +113,6 @@ bash scripts/prove_repo_root_allowlist_gate_behavior_v1.sh
 echo "=== Gate: CI proof runners block sorted (v1) ==="
 bash scripts/gate_ci_proof_runners_block_sorted_v1.sh
 bash scripts/gate_ci_proof_surface_registry_exactness_v1.sh
-bash scripts/gate_ci_proof_surface_registry_index_discoverability_v1.sh
 echo "=== Gate: prove_ci uses relative scripts invocations (v1) ==="
 bash scripts/gate_ci_prove_ci_relative_script_invocations_v1.sh
 # SV_GATE: allowlist_patchers_insert_sorted (v1) end
@@ -173,12 +172,6 @@ bash scripts/gate_creative_surface_fingerprint_canonical_v1.sh
 bash scripts/gate_creative_surface_fingerprint_v1.sh
 # SV_GATE: docs_integrity (v2) end
 
-# SV_GATE: proof_registry_exactness (v1) begin
-echo "=== Gate: Creative Surface Registry discoverability (v1) ==="
-bash scripts/gate_creative_surface_registry_discoverability_v1.sh
-# SV_GATE: proof_registry_exactness (v1) end
-
-
 # SV_GATE: worktree_cleanliness_wrap_proof (v1) begin
 SV_WORKTREE_SNAP_PROOF="$(scripts/gate_worktree_cleanliness_v1.sh begin)"
 bash scripts/prove_docs_integrity_v1.sh
@@ -197,10 +190,6 @@ echo "==> Proof suite completeness gate (v1)"
 echo "=== Gate: Creative Surface registry usage (v1) ==="
 bash scripts/gate_creative_surface_registry_usage_v1.sh
 # SV_GATE: proof_suite_completeness (v1) end
-# SV_GATE: ci_registry_execution_alignment (v1) begin
-echo "==> Gate: CI registry → execution alignment (v1)"
-bash scripts/gate_docs_integrity_v2.sh
-# SV_GATE: ci_registry_execution_alignment (v1) end
 
 echo "==> Gate: no double scripts prefix (v2)"
 

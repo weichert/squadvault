@@ -40,7 +40,11 @@ _list_dupes() {
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-bash scripts/gate_creative_surface_registry_discoverability_v1.sh
+# Discoverability gate dependency removed: gate_creative_surface_registry_discoverability_v1.sh
+# was retired with the Index simplification (Phase 7.8, commit 0faf0c0). The
+# usage gate's CREATIVE_SURFACE_* token validation logic below is the
+# surviving real-work portion of this gate.
+
 registry_doc="${REPO_ROOT}/docs/80_indices/ops/Creative_Surface_Registry_v1.0.md"
 if [ ! -f "$registry_doc" ]; then
   echo "ERROR: registry doc missing: $registry_doc" >&2
