@@ -7,9 +7,28 @@ set -euo pipefail
 # - CWD-independent
 #
 # Enforces:
-#   1) scripts/prove_ci.sh: all scripts/gate_*.sh invocations are unique
-#   2) those invocations are sorted lexicographically (LC_ALL=C byte-order)
-#   3) exact duplicate gate banner echo lines are disallowed
+#   - exact duplicate gate banner echo lines (=== Gate: ... ===) are disallowed
+#     in scripts/prove_ci.sh (catches accidental copy/paste of a gate banner).
+#
+# Removed checks (Finding B closure, 2026-04-27):
+#   1) Per-path uniqueness check.
+#      Used `sed -E 's/^.*\b(...)\b.*$/\1/'` for path extraction. macOS BSD
+#      sed treats `\b` as literal, silently passing through full lines instead
+#      of extracted path tokens — gate became a no-op on Mac for years.
+#      Even with regex fixed, the check's "exactly once" invariant is
+#      structurally incompatible with stateful gates like
+#      gate_worktree_cleanliness_v1.sh whose begin/assert/end contract
+#      requires multiple invocations. False-positives on Linux, false-
+#      negatives on Mac. Both directions broken; check removed rather than
+#      patched with an exception list.
+#   2) Per-path lexicographic-order check. Same path extraction as #1, same
+#      portability bug. Even if extraction worked, the worktree_cleanliness
+#      pattern intersperses the same path between unrelated invocations,
+#      defeating the linear-sort invariant.
+#
+# The banner-uniqueness check below is the surviving real-work portion of
+# this gate. Banner extraction uses grep against literal `=== Gate: ... ===`
+# patterns — no regex word-boundary issues, fully portable.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -23,14 +42,11 @@ if [[ ! -f "$PROVE" ]]; then
 fi
 
 tmp_dir="${TMPDIR:-/tmp}"
-paths_file="$(mktemp "$tmp_dir/sv_prove_ci_gate_paths.XXXXXX")"
-sorted_paths_file="$(mktemp "$tmp_dir/sv_prove_ci_gate_paths_sorted.XXXXXX")"
-dups_file="$(mktemp "$tmp_dir/sv_prove_ci_gate_paths_dups.XXXXXX")"
 banners_file="$(mktemp "$tmp_dir/sv_prove_ci_gate_banners.XXXXXX")"
 banner_dups_file="$(mktemp "$tmp_dir/sv_prove_ci_gate_banner_dups.XXXXXX")"
 
 cleanup() {
-  rm -f "$paths_file" "$sorted_paths_file" "$dups_file" "$banners_file" "$banner_dups_file"
+  rm -f "$banners_file" "$banner_dups_file"
 }
 trap cleanup EXIT
 
@@ -38,74 +54,8 @@ trap cleanup EXIT
 LC_ALL=C
 export LC_ALL
 
-# Extract gate invocation paths from prove_ci.sh.
-# Accept:
-#   bash scripts/gate_x.sh
-#   bash ./scripts/gate_x.sh
-#   ./scripts/gate_x.sh
-#   scripts/gate_x.sh
-#
-# Normalize to "scripts/gate_*.sh" path token.
-grep -E '(^|[[:space:]])(bash[[:space:]]+)?(\./)?scripts/gate_[^[:space:]]+\.sh([[:space:]]|$)' "$PROVE" \
-  | sed -E 's/^.*\b(\.\/)?(scripts\/gate_[^[:space:]]+\.sh)\b.*$/\2/' \
-  > "$paths_file" || true
-
-# If no gates found, refuse (prove_ci always has gates).
-if [[ ! -s "$paths_file" ]]; then
-  echo "ERROR: no gate invocations found in $PROVE_REL" >&2
-  echo "Expected at least one scripts/gate_*.sh invocation." >&2
-  exit 1
-fi
-
-# 1) Uniqueness: detect duplicates.
-sort "$paths_file" | uniq -d > "$dups_file" || true
-if [[ -s "$dups_file" ]]; then
-  echo "ERROR: duplicate gate invocations found in $PROVE_REL" >&2
-  echo "" >&2
-  echo "Duplicates (paths):" >&2
-  sed 's/^/  - /' "$dups_file" >&2
-  echo "" >&2
-  echo "Hint: each scripts/gate_*.sh should be invoked exactly once in prove_ci." >&2
-  exit 1
-fi
-
-# 2) Ordering: ensure the encountered sequence is already sorted.
-sort "$paths_file" > "$sorted_paths_file"
-
-# Find first out-of-order adjacent pair in the encountered sequence.
-prev=""
-first_bad_prev=""
-first_bad_cur=""
-
-while IFS= read -r cur; do
-  if [[ -n "$prev" ]]; then
-    if [[ "$prev" > "$cur" ]]; then
-      first_bad_prev="$prev"
-      first_bad_cur="$cur"
-      break
-    fi
-  fi
-  prev="$cur"
-done < "$paths_file"
-
-if [[ -n "$first_bad_prev" ]]; then
-  echo "ERROR: gate invocations in $PROVE_REL are not sorted (lexicographic, byte-order)." >&2
-  echo "" >&2
-  echo "First out-of-order adjacent pair:" >&2
-  echo "  - $first_bad_prev" >&2
-  echo "  - $first_bad_cur" >&2
-  echo "" >&2
-  echo "Expected sorted order (by path):" >&2
-  while IFS= read -r p; do
-    echo "  - $p" >&2
-  done < "$sorted_paths_file"
-  echo "" >&2
-  echo "Hint: reorder only the gate invocation lines (scripts/gate_*.sh) in prove_ci." >&2
-  exit 1
-fi
-
-# 3) Banner duplicates: disallow exact duplicate gate banner echo lines
-# (This catches accidental copy/paste of a gate banner.)
+# Banner duplicates: disallow exact duplicate gate banner echo lines
+# (catches accidental copy/paste of a gate banner).
 grep -E '^\s*echo\s+["'\''"]===\s*Gate:\s*.*===["'\''"]\s*$' "$PROVE" > "$banners_file" || true
 if [[ -s "$banners_file" ]]; then
   sort "$banners_file" | uniq -d > "$banner_dups_file" || true
