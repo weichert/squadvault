@@ -323,3 +323,163 @@ No `|| true` should ever appear in `prove_ci.sh` except on the two existing clea
 - Pytest: 1812 passed, 2 skipped — unchanged.
 - Pre-commit hook matches canonical `scripts/git-hooks/pre-commit_v1.sh`.
 - Memo exists under `_observations/` per repo-root allowlist rule; this commit adds exactly one file under that directory.
+
+---
+
+## Addendum log
+
+*Append-only closure timeline. The triage above captured the
+F-series in its initial state; this log records each finding's
+resolution as it shipped, plus the four new findings (B/C/D/E)
+spawned during F-series closure work, plus the final mechanism
+closure (H1+H4) that converted strict-mode-on from a planned future
+state into the active state on `prove_ci.sh`.*
+
+### F1 — process_full_season.sh shim violations — CLOSED
+
+**Commit `bcac553`** ("scripts: replace inline `PYTHONPATH=src
+python3` with `scripts/py` shim in `process_full_season.sh` (F1)").
+Replaced 4 inline `PYTHONPATH=src python3` invocations with
+`./scripts/py` calls, restoring CWD-independence per the canonical
+shim convention.
+
+### F2 + F5 — Registry machine block / proof suite completeness — CLOSED
+
+**Commit `a56c147`** ("CI: close F2+F5 — regenerate registry, wire
+`prove_repo_root_allowlist` (Path A)"). Path A from the original
+triage: registered the proof script and regenerated the
+`CI_Proof_Surface_Registry` machine block. F2 and F5 closed
+together because F5 was a redundant downstream symptom of F2.
+
+### F3 — patch_idempotence_allowlist + autosync residue — CLOSED
+
+**Commit `e358886`** ("CI: retire dormant idempotence-allowlist
+cluster + autosync residue (F3 + autosync)"). Retirement (option 2
+from the original triage), not emptying. The 7 referenced wrapper
+scripts were genuinely dead code; the gate that referenced them was
+also dead. Retired together.
+
+### F4 — Filesystem-ordering gate false-positives on `_archive/` — CLOSED
+
+**Commit `28ae2bf`** ("CI: fix filesystem-ordering gate — exclude
+`scripts/_archive/` (F4)"). Excluded the archive directory from the
+ordering scan, the simplest fix that preserved the gate's intent
+for active scripts.
+
+### F6 — `gate_no_obsolete_allowlist_rewrite_artifacts_v1` — CLOSED
+
+**Commit `c98bda6`** ("CI: retire dormant
+`gate_no_obsolete_allowlist_rewrite_artifacts_v1` (F6)"). Retired
+the dormant gate. Closure observation memo:
+`OBSERVATIONS_2026_04_27_F6_RETIREMENT.md`.
+
+### F7 — Contract doc dangling Enforced By line — CLOSED
+
+**Commit `6ceb550`** ("docs: remove dangling Enforced By line in
+rivalry chronicle contract (F7)"). Single-line documentation fix.
+
+### Finding B (new) — `gate_prove_ci_structure_canonical_v1` dormant checks — CLOSED
+
+Spawned during F-series closure work. Discovered that a separate
+gate carried dormant checks for retired scripts. **Commit
+`cfaee3b`** ("CI: strip dormant checks from
+`gate_prove_ci_structure_canonical_v1` (Finding B)"). Closure memo:
+`OBSERVATIONS_2026_04_27_FINDING_B_CLOSURE.md`. The closure memo
+asserted: "Finding B mechanism closure (`set -euo pipefail`
+addition to `prove_ci.sh`) is now safe to land — there is no
+pre-existing silent-rc=1 gate for it to expose."
+
+That assessment was incomplete (see H1+H4 below).
+
+### Finding C — Phase 7.8 prose-deletion residue (1/3) — CLOSED
+
+**Commit `c90b4e4`** ("CI: retire Phase 7.8 prose-deletion residue
+(Findings C + E + F)"). Bundled with E and F because all three were
+residue from the same Phase 7.8 prose-deletion work that left
+multiple downstream references stale. Closure memo:
+`OBSERVATIONS_2026_04_27_FINDINGS_C_E_RETIREMENT.md`.
+
+### Finding D — LC_ALL portability across 9 parity gates — CLOSED
+
+**Commit `70e4003`** ("CI: add LC_ALL=C envelope to 9 parity gates
+(Finding D)"). Added the deterministic-locale envelope to nine
+parity-comparison gates that were susceptible to environment-
+dependent sort/collation order. Closure memo:
+`OBSERVATIONS_2026_04_27_FINDING_D_LC_ALL_PORTABILITY.md`.
+
+### Finding E — Phase 7.8 prose-deletion residue (2/3) — CLOSED
+
+Bundled with C in commit `c90b4e4`. Closure memo:
+`OBSERVATIONS_2026_04_27_FINDINGS_C_E_RETIREMENT.md`.
+
+### Finding F (named at retirement) — Phase 7.8 prose-deletion residue (3/3) — CLOSED
+
+Bundled with C and E in commit `c90b4e4`.
+
+### H1 + H4 — Strict mode on `prove_ci.sh` + dangling _status.sh source — CLOSED
+
+**Commit `bfee780`** ("prove_ci: strict execution + retire dangling
+`_status.sh` source (H1+H4)"). Bundled because H1's strict-mode
+addition surfaced H4 as a silent-rc=1 latent failure on its first
+attempted solo apply — exactly the failure mode H1 was designed to
+expose. The CWD-independence gate had been silently red since
+2026-03-11 (commit `2dfb96e`), masked by errexit-off behavior. H4
+removed the dangling `source` line in `scripts/recap`; H1 added
+`set -euo pipefail` after the deterministic envelope. Closure
+memo: `OBSERVATIONS_2026_04_29_H1_H4_SHIPPED_AND_MEMORY_EVENTS_EXPOSED.md`.
+
+H1 also surfaced a *third* latent failure (memory_events allowlist
+gate) that was carried as a standing item but not recognized as
+H1-coupled at the time of the closure memo. Tracked as H7 on
+`PRIORITY_LIST_2026_04_28.md`.
+
+### F-series workstream summary
+
+The F-series began on 2026-04-20 with the triage that produced this
+memo. Every sub-finding (F1–F7) and every spawned finding (B/C/D/E)
+is now closed. The mechanism that the F-series was protecting —
+`set -euo pipefail` on `prove_ci.sh` — is now active on
+`origin/main`.
+
+| Finding | Closed at | Closure memo |
+|---|---|---|
+| F1 | `bcac553` | (in commit message) |
+| F2 + F5 | `a56c147` | `OBSERVATIONS_2026_04_27_F2_F5_PROSE_DRIFT_AND_REPO_ROOT_PROOF_GAP.md` |
+| F3 | `e358886` | `OBSERVATIONS_2026_04_27_F3_RETIREMENT_AND_AUTOSYNC_RESIDUE.md` |
+| F4 | `28ae2bf` | (in commit message) |
+| F6 | `c98bda6` | `OBSERVATIONS_2026_04_27_F6_RETIREMENT.md` |
+| F7 | `6ceb550` | (in commit message) |
+| Finding B | `cfaee3b` | `OBSERVATIONS_2026_04_27_FINDING_B_CLOSURE.md` |
+| Finding C | `c90b4e4` | `OBSERVATIONS_2026_04_27_FINDINGS_C_E_RETIREMENT.md` |
+| Finding D | `70e4003` | `OBSERVATIONS_2026_04_27_FINDING_D_LC_ALL_PORTABILITY.md` |
+| Finding E | `c90b4e4` | `OBSERVATIONS_2026_04_27_FINDINGS_C_E_RETIREMENT.md` |
+| Finding F | `c90b4e4` | (bundled with C+E) |
+| H1 + H4 | `bfee780` | `OBSERVATIONS_2026_04_29_H1_H4_SHIPPED_AND_MEMORY_EVENTS_EXPOSED.md` |
+
+Total: 12 findings closed across 9 commits over 9 days
+(2026-04-20 → 2026-04-29). Workstream is closed.
+
+### Lesson — closure verification methodology
+
+The Finding B closure memo at commit `cfaee3b` used "ERROR-prefixed
+line count" as its verification signal for "no remaining silent-rc=1
+gates." That signal was incomplete: two gates were silently failing
+with output formats the regex did not match.
+
+- The CWD-independence gate failed with `bash: source: No such file
+  or directory` (no `ERROR:` prefix; surfaced by H1+H4).
+- The memory_events gate failed with `❌ Downstream reads from
+  memory_events are not allowed (outside allowlist)` (no `ERROR:`
+  prefix; surfaced by H1+H4 → H7).
+
+The honest assessment of "truly clean" required errexit itself.
+Verification under errexit-off is fundamentally limited because
+the script can return rc=0 even when individual gates have failed.
+
+For future workstreams of this shape: when a gate's output format
+is being relied upon for closure verification, enumerate every
+possible failure-output format the gate can emit (`exit 1` with no
+output, `exit 1` with `❌`, `exit 1` with bash error from a missing
+sourced file, etc.) and ensure the verification regex covers all
+of them. Or, more simply, run the script under errexit and treat
+rc != 0 as the canonical signal.
