@@ -11,6 +11,14 @@ export TZ=UTC
 export PYTHONHASHSEED=0
 # === /DETERMINISTIC EXECUTION ENVELOPE (v1) ===
 
+# === STRICT EXECUTION (Finding B closure) ===
+# Per OBSERVATIONS_2026_04_27_FINDING_B_CLOSURE.md, all pre-existing
+# silent-rc=1 gates have been retired; set -e is now safe to land.
+# This converts any future regression into an immediate hard failure
+# rather than a silent-red gate masked by the absence of errexit.
+set -euo pipefail
+# === /STRICT EXECUTION ===
+
 # --- Temp workspace normalization (bash 3.2 safe) ---
 SV_TMPDIR="${TMPDIR:-/tmp}"
 SV_TMPDIR="${SV_TMPDIR%/}"
