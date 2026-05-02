@@ -8,7 +8,8 @@ group text thread.
 
 It does **not** cover:
 
-- Reception capture (Track B — future).
+- Reception capture — see `docs/runbooks/reception_capture_v1.md`
+  for recording observations against a distributed artifact.
 - Scheduling or cadence (Track D — future).
 - Multi-channel distribution.
 
@@ -81,10 +82,16 @@ The commit message convention is
 - A reaction.
 - An unprompted reference to the content (in the thread, in person).
 
-If none of these occur within 7 days, write an `_observations/` memo
-recording the distribution date, the artifact, and the absence of
-response. Silence around a Writer's Room piece is information; the
-memo captures it for voice-iteration consideration in Track C.
+Record each observation as it happens via the reception capture
+runbook (`docs/runbooks/reception_capture_v1.md`). Any recorded
+`reply`, `reaction`, or `reference` closes exit criterion #4.
+
+If the 7-day window closes with no reception observations, file a
+`silence_period_close` via `record_reception.py
+--silence-window-close` and write the suggested `_observations/`
+memo. Silence around a Writer's Room piece is information; the
+silence-close record plus the memo capture it for voice-iteration
+consideration in Track C.
 
 ## Failure modes
 
