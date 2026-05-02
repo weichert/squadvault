@@ -13,8 +13,8 @@ import pytest
 from squadvault.core.recaps.render.voice_variants_v1 import (
     VOICE_IDS,
     VoiceSpec,
-    get_voice_spec,
     format_variant_block,
+    get_voice_spec,
 )
 from squadvault.core.storage.session import DatabaseSession
 

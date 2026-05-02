@@ -13,12 +13,12 @@ import pytest
 
 from squadvault.core.recaps.recap_runs import (
     RecapRunRecord,
-    upsert_recap_run,
-    get_recap_run_state,
-    update_recap_run_state,
-    sync_recap_run_state_from_artifacts,
-    _latest_artifact_state_for_week,
     _has_any_approved_artifact,
+    _latest_artifact_state_for_week,
+    get_recap_run_state,
+    sync_recap_run_state_from_artifacts,
+    update_recap_run_state,
+    upsert_recap_run,
 )
 
 SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"

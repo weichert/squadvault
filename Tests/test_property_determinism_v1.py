@@ -5,15 +5,15 @@ bullets, directive fingerprints, and selection fingerprints.
 """
 from __future__ import annotations
 
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
+from squadvault.core.eal.eal_calibration_v1 import (
+    compute_directive_fingerprint,
+)
 from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     render_deterministic_bullets_v1,
-)
-from squadvault.core.eal.eal_calibration_v1 import (
-    compute_directive_fingerprint,
 )
 
 EVENT_TYPES = st.sampled_from([

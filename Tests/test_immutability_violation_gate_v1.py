@@ -5,24 +5,19 @@ Runs the FULL pipeline and verifies no operation modifies memory_events.
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 
 import pytest
 
+from squadvault.core.canonicalize.run_canonicalize import canonicalize
+from squadvault.core.recaps.recap_runs import RecapRunRecord, upsert_recap_run
+from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
 from squadvault.core.storage.migrate import init_and_migrate
 from squadvault.core.storage.sqlite_store import SQLiteStore
-from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
-from squadvault.core.recaps.recap_artifacts import (
-    create_recap_artifact_draft_idempotent,
-    approve_recap_artifact,
-)
 from squadvault.recaps.weekly_recap_lifecycle import (
-    generate_weekly_recap_draft,
     approve_latest_weekly_recap,
+    generate_weekly_recap_draft,
 )
 
 LEAGUE = "immutability_gate_league"

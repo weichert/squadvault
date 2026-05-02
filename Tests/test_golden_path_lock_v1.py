@@ -27,31 +27,29 @@ Also operationalizes the Recap Review Heuristic (Phase 6C):
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 
 import pytest
 
-from squadvault.core.storage.migrate import init_and_migrate
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
-from squadvault.core.recaps.recap_artifacts import (
-    latest_approved_version,
-    approve_recap_artifact,
+from squadvault.core.eal.editorial_attunement_v1 import (
+    EAL_MODERATE_CONFIDENCE_ONLY,
 )
 from squadvault.core.exports.approved_weekly_recap_export_v1 import (
     fetch_latest_approved_weekly_recap,
     write_approved_weekly_recap_export_bundle,
 )
-from squadvault.core.eal.editorial_attunement_v1 import (
-    EAL_MODERATE_CONFIDENCE_ONLY,
+from squadvault.core.recaps.recap_artifacts import (
+    latest_approved_version,
 )
+from squadvault.core.recaps.recap_runs import RecapRunRecord, upsert_recap_run
+from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
+from squadvault.core.storage.migrate import init_and_migrate
+from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.recaps.weekly_recap_lifecycle import (
-    generate_weekly_recap_draft,
     approve_latest_weekly_recap,
+    generate_weekly_recap_draft,
 )
 
 LEAGUE = "golden_path_lock_league"

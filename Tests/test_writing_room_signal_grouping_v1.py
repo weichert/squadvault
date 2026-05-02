@@ -1,8 +1,9 @@
 from squadvault.recaps.writing_room.selection_set_schema_v1 import (
-    build_signal_groupings_v1,
-    SignalGroupingExtractorV1,
     GroupBasisCode,
+    SignalGroupingExtractorV1,
+    build_signal_groupings_v1,
 )
+
 
 def _mk(sig_id: str, scope: str, subject: str, facts):
     return {"id": sig_id, "scope": scope, "subject": subject, "facts": facts}

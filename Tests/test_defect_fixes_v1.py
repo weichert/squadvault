@@ -8,8 +8,6 @@ import json
 import os
 import sqlite3
 
-import pytest
-
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"
 )
@@ -118,6 +116,7 @@ class TestCanonicalDefault:
     def test_default_is_canonical(self):
         """Verify the default parameter value is True."""
         import inspect
+
         from squadvault.core.queries.event_queries import (
             fetch_all_events,
             fetch_by_event_type,
@@ -134,12 +133,13 @@ class TestCanonicalDefault:
     def test_convenience_aliases_have_use_canonical(self):
         """All convenience aliases should accept use_canonical."""
         import inspect
+
         from squadvault.core.queries.event_queries import (
             draft_picks,
+            free_agent_transactions,
+            trades,
             waiver_awards,
             waiver_requests,
-            trades,
-            free_agent_transactions,
         )
         for fn in (draft_picks, waiver_awards, waiver_requests, trades, free_agent_transactions):
             sig = inspect.signature(fn)

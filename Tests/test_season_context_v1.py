@@ -9,12 +9,8 @@ import json
 import os
 import sqlite3
 
-import pytest
-
 from squadvault.core.recaps.context.season_context_v1 import (
     MatchupResult,
-    SeasonContextV1,
-    TeamRecord,
     _compute_records,
     _parse_matchup,
     _season_milestones,

@@ -5,15 +5,12 @@ derive_matchup_result_envelopes.
 """
 from __future__ import annotations
 
-import pytest
-
 from squadvault.ingest.matchup_results import (
-    _stable_external_id,
-    _safe_float,
     _ensure_list,
+    _safe_float,
+    _stable_external_id,
     derive_matchup_result_envelopes,
 )
-
 
 # ── _stable_external_id ─────────────────────────────────────────────
 
@@ -311,9 +308,8 @@ class TestMatchupCanonicalFingerprint:
 
     def test_fingerprint_format(self):
         from squadvault.core.canonicalize.run_canonicalize import (
-            action_fingerprint,
             MemoryEventRow,
-            safe_json_loads,
+            action_fingerprint,
         )
         payload_dict = {
             "week": 6,
@@ -338,11 +334,12 @@ class TestMatchupCanonicalFingerprint:
 
     def test_fingerprint_order_independent(self):
         """Franchise order in payload doesn't affect fingerprint."""
-        from squadvault.core.canonicalize.run_canonicalize import (
-            action_fingerprint,
-            MemoryEventRow,
-        )
         import json
+
+        from squadvault.core.canonicalize.run_canonicalize import (
+            MemoryEventRow,
+            action_fingerprint,
+        )
 
         payload1 = {
             "week": 6,
@@ -376,8 +373,8 @@ class TestMatchupBulletRendering:
 
     def test_win_bullet(self):
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            render_deterministic_bullets_v1,
             CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -400,8 +397,8 @@ class TestMatchupBulletRendering:
 
     def test_tie_bullet(self):
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            render_deterministic_bullets_v1,
             CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -424,8 +421,8 @@ class TestMatchupBulletRendering:
 
     def test_win_with_team_resolver(self):
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            render_deterministic_bullets_v1,
             CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         resolver = lambda fid: {"0001": "The Destroyers", "0002": "Lucky Strikes"}.get(fid, fid)
         events = [

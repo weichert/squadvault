@@ -11,7 +11,6 @@ from squadvault.ops.contract_validation_strategy_v1 import (
     normalize_invariant_type,
 )
 
-
 CONTRACT_NAME = "Contract Validation Strategy"
 CONTRACT_VERSION = "v1.0"
 

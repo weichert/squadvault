@@ -11,20 +11,19 @@ import sqlite3
 
 from squadvault.core.recaps.context.auction_draft_angles_v1 import (
     _AuctionPick,
-    _PlayerSeasonScoring,
     _load_all_auction_picks,
     _load_player_season_scoring,
-    detect_auction_price_vs_production,
-    detect_auction_dollar_per_point,
-    detect_auction_bust,
+    _PlayerSeasonScoring,
     detect_auction_budget_allocation,
-    detect_auction_positional_spending,
-    detect_auction_strategy_consistency,
+    detect_auction_bust,
+    detect_auction_dollar_per_point,
+    detect_auction_draft_angles_v1,
     detect_auction_league_inflation,
     detect_auction_most_expensive_history,
-    detect_auction_draft_angles_v1,
+    detect_auction_positional_spending,
+    detect_auction_price_vs_production,
+    detect_auction_strategy_consistency,
 )
-
 
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"

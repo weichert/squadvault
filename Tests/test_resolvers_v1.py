@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from squadvault.core.resolvers import PlayerResolver, FranchiseResolver, _csv_ids
+from squadvault.core.resolvers import FranchiseResolver, PlayerResolver, _csv_ids
 
 SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"
 LEAGUE = "test_league"

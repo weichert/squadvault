@@ -5,8 +5,6 @@ owner's tenure, not the full franchise slot history.
 """
 from __future__ import annotations
 
-import pytest
-
 
 class TestTenureAwareRivalry:
     """Rivalry angles must filter by franchise tenure."""
@@ -19,7 +17,9 @@ class TestTenureAwareRivalry:
         )
         from squadvault.core.recaps.context.narrative_angles_v1 import _detect_rivalry_angles
         from squadvault.core.recaps.context.season_context_v1 import (
-            SeasonContextV1, TeamRecord, WeekMatchupContext,
+            SeasonContextV1,
+            TeamRecord,
+            WeekMatchupContext,
         )
 
         # 13 matchups from 2010-2022 (old ownership) — 0003 always wins
@@ -117,7 +117,9 @@ class TestTenureAwareRivalry:
         )
         from squadvault.core.recaps.context.narrative_angles_v1 import _detect_rivalry_angles
         from squadvault.core.recaps.context.season_context_v1 import (
-            SeasonContextV1, TeamRecord, WeekMatchupContext,
+            SeasonContextV1,
+            TeamRecord,
+            WeekMatchupContext,
         )
 
         # 10 matchups, all won by 0001

@@ -5,15 +5,12 @@ migration framework (init_and_migrate, apply_migrations).
 """
 from __future__ import annotations
 
-import os
 import sqlite3
-import tempfile
 
 import pytest
 
+from squadvault.core.storage.db_utils import norm_id, table_columns
 from squadvault.core.storage.session import DatabaseSession
-from squadvault.core.storage.db_utils import table_columns, norm_id
-
 
 # ── DatabaseSession ──────────────────────────────────────────────────
 

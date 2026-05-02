@@ -1,5 +1,6 @@
 from squadvault.validation.signals.signal_taxonomy_type_a_v1 import SignalTaxonomyTypeAEnforcerV1
 
+
 def test_empty_enum_rejects_all_signals():
     enforcer = SignalTaxonomyTypeAEnforcerV1.__new__(SignalTaxonomyTypeAEnforcerV1)
     enforcer._valid_types = []  # explicit empty => fail-closed

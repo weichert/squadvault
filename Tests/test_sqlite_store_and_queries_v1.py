@@ -5,22 +5,20 @@ event_queries filter functions.
 """
 from __future__ import annotations
 
-import json
-import sqlite3
 from pathlib import Path
 
 import pytest
 
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.queries.event_queries import (
+    draft_picks,
     fetch_all_events,
     fetch_by_event_type,
     fetch_by_event_type_prefix,
-    draft_picks,
-    waiver_awards,
-    trades,
     free_agent_transactions,
+    trades,
+    waiver_awards,
 )
+from squadvault.core.storage.sqlite_store import SQLiteStore
 
 LEAGUE = "test_league"
 SEASON = 2024

@@ -11,16 +11,15 @@ from pathlib import Path
 import pytest
 
 from squadvault.core.recaps.recap_artifacts import (
-    ARTIFACT_TYPE_WEEKLY_RECAP,
-    ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
     _ALLOWED_TRANSITIONS,
+    ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
     _assert_transition,
     _normalize_withheld_reason,
-    create_recap_artifact_draft_idempotent,
     approve_recap_artifact,
-    withhold_recap_artifact,
-    supersede_approved_recap_artifact,
+    create_recap_artifact_draft_idempotent,
     latest_approved_version,
+    supersede_approved_recap_artifact,
+    withhold_recap_artifact,
 )
 
 SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"

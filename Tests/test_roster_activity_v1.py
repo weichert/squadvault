@@ -6,8 +6,6 @@ Verifies that:
 """
 from __future__ import annotations
 
-import pytest
-
 
 class TestRosterActivityRetired:
     """Roster activity derivation was removed to prevent aggregate fabrication."""
@@ -30,6 +28,7 @@ class TestRosterActivityRetired:
     def test_render_no_roster_activity_param(self):
         """render_writer_room_context_for_prompt should not accept roster_activity."""
         import inspect
+
         from squadvault.core.recaps.context.writer_room_context_v1 import (
             render_writer_room_context_for_prompt,
         )

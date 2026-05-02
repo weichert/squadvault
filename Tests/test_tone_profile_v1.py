@@ -4,28 +4,22 @@ Verifies preset storage, retrieval, validation, voice directive generation,
 creative layer integration, and default behavior.
 """
 
-import json
-import os
 import sqlite3
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
-from squadvault.core.tone.tone_profile_v1 import (
-    get_tone_preset,
-    set_tone_preset,
-    get_voice_directive,
-    VALID_PRESETS,
-    DEFAULT_PRESET,
-    VOICE_DIRECTIVES,
-)
 from squadvault.ai.creative_layer_v1 import (
-    _build_system_prompt,
-    _build_user_prompt,
     _SYSTEM_PROMPT,
-    draft_narrative_v1,
-    _PERMITTED_DIRECTIVES,
+    _build_system_prompt,
+)
+from squadvault.core.tone.tone_profile_v1 import (
+    DEFAULT_PRESET,
+    VALID_PRESETS,
+    VOICE_DIRECTIVES,
+    get_tone_preset,
+    get_voice_directive,
+    set_tone_preset,
 )
 
 

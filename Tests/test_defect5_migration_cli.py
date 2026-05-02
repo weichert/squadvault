@@ -10,8 +10,6 @@ from __future__ import annotations
 import os
 import sqlite3
 
-import pytest
-
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"
 )
@@ -53,7 +51,7 @@ class TestPendingMigrations:
 
     def test_fresh_db_without_tracking_table(self, tmp_path):
         """A DB with no _schema_migrations table should report all migrations pending."""
-        from squadvault.core.storage.migrate import pending_migrations, _discover_migrations
+        from squadvault.core.storage.migrate import _discover_migrations, pending_migrations
         db_path = str(tmp_path / "bare.sqlite")
         con = sqlite3.connect(db_path)
         con.execute("CREATE TABLE dummy (id INTEGER)")
@@ -65,7 +63,7 @@ class TestPendingMigrations:
 
     def test_partially_applied(self, tmp_path):
         """If only some migrations are applied, the rest should be pending."""
-        from squadvault.core.storage.migrate import pending_migrations, _discover_migrations
+        from squadvault.core.storage.migrate import _discover_migrations, pending_migrations
         db_path = str(tmp_path / "partial.sqlite")
         con = sqlite3.connect(db_path)
         con.execute("""
@@ -95,7 +93,6 @@ class TestMigrateSubcommand:
     def test_subcommand_exists(self):
         """recap.py build_parser should accept 'migrate' command."""
         import importlib
-        import sys
         # Import recap.py as a module
         recap_path = os.path.join(
             os.path.dirname(__file__), "..", "scripts", "recap.py"

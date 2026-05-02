@@ -6,20 +6,20 @@ CSV ID splitting, detail routing.
 from __future__ import annotations
 
 import json
+
 import pytest
 
 from squadvault.core.recaps.facts.extract_recap_facts_v1 import (
     EventFact,
-    _json_load,
-    _parse_raw_mfl_json,
     _extract_bbid_waiver_fields,
     _extract_details,
-    _extract_waiver_bid_awarded_fields,
     _extract_free_agent_fields,
     _extract_trade_fields,
+    _extract_waiver_bid_awarded_fields,
+    _json_load,
+    _parse_raw_mfl_json,
     _split_csv_ids,
 )
-
 
 # ── _json_load ───────────────────────────────────────────────────────
 

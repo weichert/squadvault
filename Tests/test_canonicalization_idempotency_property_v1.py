@@ -13,8 +13,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-import pytest
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from squadvault.core.canonicalize.run_canonicalize import canonicalize

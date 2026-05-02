@@ -6,12 +6,13 @@ Integration test calls the real Anthropic API to verify governed prose.
 from __future__ import annotations
 
 import os
+
 import pytest
 
 from squadvault.ai.creative_layer_rivalry_v1 import (
-    draft_rivalry_narrative_v1,
-    _eal_directive_for_rivalry,
     _build_user_prompt,
+    _eal_directive_for_rivalry,
+    draft_rivalry_narrative_v1,
 )
 from squadvault.chronicle.matchup_facts_v1 import MatchupFactV1
 

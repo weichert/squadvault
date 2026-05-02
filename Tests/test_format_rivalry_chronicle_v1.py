@@ -8,13 +8,12 @@ from __future__ import annotations
 import pytest
 
 from squadvault.chronicle.format_rivalry_chronicle_v1 import (
-    render_rivalry_chronicle_v1,
-    UpstreamRecapQuoteV1,
-    BANNER,
     MARK_PROVENANCE,
-    MARK_WEEKS,
     MARK_QUOTES,
+    MARK_WEEKS,
+    UpstreamRecapQuoteV1,
     _nl,
+    render_rivalry_chronicle_v1,
 )
 
 

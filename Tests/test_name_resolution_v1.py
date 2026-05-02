@@ -12,16 +12,16 @@ from pathlib import Path
 
 import pytest
 
+from squadvault.core.canonicalize.run_canonicalize import canonicalize
+from squadvault.core.recaps.recap_runs import RecapRunRecord, upsert_recap_run
+from squadvault.core.recaps.render.deterministic_bullets_v1 import CanonicalEventRow
+from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
 from squadvault.core.storage.migrate import init_and_migrate
 from squadvault.core.storage.sqlite_store import SQLiteStore
-from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
-from squadvault.core.recaps.render.deterministic_bullets_v1 import CanonicalEventRow
 from squadvault.recaps.weekly_recap_lifecycle import (
-    _render_text_from_recap_runs,
-    _load_canonical_event_rows,
     _collect_ids_from_payloads,
+    _load_canonical_event_rows,
+    _render_text_from_recap_runs,
     generate_weekly_recap_draft,
 )
 

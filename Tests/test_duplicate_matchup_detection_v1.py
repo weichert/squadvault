@@ -8,11 +8,11 @@ import sqlite3
 import unittest
 from pathlib import Path
 
+from squadvault.recaps.dng_reasons import DNGReason
 from squadvault.recaps.preflight import (
     PreflightVerdictType,
     check_duplicate_matchup_week,
 )
-from squadvault.recaps.dng_reasons import DNGReason
 
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"

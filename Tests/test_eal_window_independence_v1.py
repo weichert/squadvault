@@ -17,12 +17,11 @@ from pathlib import Path
 import pytest
 
 from squadvault.core.eal.editorial_attunement_v1 import (
-    EALMeta,
-    evaluate_editorial_attunement_v1,
     EAL_AMBIGUITY_PREFER_SILENCE,
-    EAL_HIGH_CONFIDENCE_ALLOWED,
     EAL_LOW_CONFIDENCE_RESTRAINT,
     EAL_MODERATE_CONFIDENCE_ONLY,
+    EALMeta,
+    evaluate_editorial_attunement_v1,
 )
 from squadvault.recaps.weekly_recap_lifecycle import (
     _persist_editorial_attunement_v1_to_recap_runs,

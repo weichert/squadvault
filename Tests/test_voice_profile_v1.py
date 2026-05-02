@@ -5,11 +5,10 @@ import os
 import sqlite3
 
 from squadvault.core.tone.voice_profile_v1 import (
+    PFL_BUDDIES_VOICE_PROFILE,
     get_voice_profile,
     set_voice_profile,
-    PFL_BUDDIES_VOICE_PROFILE,
 )
-
 
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"

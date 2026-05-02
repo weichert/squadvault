@@ -15,7 +15,6 @@ from __future__ import annotations
 import importlib
 import unittest
 
-
 # (module_path, main_accepts_argv)
 CONSUMER_ENTRIES: list[tuple[str, bool]] = [
     ("squadvault.consumers.editorial_log_week", True),

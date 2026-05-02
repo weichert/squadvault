@@ -13,8 +13,8 @@ import pytest
 from squadvault.consumers.editorial_actions import (
     ACTIONS,
     ensure_editorial_tables,
-    insert_editorial_action,
     fetch_editorial_log,
+    insert_editorial_action,
     utc_now_iso,
 )
 

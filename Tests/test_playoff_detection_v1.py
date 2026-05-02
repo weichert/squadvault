@@ -13,7 +13,6 @@ from squadvault.core.recaps.context.season_context_v1 import (
     PlayoffInfo,
     _detect_playoff_info,
     render_season_context_for_prompt,
-    derive_season_context_v1,
 )
 
 

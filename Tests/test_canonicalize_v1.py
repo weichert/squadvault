@@ -13,16 +13,16 @@ import pytest
 
 from squadvault.core.canonicalize.run_canonicalize import (
     MemoryEventRow,
-    safe_json_loads,
-    norm,
-    sha1_text,
-    raw_mfl_obj,
     _as_list_str,
-    _stable_ids_key,
     _parse_free_agent_add_drop_from_raw,
+    _stable_ids_key,
     action_fingerprint,
-    score_event,
     canonicalize,
+    norm,
+    raw_mfl_obj,
+    safe_json_loads,
+    score_event,
+    sha1_text,
 )
 
 SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"

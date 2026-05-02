@@ -6,20 +6,17 @@ _collect_franchise_ids_from_events.
 """
 from __future__ import annotations
 
-import pytest
-
 from squadvault.consumers.recap_range_preview import (
     _as_float,
-    _csv_ids,
     _collect_franchise_ids_from_events,
     _collect_player_ids_from_events,
+    _csv_ids,
     _dedupe_key,
     _extract_trade_fields,
     _pick_notable,
     _score_event,
     format_headline,
 )
-
 
 # ── _as_float ────────────────────────────────────────────────────────
 

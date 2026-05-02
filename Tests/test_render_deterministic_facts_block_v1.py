@@ -7,19 +7,16 @@ quiet week threshold, empty IDs, chunked fetching.
 from __future__ import annotations
 
 import json
-import sqlite3
-import tempfile
 import os
-
-import pytest
+import sqlite3
 
 from squadvault.core.recaps.render.render_deterministic_facts_block_v1 import (
+    QUIET_WEEK_MIN_EVENTS,
     _fetch_canonical_events_by_ids,
     _fetch_memory_payloads_by_ids,
     _NameLookup,
     _norm_id,
     build_deterministic_facts_block_v1,
-    QUIET_WEEK_MIN_EVENTS,
 )
 
 LEAGUE = "test_league"

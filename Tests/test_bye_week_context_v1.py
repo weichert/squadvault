@@ -10,15 +10,14 @@ import sqlite3
 
 from squadvault.core.recaps.context.bye_week_context_v1 import (
     _count_starters_on_bye,
-    detect_bye_week_impact,
-    detect_bye_week_conflict,
     detect_bye_week_angles_v1,
+    detect_bye_week_conflict,
+    detect_bye_week_impact,
 )
 from squadvault.ingest.nfl_bye_weeks import (
-    parse_nfl_bye_weeks,
     ingest_nfl_bye_weeks_from_mfl,
+    parse_nfl_bye_weeks,
 )
-
 
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"

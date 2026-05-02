@@ -8,9 +8,6 @@ from __future__ import annotations
 import ast
 import os
 
-import pytest
-
-
 SRC = os.path.join(os.path.dirname(__file__), "..", "src", "squadvault")
 TESTS = os.path.dirname(__file__)
 

@@ -3,12 +3,12 @@ from __future__ import annotations
 import unittest
 
 from squadvault.core.eal.editorial_attunement_v1 import (
-    EALMeta,
-    evaluate_editorial_attunement_v1,
     EAL_AMBIGUITY_PREFER_SILENCE,
     EAL_HIGH_CONFIDENCE_ALLOWED,
     EAL_LOW_CONFIDENCE_RESTRAINT,
     EAL_MODERATE_CONFIDENCE_ONLY,
+    EALMeta,
+    evaluate_editorial_attunement_v1,
 )
 
 

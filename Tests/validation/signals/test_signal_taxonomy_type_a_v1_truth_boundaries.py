@@ -1,5 +1,6 @@
 from squadvault.validation.signals.signal_taxonomy_type_a_v1 import SignalTaxonomyTypeAEnforcerV1
 
+
 def test_truth_boundaries_forbid_inference_like_fields():
     enforcer = SignalTaxonomyTypeAEnforcerV1.__new__(SignalTaxonomyTypeAEnforcerV1)
     enforcer._valid_types = ["FOO_SIGNAL"]

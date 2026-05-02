@@ -10,16 +10,16 @@ from pathlib import Path
 
 import pytest
 
-from squadvault.core.storage.db_utils import table_columns, norm_id, row_to_dict, now_utc_iso
+from squadvault.core.storage.db_utils import norm_id, now_utc_iso, row_to_dict, table_columns
 from squadvault.core.storage.migrate import apply_migrations, init_and_migrate
 from squadvault.errors import (
-    SquadVaultError,
-    RecapNotFoundError,
-    RecapStateError,
-    RecapDataError,
     ChronicleError,
     ConfigError,
+    RecapDataError,
+    RecapNotFoundError,
+    RecapStateError,
     SchemaError,
+    SquadVaultError,
 )
 
 SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"

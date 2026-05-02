@@ -12,8 +12,6 @@ import json
 import os
 import sqlite3
 
-import pytest
-
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"
 )
@@ -265,7 +263,8 @@ class TestPlayerPositionInBullets:
     def test_position_included(self):
         """When position resolver is provided, bullets include position."""
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            CanonicalEventRow, render_deterministic_bullets_v1,
+            CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -287,7 +286,8 @@ class TestPlayerPositionInBullets:
     def test_no_position_resolver_is_fine(self):
         """Without position resolver, bullets render normally."""
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            CanonicalEventRow, render_deterministic_bullets_v1,
+            CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -307,7 +307,8 @@ class TestPlayerPositionInBullets:
     def test_position_in_trade_bullets(self):
         """Trade bullets should also include position."""
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            CanonicalEventRow, render_deterministic_bullets_v1,
+            CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -332,7 +333,8 @@ class TestPlayerPositionInBullets:
     def test_position_in_draft_bullets(self):
         """Draft bullets should also include position."""
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            CanonicalEventRow, render_deterministic_bullets_v1,
+            CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -357,7 +359,8 @@ class TestBidAmountFix:
     def test_bid_amount_key_renders(self):
         """bid_amount (the MFL ingest key) should produce a dollar amount in bullet."""
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            CanonicalEventRow, render_deterministic_bullets_v1,
+            CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -373,7 +376,8 @@ class TestBidAmountFix:
     def test_bid_key_still_works(self):
         """The original 'bid' key should still work."""
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            CanonicalEventRow, render_deterministic_bullets_v1,
+            CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -388,7 +392,8 @@ class TestBidAmountFix:
     def test_no_bid_amount_no_dollar(self):
         """If neither bid nor bid_amount is present, no dollar amount shown."""
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-            CanonicalEventRow, render_deterministic_bullets_v1,
+            CanonicalEventRow,
+            render_deterministic_bullets_v1,
         )
         events = [
             CanonicalEventRow(
@@ -409,7 +414,8 @@ class TestWriterRoomPromptRendering:
     def test_renders_deltas_and_faab(self, tmp_path):
         """Full render with both deltas and FAAB."""
         from squadvault.core.recaps.context.writer_room_context_v1 import (
-            derive_scoring_deltas, derive_faab_spending,
+            derive_faab_spending,
+            derive_scoring_deltas,
             render_writer_room_context_for_prompt,
         )
 

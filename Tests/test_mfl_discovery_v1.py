@@ -7,13 +7,10 @@ the all-zero scores guard.
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from squadvault.mfl.discovery import (
     DiscoveryReport,
@@ -31,7 +28,6 @@ from squadvault.mfl.historical_ingest import (
     _ingest_franchise_info,
     _ingest_transactions_and_bids,
 )
-
 
 # ── Discovery data structures ───────────────────────────────────────
 

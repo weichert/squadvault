@@ -10,8 +10,6 @@ from __future__ import annotations
 import os
 import sqlite3
 
-import pytest
-
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"
 )
@@ -92,7 +90,8 @@ class TestTenureInPrompt:
 
     def test_tenure_import_in_lifecycle(self):
         """Lifecycle must import compute_franchise_tenures."""
-        import squadvault.recaps.weekly_recap_lifecycle as lc
         import inspect
+
+        import squadvault.recaps.weekly_recap_lifecycle as lc
         source = inspect.getsource(lc)
         assert "compute_franchise_tenures" in source

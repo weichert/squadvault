@@ -6,24 +6,22 @@ _fingerprint_from_ids, select_weekly_recap_events_v1, SelectionResult.
 from __future__ import annotations
 
 import hashlib
-import json
 import sqlite3
 from pathlib import Path
 
 import pytest
 
-from squadvault.core.recaps.selection.weekly_windows_v1 import (
-    WeeklyWindow,
-    _parse_iso_z,
-    _to_iso_z,
-    window_for_week_index,
-    WINDOW_MISSING_LOCKS,
-    WINDOW_UNSAFE_TO_COMPUTE,
-)
 from squadvault.core.recaps.selection.weekly_selection_v1 import (
     SelectionResult,
     _fingerprint_from_ids,
     select_weekly_recap_events_v1,
+)
+from squadvault.core.recaps.selection.weekly_windows_v1 import (
+    WINDOW_MISSING_LOCKS,
+    WINDOW_UNSAFE_TO_COMPUTE,
+    _parse_iso_z,
+    _to_iso_z,
+    window_for_week_index,
 )
 
 SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"

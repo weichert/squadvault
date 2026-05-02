@@ -6,11 +6,9 @@ unicode normalization, MAX_BULLETS truncation, empty input.
 """
 from __future__ import annotations
 
-import pytest
-
 from squadvault.core.recaps.render.deterministic_bullets_v1 import (
-    CanonicalEventRow,
     MAX_BULLETS,
+    CanonicalEventRow,
     _ascii_punct,
     _money,
     _safe,

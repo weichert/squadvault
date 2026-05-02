@@ -9,8 +9,6 @@ from __future__ import annotations
 import inspect
 import os
 
-import pytest
-
 
 class TestShareableDelimiter:
     """The rendered_text should use parseable SHAREABLE RECAP delimiters."""

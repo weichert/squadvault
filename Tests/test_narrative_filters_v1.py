@@ -5,9 +5,9 @@ Covers: filter_events_for_narrative, allow/exclude logic, default types.
 from __future__ import annotations
 
 from squadvault.core.queries.narrative_filters import (
-    filter_events_for_narrative,
-    DEFAULT_NARRATIVE_EVENT_TYPES,
     DEFAULT_EXCLUDE_EVENT_TYPES,
+    DEFAULT_NARRATIVE_EVENT_TYPES,
+    filter_events_for_narrative,
 )
 
 

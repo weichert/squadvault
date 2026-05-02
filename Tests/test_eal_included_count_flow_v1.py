@@ -21,17 +21,17 @@ from pathlib import Path
 
 import pytest
 
+from squadvault.core.canonicalize.run_canonicalize import canonicalize
+from squadvault.core.eal.editorial_attunement_v1 import (
+    EAL_AMBIGUITY_PREFER_SILENCE,
+    EAL_HIGH_CONFIDENCE_ALLOWED,
+    EAL_LOW_CONFIDENCE_RESTRAINT,
+    EAL_MODERATE_CONFIDENCE_ONLY,
+)
+from squadvault.core.recaps.recap_runs import RecapRunRecord, upsert_recap_run
+from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
 from squadvault.core.storage.migrate import init_and_migrate
 from squadvault.core.storage.sqlite_store import SQLiteStore
-from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
-from squadvault.core.eal.editorial_attunement_v1 import (
-    EAL_HIGH_CONFIDENCE_ALLOWED,
-    EAL_MODERATE_CONFIDENCE_ONLY,
-    EAL_LOW_CONFIDENCE_RESTRAINT,
-    EAL_AMBIGUITY_PREFER_SILENCE,
-)
 from squadvault.recaps.weekly_recap_lifecycle import generate_weekly_recap_draft
 
 LEAGUE = "eal_flow_test_league"

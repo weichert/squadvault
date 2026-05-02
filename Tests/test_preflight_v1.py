@@ -5,12 +5,12 @@ PreflightVerdict defaults, evidence structure.
 """
 from __future__ import annotations
 
+from squadvault.recaps.dng_reasons import DNGReason
 from squadvault.recaps.preflight import (
     PreflightVerdict,
     PreflightVerdictType,
     recap_preflight_verdict,
 )
-from squadvault.recaps.dng_reasons import DNGReason
 
 
 class TestPreflightVerdict:

@@ -11,19 +11,19 @@ from pathlib import Path
 
 import pytest
 
-from squadvault.core.storage.migrate import init_and_migrate
-from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.recaps.recap_artifacts import (
-    create_recap_artifact_draft_idempotent,
-    approve_recap_artifact,
-    latest_approved_version,
-)
 from squadvault.core.exports.approved_weekly_recap_export_v1 import (
     fetch_latest_approved_weekly_recap,
     write_approved_weekly_recap_export_bundle,
 )
+from squadvault.core.recaps.recap_artifacts import (
+    approve_recap_artifact,
+    create_recap_artifact_draft_idempotent,
+    latest_approved_version,
+)
+from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
+from squadvault.core.storage.migrate import init_and_migrate
+from squadvault.core.storage.sqlite_store import SQLiteStore
 
 LEAGUE = "integration_test_league"
 SEASON = 2024

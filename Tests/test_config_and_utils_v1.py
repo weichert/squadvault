@@ -4,8 +4,6 @@ Covers: SquadVaultConfig.from_env, unix_seconds_to_iso_z.
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from squadvault.config.settings import SquadVaultConfig

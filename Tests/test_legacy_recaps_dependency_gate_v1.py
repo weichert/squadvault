@@ -10,7 +10,6 @@ import re
 
 import pytest
 
-
 SRC = os.path.join(os.path.dirname(__file__), "..", "src", "squadvault")
 
 # SQL patterns that indicate direct recaps table usage

@@ -5,14 +5,13 @@ import json
 import os
 import sqlite3
 
-from squadvault.ingest.scoring_rules import (
-    parse_scoring_rules,
-    ingest_scoring_rules_from_mfl,
-)
 from squadvault.core.recaps.context.league_rules_context_v1 import (
     detect_scoring_rules_angles_v1,
 )
-
+from squadvault.ingest.scoring_rules import (
+    ingest_scoring_rules_from_mfl,
+    parse_scoring_rules,
+)
 
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"

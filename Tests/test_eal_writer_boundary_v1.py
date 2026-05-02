@@ -1,12 +1,14 @@
 from __future__ import annotations
-import os
 
+import os
 import sqlite3
 import unittest
 
-from squadvault.recaps.weekly_recap_lifecycle import generate_weekly_recap_draft
-from squadvault.recaps.weekly_recap_lifecycle import _get_recap_run_trace
-from squadvault.recaps.weekly_recap_lifecycle import get_recap_run_state
+from squadvault.recaps.weekly_recap_lifecycle import (
+    _get_recap_run_trace,
+    generate_weekly_recap_draft,
+    get_recap_run_state,
+)
 
 
 def _try_insert_eal_directives(

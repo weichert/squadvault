@@ -12,11 +12,7 @@ import sqlite3
 import pytest
 
 from squadvault.core.recaps.context.league_history_v1 import (
-    AllTimeRecord,
-    HeadToHeadRecord,
     HistoricalMatchup,
-    LeagueHistoryContextV1,
-    StreakRecord,
     _compute_all_time_records,
     _compute_longest_streaks,
     _compute_scoring_records,

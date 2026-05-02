@@ -1,9 +1,9 @@
 import pytest
 
 from squadvault.ops.approval_authority_v1 import (
+    MAX_BULK_ARTIFACTS,
     ApprovalAuthorityError,
     BulkApprovalRequest,
-    MAX_BULK_ARTIFACTS,
     validate_bulk_approval_request,
 )
 

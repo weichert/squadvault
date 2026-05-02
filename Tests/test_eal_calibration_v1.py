@@ -5,10 +5,7 @@ restraint directive derivation, fingerprint determinism, build_restraint_directi
 """
 from __future__ import annotations
 
-import pytest
-
 from squadvault.core.eal.eal_calibration_v1 import (
-    DEFAULT_CALIBRATION_VALUES,
     RestraintDirective,
     _is_nonempty_str,
     _is_semver_like,

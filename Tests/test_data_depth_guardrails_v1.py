@@ -10,20 +10,19 @@ Governance: Creativity must never compensate for missing context.
 import sqlite3
 from pathlib import Path
 
-
-from squadvault.core.recaps.context.season_context_v1 import (
-    derive_season_context_v1,
-)
 from squadvault.core.recaps.context.league_history_v1 import (
     derive_league_history_v1,
     load_all_matchups,
     render_league_history_for_prompt,
 )
 from squadvault.core.recaps.context.narrative_angles_v1 import (
-    _detect_streak_records,
-    _detect_season_records,
     _detect_rivalry_angles,
+    _detect_season_records,
+    _detect_streak_records,
     detect_narrative_angles_v1,
+)
+from squadvault.core.recaps.context.season_context_v1 import (
+    derive_season_context_v1,
 )
 
 LEAGUE = "TEST_DEPTH"

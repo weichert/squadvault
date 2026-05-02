@@ -5,21 +5,12 @@ derive_auction_event_envelopes_from_transactions, skip-on-no-player.
 """
 from __future__ import annotations
 
-import pytest
-
 from squadvault.ingest.auction_draft import (
-    _safe_get,
-    _extract_type,
-    _extract_timestamp_unix,
-    _extract_franchise_id,
-    _parse_transaction_field,
-    _extract_player_id,
     _extract_bid_amount,
-    _truncate_raw_json,
-    _stable_external_id,
+    _extract_player_id,
+    _parse_transaction_field,
     derive_auction_event_envelopes_from_transactions,
 )
-
 
 # ── _parse_transaction_field ─────────────────────────────────────────
 

@@ -7,10 +7,8 @@ from __future__ import annotations
 
 import os
 import sqlite3
-import tempfile
 
 import pytest
-
 
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"

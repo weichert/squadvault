@@ -9,11 +9,8 @@ from __future__ import annotations
 import ast
 import glob
 import os
-import sqlite3
-import tempfile
 
 import pytest
-
 
 SRC = os.path.join(os.path.dirname(__file__), "..", "src")
 FIXTURES = os.path.join(os.path.dirname(__file__), "..", "fixtures")
@@ -66,7 +63,7 @@ class TestComponentPresence:
             if not os.path.exists(full_path):
                 missing.append(f"{name} → {rel_path}")
         assert missing == [], (
-            f"Contract-specified components missing:\n" +
+            "Contract-specified components missing:\n" +
             "\n".join(f"  {m}" for m in missing)
         )
 
@@ -92,8 +89,8 @@ class TestConstitutionInvariants:
                         "UPDATE MEMORY_EVENTS" in upper):
                         violations.append(f"{f}:{i}")
         assert violations == [], (
-            f"Constitution violation: memory_events must be append-only.\n"
-            f"Found DELETE/UPDATE:\n" + "\n".join(f"  {v}" for v in violations)
+            "Constitution violation: memory_events must be append-only.\n"
+            "Found DELETE/UPDATE:\n" + "\n".join(f"  {v}" for v in violations)
         )
 
     def test_no_autonomous_publish(self):
@@ -130,6 +127,7 @@ class TestArtifactStateMachine:
     def test_approved_requires_approved_by(self):
         """approve_recap_artifact must require approved_by parameter."""
         import inspect
+
         from squadvault.core.recaps.recap_artifacts import approve_recap_artifact
         sig = inspect.signature(approve_recap_artifact)
         assert "approved_by" in sig.parameters
@@ -205,7 +203,7 @@ class TestPlatformGuardrails:
                 if pattern in basename:
                     violations.append(f)
         assert violations == [], (
-            f"Platform guardrail violation: found prediction/ranking/optimization files:\n" +
+            "Platform guardrail violation: found prediction/ranking/optimization files:\n" +
             "\n".join(f"  {v}" for v in violations)
         )
 
@@ -219,7 +217,7 @@ class TestPlatformGuardrails:
                 if pattern in basename:
                     violations.append(f)
         assert violations == [], (
-            f"Platform guardrail violation:\n" +
+            "Platform guardrail violation:\n" +
             "\n".join(f"  {v}" for v in violations)
         )
 
@@ -232,13 +230,13 @@ class TestErrorHierarchy:
     def test_error_classes_importable(self):
         """All error classes from errors.py must be importable."""
         from squadvault.errors import (
-            SquadVaultError,
-            RecapNotFoundError,
-            RecapStateError,
-            RecapDataError,
             ChronicleError,
             ConfigError,
+            RecapDataError,
+            RecapNotFoundError,
+            RecapStateError,
             SchemaError,
+            SquadVaultError,
         )
         assert issubclass(RecapNotFoundError, SquadVaultError)
         assert issubclass(RecapStateError, SquadVaultError)
@@ -260,7 +258,6 @@ class TestErrorHierarchy:
 
     def test_no_systemexit_in_business_logic(self):
         """No non-main function should raise SystemExit — use SquadVaultError subclasses."""
-        import ast
 
         issues = []
         for f in glob.glob(os.path.join(SRC, "squadvault", "**", "*.py"), recursive=True):
@@ -283,6 +280,6 @@ class TestErrorHierarchy:
                                 if isinstance(func, ast.Name) and func.id == "SystemExit":
                                     issues.append(f"{short}: {node.name}() line {child.lineno}")
         assert issues == [], (
-            f"SystemExit in business logic (use SquadVaultError subclasses):\n" +
+            "SystemExit in business logic (use SquadVaultError subclasses):\n" +
             "\n".join(f"  {i}" for i in issues)
         )

@@ -6,20 +6,19 @@ _safe_int, get_voice_spec, format_variant_block, render_from_path.
 from __future__ import annotations
 
 import json
-import os
+
 import pytest
 
 from squadvault.core.recaps.render.render_recap_text_v1 import (
     _safe_int,
-    _apply_voice_framing_v1,
-    render_recap_text_v1,
     render_recap_text_from_path_v1,
+    render_recap_text_v1,
 )
 from squadvault.core.recaps.render.voice_variants_v1 import (
     VOICE_IDS,
     VoiceSpec,
-    get_voice_spec,
     format_variant_block,
+    get_voice_spec,
 )
 
 

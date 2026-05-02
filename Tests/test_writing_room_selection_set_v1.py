@@ -1,11 +1,11 @@
 import unittest
 
 from squadvault.recaps.writing_room.selection_set_schema_v1 import (
-    ExclusionReasonCode,
     ExcludedSignal,
+    ExclusionReasonCode,
     build_selection_fingerprint,
-    deterministic_sort_str,
     deterministic_sort_excluded,
+    deterministic_sort_str,
 )
 
 

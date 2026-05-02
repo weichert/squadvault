@@ -9,8 +9,6 @@ import ast
 import glob
 import os
 
-import pytest
-
 SRC = os.path.join(os.path.dirname(__file__), "..", "src")
 
 
@@ -119,7 +117,7 @@ class TestModuleDocstrings:
             if not ast.get_docstring(tree):
                 missing.append(f.replace(SRC + "/squadvault/", ""))
         assert missing == [], (
-            f"Core modules missing module docstrings:\n" +
+            "Core modules missing module docstrings:\n" +
             "\n".join(f"  {m}" for m in missing)
         )
 
@@ -135,6 +133,6 @@ class TestModuleDocstrings:
             if not ast.get_docstring(tree):
                 missing.append(f.replace(SRC + "/squadvault/", ""))
         assert missing == [], (
-            f"Modules missing module docstrings:\n" +
+            "Modules missing module docstrings:\n" +
             "\n".join(f"  {m}" for m in missing)
         )

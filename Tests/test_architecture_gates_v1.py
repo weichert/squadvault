@@ -15,9 +15,6 @@ import os
 import py_compile
 import re
 
-import pytest
-
-
 SRC = os.path.join(os.path.dirname(__file__), "..", "src")
 
 # Matches both the bare form ("except Exception:") and any captured form
@@ -88,7 +85,7 @@ class TestCompileGate:
                 py_compile.compile(f, doraise=True)
             except py_compile.PyCompileError as e:
                 errors.append(str(e))
-        assert errors == [], f"Compile errors:\n" + "\n".join(errors)
+        assert errors == [], "Compile errors:\n" + "\n".join(errors)
 
 
 class TestNoBareConnect:
@@ -144,7 +141,7 @@ class TestNoDuplicateUtilities:
                     if line.strip().startswith("def _table_columns(") or line.strip().startswith("def table_columns("):
                         violations.append(f"{f}:{i}")
         assert violations == [], (
-            f"Duplicate table_columns definitions found:\n" +
+            "Duplicate table_columns definitions found:\n" +
             "\n".join(f"  {v}" for v in violations)
         )
 
@@ -160,7 +157,7 @@ class TestNoDuplicateUtilities:
                     if line.strip().startswith("def _norm_id(") or line.strip().startswith("def norm_id("):
                         violations.append(f"{f}:{i}")
         assert violations == [], (
-            f"Duplicate norm_id definitions found:\n" +
+            "Duplicate norm_id definitions found:\n" +
             "\n".join(f"  {v}" for v in violations)
         )
 
@@ -176,7 +173,7 @@ class TestNoDuplicateUtilities:
                     if line.strip().startswith("class DNGReason"):
                         violations.append(f"{f}:{i}")
         assert violations == [], (
-            f"Duplicate DNGReason definitions found:\n" +
+            "Duplicate DNGReason definitions found:\n" +
             "\n".join(f"  {v}" for v in violations)
         )
 
@@ -192,7 +189,7 @@ class TestNoDuplicateUtilities:
                     if line.strip().startswith("class PreflightVerdictType"):
                         violations.append(f"{f}:{i}")
         assert violations == [], (
-            f"Duplicate PreflightVerdictType definitions found:\n" +
+            "Duplicate PreflightVerdictType definitions found:\n" +
             "\n".join(f"  {v}" for v in violations)
         )
 

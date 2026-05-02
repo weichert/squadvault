@@ -8,33 +8,32 @@ import json
 import os
 import sqlite3
 
-from squadvault.core.recaps.context.league_history_v1 import HistoricalMatchup
 from squadvault.core.recaps.context.franchise_deep_angles_v1 import (
-    detect_scoring_concentration,
-    detect_scoring_volatility,
-    detect_star_explosion_count,
-    detect_positional_strength,
-    detect_bench_cost_game,
-    detect_perfect_lineup_week,
-    detect_close_game_record,
-    detect_lucky_record,
-    detect_the_bridesmaid,
-    detect_transaction_volume_identity,
-    detect_second_half_surge_collapse,
-    detect_franchise_alltime_scoring,
-    detect_weekly_scoring_rank_dominance,
-    detect_schedule_strength,
-    detect_points_against_luck,
-    detect_repeat_matchup_pattern,
-    detect_championship_history,
-    detect_the_almost,
-    detect_scoring_momentum_in_streak,
     _is_near_monotonic_growing,
     _is_near_monotonic_shrinking,
     _load_all_matchups_flat,
+    detect_bench_cost_game,
+    detect_championship_history,
+    detect_close_game_record,
+    detect_franchise_alltime_scoring,
     detect_franchise_deep_angles_v1,
+    detect_lucky_record,
+    detect_perfect_lineup_week,
+    detect_points_against_luck,
+    detect_positional_strength,
+    detect_repeat_matchup_pattern,
+    detect_schedule_strength,
+    detect_scoring_concentration,
+    detect_scoring_momentum_in_streak,
+    detect_scoring_volatility,
+    detect_second_half_surge_collapse,
+    detect_star_explosion_count,
+    detect_the_almost,
+    detect_the_bridesmaid,
+    detect_transaction_volume_identity,
+    detect_weekly_scoring_rank_dominance,
 )
-
+from squadvault.core.recaps.context.league_history_v1 import HistoricalMatchup
 
 SCHEMA_PATH = os.path.join(
     os.path.dirname(__file__), "..", "src", "squadvault", "core", "storage", "schema.sql"

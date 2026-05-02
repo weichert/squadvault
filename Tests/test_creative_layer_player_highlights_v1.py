@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import os
 import unittest
-import warnings
 from unittest.mock import MagicMock, patch
 
 from squadvault.ai.creative_layer_v1 import (
@@ -21,7 +20,6 @@ from squadvault.ai.creative_layer_v1 import (
     _build_user_prompt,
     draft_narrative_v1,
 )
-
 
 _SAMPLE_BULLETS = [
     "Tanner Stark beat Kyle Holloway 142.6-98.3.",

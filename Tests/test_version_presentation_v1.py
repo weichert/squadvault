@@ -5,18 +5,16 @@ deterministic ordering, prev/next navigation, presentation index building.
 """
 from __future__ import annotations
 
-import pytest
-
 from squadvault.core.versioning.version_presentation_navigation_v1 import (
-    validate_version_metadata_schema,
-    validate_version_set_schema,
-    validate_canonical_constraints,
-    validate_supersession_bidirectional,
-    order_versions_deterministically,
-    get_prev_next_version_ids,
-    build_presentation_index_v1,
     PresentationIndexV1,
     _is_sha256ish,
+    build_presentation_index_v1,
+    get_prev_next_version_ids,
+    order_versions_deterministically,
+    validate_canonical_constraints,
+    validate_supersession_bidirectional,
+    validate_version_metadata_schema,
+    validate_version_set_schema,
 )
 
 FP = "a" * 64  # valid sha256-ish fingerprint

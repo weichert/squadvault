@@ -15,9 +15,6 @@ from __future__ import annotations
 import os
 import re
 
-import pytest
-
-
 SRC = os.path.join(os.path.dirname(__file__), "..", "src")
 SCHEMA_PATH = os.path.join(SRC, "squadvault", "core", "storage", "schema.sql")
 MIGRATIONS_DIR = os.path.join(SRC, "squadvault", "core", "storage", "migrations")

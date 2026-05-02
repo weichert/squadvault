@@ -10,16 +10,16 @@ from pathlib import Path
 
 import pytest
 
+from squadvault.core.canonicalize.run_canonicalize import canonicalize
 from squadvault.core.queries.franchise_queries import (
     _franchise_ids_from_payload,
-    events_for_franchise,
     draft_picks_for_franchise,
-    waiver_awards_for_franchise,
-    trades_for_franchise,
+    events_for_franchise,
     free_agent_moves_for_franchise,
+    trades_for_franchise,
+    waiver_awards_for_franchise,
 )
 from squadvault.core.storage.sqlite_store import SQLiteStore
-from squadvault.core.canonicalize.run_canonicalize import canonicalize
 
 SCHEMA_PATH = Path(__file__).parent.parent / "src" / "squadvault" / "core" / "storage" / "schema.sql"
 LEAGUE = "test_league"

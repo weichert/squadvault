@@ -8,23 +8,21 @@ is self-sufficient when recap_runs contains valid selection data.
 """
 from __future__ import annotations
 
-import json
 import sqlite3
-from pathlib import Path
 
 import pytest
 
-from squadvault.core.storage.migrate import init_and_migrate
-from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
 from squadvault.core.recaps.recap_artifacts import (
     latest_approved_version,
 )
-from squadvault.recaps.weekly_recap_lifecycle import (
-    generate_weekly_recap_draft,
-    approve_latest_weekly_recap,
-    _render_text_from_recap_runs,
-)
+from squadvault.core.recaps.recap_runs import RecapRunRecord, upsert_recap_run
+from squadvault.core.storage.migrate import init_and_migrate
 from squadvault.errors import RecapNotFoundError
+from squadvault.recaps.weekly_recap_lifecycle import (
+    _render_text_from_recap_runs,
+    approve_latest_weekly_recap,
+    generate_weekly_recap_draft,
+)
 
 LEAGUE = "legacy_independence_test"
 SEASON = 2024

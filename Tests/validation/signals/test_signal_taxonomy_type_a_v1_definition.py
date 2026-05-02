@@ -1,5 +1,6 @@
 from squadvault.validation.signals.signal_taxonomy_type_a_v1 import SignalTaxonomyTypeAEnforcerV1
 
+
 def test_definition_requires_typed_bounded_derived(monkeypatch, tmp_path):
     # Stub authority: non-empty enum + mapping
     enforcer = SignalTaxonomyTypeAEnforcerV1.__new__(SignalTaxonomyTypeAEnforcerV1)

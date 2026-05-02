@@ -1,8 +1,8 @@
 """Tests for franchise directory ingest normalization."""
 
 from squadvault.ingest.franchises._run_franchises_ingest import (
-    _normalize_row,
     _normalize_apostrophes,
+    _normalize_row,
 )
 
 

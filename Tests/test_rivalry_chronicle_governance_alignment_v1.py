@@ -15,31 +15,28 @@ Contract card: Rivalry_Chronicle_v1_Contract_Card.md
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 
 import pytest
 
-from squadvault.core.storage.migrate import init_and_migrate
-from squadvault.core.storage.sqlite_store import SQLiteStore
-from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
-from squadvault.core.recaps.recap_artifacts import (
-    ARTIFACT_TYPE_WEEKLY_RECAP,
-    ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
-    latest_approved_version,
-    approve_recap_artifact,
-)
+from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
 from squadvault.chronicle.persist_rivalry_chronicle_v1 import (
     persist_rivalry_chronicle_v1,
-    _insert_recap_artifact_row_schema_resilient,
 )
-from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
+from squadvault.core.canonicalize.run_canonicalize import canonicalize
+from squadvault.core.recaps.recap_artifacts import (
+    ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
+    ARTIFACT_TYPE_WEEKLY_RECAP,
+    approve_recap_artifact,
+)
+from squadvault.core.recaps.recap_runs import RecapRunRecord, upsert_recap_run
+from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
+from squadvault.core.storage.migrate import init_and_migrate
+from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.recaps.weekly_recap_lifecycle import (
-    generate_weekly_recap_draft,
     approve_latest_weekly_recap,
+    generate_weekly_recap_draft,
 )
 
 LEAGUE = "99999"

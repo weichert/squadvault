@@ -6,12 +6,11 @@ derive_player_score_envelopes (consuming weeklyResults JSON).
 from __future__ import annotations
 
 from squadvault.ingest.player_scores import (
-    _stable_external_id,
-    _safe_float,
     _ensure_list,
+    _safe_float,
+    _stable_external_id,
     derive_player_score_envelopes,
 )
-
 
 # ── _stable_external_id ─────────────────────────────────────────────
 
@@ -454,11 +453,12 @@ class TestPlayerScoreCanonicalFingerprint:
     """Verify WEEKLY_PLAYER_SCORE events get proper fingerprints."""
 
     def test_fingerprint_format(self):
-        from squadvault.core.canonicalize.run_canonicalize import (
-            action_fingerprint,
-            MemoryEventRow,
-        )
         import json
+
+        from squadvault.core.canonicalize.run_canonicalize import (
+            MemoryEventRow,
+            action_fingerprint,
+        )
 
         payload_dict = {
             "week": 6,
@@ -481,11 +481,12 @@ class TestPlayerScoreCanonicalFingerprint:
         assert fp == "WEEKLY_PLAYER_SCORE:70985:2024:W6:0001:15648"
 
     def test_fingerprint_deterministic(self):
-        from squadvault.core.canonicalize.run_canonicalize import (
-            action_fingerprint,
-            MemoryEventRow,
-        )
         import json
+
+        from squadvault.core.canonicalize.run_canonicalize import (
+            MemoryEventRow,
+            action_fingerprint,
+        )
 
         payload_dict = {
             "week": 6,
@@ -507,11 +508,12 @@ class TestPlayerScoreCanonicalFingerprint:
         assert fp1 == fp2
 
     def test_different_players_different_fingerprints(self):
-        from squadvault.core.canonicalize.run_canonicalize import (
-            action_fingerprint,
-            MemoryEventRow,
-        )
         import json
+
+        from squadvault.core.canonicalize.run_canonicalize import (
+            MemoryEventRow,
+            action_fingerprint,
+        )
 
         def _make_row(player_id):
             payload = {"week": 6, "franchise_id": "0001", "player_id": player_id, "score": 40.20}
@@ -527,11 +529,12 @@ class TestPlayerScoreCanonicalFingerprint:
         assert action_fingerprint(row1, p1) != action_fingerprint(row2, p2)
 
     def test_different_franchises_different_fingerprints(self):
-        from squadvault.core.canonicalize.run_canonicalize import (
-            action_fingerprint,
-            MemoryEventRow,
-        )
         import json
+
+        from squadvault.core.canonicalize.run_canonicalize import (
+            MemoryEventRow,
+            action_fingerprint,
+        )
 
         def _make_row(franchise_id):
             payload = {"week": 6, "franchise_id": franchise_id, "player_id": "15648", "score": 40.20}

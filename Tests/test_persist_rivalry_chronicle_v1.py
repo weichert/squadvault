@@ -11,10 +11,10 @@ from pathlib import Path
 import pytest
 
 from squadvault.chronicle.persist_rivalry_chronicle_v1 import (
+    PersistedChronicleV1,
     _insert_recap_artifact_row_schema_resilient,
     _latest_approved_chronicle_row,
     _next_version,
-    PersistedChronicleV1,
 )
 from squadvault.core.recaps.recap_artifacts import ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1
 from squadvault.errors import SchemaError

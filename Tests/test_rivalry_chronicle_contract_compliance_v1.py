@@ -10,33 +10,29 @@ Verifies the contract card requirements:
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 
 import pytest
 
+from squadvault.chronicle.generate_rivalry_chronicle_v1 import generate_rivalry_chronicle_v1
+from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
+from squadvault.chronicle.matchup_facts_v1 import (
+    facts_block_hash_v1,
+    query_head_to_head_matchups_v1,
+)
+from squadvault.chronicle.persist_rivalry_chronicle_v1 import persist_rivalry_chronicle_v1
+from squadvault.core.canonicalize.run_canonicalize import canonicalize
+from squadvault.core.recaps.recap_artifacts import (
+    ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
+)
+from squadvault.core.recaps.recap_runs import RecapRunRecord, upsert_recap_run
+from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
 from squadvault.core.storage.migrate import init_and_migrate
 from squadvault.core.storage.sqlite_store import SQLiteStore
-from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.recaps.selection.weekly_selection_v1 import select_weekly_recap_events_v1
-from squadvault.core.recaps.recap_runs import upsert_recap_run, RecapRunRecord
-from squadvault.core.recaps.recap_artifacts import (
-    ARTIFACT_TYPE_WEEKLY_RECAP,
-    ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
-    approve_recap_artifact,
-)
-from squadvault.chronicle.matchup_facts_v1 import (
-    query_head_to_head_matchups_v1,
-    facts_block_hash_v1,
-    MatchupFactV1,
-)
-from squadvault.chronicle.generate_rivalry_chronicle_v1 import generate_rivalry_chronicle_v1
-from squadvault.chronicle.persist_rivalry_chronicle_v1 import persist_rivalry_chronicle_v1
-from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
 from squadvault.recaps.weekly_recap_lifecycle import (
-    generate_weekly_recap_draft,
     approve_latest_weekly_recap,
+    generate_weekly_recap_draft,
 )
 
 LEAGUE = "70985"
