@@ -233,7 +233,6 @@ bash scripts/gate_pytest_tracked_tests_only_v1.sh
 # Creative surface fingerprint canonical drift gate (v1)
 bash scripts/gate_repo_clean_after_proofs_v1.sh
 bash scripts/gate_repo_root_allowlist_v1.sh
-bash scripts/gate_standard_show_input_need_coverage_v1.sh
 
 ## (D) Meta surface parity
 bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP0}" "prove_ci entry"

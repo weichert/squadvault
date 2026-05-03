@@ -49,7 +49,6 @@
 - scripts/gate_pytest_tracked_tests_only_v1.sh — Pytest tracked tests only gate (v1)
 - scripts/gate_repo_clean_after_proofs_v1.sh — Repo clean after proofs gate (v1)
 - scripts/gate_repo_root_allowlist_v1.sh — Repo-root allowlist gate (v1)
-- scripts/gate_standard_show_input_need_coverage_v1.sh — Standard show input need coverage gate (v1)
 - scripts/gate_worktree_cleanliness_v1.sh — Worktree cleanliness gate (v1)
 <!-- SV_CI_GUARDRAILS_ENTRYPOINTS_v1_END -->
 
