@@ -8,6 +8,10 @@ cd "${REPO_ROOT}"
 
 # If you want this to be strict, keep this allowlist SMALL and explicit.
 # These are the *only* files allowed to reference memory_events.
+# H7 Cat B resolution (2026-05-02): diagnostic-only memory_events reads
+# are forbidden by the canonical layering model. See:
+# _observations/OBSERVATIONS_2026_05_02_H7_CAT_B_RESOLUTION.md
+# The four ingest-script reads currently failing this gate await refactor.
 ALLOWLIST=(
   "src/squadvault/core/recaps/render/render_deterministic_facts_block_v1.py"
   "src/squadvault/consumers/recap_generate.py"
