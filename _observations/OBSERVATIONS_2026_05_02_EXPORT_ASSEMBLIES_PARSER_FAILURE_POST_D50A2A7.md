@@ -1,0 +1,290 @@
+# OBSERVATIONS — 2026-05-02 — Export-assemblies parser failure post-d50a2a7
+
+**Status:** Finding. Stops for scope decision before next code work.
+**Trigger:** Post-commit `prove_ci.sh` rc=1 after `d50a2a7` push.
+**Predecessor:** `acf192d` (Position B selection memo); `d50a2a7` (Position B apply commit).
+**HEAD at memo-write:** `d50a2a7` on origin/main.
+
+---
+
+## Failure surface
+
+Post-commit `prove_ci.sh` reaches the `== Export assemblies ==` stage and
+fails with:
+
+```
+File ".../recap_export_narrative_assemblies_approved.py", line 431, in main
+    blocks = extract_blocks_from_neutral(neutral)
+File ".../recap_export_narrative_assemblies_approved.py", line 158, in extract_blocks_from_neutral
+    raise RuntimeError("missing canonical Window or Selection fingerprint line in neutral output")
+```
+
+`SV_STRICT_EXPORTS=1` causes the wrapper to propagate the rc=1 to
+`prove_ci.sh`. Pre-migration, the same stage failed with `SystemExit("Voice
+variant rendering (--voice) has been retired...")` from
+`recap_week_render.py:140`. **Both pre and post `d50a2a7` hit rc=1 at the
+same stage; the migration changed which exception fires, not whether the
+stage passes.** This is the brief's outcome 3, possibility (b): "the
+migration broke a downstream path that produces a different but related
+error" — except the path was already broken; the migration did not
+introduce a new regression.
+
+## Diagnostic — what the parser is reading
+
+The CI fixture's APPROVED `WEEKLY_RECAP` artifact for league=70985,
+season=2024, week=6 (the row `fetch_approved_weekly_recap` returns) is:
+
+```
+recap_artifacts.id = 71
+recap_artifacts.version = 1
+recap_artifacts.state = 'APPROVED'
+recap_artifacts.selection_fingerprint = '1c8ca014806a7230...' (real 64-hex)
+recap_artifacts.window_start = '2024-10-13T17:00:00Z'
+recap_artifacts.window_end = '2024-10-20T17:00:00Z'
+recap_artifacts.rendered_text (verbatim, 301 bytes):
+    # WEEKLY RECAP (CI FIXTURE)
+
+    This is a deterministic seeded recap used to satisfy golden path export + NAC validation.
+
+    ## What happened (facts)
+    - Fixture seed: league 70985, season 2024, week 06.
+    - Timestamp is fixed: 2026-01-01T00:00:00Z.
+
+    ## Notes
+    This content is intentionally minimal and stable.
+```
+
+This is a **hand-written stub**. It contains none of the lines the parser
+in `extract_blocks_from_neutral` requires:
+
+- `Window: <start> → <end>`
+- `Selection fingerprint: <hex>`
+- `Events selected: N`
+- `Trace (selection ids):`
+
+The dataclass `ApprovedArtifact` (lines 100-110 of the consumer) DOES carry
+`window_start`, `window_end`, `selection_fingerprint`, and `version` as
+structured fields populated from the same row — these are present and
+valid. But the parser reads them out of `rendered_text`, not the dataclass.
+
+## Diagnostic — fixture is internally inconsistent
+
+The single matching `recap_runs` row for the same week is **also a stub,
+and is internally inconsistent with the `recap_artifacts` row above**:
+
+| Field | `recap_artifacts.id=71` | `recap_runs` (W6/2024) |
+| --- | --- | --- |
+| `selection_fingerprint` | `'1c8ca014806a7230...'` (real 64-hex) | `'test-fingerprint'` (placeholder) |
+| `window_start` / `window_end` | `'2024-10-13T17:00:00Z'` / `'2024-10-20T17:00:00Z'` (real ISO) | `6` / `6` (week numbers, not dates) |
+| `canonical_ids_json` | n/a (column not on this table) | `''` (empty string, not `'[]'`) |
+| `counts_by_type_json` | n/a | `''` |
+
+Schema columns on `recap_runs`: `id`, `league_id`, `season`, `week_index`,
+`state`, `window_mode`, `window_start`, `window_end`,
+`selection_fingerprint`, `canonical_ids_json`, `counts_by_type_json`,
+`reason`, `created_at`, `updated_at`, `editorial_attunement_v1`.
+
+**Implication for Option A** (see below): calling
+`_render_text_from_recap_runs` against this `recap_runs` row would produce
+syntactically-parseable but semantically nonsense output —
+`Window: 6 → 6`, `Selection fingerprint: test-fingerprint`,
+`Events selected: 0`, empty trace. Regenerating `rendered_text` "from
+recap_runs" is therefore not a real fix; it requires populating
+`recap_runs` consistently first, which in turn would require populating
+canonical events for the week.
+
+## Why this is a fixture-vs-code conformance gap
+
+The production lifecycle in `src/squadvault/recaps/weekly_recap_lifecycle.py`:
+
+- Lines 506-521: build a structural artifact dict with window, selection
+  fingerprint, event_count, counts_by_type, canonical_ids
+- Line 521: `summary = render_recap_text_v1(artifact)` — produces text with
+  `Window: …`, `Selection fingerprint: …`, `Events selected: N`, optional
+  `Breakdown:`, `Trace (selection ids):`
+- Lines 994-1297: `summary` flows into the lifecycle's `rendered_text`
+  argument and persists to `recap_artifacts.rendered_text`
+
+Production-generated `recap_artifacts.rendered_text` rows therefore conform
+to the parser's expected shape. The CI fixture's id=71 row was not
+generated by this lifecycle — it was hand-written as a minimal stub, and
+the corresponding `recap_runs` row was authored separately with placeholder
+values that don't match.
+
+## Why pre-`0638c9e` this was invisible
+
+Commit `0638c9e` (Mar 26 2026, "Remove EAL fallback dead code, retire 4
+legacy consumers, clean recap_week_render"), Part C:
+
+- Removed `_render_variants` from `recap_week_render.py`
+- Removed `--voice` flag (now SystemExit)
+- Removed the import of `render_recap_text_v1` and `voice_variants_v1`
+- Removed `_load_payload_from_recaps_table_or_disk`
+
+Pre-`0638c9e`, `recap_week_render.py --voice neutral` would:
+
+1. Load canonical recap JSON via `_load_payload_from_recaps_table_or_disk`
+   (from `recaps.artifact_json` or disk fallback)
+2. Call `render_recap_text_v1(payload)` to produce text with all metadata
+   blocks
+3. Optionally apply voice variant formatting
+4. Print the result
+
+This re-rendering path **ignored `recap_artifacts.rendered_text`
+entirely**. The fixture's stub content was never read; the export saw a
+freshly re-rendered string with proper metadata. `0638c9e` retired this
+path, masking the gap with a SystemExit. `d50a2a7` removed the SystemExit
+and exposed the gap.
+
+## Classification
+
+This is **not a regression introduced by `d50a2a7`.** Pre-migration:
+prove_ci rc=1 (SystemExit). Post-migration: prove_ci rc=1 (RuntimeError).
+The export-assemblies stage has been non-functional under
+`SV_STRICT_EXPORTS=1` since `0638c9e` (March 26 2026; ~5 weeks).
+
+The migration's architectural premise (Position B per `acf192d`) holds for
+production data, where `rendered_text` conforms to the renderer's output
+shape. It does not hold for this fixture row, which was authored
+independently of the renderer; the corresponding `recap_runs` row is
+stub-shaped and inconsistent with it.
+
+## Options forward
+
+Listed in approximate order of architectural cleanliness, not necessarily
+order of preference. **No recommendation made — scope decision is yours.**
+
+### Option A — Regenerate the fixture's id=71 rendered_text via the lifecycle
+
+Populate `recap_runs` for W6/2024 with consistent values (real
+fingerprint matching id=71, ISO window dates, populated `canonical_ids_json`,
+populated `counts_by_type_json`); ensure `canonical_events` for the week
+exist; run the lifecycle to produce conformant `rendered_text`; commit the
+refreshed fixture.
+
+- **For:** Aligns the fixture with the production invariant. Future
+  fixture rebuilds become reproducible from the lifecycle. Preserves
+  Position B as committed.
+- **Against:** Multi-step fixture refresh, not a 5-minute change. Touches
+  `recap_runs`, possibly `canonical_events`, and the immutability gate
+  (`check_fixture_immutability_ci.sh`) needs to be coordinated with
+  intentional fixture mutation. The hand-written stub may have existed for
+  reasons (fixture size, build time, avoiding event re-derivation) that
+  this option un-does.
+
+### Option A-lite — Write a conformant-minimum rendered_text directly
+
+Hand-author a new `rendered_text` for `recap_artifacts.id=71` that contains
+the four lines the parser requires, populated from the structured fields
+already on the artifact: `Window: <window_start> → <window_end>`,
+`Selection fingerprint: <selection_fingerprint>`, `Events selected: 0`,
+`Trace (selection ids):`. Update only `recap_artifacts.id=71`; leave
+`recap_runs` alone.
+
+- **For:** ~5-minute change. Unblocks prove_ci immediately. No code
+  changes. No event-data work.
+- **Against:** Papers over the architectural issue rather than fixing it.
+  Makes the fixture a hand-curated string blob rather than something the
+  lifecycle could regenerate. Future drift between renderer output shape
+  and fixture content stays invisible until the next renderer change.
+  Doesn't address the `recap_runs` inconsistency.
+
+### Option B — Make the export self-sufficient from structured fields
+
+Refactor the consumer so `extract_blocks_from_neutral` (or its successor)
+builds blocks from `ApprovedArtifact` structured fields rather than
+parsing rendered_text:
+
+- WINDOW from `approved.window_start` / `approved.window_end` directly
+- FINGERPRINT from `approved.selection_fingerprint` directly
+- COUNTS / TRACE: derive from `recap_runs` if the data is present; emit a
+  `Note: counts/trace unavailable for this artifact` block if absent.
+  Validators updated to accept the absence as a non-fatal condition.
+
+- **For:** Eliminates the brittle "parse rendered_text" step entirely.
+  Aligns with "Silence is preferred over speculation" — when underlying
+  data is absent, the export emits a documented absence rather than
+  failing. Robust against fixture-or-production drift. Decouples export
+  shape from renderer output format.
+- **Against:** Larger refactor. Touches the assembly's `sources` dict, the
+  marker validation in `validate_protected_blocks_byte_stable`, and adds
+  graceful-degradation paths the architecture didn't previously need.
+  Multi-step session.
+
+### Option C — Inline re-rendering
+
+Restore pre-`0638c9e` semantics by calling `render_recap_text_v1` inline
+in the consumer (no subprocess), feeding it from `recap_runs` data the way
+`_render_text_from_recap_runs` does. The resulting text is what
+`extract_blocks_from_neutral` parses.
+
+- **For:** Closest to architectural neutrality with the pre-`0638c9e`
+  state. Preserves the existing parser. No fixture changes if used against
+  production data.
+- **Against:** Re-creates a derivation path that `0638c9e` deliberately
+  retired. Couples export to a function intended for write-time use only.
+  Position B was selected over an analogous proposal in `acf192d`.
+  Critically: does not work for this fixture either, because the fixture's
+  `recap_runs` row is itself stub-shaped — feeding it through
+  `render_recap_text_v1` would produce nonsense output. So Option C
+  inherits Option A's fixture problem.
+
+### Option D — Revert `d50a2a7`
+
+Reset to `acf192d`'s state. Restores SystemExit failure mode.
+
+- **For:** Reverts a commit whose claim ("unblocks prove_ci.sh
+  export-assemblies") proved overstated.
+- **Against:** Doesn't fix anything — restores rc=1 with a less-informative
+  exception. The migration is architecturally correct against production
+  data; reverting punishes correctness for a fixture's non-conformance.
+
+## Stop signal
+
+Per discipline, this memo records the finding. The brief's outcome-3
+guidance was: "Investigate. Possibilities... `git reset --soft HEAD~1` if
+needed." Reset is not available (commit is pushed); revert (Option D) is.
+But the export was equally broken pre-migration, so revert doesn't restore
+a working state.
+
+**No code work proposed in this session.** Recommend a scope-confirmation
+turn before picking A / A-lite / B / C / D.
+
+Standing items unchanged from the apply session's brief:
+
+- B4 priority-list retirement deferred (the entry's "3× warnings" are
+  still semantically dormant after migration; their failure mode just
+  shifted)
+- Q5 dormant `--voice` callers in `editorial_review_week.py` and
+  `recap_export_variants_approved.py` still deferred (not in prove_ci's
+  path)
+
+## Evidence trail (so a future session can verify before committing)
+
+1. **Fixture content at `recap_artifacts.id=71`** — confirmed by direct
+   sqlite query against `fixtures/ci_squadvault.sqlite` at HEAD `d50a2a7`.
+   301 bytes, begins `# WEEKLY RECAP (CI FIXTURE)`.
+2. **Fixture content at `recap_runs` for W6/2024** — confirmed by direct
+   sqlite query: 1 row, `selection_fingerprint='test-fingerprint'`,
+   `window_start=6`, `window_end=6`, `canonical_ids_json=''`,
+   `counts_by_type_json=''`. Fixture is internally inconsistent: the
+   recap_runs row's metadata does not match the recap_artifacts row's.
+3. **Production lifecycle path** — `weekly_recap_lifecycle.py:521`
+   (`summary = render_recap_text_v1(artifact)`) flowing to
+   `weekly_recap_lifecycle.py:1297` (`rendered_text=rendered_text` in
+   insert). Verified by reading file at `d50a2a7`.
+4. **Renderer output shape** — `core/recaps/render/render_recap_text_v1.py`
+   lines 66, 67, 81, 91 emit `Window:`, `Selection fingerprint:`,
+   `Events selected:`, `Trace (selection ids):` respectively.
+5. **`0638c9e` retirement scope** — verified by `git show 0638c9e`. Part C
+   removed `_render_variants`, `--voice`, and
+   `_load_payload_from_recaps_table_or_disk`.
+6. **Pre-migration failure mode** — recorded in `acf192d` as the
+   precondition: "prove_ci.sh rc=1 with the Voice variant rendering
+   RuntimeError at Export assemblies." Brief author named it RuntimeError;
+   actual exception was `SystemExit` raised inside `recap_week_render.py`
+   which `subprocess.run` then surfaces as a non-zero rc, raised by
+   `run_neutral_recap_render` as `RuntimeError`. Either way: rc=1 at the
+   same stage.
+
+End of memo.
