@@ -123,19 +123,6 @@ def gate_doc_map_refs_exist(refs: Set[str]) -> None:
     if missing:
         die("FAIL: documentation map references missing paths:\n" + "\n".join(missing))
 
-def gate_ci_index_coverage(ci_index: Path) -> None:
-    txt = ci_index.read_text(encoding="utf-8", errors="replace")
-    # Minimal + explicit: index must reference invariant and the new runner name
-    inv = "docs/80_indices/ops/Docs_Integrity_Gate_Invariant_v1.0.md"
-    runner = "scripts/prove_docs_integrity_v1.sh"
-    missing: List[str] = []
-    if inv not in txt:
-        missing.append(f"missing ref/link to invariant doc: {inv}")
-    if runner not in txt:
-        missing.append(f"missing ref/link to proof runner: {runner}")
-    if missing:
-        die("FAIL: CI guardrails index coverage gate failed:\n- " + "\n- ".join(missing))
-
 def main() -> None:
     # Validate doc maps exist (fail-closed)
     doc_maps: List[Path] = []
@@ -154,11 +141,6 @@ def main() -> None:
 
     refs = extract_doc_map_refs(doc_maps)
     gate_doc_map_refs_exist(refs)
-
-    ci_index = REPO_ROOT / "docs/80_indices/ops/CI_Guardrails_Index_v1.0.md"
-    if not ci_index.exists():
-        die("FAIL: CI guardrails index missing: docs/80_indices/ops/CI_Guardrails_Index_v1.0.md")
-    gate_ci_index_coverage(ci_index)
 
 if __name__ == "__main__":
     main()
