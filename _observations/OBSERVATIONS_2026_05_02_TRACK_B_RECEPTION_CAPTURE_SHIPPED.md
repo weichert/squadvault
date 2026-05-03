@@ -216,3 +216,16 @@ not in this memo.*
 
 Mechanism, tests, runbook, and documentation updates landed.
 Three W7 reception observations recorded immediately following.
+
+### 2026-05-02 — MVP per IRP definition declared complete
+
+The reception data this mechanism's first invocations captured
+(obs_id 1, 2, 3 in `archive/recaps/2025/week_07__v27__reception.yaml`)
+crosses the IRP MVP threshold. Recorded as a standalone milestone
+memo: `_observations/OBSERVATIONS_2026_05_02_MVP_PER_IRP_COMPLETE.md`.
+
+The closure of exit criterion #4 itself is documented above in the
+"Reception observation status" section. The standalone memo records
+the consequence of that closure — that with Operational Plan §10
+commitment #1 satisfied, MVP per IRP definition is complete for the
+first time in project history.
