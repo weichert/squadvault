@@ -19,6 +19,14 @@ export PYTHONHASHSEED=0
 set -euo pipefail
 # === /STRICT EXECUTION ===
 
+# === SV_CI runtime envelope start (best-effort; v1) ===
+# Pairs with sv_rt_end at the tail of this script (search: SV_CI runtime
+# envelope enforcement). Recording start as early as possible — after
+# strict mode is enabled, before any meaningful work — so the exported
+# SV_CI_RUNTIME_SECONDS reflects the true end-to-end envelope.
+sv_rt_start="$(./scripts/py -c 'import time; print(int(time.time()))')"
+# === /SV_CI runtime envelope start ===
+
 # --- Temp workspace normalization (bash 3.2 safe) ---
 SV_TMPDIR="${TMPDIR:-/tmp}"
 SV_TMPDIR="${SV_TMPDIR%/}"
