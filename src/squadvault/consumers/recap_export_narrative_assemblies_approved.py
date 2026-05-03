@@ -63,7 +63,6 @@ import argparse
 import json
 import logging
 import os
-import subprocess
 import sys
 from collections import Counter
 from dataclasses import dataclass
@@ -142,27 +141,6 @@ def fetch_approved_weekly_recap(db: str, league_id: str, season: int, week_index
         window_end=str(row["window_end"] or ""),
         rendered_text=str(row["rendered_text"] or ""),
     )
-
-
-def run_neutral_recap_render(db: str, league_id: str, season: int, week_index: int) -> str:
-    """Render neutral voice recap text for a week."""
-    cmd = [
-        sys.executable, "-u",
-        "src/squadvault/consumers/recap_week_render.py",
-        "--db", db,
-        "--league-id", league_id,
-        "--season", str(season),
-        "--week-index", str(week_index),
-        "--approved-only",
-        "--voice", "neutral",
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RuntimeError(f"neutral recap render failed rc={proc.returncode}. stderr:\n{proc.stderr}")
-    out = (proc.stdout or "").strip("\n")
-    if not out.strip():
-        raise RuntimeError("neutral recap render produced empty output")
-    return out + "\n"
 
 
 def extract_blocks_from_neutral(neutral_text: str) -> dict[str, str]:
@@ -449,7 +427,7 @@ def main(argv: list[str]) -> int:
         print("ERROR: Approved artifact rendered_text is empty (facts block missing). Refusing export.", file=sys.stderr)
         return 3
 
-    neutral = run_neutral_recap_render(args.db, args.league_id, args.season, args.week_index)
+    neutral = approved.rendered_text
     blocks = extract_blocks_from_neutral(neutral)
 
     # SV_PATCH_EXPORT_ASSEMBLIES_USE_APPROVED_FP_FOR_FINGERPRINT_BLOCK_V3
