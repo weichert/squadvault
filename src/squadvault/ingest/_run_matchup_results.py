@@ -108,14 +108,6 @@ def main() -> None:
     print(f"inserted = {total_inserted}")
     print(f"skipped = {total_skipped}")
 
-    # Show current matchup event counts
-    from squadvault.core.storage.session import DatabaseSession
-    with DatabaseSession(str(db_path)) as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM memory_events WHERE event_type = 'WEEKLY_MATCHUP_RESULT' AND league_id = ? AND season = ?",
-            (league_id, year),
-        ).fetchone()
-        print(f"total WEEKLY_MATCHUP_RESULT in memory_events = {row[0]}")
 
 
 if __name__ == "__main__":

@@ -92,14 +92,6 @@ def main() -> None:
     print(f"inserted = {total_inserted}")
     print(f"skipped = {total_skipped}")
 
-    # Show current player score event counts
-    from squadvault.core.storage.session import DatabaseSession
-    with DatabaseSession(str(db_path)) as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM memory_events WHERE event_type = 'WEEKLY_PLAYER_SCORE' AND league_id = ? AND season = ?",
-            (league_id, year),
-        ).fetchone()
-        print(f"total WEEKLY_PLAYER_SCORE in memory_events = {row[0]}")
 
 
 if __name__ == "__main__":

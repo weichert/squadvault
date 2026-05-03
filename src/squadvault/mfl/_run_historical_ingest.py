@@ -34,7 +34,6 @@ import os
 from pathlib import Path
 
 from squadvault.core.canonicalize.run_canonicalize import canonicalize
-from squadvault.core.storage.session import DatabaseSession
 from squadvault.core.storage.sqlite_store import SQLiteStore
 from squadvault.mfl.discovery import discover_mfl_league, discover_mfl_league_via_history
 from squadvault.mfl.historical_ingest import ingest_mfl_seasons
@@ -250,60 +249,6 @@ def main(argv: list[str] | None = None) -> int:
                     )
     else:
         print("\nSkipping canonicalization (--skip-canonicalize)")
-
-    # ── Phase 4: Summary ─────────────────────────────────────────────
-
-    print("\n" + "=" * 60)
-    print("  Final Summary")
-    print("=" * 60)
-
-    with DatabaseSession(str(db_path)) as conn:
-        total_memory = conn.execute(
-            "SELECT COUNT(*) FROM memory_events WHERE league_id = ?",
-            (league_id,),
-        ).fetchone()[0]
-
-        total_canonical = conn.execute(
-            "SELECT COUNT(*) FROM canonical_events WHERE league_id = ?",
-            (league_id,),
-        ).fetchone()[0]
-
-        seasons_in_db = conn.execute(
-            "SELECT DISTINCT season FROM memory_events WHERE league_id = ? ORDER BY season",
-            (league_id,),
-        ).fetchall()
-
-        event_types = conn.execute(
-            """
-            SELECT event_type, COUNT(*) AS n
-            FROM canonical_events
-            WHERE league_id = ?
-            GROUP BY event_type
-            ORDER BY n DESC
-            """,
-            (league_id,),
-        ).fetchall()
-
-        franchise_seasons = conn.execute(
-            "SELECT COUNT(DISTINCT season) FROM franchise_directory WHERE league_id = ?",
-            (league_id,),
-        ).fetchone()[0]
-
-        player_seasons = conn.execute(
-            "SELECT COUNT(DISTINCT season) FROM player_directory WHERE league_id = ?",
-            (league_id,),
-        ).fetchone()[0]
-
-    print(f"  memory_events  : {total_memory}")
-    print(f"  canonical_events: {total_canonical}")
-    print(f"  seasons in DB  : {[r[0] for r in seasons_in_db]}")
-    print(f"  franchise_dir  : {franchise_seasons} seasons")
-    print(f"  player_dir     : {player_seasons} seasons")
-    print()
-    print("  Canonical events by type:")
-    for et, n in event_types:
-        print(f"    {et:<45s} {n:>6d}")
-    print()
 
     return 0
 
