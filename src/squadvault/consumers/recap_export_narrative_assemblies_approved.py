@@ -3,8 +3,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import re
-
 from squadvault.core.storage.session import DatabaseSession
 
 
@@ -143,49 +141,184 @@ def fetch_approved_weekly_recap(db: str, league_id: str, season: int, week_index
     )
 
 
-def extract_blocks_from_neutral(neutral_text: str) -> dict[str, str]:
-    """Extract named text blocks from neutral rendered text."""
-    lines = neutral_text.splitlines()
+def _load_recap_runs_for_artifact(
+    db_path: str, league_id: str, season: int, week_index: int
+) -> dict[str, Any] | None:
+    """
+    Load the recap_runs row corresponding to (league, season, week).
 
-    w_prefix = "Window: "
-    fp_prefix = "Selection fingerprint: "
-    ev_prefix = "Events selected: "
-    trace_prefixes = ("Trace (canonical_event ids):", "Trace (selection ids):")
-
-    window_line = next((l for l in lines if l.startswith(w_prefix)), None)
-    fp_line = next((l for l in lines if l.startswith(fp_prefix)), None)
-    if window_line is None or fp_line is None:
-        raise RuntimeError("missing canonical Window or Selection fingerprint line in neutral output")
-
+    Returns the row as a plain dict, or None if no row exists. Treats
+    None/empty/whitespace as absent for canonical_ids_json and
+    counts_by_type_json — the absence-Note path uses this signal to
+    distinguish "no row recorded" from "recorded with zero events".
+    """
+    with DatabaseSession(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT canonical_ids_json, counts_by_type_json
+              FROM recap_runs
+             WHERE league_id=?
+               AND season=?
+               AND week_index=?
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            (str(league_id), int(season), int(week_index)),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
     try:
-        ev_i = next(i for i, l in enumerate(lines) if l.startswith(ev_prefix))
-    except StopIteration:
-        raise RuntimeError("missing Events selected line in neutral output") from None
+        return {
+            "canonical_ids_json": row["canonical_ids_json"],
+            "counts_by_type_json": row["counts_by_type_json"],
+        }
+    except (KeyError, IndexError):
+        return None
 
+
+def _is_present_json(raw: Any) -> bool:
+    """True if a JSON column is populated; False if NULL/empty/whitespace."""
+    if raw is None:
+        return False
+    s = str(raw).strip()
+    return bool(s)
+
+
+def _render_counts_body(recap_run: dict[str, Any] | None) -> str:
+    """
+    Render the COUNTS block body.
+
+    When counts_by_type_json is populated (including '{}' for "recorded with
+    zero events"): emit `Events selected: N\\n` plus optional `Breakdown:` lines.
+    When absent (None row, NULL field, or empty string): emit a documented
+    absence-Note. NAC checker imposes no content shape on COUNTS body.
+    """
+    if recap_run is None or not _is_present_json(recap_run.get("counts_by_type_json")):
+        return (
+            "Note: counts unavailable for this artifact "
+            "(recap_runs.counts_by_type_json absent or empty).\n"
+        )
+
+    raw = recap_run.get("counts_by_type_json")
     try:
-        tr_i = next(i for i, l in enumerate(lines) if any(l.startswith(p) for p in trace_prefixes))
-    except StopIteration:
-        raise RuntimeError("missing Trace section in neutral output") from None
+        counts = json.loads(str(raw)) or {}
+    except (ValueError, TypeError):
+        return (
+            "Note: counts unavailable for this artifact "
+            "(recap_runs.counts_by_type_json not valid JSON).\n"
+        )
 
-    counts_block = "\n".join(lines[ev_i:tr_i]).rstrip("\n") + "\n"
+    if not isinstance(counts, dict):
+        return (
+            "Note: counts unavailable for this artifact "
+            "(recap_runs.counts_by_type_json is not a JSON object).\n"
+        )
 
-    stop = len(lines)
-    for i in range(tr_i + 1, len(lines)):
-        if lines[i].startswith("Note: "):
-            stop = i
-            break
-    trace_block = "\n".join(lines[tr_i:stop]).rstrip("\n") + "\n"
+    total = 0
+    for v in counts.values():
+        try:
+            total += int(v)
+        except (ValueError, TypeError):
+            continue
 
-    # Normalize TRACE header label for NAC/auditability (no content change beyond the label)
-    trace_block = trace_block.replace(
-        "Trace (selection ids):",
-        "Trace (canonical_event ids):",
-        1,
+    lines = [f"Events selected: {total}"]
+    if counts:
+        lines.append("")
+        lines.append("Breakdown:")
+        for k in sorted(counts.keys()):
+            lines.append(f"  - {k}: {counts[k]}")
+    return "\n".join(lines) + "\n"
+
+
+def _render_trace_body(recap_run: dict[str, Any] | None) -> str:
+    """
+    Render the TRACE block body.
+
+    NAC checker (Tests/_nac_check_assembly_plain_v1.py) requires the literal
+    label `Trace (canonical_event ids):` inside the TRACE block. The label is
+    always emitted as the first line; the lines beneath it are either the
+    canonical_event ids, `(none)` for the empty-but-recorded case, or a
+    documented absence-Note when canonical_ids_json is absent.
+    """
+    label = "Trace (canonical_event ids):"
+    if recap_run is None or not _is_present_json(recap_run.get("canonical_ids_json")):
+        return (
+            f"{label}\n"
+            f"Note: trace unavailable for this artifact "
+            f"(recap_runs.canonical_ids_json absent or empty).\n"
+        )
+
+    raw = recap_run.get("canonical_ids_json")
+    try:
+        ids = json.loads(str(raw)) or []
+    except (ValueError, TypeError):
+        return (
+            f"{label}\n"
+            f"Note: trace unavailable for this artifact "
+            f"(recap_runs.canonical_ids_json not valid JSON).\n"
+        )
+
+    if not isinstance(ids, list):
+        return (
+            f"{label}\n"
+            f"Note: trace unavailable for this artifact "
+            f"(recap_runs.canonical_ids_json is not a JSON array).\n"
+        )
+
+    if not ids:
+        return f"{label}\n  (none)\n"
+
+    lines = [label]
+    chunk: list[str] = []
+    for cid in ids:
+        chunk.append(str(cid))
+        if len(chunk) >= 25:
+            lines.append("  " + ", ".join(chunk))
+            chunk = []
+    if chunk:
+        lines.append("  " + ", ".join(chunk))
+    return "\n".join(lines) + "\n"
+
+
+def build_canonical_blocks(approved: ApprovedArtifact, db_path: str) -> dict[str, str]:
+    """
+    Build the four canonical blocks (WINDOW, FINGERPRINT, COUNTS, TRACE) from
+    structured fields on the APPROVED artifact and from recap_runs, without
+    parsing rendered_text.
+
+    Replaces extract_blocks_from_neutral. The previous parse-text approach
+    coupled the export to a renderer-output shape that fixture rows did not
+    conform to (see _observations/OBSERVATIONS_2026_05_02_EXPORT_ASSEMBLIES_PARSER_FAILURE_POST_D50A2A7.md).
+    Building from structured fields decouples export shape from any single
+    text-rendering format, and honors silence-preferred-over-speculation:
+    when underlying COUNTS/TRACE data is absent, the export emits a documented
+    absence-Note inside the canonical markers rather than fabricating values
+    or raising.
+    """
+    # WINDOW — from approved structured fields. The renderer uses an arrow
+    # joiner between start and end; preserved here for output-shape parity.
+    window_block = f"Window: {approved.window_start} → {approved.window_end}\n"
+
+    # FINGERPRINT — from approved.selection_fingerprint when it is real
+    # 64-lower-hex. The downstream NAC checker requires 64-hex; if the field
+    # is malformed we still emit the canonical line (downstream fingerprint
+    # preflight in prove_golden_path.sh handles known placeholders).
+    fp = (approved.selection_fingerprint or "").strip()
+    fingerprint_block = f"Selection fingerprint: {fp}\n"
+
+    # COUNTS / TRACE — from recap_runs, with documented absence-Notes when the
+    # corresponding JSON field is NULL/empty.
+    recap_run = _load_recap_runs_for_artifact(
+        db_path, approved.league_id, approved.season, approved.week_index
     )
+    counts_block = _render_counts_body(recap_run)
+    trace_block = _render_trace_body(recap_run)
 
     return {
-        "WINDOW": window_line + "\n",
-        "FINGERPRINT": fp_line + "\n",
+        "WINDOW": window_block,
+        "FINGERPRINT": fingerprint_block,
         "COUNTS": counts_block,
         "TRACE": trace_block,
     }
@@ -402,10 +535,7 @@ def export_dir(base: str, league_id: str, season: int, week_index: int) -> Path:
 
 
 def main(argv: list[str]) -> int:
-    # SV_PATCH_EXPORT_ASSEMBLIES_DEFINE_HEX64_RE_IN_MAIN_V7
     """CLI entrypoint: export approved narrative assemblies."""
-    HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
-
     ap = argparse.ArgumentParser(
         description="Phase 2.3: Export deterministic narrative assemblies from APPROVED recap artifacts (export-only)"
     )
@@ -427,16 +557,7 @@ def main(argv: list[str]) -> int:
         print("ERROR: Approved artifact rendered_text is empty (facts block missing). Refusing export.", file=sys.stderr)
         return 3
 
-    neutral = approved.rendered_text
-    blocks = extract_blocks_from_neutral(neutral)
-
-    # SV_PATCH_EXPORT_ASSEMBLIES_USE_APPROVED_FP_FOR_FINGERPRINT_BLOCK_V3
-    # The assembly's canonical fingerprint block must reflect the APPROVED artifact selection_fingerprint
-    # when it is a valid 64-lower-hex value. The neutral render output may contain a placeholder
-    # (e.g., 'test-fingerprint'), which is not acceptable for NAC.
-    _approved_fp = str(getattr(approved, "selection_fingerprint", "") or "").strip()
-    if HEX64_RE.match(_approved_fp):
-        blocks["FINGERPRINT"] = f"Selection fingerprint: {_approved_fp}\n"
+    blocks = build_canonical_blocks(approved, args.db)
 
 
     writing_room_block = load_writing_room_block_or_not_available(
