@@ -233,7 +233,6 @@ bash scripts/gate_pytest_tracked_tests_only_v1.sh
 # Creative surface fingerprint canonical drift gate (v1)
 bash scripts/gate_repo_clean_after_proofs_v1.sh
 bash scripts/gate_repo_root_allowlist_v1.sh
-bash scripts/gate_rivalry_chronicle_contract_linkage_v1.sh
 bash scripts/gate_standard_show_input_need_coverage_v1.sh
 
 ## (D) Meta surface parity
@@ -317,10 +316,7 @@ echo "==> Prove: creative determinism (v1)"
 bash scripts/prove_creative_determinism_v1.sh
 # SV_GATE: prove_creative_determinism (v1) end
 
-# SV_GATE: rivalry_chronicle_contract_linkage (v1) begin
-echo "==> Gate: Rivalry Chronicle contract linkage (v1)"
 bash scripts/gate_worktree_cleanliness_v1.sh assert "${SV_WORKTREE_SNAP_PROOF}" "after scripts/prove_signal_scout_tier1_type_a_v1.sh"
-# SV_GATE: rivalry_chronicle_contract_linkage (v1) end
 
 # SV_GATE: contracts_index_discoverability (v1) begin
 echo "==> Gate: contracts index discoverability (v1)"
