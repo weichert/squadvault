@@ -31,6 +31,7 @@ from squadvault.core.recaps.context.league_history_v1 import (
     compute_head_to_head,
 )
 from squadvault.core.recaps.context.season_context_v1 import SeasonContextV1
+from squadvault.core.recaps.render.score_strings_v1 import format_matchup_score_str
 from squadvault.core.resolvers import NameFn
 from squadvault.core.resolvers import identity as _identity
 
@@ -116,7 +117,7 @@ def _detect_upsets(ctx: SeasonContextV1) -> list[NarrativeAngle]:
                     headline=f"#{winner_rank} upset #{loser_rank}",
                     detail=(
                         f"Winner entered ranked #{winner_rank}, loser was #{loser_rank}. "
-                        f"Score: {wm.winner_score:.2f}-{wm.loser_score:.2f}."
+                        f"Score: {format_matchup_score_str(wm.winner_score, wm.loser_score)}."
                     ),
                     strength=strength,
                     franchise_ids=(wm.winner_id, wm.loser_id),
@@ -125,7 +126,7 @@ def _detect_upsets(ctx: SeasonContextV1) -> list[NarrativeAngle]:
                 angles.append(NarrativeAngle(
                     category="UPSET",
                     headline=f"#{winner_rank} over #{loser_rank}",
-                    detail=f"Score: {wm.winner_score:.2f}-{wm.loser_score:.2f}.",
+                    detail=f"Score: {format_matchup_score_str(wm.winner_score, wm.loser_score)}.",
                     strength=1,
                     franchise_ids=(wm.winner_id, wm.loser_id),
                 ))

@@ -25,6 +25,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from squadvault.core.recaps.render.score_strings_v1 import format_matchup_score_str
 from squadvault.core.storage.session import DatabaseSession
 
 # ── Data classes (all frozen for determinism) ────────────────────────
@@ -657,11 +658,12 @@ def render_season_context_for_prompt(
         for wm in ctx.week_matchups:
             winner = _name(wm.winner_id)
             loser = _name(wm.loser_id)
+            score = format_matchup_score_str(wm.winner_score, wm.loser_score)
             if wm.is_tie:
-                lines.append(f"  {winner} tied {loser} {wm.winner_score:.2f}-{wm.loser_score:.2f}")
+                lines.append(f"  {winner} tied {loser} {score}")
             else:
                 lines.append(
-                    f"  {winner} beat {loser} {wm.winner_score:.2f}-{wm.loser_score:.2f}"
+                    f"  {winner} beat {loser} {score}"
                     f" (margin: {wm.margin:.2f})"
                 )
 

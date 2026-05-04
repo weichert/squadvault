@@ -157,7 +157,11 @@ class TestMatchupResultBullet:
             "loser_score": 95,
         })
         bullets = render_deterministic_bullets_v1([row])
-        assert bullets == ["F10 beat F11 120-95."]
+        # Score format updated from "120-95" (hyphen-separated, ambiguous
+        # decimal vs. score separator) to "120.00 to 95.00" (unambiguous
+        # "to" format from score_strings_v1.format_matchup_score_str).
+        # See _observations/OBSERVATIONS_2026_05_03_SCORE_RENDERING_PRE_FIX_DIAGNOSTIC.md.
+        assert bullets == ["F10 beat F11 120.00 to 95.00."]
 
     def test_matchup_alternate_type(self):
         row = _row(event_type="WEEKLY_MATCHUP_RESULT", payload={
@@ -167,7 +171,7 @@ class TestMatchupResultBullet:
             "loser_score": 105,
         })
         bullets = render_deterministic_bullets_v1([row])
-        assert bullets == ["Champs beat Underdogs 110-105."]
+        assert bullets == ["Champs beat Underdogs 110.00 to 105.00."]
 
     def test_matchup_no_scores(self):
         row = _row(event_type="MATCHUP_RESULT", payload={

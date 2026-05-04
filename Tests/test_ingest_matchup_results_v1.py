@@ -393,7 +393,9 @@ class TestMatchupBulletRendering:
         bullets = render_deterministic_bullets_v1(events)
         assert len(bullets) == 1
         assert "beat" in bullets[0]
-        assert "142.60-98.30" in bullets[0]
+        # Score format: "142.60 to 98.30" (was "142.60-98.30").
+        # See _observations/OBSERVATIONS_2026_05_03_SCORE_RENDERING_PRE_FIX_DIAGNOSTIC.md.
+        assert "142.60 to 98.30" in bullets[0]
 
     def test_tie_bullet(self):
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
@@ -417,7 +419,7 @@ class TestMatchupBulletRendering:
         bullets = render_deterministic_bullets_v1(events)
         assert len(bullets) == 1
         assert "tied" in bullets[0]
-        assert "100.00-100.00" in bullets[0]
+        assert "100.00 to 100.00" in bullets[0]
 
     def test_win_with_team_resolver(self):
         from squadvault.core.recaps.render.deterministic_bullets_v1 import (
@@ -440,4 +442,4 @@ class TestMatchupBulletRendering:
             ),
         ]
         bullets = render_deterministic_bullets_v1(events, team_resolver=resolver)
-        assert "The Destroyers beat Lucky Strikes 142.60-98.30." in bullets[0]
+        assert "The Destroyers beat Lucky Strikes 142.60 to 98.30." in bullets[0]

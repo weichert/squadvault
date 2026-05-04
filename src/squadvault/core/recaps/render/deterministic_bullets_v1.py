@@ -8,6 +8,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any
 
+from squadvault.core.recaps.render.score_strings_v1 import format_matchup_score_str
+
 logger = logging.getLogger(__name__)
 QUIET_WEEK_MIN_EVENTS = 3
 MAX_BULLETS = 20
@@ -285,9 +287,20 @@ def render_deterministic_bullets_v1(
         elif et in ("MATCHUP_RESULT", "WEEKLY_MATCHUP_RESULT"):
             winner = _team(team_resolver, p.get("winner_franchise_id") or p.get("winner_team_id"))
             loser = _team(team_resolver, p.get("loser_franchise_id") or p.get("loser_team_id"))
-            w = _safe(p.get("winner_score"), "")
-            l = _safe(p.get("loser_score"), "")
-            score_txt = f" {w}-{l}" if (w and l) else ""
+            # Pre-render the score string in the unambiguous "to" format
+            # via score_strings_v1.format_matchup_score_str. The original
+            # call shape used _safe() to produce strings; the helper
+            # takes floats. Guard with try/except so malformed payload
+            # values fall back to the same "no score string" behavior the
+            # original `if (w and l)` truthiness check produced.
+            raw_w = p.get("winner_score")
+            raw_l = p.get("loser_score")
+            score_txt = ""
+            if raw_w is not None and raw_l is not None:
+                try:
+                    score_txt = f" {format_matchup_score_str(float(raw_w), float(raw_l))}"
+                except (TypeError, ValueError):
+                    score_txt = ""
             is_tie = p.get("is_tie", False)
             if is_tie:
                 bullet = f"{winner} tied {loser}{score_txt}."
