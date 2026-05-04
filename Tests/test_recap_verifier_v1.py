@@ -4528,44 +4528,82 @@ class TestRegressionV8SuperlativeMatchupLine:
     """
 
     def test_v8_matchup_line_not_flagged_as_season_high(self):
-        """Row 17 pattern: matchup score 103.10 from '137.50-103.10 win'
-        must NOT be flagged as a season-high claim."""
+        """Hyphen-form matchup line, winner-first ordering. The V8
+        guard must skip both team scores when they are part of an
+        "X.XX-Y.YY" pair, even when a superlative keyword falls
+        nearby.
+
+        Originally added at OBSERVATIONS_2026_04_15 Finding 3
+        (FP-SUPERLATIVE-MATCHUP-LINE) but with prose ("best output of
+        the season for F3") that did not match _SEASON_HIGH_PATTERN
+        — the superlative check never fired and the test passed
+        vacuously regardless of V8. Rewritten per
+        OBSERVATIONS_2026_05_03_V8_REGRESSION_COVERAGE_GAP.md to
+        provide real hyphen-form positive-path V8 coverage,
+        symmetric with the "to"-form rows below.
+
+        Without the V8 hyphen-form guard, 103.10 (the nearer
+        matchup-line loser score) is extracted as a claim and
+        compared against the actual season-high 145.30, producing
+        a false SUPERLATIVE failure.
+        """
         matchups = [
             _make_matchup(1, "F1", "F2", 145.30, 100.10),
             _make_matchup(10, "F3", "F4", 137.50, 103.10),
         ]
         text = (
-            "F3 cruised to a 137.50-103.10 win over F4. It was the "
-            "best output of the season for F3."
+            "F3 cruised to a 137.50-103.10 win over F4. That set "
+            "a new season high mark."
         )
         failures = verify_superlatives(
             text, matchups, None, SEASON, None, None,
         )
         sup = [f for f in failures if f.category == "SUPERLATIVE"]
         assert sup == [], (
-            f"expected no SUPERLATIVE failures (103.10 and 137.50 are "
-            f"matchup-line scores, not standalone claims), "
+            f"expected no SUPERLATIVE failures (137.50 and 103.10 "
+            f"are matchup-line scores in hyphen form, winner-first), "
             f"got {[(f.claim, f.evidence) for f in sup]}"
         )
 
     def test_v8_matchup_line_not_flagged_as_season_low(self):
-        """Same pattern for season low — the losing score in a matchup
-        line must not be flagged."""
+        """Hyphen-form matchup line, season-low keyword. The V8
+        guard must skip both team scores when they are part of an
+        "X.XX-Y.YY" pair, even when a superlative keyword falls
+        nearby.
+
+        Originally added at OBSERVATIONS_2026_04_15 Finding 3 with
+        prose ("second-lowest output of the season") that triggered
+        _SEASON_LOW_PATTERN but was intercepted by Fix V4's
+        ordinal-qualifier guard before _extract_nearby_score was
+        called — V8 was never reached, the test passed for the
+        wrong reason. Rewritten per
+        OBSERVATIONS_2026_05_03_V8_REGRESSION_COVERAGE_GAP.md to
+        provide real hyphen-form positive-path V8 coverage,
+        symmetric with the "to"-form season-low row below.
+
+        Without the V8 hyphen-form guard, 103.10 (the nearer
+        matchup-line loser score) is extracted and compared against
+        the actual season-low 80.00, producing a false SUPERLATIVE
+        failure. Prose contains no ordinal qualifier and no
+        standalone score within the 100-char window around the
+        keyword, so any extracted score must come from the matchup
+        line and reflects the V8 path.
+        """
         matchups = [
-            _make_matchup(1, "F1", "F2", 145.30, 100.10),
-            _make_matchup(10, "F3", "F4", 137.50, 90.10),
+            _make_matchup(1, "F1", "F2", 145.30, 80.00),
+            _make_matchup(10, "F3", "F4", 137.50, 103.10),
         ]
         text = (
-            "F4 managed just 90.10 in the 137.50-90.10 rout. It was "
-            "the second-lowest output of the season."
+            "F3 wrapped up a 137.50-103.10 win over F4. That "
+            "game marked the season low for the league."
         )
         failures = verify_superlatives(
             text, matchups, None, SEASON, None, None,
         )
         sup = [f for f in failures if f.category == "SUPERLATIVE"]
         assert sup == [], (
-            f"expected no SUPERLATIVE failures (90.10 is in a matchup "
-            f"line AND has an ordinal qualifier), "
+            f"expected no SUPERLATIVE failures (137.50 and 103.10 "
+            f"are matchup-line scores in hyphen form), "
             f"got {[(f.claim, f.evidence) for f in sup]}"
         )
 
