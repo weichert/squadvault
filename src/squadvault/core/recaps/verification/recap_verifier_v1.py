@@ -1992,7 +1992,19 @@ def _resolve_franchise_in_window(
     for alias in aliases:
         if not alias:
             continue
-        for amatch in re.finditer(rf"\b{re.escape(alias)}\b", window):
+        # Case-insensitive: pass 4b owner-first-word aliases
+        # (_build_reverse_name_map line 504) are stored lowercase
+        # (e.g. "brandon" -> "0010"). The model's prose uses
+        # title-case ("Brandon"). Without re.IGNORECASE, the
+        # lowercase alias never matches the title-case prose, and
+        # _resolve_franchise_in_window returns None, suppressing
+        # legitimate RECORD_CLAIM_ANCHORING failures. Surfaced by
+        # the reverify-angle-anchor probe on rows 122/123/125/140
+        # where Brandon's record-claim fabrication would otherwise
+        # fire.
+        for amatch in re.finditer(
+            rf"\b{re.escape(alias)}\b", window, re.IGNORECASE,
+        ):
             if amatch.start() >= relative_start and amatch.end() <= relative_end:
                 # Inside the match itself — prefer this; distance 0.
                 distance = 0

@@ -5295,3 +5295,43 @@ class TestVerifyRecordClaimAnchoring:
         )
         # |streak| < 3 → ambiguous, skipped.
         assert failures == []
+
+    def test_lowercase_alias_resolves_titlecase_prose(self, tmp_path):
+        """_build_reverse_name_map's pass 4b (owner-first-word) stores
+        aliases lowercase. Prose uses title-case (e.g. "Brandon"). The
+        resolver must match case-insensitively or every record claim
+        attached to an owner-first-word alias is silently dropped.
+
+        Surfaced by the reverify angle-anchor probe on real W13 2025
+        rows: with case-sensitive matching, _resolve_franchise_in_window
+        returned None and RECORD_CLAIM_ANCHORING never fired."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        # Mimic pass 4b output: alias is lowercase but resolves to F2.
+        reverse_name_map = {
+            "Beta Squad": "F2",  # full canonical name
+            "beta squad": "F2",  # lowercase variant
+            "brandon": "F2",     # pass 4b owner-first-word, lowercase only
+            "Alpha Team": "F1",
+            "alpha team": "F1",
+        }
+        text = (
+            "Brandon's losing streak is matching the league's "
+            "all-time record for futility."
+        )
+        # No angle-anchor for F2 in angles_text → should EMIT
+        angles_text = (
+            "Narrative angles for Week 4:\n"
+            "  [HEADLINE] [RE: Alpha Team] Alpha Team has won 4 straight\n"
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=reverse_name_map,
+            narrative_angles_text=angles_text,
+        )
+        assert len(failures) == 1
+        assert failures[0].category == "RECORD_CLAIM_ANCHORING"
+        assert failures[0].severity == "HARD"
+        # Beta Squad is the canonical display name; resolver should
+        # have correctly attributed via lowercase-alias match.
+        assert "Beta Squad" in failures[0].claim
