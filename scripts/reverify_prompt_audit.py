@@ -109,7 +109,8 @@ def main() -> None:
     with DatabaseSession(args.db) as con:
         rows = con.execute(
             """SELECT id, season, week_index, attempt,
-                      narrative_draft, verification_passed
+                      narrative_draft, verification_passed,
+                      narrative_angles_text
                FROM prompt_audit
                WHERE league_id = ?
                ORDER BY season, week_index, attempt""",
@@ -143,6 +144,7 @@ def main() -> None:
         attempt = int(row[3])
         narrative_draft = str(row[4]) if row[4] else ""
         original_passed = bool(row[5])
+        narrative_angles_text = str(row[6]) if row[6] else None
 
         if not narrative_draft.strip():
             # Empty draft — nothing to verify, write a trivial pass
@@ -175,6 +177,7 @@ def main() -> None:
             league_id=args.league_id,
             season=season,
             week=week_index,
+            narrative_angles_text=narrative_angles_text,
         )
 
         result_json = _result_to_json(result)
