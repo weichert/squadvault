@@ -277,6 +277,19 @@ def _build_user_prompt(
         parts.append("Work the HEADLINE and NOTABLE angles into your prose naturally.")
         parts.append("These are the hooks that make the recap feel historically informed.")
         parts.append(narrative_angles.strip())
+        parts.append(
+            "Streak claims in the angles above use these exact phrasings: "
+            "'<name> on <N>-game win streak', '<name> on <N>-game losing streak', "
+            "'<name> has won 3 straight', '<name> has lost 3 straight', "
+            "'Beat <opp> this week \u2014 streak continues', and "
+            "'Lost to <opp> this week \u2014 streak extended, not snapped'. "
+            "When mentioning a streak, copy the relevant phrasing verbatim. "
+            "Do not paraphrase the verb (won/lost/snapped/extended/continues), "
+            "do not invert the direction, and do not substitute "
+            "'snapped' for 'extended' or vice versa. If the angles do not "
+            "supply a phrasing for what you want to say, omit the streak "
+            "claim \u2014 silence is preferred over fabrication."
+        )
         parts.append("")
 
     if writer_room_context:
