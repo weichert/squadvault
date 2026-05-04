@@ -304,6 +304,14 @@ def _build_user_prompt(
         "Do NOT say a team made 'X moves' or 'Y acquisitions' — your count WILL be wrong. "
         "You may mention specific transactions by name but NEVER aggregate them into a count."
     )
+    parts.append(
+        "Matchup scores in the facts block appear in this exact format: "
+        "'<winner_score> to <loser_score>' (e.g., '107.65 to 65.40'). "
+        "When stating a matchup score, copy this format verbatim. Do not "
+        "round, abbreviate, or substitute the separator. You may describe "
+        "margins separately in plain language (e.g., 'an 11-point win') "
+        "alongside the verbatim score string."
+    )
     parts.append(facts_block)
     parts.append("")
 

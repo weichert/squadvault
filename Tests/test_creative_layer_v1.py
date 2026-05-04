@@ -232,5 +232,55 @@ class TestNarrativeIsAdditive(unittest.TestCase):
             self.assertLess(combined.index(facts_text), combined.index("requires human approval"))
 
 
+class TestVerbatimScoreInstruction(unittest.TestCase):
+    """Step 3 of the four-step plan (d76e71b): the prompt assembler
+    includes a verbatim-copy instruction adjacent to the existing
+    VERIFIED FACTS aggregate-count warning, with a margin-language
+    carve-out grounded in v17 evidence (per the Step 1 diagnostic
+    memo at _observations/OBSERVATIONS_2026_05_03_SCORE_RENDERING_PRE_FIX_DIAGNOSTIC.md).
+    """
+
+    def test_user_prompt_includes_verbatim_score_instruction(self) -> None:
+        prompt = _build_user_prompt(
+            facts_bullets=_SAMPLE_BULLETS,
+            eal_directive=_PERMITTED_DIRECTIVE,
+            league_id="L1", season=2024, week_index=6,
+        )
+        # The format declaration anchors the rule in concrete syntax.
+        self.assertIn(
+            "Matchup scores in the facts block appear in this exact format",
+            prompt,
+        )
+        # Placeholder syntax + concrete example so the model sees both.
+        self.assertIn("<winner_score> to <loser_score>", prompt)
+        self.assertIn("107.65 to 65.40", prompt)
+
+    def test_user_prompt_preserves_margin_carve_out(self) -> None:
+        """The v17 APPROVED prose used margin language ('by nearly 45
+        points') alongside individual decimal scores. The instruction
+        explicitly permits this so legitimate prose is not over-rejected."""
+        prompt = _build_user_prompt(
+            facts_bullets=_SAMPLE_BULLETS,
+            eal_directive=_PERMITTED_DIRECTIVE,
+            league_id="L1", season=2024, week_index=6,
+        )
+        self.assertIn("an 11-point win", prompt)
+        self.assertIn("alongside the verbatim score string", prompt)
+
+    def test_verbatim_instruction_adjacent_to_aggregate_count_warning(self) -> None:
+        """Both warnings sit in the VERIFIED FACTS block. The verbatim
+        instruction should appear AFTER the aggregate-count warning
+        and BEFORE the facts content itself, per the Step 2 brief."""
+        prompt = _build_user_prompt(
+            facts_bullets=_SAMPLE_BULLETS,
+            eal_directive=_PERMITTED_DIRECTIVE,
+            league_id="L1", season=2024, week_index=6,
+        )
+        agg_warn_idx = prompt.index("Do NOT count these bullets")
+        verbatim_idx = prompt.index("Matchup scores in the facts block")
+        self.assertLess(agg_warn_idx, verbatim_idx,
+                        "Verbatim instruction should follow the aggregate-count warning.")
+
+
 if __name__ == "__main__":
     unittest.main()
