@@ -217,20 +217,64 @@ def parse_streak_claims(angles_text: str) -> list[StreakClaim]:
 
 
 # Inversion signals — phrases that contradict the canonical direction.
+# "snapped" is direction-AGNOSTIC for active streak claims: for either
+# a win-direction or loss-direction CONTINUING streak, "snapped" implies
+# the streak ended, which contradicts the active-streak angle.
 _WIN_INVERSION_RE = re.compile(
     r"\b(losing streak|loss streak|snapped|on a (\d+)-game (?:loss|losing)|"
     r"lost (?:\d+|three) (?:in a row|straight|consecutive))\b",
     re.IGNORECASE,
 )
 _LOSS_INVERSION_RE = re.compile(
-    r"\b(win streak|on a (\d+)-game win|winning streak|"
+    r"\b(win streak|winning streak|snapped|on a (\d+)-game win|"
     r"won (?:\d+|three) (?:in a row|straight|consecutive))\b",
     re.IGNORECASE,
 )
 
 
+def _is_inversion_attached_to_alias(
+    prose: str, aliases: list[str], inversion_re: re.Pattern[str]
+) -> bool:
+    """Return True if any inversion-phrase match in prose has an alias
+    of the franchise close before it (within 30 chars, with optional
+    possessive 's).
+
+    This rejects cross-team false positives where the inversion phrase
+    appears in the prose window around the franchise's mention but is
+    grammatically attached to a DIFFERENT team.
+
+    Examples:
+      - 'Brandon, who remains winless at 0-13'        → no inversion attached
+      - 'KP extended his win streak ... over Brandon' → 'win streak' attached to KP, NOT Brandon
+      - 'Brandon\\'s win streak'                       → 'win streak' attached to Brandon
+      - 'Brandon won 5 in a row'                       → 'won 5 in a row' attached to Brandon
+    """
+    for match in inversion_re.finditer(prose):
+        m_start = match.start()
+        # Search backward up to 30 chars for any alias (or its possessive form)
+        # ending close before the inversion phrase.
+        lookback_start = max(0, m_start - 60)
+        lookback = prose[lookback_start:m_start]
+        for alias in aliases:
+            if not alias:
+                continue
+            # Possessive variant: "alias's " or "alias' " (common with names ending in s).
+            for variant in (alias + "'s ", alias + "' ", alias + " "):
+                pos = lookback.rfind(variant)
+                if pos < 0:
+                    continue
+                gap = len(lookback) - (pos + len(variant))
+                if gap <= 30:
+                    return True
+    return False
+
+
 def _extract_window(prose: str, name: str, before: int = 100, after: int = 200) -> str:
-    """Return prose centered on the first occurrence of `name`, or ''."""
+    """Return prose centered on the first occurrence of `name`, or ''.
+
+    Used for snippet output during PARAPHRASE/INVERTED reporting; not
+    for inversion detection (that uses _is_inversion_attached_to_alias).
+    """
     idx = prose.find(name)
     if idx < 0:
         return ""
@@ -239,12 +283,67 @@ def _extract_window(prose: str, name: str, before: int = 100, after: int = 200) 
     return prose[start:end]
 
 
-def classify(claim: StreakClaim, prose: str) -> tuple[str, str]:
+def _find_any_alias(prose: str, aliases: list[str]) -> tuple[int, str]:
+    """Return (index, alias) for the earliest alias match in prose, or (-1, '').
+
+    Aliases are tried in order. The list should be ordered most-specific
+    first (full name before owner-first-word) so we don't match a
+    short alias inside a longer one when the longer one would have
+    been more informative for windowing.
+    """
+    earliest = -1
+    found = ""
+    for alias in aliases:
+        if not alias:
+            continue
+        idx = prose.find(alias)
+        if idx >= 0 and (earliest < 0 or idx < earliest):
+            earliest = idx
+            found = alias
+    return (earliest, found)
+
+
+def _build_aliases_for_franchise(
+    full_name: str, nickname: str | None, owner_name: str | None
+) -> list[str]:
+    """Build the alias set the model is likely to use for a franchise.
+
+    Mirrors the resolver passes 4a (curated nickname) and 4b (owner
+    first-word) used by _build_reverse_name_map. The returned list is
+    ordered most-specific first; the matching code uses earliest-hit.
+    """
+    aliases: list[str] = []
+    if full_name:
+        aliases.append(full_name)
+    # Curated nickname (pass 4a): e.g. "Brandon Knows Ball" -> "BKB" or
+    # whatever commissioner seeded.
+    if nickname and nickname.strip():
+        aliases.append(nickname.strip())
+    # Owner first-word (pass 4b): e.g. owner "Brandon Smith" -> "Brandon".
+    if owner_name and owner_name.strip():
+        first_word = owner_name.strip().split()[0]
+        if first_word and first_word not in aliases:
+            aliases.append(first_word)
+    # Franchise-name first-word: e.g. "Miller's Genuine Draft" -> "Miller's".
+    # This catches the natural-prose shortening the model often picks
+    # when the full team name is long and obviously possessive.
+    if full_name:
+        first_word = full_name.split()[0]
+        if first_word and first_word not in aliases:
+            aliases.append(first_word)
+    return aliases
+
+
+def classify(claim: StreakClaim, prose: str, aliases: list[str]) -> tuple[str, str]:
     """Classify a single claim against the model's prose.
+
+    aliases: list of names the model might use for this franchise,
+    most-specific first. Built by _build_aliases_for_franchise and
+    used for OMITTED detection and inversion-window placement.
 
     Returns (category, snippet). Snippet is empty for VERBATIM/OMITTED;
     for PARAPHRASE/INVERTED it's the 100-before-200-after window
-    around the franchise mention.
+    around the earliest alias mention.
     """
     # VERBATIM: canonical headline as substring of prose.
     if claim.canonical_headline in prose:
@@ -257,19 +356,27 @@ def classify(claim: StreakClaim, prose: str) -> tuple[str, str]:
     if claim.canonical_outcome and claim.canonical_outcome in prose:
         return ("VERBATIM", "")
 
-    # OMITTED: franchise not in prose at all.
-    if claim.franchise_name not in prose:
+    # OMITTED: no alias for this franchise appears in prose.
+    idx, matched_alias = _find_any_alias(prose, aliases)
+    if idx < 0:
         return ("OMITTED", "")
 
-    # Franchise mentioned, headline not verbatim. Test for inversion.
-    window = _extract_window(prose, claim.franchise_name)
-    if claim.direction == "win" and _WIN_INVERSION_RE.search(window):
-        return ("INVERTED", window)
-    if claim.direction == "loss" and _LOSS_INVERSION_RE.search(window):
-        return ("INVERTED", window)
+    # Franchise mentioned (via some alias), headline not verbatim.
+    # Test for inversion: only flag INVERTED if an inversion phrase
+    # is grammatically attached to one of the franchise's aliases
+    # (within 30 chars after, possibly possessive). This rejects
+    # cross-team false positives where another team's opposite-
+    # direction streak appears in the windowed prose.
+    snippet = _extract_window(prose, matched_alias)
+    if claim.direction == "win":
+        if _is_inversion_attached_to_alias(prose, aliases, _WIN_INVERSION_RE):
+            return ("INVERTED", snippet)
+    elif claim.direction == "loss":
+        if _is_inversion_attached_to_alias(prose, aliases, _LOSS_INVERSION_RE):
+            return ("INVERTED", snippet)
 
     # Mentioned, neither verbatim nor inverted → PARAPHRASE.
-    return ("PARAPHRASE", window)
+    return ("PARAPHRASE", snippet)
 
 
 # ── DB access ───────────────────────────────────────────────────────
@@ -284,30 +391,39 @@ SELECT pa.id, pa.league_id, pa.season, pa.week_index, pa.attempt,
 
 
 def fetch_rows_last10_approved(conn: sqlite3.Connection, league_id: str) -> list[PromptAuditRow]:
-    """Last 10 APPROVED recaps cross-season; return the audit row whose
-    captured_at most closely precedes each artifact's created_at."""
+    """Last 10 (season, week_index) pairs that have at least one APPROVED
+    artifact, returning the most-recent prompt_audit row per pair.
+
+    The previous version filtered prompt_audit by captured_at <=
+    recap_artifacts.created_at, but that produced 0 results — the
+    temporal relationship between prompt_audit captures and recap
+    artifact creation isn't reliably "audit before artifact" across
+    all approved weeks (some approvals predate audit data, others
+    post-date the artifact's original creation due to regen-on-
+    approval flows). Simpler and more robust: approved-week filter,
+    then take the latest pa row for that week.
+    """
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, season, week_index, created_at
+        SELECT season, week_index, MAX(created_at) AS latest_created
           FROM recap_artifacts
          WHERE league_id = ?
            AND state = 'APPROVED'
-           AND artifact_type = 'WEEKLY_RECAP'
-         ORDER BY created_at DESC
+         GROUP BY season, week_index
+         ORDER BY latest_created DESC
          LIMIT 10
         """,
         (league_id,),
     )
-    artifacts = cur.fetchall()
+    pairs = cur.fetchall()
     rows: list[PromptAuditRow] = []
-    for _aid, season, week_index, created_at in artifacts:
+    for season, week_index, _ in pairs:
         cur.execute(
             _SCHEMA_PROBE_SQL
             + " WHERE pa.league_id = ? AND pa.season = ? AND pa.week_index = ? "
-              "AND pa.captured_at <= ? "
-              "ORDER BY pa.captured_at DESC, pa.attempt DESC LIMIT 1",
-            (league_id, season, week_index, created_at),
+              "ORDER BY pa.id DESC LIMIT 1",
+            (league_id, season, week_index),
         )
         r = cur.fetchone()
         if r is not None:
@@ -327,6 +443,52 @@ def fetch_rows_week(
         (league_id, season, week_index),
     )
     return [PromptAuditRow(*r) for r in cur.fetchall()]
+
+
+def load_franchise_aliases(
+    conn: sqlite3.Connection, league_id: str, season: int
+) -> dict[str, list[str]]:
+    """Build {full_name -> aliases[]} map for the given (league, season).
+
+    The angles block keys streak claims by franchise *name* (the
+    output of fname() during angle detection), so the harness keys
+    aliases by the same name string. Mirrors _build_reverse_name_map
+    pass 4a (curated nickname) and pass 4b (owner first-word).
+    """
+    cur = conn.cursor()
+    # franchise_directory (per-season) gives full name + owner_name per franchise_id.
+    cur.execute(
+        """
+        SELECT franchise_id, name, owner_name
+          FROM franchise_directory
+         WHERE league_id = ? AND season = ?
+        """,
+        (league_id, season),
+    )
+    directory = {fid: (name, owner) for fid, name, owner in cur.fetchall()}
+
+    # franchise_nicknames (cross-season) gives commissioner-curated alias.
+    cur.execute(
+        """
+        SELECT franchise_id, nickname
+          FROM franchise_nicknames
+         WHERE league_id = ?
+        """,
+        (league_id,),
+    )
+    nicknames = {fid: nick for fid, nick in cur.fetchall()}
+
+    aliases_by_name: dict[str, list[str]] = {}
+    for fid, (name, owner) in directory.items():
+        if not name:
+            continue
+        aliases = _build_aliases_for_franchise(
+            full_name=name,
+            nickname=nicknames.get(fid),
+            owner_name=owner,
+        )
+        aliases_by_name[name] = aliases
+    return aliases_by_name
 
 
 # ── Output ──────────────────────────────────────────────────────────
@@ -410,13 +572,25 @@ def main(argv: list[str] | None = None) -> int:
             rows = fetch_rows_last10_approved(conn, args.league_id)
         else:
             rows = fetch_rows_week(conn, args.league_id, args.season, args.week_index)
+
+        # Pre-load alias maps per season encountered in the row set.
+        seasons_seen = {row.season for row in rows}
+        aliases_by_season: dict[int, dict[str, list[str]]] = {}
+        for season in seasons_seen:
+            aliases_by_season[season] = load_franchise_aliases(
+                conn, args.league_id, season
+            )
     finally:
         conn.close()
 
     classifications: list[Classification] = []
     for row in rows:
+        season_aliases = aliases_by_season.get(row.season, {})
         for claim in parse_streak_claims(row.narrative_angles_text):
-            category, snippet = classify(claim, row.narrative_draft)
+            aliases = season_aliases.get(
+                claim.franchise_name, [claim.franchise_name]
+            )
+            category, snippet = classify(claim, row.narrative_draft, aliases)
             classifications.append(Classification(
                 row_id=row.id,
                 season=row.season,
