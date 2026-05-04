@@ -1756,6 +1756,428 @@ def verify_streaks(
     return failures
 
 
+# ── Category 3b: Streak-Inversion Verification (HARD) ────────────────
+#
+# Per OBSERVATIONS_2026_05_04_STREAK_PROMPT_POST_FIX_OBSERVATION.md §6
+# (Step 3.3 binding scope), this rule supersedes the audit memo §7
+# STREAK_VERBATIM proposal. Fires when prose contains a
+# direction-contradicting verb POSSESSIVELY ATTACHED to a franchise
+# alias whose actual streak runs the opposite direction.
+#
+# Possessive-only by design: the post-fix memo headline finding 5
+# documented that proximity-window matching produces false positives
+# when another team's opposite-direction streak appears nearby (e.g.
+# "Stu beat Brandon ... his win streak" — "his" refers to Stu, not
+# Brandon). Possessive constructions like "Brandon's win streak"
+# unambiguously attach the verb to the named team.
+#
+# Patterns built per-franchise at runtime (alias substitution).
+# Severity: HARD. Pre-fix and post-fix corpora show 0/33 true
+# inversions; the rule's job is defense in depth — a single
+# successful inversion would be a fact-corrupting publication, so
+# auto-reject on detection is appropriate.
+
+
+def _aliases_for_franchise(
+    franchise_id: str, reverse_name_map: dict[str, str]
+) -> list[str]:
+    """Return all alias strings that resolve to a given franchise_id.
+
+    Mirrors the post-fix harness's alias-aware mention detection.
+    Inverts the reverse_name_map (which goes alias → franchise_id);
+    return list is suitable for regex alternation.
+
+    Returns aliases sorted longest-first so that compound aliases
+    (e.g. full franchise name) match before single-word aliases
+    (owner first-word) under the regex engine's left-to-right
+    greedy matching.
+    """
+    aliases = sorted(
+        {alias for alias, fid in reverse_name_map.items() if fid == franchise_id},
+        key=len,
+        reverse=True,
+    )
+    return aliases
+
+
+# Historical-reference filter, identical to verify_streaks lines
+# 1600-1606 (last/previous/prior season, etc.). Extracted once here
+# so STREAK_INVERSION and RECORD_CLAIM_ANCHORING share the same
+# discipline.
+_HISTORICAL_REFERENCE_RE = re.compile(
+    r'(?:last\s+season|previous\s+season|prior\s+season|'
+    r'last\s+year|prior\s+year|ended\s+(?:last|in\s+\d{4})|'
+    r'from\s+\d{4}|in\s+\d{4}|back\s+in\s+\d{4}|'
+    r'his\s+career|career[- ](?:high|long|best))',
+    re.IGNORECASE,
+)
+
+
+def _is_historical_reference(recap_text: str, match_start: int, match_end: int) -> bool:
+    """Return True if a recap-text match is qualified by a historical
+    reference within ±80 chars."""
+    hist_start = max(0, match_start - 80)
+    hist_end = min(len(recap_text), match_end + 80)
+    return bool(_HISTORICAL_REFERENCE_RE.search(recap_text[hist_start:hist_end]))
+
+
+def verify_streak_inversion(
+    recap_text: str,
+    season_matchups: list[_MatchupFact],
+    week: int,
+    reverse_name_map: dict[str, str],
+) -> list[VerificationFailure]:
+    """Verify no possessively-attached streak claim contradicts a
+    franchise's actual streak direction.
+
+    For each franchise X with |actual_streak| >= 3, scan prose for
+    possessive constructions (`X's <opposite-direction phrase>` or
+    `X has <opposite-direction verb> N`) where the direction in prose
+    runs opposite to X's canonical streak.
+
+    Severity: HARD. Pass condition (default for a franchise): no
+    possessive opposite-direction phrase appears for any of X's
+    aliases. A historical-reference qualifier within ±80 chars
+    suppresses the failure (the model is citing a past streak, not
+    the current one).
+
+    Patterns matched (per direction):
+
+    Loss-direction angle (current_streak <= -3) — flag if prose says:
+        - {alias}'s win streak / winning streak
+        - {alias}'s {N}-game win streak
+        - {alias} has won {N} (in a row | straight | consecutive)
+
+    Win-direction angle (current_streak >= 3) — flag if prose says:
+        - {alias}'s losing streak / loss streak
+        - {alias}'s {N}-game losing streak / loss streak
+        - {alias} has lost {N} (in a row | straight | consecutive)
+
+    Defensive return: if no franchise has |streak| >= 3, return [].
+    """
+    failures: list[VerificationFailure] = []
+    actual_streaks = _compute_streaks(season_matchups, through_week=week)
+
+    relevant = [
+        (fid, streak) for fid, streak in actual_streaks.items() if abs(streak) >= 3
+    ]
+    if not relevant:
+        return []
+
+    for franchise_id, streak in relevant:
+        aliases = _aliases_for_franchise(franchise_id, reverse_name_map)
+        if not aliases:
+            continue
+        fname = _resolve_display_name(franchise_id, reverse_name_map)
+        # Build inversion regex per alias to guarantee possessive
+        # attachment to that exact alias. Alternation across aliases
+        # would let the engine match a possessive of one alias
+        # against a phrase belonging to another.
+        is_loss = streak < 0
+        for alias in aliases:
+            alias_re = re.escape(alias)
+            if is_loss:
+                # Loss claim — flag possessive win-direction phrasing.
+                pattern = re.compile(
+                    rf"\b{alias_re}(?:\u2019s|\'s)\s+"
+                    rf"(?:\d{{1,2}}[-\s]game\s+)?(?:winning\s+streak|win\s+streak)"
+                    rf"|\b{alias_re}\s+has\s+won\s+\d+"
+                    rf"\s+(?:in\s+a\s+row|straight|consecutive)",
+                    re.IGNORECASE,
+                )
+                inversion_label = "win-direction"
+            else:
+                pattern = re.compile(
+                    rf"\b{alias_re}(?:\u2019s|\'s)\s+"
+                    rf"(?:\d{{1,2}}[-\s]game\s+)?(?:losing\s+streak|loss\s+streak)"
+                    rf"|\b{alias_re}\s+has\s+lost\s+\d+"
+                    rf"\s+(?:in\s+a\s+row|straight|consecutive)",
+                    re.IGNORECASE,
+                )
+                inversion_label = "loss-direction"
+            for match in pattern.finditer(recap_text):
+                if _is_historical_reference(recap_text, match.start(), match.end()):
+                    continue
+                actual_dir = "loss" if is_loss else "win"
+                failures.append(VerificationFailure(
+                    category="STREAK_INVERSION",
+                    severity="HARD",
+                    claim=(
+                        f"{fname}: possessive {inversion_label} claim "
+                        f"contradicts actual {actual_dir}-direction streak"
+                    ),
+                    evidence=(
+                        f"Prose contains '{match.group(0)}' but "
+                        f"{fname}'s actual current streak is {streak} "
+                        f"({actual_dir}, |streak|={abs(streak)}). "
+                        f"Possessive attachment to '{alias}' indicates "
+                        f"the claim is about {fname}'s streak, not "
+                        f"another team's."
+                    ),
+                ))
+            # One match per alias is sufficient signal; don't emit
+            # duplicate failures for the same alias if multiple
+            # variants matched.
+            if any(f.claim.startswith(f"{fname}: possessive") for f in failures):
+                # Track by-franchise dedup outside the alias loop —
+                # break aliases after first hit for this franchise.
+                break
+
+    return failures
+
+
+# ── Category 3c: Record-Claim Anchoring (HARD) ───────────────────────
+#
+# Per post-fix memo §6 (Step 3.3 binding scope). Fires when prose
+# contains a record-shaped claim ("league record", "all-time record",
+# "longest active streak", "X short of the record", etc.) that does
+# not anchor to canonical league history.
+#
+# Two failure modes documented in the post-fix memo:
+#   - T9-LOSS fabrication: T3 angle fires (streak claim is real),
+#     model invents the asymmetric record-approach form the helpers
+#     don't emit. Pre-fix corpus: 5/13 W13 2025 rows.
+#   - Anchor-less record fabrication: NO STREAK angle fires, model
+#     invents a record claim from STANDINGS + LEAGUE_HISTORY. Post-
+#     fix evidence: id=140 W11 2025 ("matching the league's all-time
+#     record for futility"). The §6 silence-fallback is angle-block-
+#     scoped and does not catch this.
+#
+# This rule reads canonical longest_*_streak from
+# LeagueHistoryContextV1 to verify factual correctness. The optional
+# `narrative_angles_text` parameter, when supplied, additionally
+# enforces angle-block anchoring (a T8/T9/T10 angle for the franchise
+# must be present in the angles block). Both checks are HARD.
+
+_RECORD_CLAIM_PATTERN = re.compile(
+    r"(?:"
+    r"(?:matching|matches|tied|tying|broke|broken|breaks?|breaking)"
+    r"\s+(?:the\s+)?(?:league|all-time|league\s+all-time)?\s*record"
+    r"|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)"
+    r"\s+(?:short|shy|away|games?\s+(?:short|shy|away))"
+    r"\s+(?:of|from)\s+(?:the\s+)?(?:league|all-time)?\s*record"
+    r"|closing\s+in\s+on\s+(?:the\s+)?(?:league|all-time)?\s*record"
+    r"|longest\s+(?:active\s+)?(?:winning|losing|win|loss)\s+streak"
+    r"\s+(?:in|across|of|ever|league)"
+    r"|all-time\s+(?:league\s+)?record\s+(?:for|of)"
+    r"|(?:league|league\'s|league\u2019s)\s+all-time\s+record"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _resolve_franchise_in_window(
+    recap_text: str,
+    match_start: int,
+    match_end: int,
+    reverse_name_map: dict[str, str],
+) -> str | None:
+    """Find the franchise alias closest to a match span and return its id.
+
+    Looks within ±200 chars of the match for any alias from
+    reverse_name_map; returns the franchise_id of the alias with the
+    smallest distance to the match span. None if no alias resolves.
+    """
+    window_start = max(0, match_start - 200)
+    window_end = min(len(recap_text), match_end + 200)
+    window = recap_text[window_start:window_end]
+    relative_start = match_start - window_start
+    relative_end = match_end - window_start
+
+    best_distance = None
+    best_fid = None
+    # Iterate aliases longest-first so multi-word aliases match
+    # before their single-word substrings.
+    aliases = sorted(reverse_name_map.keys(), key=len, reverse=True)
+    for alias in aliases:
+        if not alias:
+            continue
+        for amatch in re.finditer(rf"\b{re.escape(alias)}\b", window):
+            if amatch.start() >= relative_start and amatch.end() <= relative_end:
+                # Inside the match itself — prefer this; distance 0.
+                distance = 0
+            elif amatch.end() <= relative_start:
+                distance = relative_start - amatch.end()
+            else:
+                distance = amatch.start() - relative_end
+            if best_distance is None or distance < best_distance:
+                best_distance = distance
+                best_fid = reverse_name_map[alias]
+    return best_fid
+
+
+def _angle_anchor_present(
+    narrative_angles_text: str,
+    franchise_id: str,
+    reverse_name_map: dict[str, str],
+    is_loss: bool,
+) -> bool:
+    """Check whether narrative_angles_text contains a T8/T9/T10 angle
+    for the given franchise/direction.
+
+    Looks for the canonical record-claim phrasings emitted by
+    streak_strings_v1.format_streak_record:
+        - T8 (win):  "{name} tied/broke the league win streak record"
+        - T9 (win):  "{name} is 1 win from the league win streak record"
+        - T10 (loss):"{name} tied/broke the league loss streak record"
+
+    The franchise-name in the angle block uses the canonical full
+    name (rendered via fname() in detect_narrative_angles_v1), so we
+    iterate aliases for the franchise and match longest-first.
+    """
+    aliases = _aliases_for_franchise(franchise_id, reverse_name_map)
+    direction_token = "loss" if is_loss else "win"
+    for alias in aliases:
+        alias_re = re.escape(alias)
+        # T8 / T10
+        if re.search(
+            rf"\b{alias_re}\s+tied/broke\s+the\s+league\s+{direction_token}\s+streak\s+record",
+            narrative_angles_text,
+        ):
+            return True
+        # T9 (winning side only — no T9-LOSS form per memo §10 Q1)
+        if not is_loss and re.search(
+            rf"\b{alias_re}\s+is\s+1\s+win\s+from\s+the\s+league\s+win\s+streak\s+record",
+            narrative_angles_text,
+        ):
+            return True
+    return False
+
+
+def verify_record_claim_anchoring(
+    recap_text: str,
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week: int,
+    reverse_name_map: dict[str, str],
+    narrative_angles_text: str | None = None,
+) -> list[VerificationFailure]:
+    """Verify record-shaped streak claims anchor to canonical history.
+
+    For each record-shaped claim in prose (per _RECORD_CLAIM_PATTERN),
+    require:
+
+    1. The franchise alias resolves (closest-alias-in-window).
+    2. A canonical longest_*_streak record exists in
+       LeagueHistoryContextV1 for the implied direction.
+    3. If narrative_angles_text is supplied, a T8/T9/T10 angle for
+       this franchise/direction must be present (angle-anchor check).
+    4. Historical-reference qualifier within ±80 chars suppresses
+       the failure (model citing past records, not making a current
+       claim).
+
+    Failures emit category=RECORD_CLAIM_ANCHORING with severity HARD.
+    Two distinct fail signatures:
+      - "no canonical record exists" (memo §6 anchor-less case)
+      - "no angle anchor in prompt" (memo §6 §10 Q1 case, only when
+        narrative_angles_text is supplied)
+
+    The function determines direction from the franchise's current
+    streak: if the resolved franchise has |current_streak| >= 3, the
+    claim is presumed to be about the current streak and direction
+    follows sign(streak). If no current streak (or |streak| < 3), the
+    claim is ambiguous and skipped (silence over speculation).
+
+    Defensive return: if no record-shaped claim exists in prose,
+    return [] without loading league history (avoids the
+    derive_league_history_v1 cost on the common case).
+    """
+    if not _RECORD_CLAIM_PATTERN.search(recap_text):
+        return []
+
+    failures: list[VerificationFailure] = []
+
+    # Lazy-load: only fetch history if we actually have a claim to verify.
+    # derive_league_history_v1 walks all matchups across seasons; non-trivial.
+    from squadvault.core.recaps.context.league_history_v1 import (
+        derive_league_history_v1,
+    )
+
+    history = derive_league_history_v1(
+        db_path=db_path,
+        league_id=str(league_id),
+        as_of_season=season,
+        as_of_week=week,
+    )
+
+    # Need season_matchups for current-streak direction inference.
+    season_matchups = _load_season_matchups(db_path, str(league_id), season)
+    actual_streaks = _compute_streaks(season_matchups, through_week=week)
+
+    for match in _RECORD_CLAIM_PATTERN.finditer(recap_text):
+        if _is_historical_reference(recap_text, match.start(), match.end()):
+            continue
+
+        franchise_id = _resolve_franchise_in_window(
+            recap_text, match.start(), match.end(), reverse_name_map,
+        )
+        if franchise_id is None:
+            # No franchise resolved — silence over speculation
+            continue
+
+        current_streak = actual_streaks.get(franchise_id, 0)
+        if abs(current_streak) < 3:
+            # Ambiguous: claim is not clearly about the current streak.
+            # Could be a true historical reference; defer.
+            continue
+
+        is_loss = current_streak < 0
+        canonical_record = (
+            history.longest_loss_streak if is_loss else history.longest_win_streak
+        )
+        fname = _resolve_display_name(franchise_id, reverse_name_map)
+        direction_label = "loss" if is_loss else "win"
+
+        # Anchor-less case: no canonical record exists at all.
+        if canonical_record is None:
+            failures.append(VerificationFailure(
+                category="RECORD_CLAIM_ANCHORING",
+                severity="HARD",
+                claim=(
+                    f"{fname}: record-shaped {direction_label}-streak claim "
+                    f"with no canonical league record"
+                ),
+                evidence=(
+                    f"Prose contains '{match.group(0)}' attributed to "
+                    f"{fname} (current streak: {current_streak}). "
+                    f"No canonical longest_{direction_label}_streak "
+                    f"exists in LeagueHistoryContextV1 for this league "
+                    f"as of (season={season}, week={week})."
+                ),
+            ))
+            continue
+
+        # Angle-anchor case: angles_text supplied, but no T8/T9/T10
+        # angle for this franchise/direction is present.
+        if narrative_angles_text is not None:
+            if not _angle_anchor_present(
+                narrative_angles_text, franchise_id, reverse_name_map, is_loss,
+            ):
+                failures.append(VerificationFailure(
+                    category="RECORD_CLAIM_ANCHORING",
+                    severity="HARD",
+                    claim=(
+                        f"{fname}: record-shaped {direction_label}-streak "
+                        f"claim with no T8/T9/T10 angle anchor in prompt"
+                    ),
+                    evidence=(
+                        f"Prose contains '{match.group(0)}' attributed to "
+                        f"{fname} (current streak: {current_streak}). "
+                        f"Canonical longest_{direction_label}_streak: "
+                        f"{canonical_record.length} games "
+                        f"(holder: {canonical_record.franchise_id}). "
+                        f"No T8/T9/T10 angle for {fname}'s "
+                        f"{direction_label} streak found in "
+                        f"narrative_angles_text — angle-block silence "
+                        f"fallback should have suppressed this claim."
+                    ),
+                ))
+
+    return failures
+
+
 # ── Category 4: Series Record Verification ───────────────────────────
 
 # Pattern: "X-Y" (W-L record) near series/rivalry keywords
@@ -3110,11 +3532,18 @@ def verify_recap_v1(
     league_id: str,
     season: int,
     week: int,
+    narrative_angles_text: str | None = None,
 ) -> VerificationResult:
     """Run all V1 verification checks on a recap draft.
 
     This is the canonical entry point for the verification gate.
     Returns a VerificationResult indicating pass/fail with details.
+
+    narrative_angles_text: when supplied (lifecycle path), enables
+    angle-block anchoring for RECORD_CLAIM_ANCHORING (Category 3c).
+    Reverify and audit paths that don't have ready access to the
+    angles text omit it; the rule falls back to canonical-only
+    anchoring (factual correctness without prompt-anchor enforcement).
     """
     narrative = _extract_shareable_recap(recap_text)
     if not narrative:
@@ -3182,6 +3611,33 @@ def verify_recap_v1(
     checks_run += 1
     all_failures.extend(verify_streaks(
         narrative, season_matchups, week, reverse_name_map,
+    ))
+
+    # Category 3b: Streak-inversion verification (HARD)
+    # Per OBSERVATIONS_2026_05_04_STREAK_PROMPT_POST_FIX_OBSERVATION.md §6,
+    # supersedes audit memo §7's STREAK_VERBATIM proposal. Possessive-
+    # only attachment to franchise aliases; cross-team false positives
+    # rejected by design.
+    checks_run += 1
+    all_failures.extend(verify_streak_inversion(
+        narrative, season_matchups, week, reverse_name_map,
+    ))
+
+    # Category 3c: Record-claim anchoring verification (HARD)
+    # Per OBSERVATIONS_2026_05_04_STREAK_PROMPT_POST_FIX_OBSERVATION.md §6.
+    # Catches T9-LOSS fabrication AND anchor-less record fabrication
+    # (id=140 W11 2025 case). Reads canonical longest_*_streak from
+    # LeagueHistoryContextV1; optional angle-block check via
+    # narrative_angles_text when supplied.
+    checks_run += 1
+    all_failures.extend(verify_record_claim_anchoring(
+        narrative,
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
+        week=week,
+        reverse_name_map=reverse_name_map,
+        narrative_angles_text=narrative_angles_text,
     ))
 
     # Category 4: Series record verification

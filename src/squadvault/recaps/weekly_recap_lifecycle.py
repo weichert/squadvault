@@ -1205,6 +1205,7 @@ def generate_weekly_recap_draft(
                     league_id=league_id,
                     season=season,
                     week=week_index,
+                    narrative_angles_text=_ctx.narrative_angles_text,
                 )
             except Exception as e:
                 logger.debug("Verification V1 failed on attempt %d: %s", _attempt, e)

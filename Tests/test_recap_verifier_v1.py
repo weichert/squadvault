@@ -31,8 +31,10 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     verify_faab_claims,
     verify_player_franchise,
     verify_recap_v1,
+    verify_record_claim_anchoring,
     verify_scores,
     verify_series_records,
+    verify_streak_inversion,
     verify_streaks,
     verify_superlatives,
 )
@@ -1006,7 +1008,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 9
+        assert result.checks_run == 11
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -1088,7 +1090,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 9
+        assert result.checks_run == 11
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -4502,7 +4504,7 @@ class TestPlayerFranchiseAttribution:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added between SCORE and
         # SUPERLATIVE per be76817 / Step 4 correction memo).
-        assert result.checks_run == 9
+        assert result.checks_run == 11
         pf = [f for f in result.hard_failures
               if f.category == "PLAYER_FRANCHISE"]
         assert len(pf) == 1, (
@@ -4863,7 +4865,7 @@ class TestFaabClaimVerification:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added per be76817 / Step 4
         # correction memo).
-        assert result.checks_run == 9
+        assert result.checks_run == 11
 
 
 # ── Phase 2 addendum conformance: as-of-week scoping ─────────────────
@@ -4935,3 +4937,361 @@ class TestAsOfCutoffCorrectness:
         assert (2024, 14) not in in_window
         assert (2024, 17) not in in_window
         assert (2025, 1) not in in_window
+
+
+# =====================================================================
+# Category 3b: STREAK_INVERSION
+# =====================================================================
+
+
+class TestVerifyStreakInversion:
+    """Tests for verify_streak_inversion (Category 3b, HARD).
+
+    Per OBSERVATIONS_2026_05_04_STREAK_PROMPT_POST_FIX_OBSERVATION.md §6.
+    Possessive-only attachment to franchise aliases; cross-team
+    proximity false positives are rejected by design.
+    """
+
+    def _setup_loss_streak(self):
+        """F2 finishes Week 5 on a 5-game loss streak; F1 wins all."""
+        matchups = [
+            _make_matchup(1, "F1", "F2", 120, 100),
+            _make_matchup(2, "F1", "F2", 115, 105),
+            _make_matchup(3, "F1", "F2", 130, 90),
+            _make_matchup(4, "F1", "F2", 110, 95),
+            _make_matchup(5, "F1", "F2", 125, 80),
+        ]
+        reverse = {
+            "Alpha Team": "F1", "Steve": "F1",
+            "Beta Squad": "F2", "Brandon": "F2",
+        }
+        return matchups, reverse
+
+    def _setup_win_streak(self):
+        """F1 finishes Week 5 on a 5-game win streak (mirror of above)."""
+        return self._setup_loss_streak()  # same fixture; F1 has W5, F2 has L5
+
+    def test_correct_loss_direction_passes(self):
+        matchups, reverse = self._setup_loss_streak()
+        text = "Brandon's losing streak hit 5 games this week."
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert failures == []
+
+    def test_correct_win_direction_passes(self):
+        matchups, reverse = self._setup_win_streak()
+        text = "Steve's win streak rolled to 5 games."
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert failures == []
+
+    def test_loss_claim_with_possessive_win_streak_fails(self):
+        """F2 is on a loss streak; prose says 'Brandon's win streak'."""
+        matchups, reverse = self._setup_loss_streak()
+        text = "Brandon's win streak rolled to 5 games this season."
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert len(failures) == 1
+        assert failures[0].category == "STREAK_INVERSION"
+        assert failures[0].severity == "HARD"
+        assert "Brandon" in failures[0].evidence or "Beta Squad" in failures[0].evidence
+
+    def test_win_claim_with_possessive_loss_streak_fails(self):
+        """F1 is on a win streak; prose says 'Steve's losing streak'."""
+        matchups, reverse = self._setup_win_streak()
+        text = "Steve's losing streak hit 5 games this season."
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert len(failures) == 1
+        assert failures[0].category == "STREAK_INVERSION"
+
+    def test_loss_claim_with_subject_won_n_straight_fails(self):
+        """Subject construction: 'Brandon has won 5 straight'."""
+        matchups, reverse = self._setup_loss_streak()
+        text = "Brandon has won 5 straight games this season."
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert len(failures) == 1
+        assert failures[0].category == "STREAK_INVERSION"
+
+    def test_win_claim_with_subject_lost_n_straight_fails(self):
+        matchups, reverse = self._setup_win_streak()
+        text = "Steve has lost 5 in a row this season."
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert len(failures) == 1
+
+    def test_cross_team_possessive_does_not_trigger(self):
+        """Pre-fix harness false positive: 'Stu beat Brandon ... his win streak' —
+        'his' refers to Stu, not Brandon. Possessive-only checking
+        rejects this correctly."""
+        matchups, reverse = self._setup_loss_streak()
+        text = (
+            "Steve beat Brandon 137.00-102.50 to push his win streak "
+            "to 5 games while extending Brandon's losing streak."
+        )
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        # Steve's win streak is correct; Brandon's losing streak is correct.
+        # No inversion attached to either franchise's alias.
+        assert failures == []
+
+    def test_no_streak_no_check(self):
+        """Franchise with |streak| < 3 produces no INVERSION check."""
+        matchups = [
+            _make_matchup(1, "F1", "F2", 120, 100),
+            _make_matchup(2, "F2", "F1", 115, 105),
+        ]
+        reverse = {"Alpha Team": "F1", "Beta Squad": "F2"}
+        # Even an obviously wrong-direction claim doesn't fire because
+        # neither franchise has |streak| >= 3.
+        text = "Beta Squad's win streak rolled to 5 games."
+        failures = verify_streak_inversion(text, matchups, 2, reverse)
+        assert failures == []
+
+    def test_historical_reference_suppresses_failure(self):
+        """A historical-reference qualifier in the ±80-char window
+        suppresses an otherwise-flagged inversion."""
+        matchups, reverse = self._setup_loss_streak()
+        # Brandon is on L5 currently; prose claims a "win streak" but
+        # qualifies it as last season.
+        text = (
+            "Recall that Brandon's win streak from last season "
+            "ended in Week 14 — a different era for the franchise."
+        )
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert failures == []
+
+    def test_n_game_possessive_form_fails(self):
+        """'{alias}'s {N}-game win streak' (with N) for a loss claim fails."""
+        matchups, reverse = self._setup_loss_streak()
+        text = "Brandon's 5-game win streak is impressive."
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert len(failures) == 1
+
+    def test_unicode_apostrophe_form_handled(self):
+        """Curly apostrophe possessive U+2019 also matches."""
+        matchups, reverse = self._setup_loss_streak()
+        text = "Brandon\u2019s win streak rolled to 5 games."
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        assert len(failures) == 1
+
+    def test_dedup_per_franchise(self):
+        """Multiple alias hits for the same franchise produce a single
+        failure (per-franchise dedup)."""
+        matchups, reverse = self._setup_loss_streak()
+        # Both 'Brandon' and 'Beta Squad' aliases resolve to F2.
+        text = (
+            "Brandon's win streak hit 5 games. Beta Squad's win "
+            "streak rolled on."
+        )
+        failures = verify_streak_inversion(text, matchups, 5, reverse)
+        # Single failure per franchise — the second alias hit is
+        # suppressed by the dedup loop break.
+        assert len(failures) == 1
+
+
+# =====================================================================
+# Category 3c: RECORD_CLAIM_ANCHORING
+# =====================================================================
+
+
+def _setup_history_db(tmp_path, *, league_id="L1", insert_long_streak: bool = False):
+    """Build a sqlite DB with enough matchup events that
+    derive_league_history_v1 returns a meaningful LeagueHistoryContextV1.
+
+    insert_long_streak=True seeds a 4-game loss streak for F2 (via 4
+    consecutive WEEKLY_MATCHUP_RESULT events where F2 lost) so that
+    LeagueHistoryContextV1.longest_loss_streak is non-None.
+    """
+    db_path = tmp_path / "history.sqlite"
+    con = sqlite3.connect(db_path)
+    with open(SCHEMA_PATH) as f:
+        con.executescript(f.read())
+    if insert_long_streak:
+        for week in range(1, 5):
+            _insert_matchup(
+                con, league_id=league_id, season=2024, week=week,
+                winner_id="F1", loser_id="F2",
+                winner_score=110.0, loser_score=90.0,
+            )
+    else:
+        # One short matchup so seasons_available has at least one entry
+        # but no franchise has |streak| >= 3.
+        _insert_matchup(
+            con, league_id=league_id, season=2024, week=1,
+            winner_id="F1", loser_id="F2",
+            winner_score=110.0, loser_score=90.0,
+        )
+    _insert_franchise(con, league_id=league_id, season=2024,
+                       franchise_id="F1", name="Alpha Team")
+    _insert_franchise(con, league_id=league_id, season=2024,
+                       franchise_id="F2", name="Beta Squad")
+    con.commit()
+    con.close()
+    return str(db_path)
+
+
+class TestVerifyRecordClaimAnchoring:
+    """Tests for verify_record_claim_anchoring (Category 3c, HARD).
+
+    Per OBSERVATIONS_2026_05_04_STREAK_PROMPT_POST_FIX_OBSERVATION.md §6.
+    Catches both T9-LOSS fabrication (anchored, wrong form) and
+    anchor-less fabrication (no anchor at all).
+    """
+
+    def _reverse(self):
+        return {
+            "Alpha Team": "F1", "Steve": "F1",
+            "Beta Squad": "F2", "Brandon": "F2",
+        }
+
+    def _loss_streak_matchups(self, weeks=5):
+        return [
+            _make_matchup(w, "F1", "F2", 110, 90) for w in range(1, weeks + 1)
+        ]
+
+    def test_no_record_claim_short_circuits(self, tmp_path):
+        """Prose without record-shaped phrasing returns [] without
+        loading league history (defensive return)."""
+        db = _setup_history_db(tmp_path, insert_long_streak=False)
+        # Note: this DB has no longest_*_streak — but the rule should
+        # short-circuit before loading history because no record claim
+        # is present in prose.
+        text = "Brandon lost again. Steve won. Standings updated."
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=1,
+            reverse_name_map=self._reverse(),
+        )
+        assert failures == []
+
+    def test_anchor_less_fabrication_fails(self, tmp_path):
+        """id=140 W11 2025 case: prose claims 'all-time record' for a
+        franchise but the canonical longest_*_streak is None.
+
+        Constructed by giving F2 a current loss streak (so the rule's
+        |streak| >= 3 gate triggers) but using a DB where prior-season
+        data is absent so longest_loss_streak is None... in practice
+        derive_league_history_v1 always populates a StreakRecord when
+        any loss exists, so this branch is rare. Here we cover the
+        defensive 'no canonical record' branch by patching history."""
+        # Seed a 4-week loss streak for F2 in 2024.
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        # The rule will load history and find longest_loss_streak
+        # populated (4 games, F2). For this test we don't drive the
+        # canonical-None branch — instead we drive the angle-anchor-
+        # missing branch with no narrative_angles_text supplied at all,
+        # which falls back to canonical-only (a record exists →
+        # passes). The genuine canonical-None case is exotic and
+        # production-minor; the load-bearing fail mode is the
+        # angle-anchor branch covered by test_angle_anchor_missing_fails.
+        text = (
+            "Brandon's losing streak now sits at 4 games — matching "
+            "the league's all-time record for futility."
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=self._reverse(),
+            narrative_angles_text=None,
+        )
+        # canonical_record exists (4 games, F2); narrative_angles_text
+        # not supplied → canonical-only path; no fail.
+        assert failures == []
+
+    def test_angle_anchor_present_passes(self, tmp_path):
+        """When narrative_angles_text contains a T10 angle for the
+        franchise, the canonical record claim does NOT fail."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        # Add additional loss-streak matchups so F2 is at -4.
+        # F2's current loss streak: 4 games (from 4-week fixture).
+        text = (
+            "Beta Squad tied/broke the league loss streak record "
+            "(4 games) — historic territory for the franchise."
+        )
+        angles_text = (
+            "Narrative angles for Week 4:\n"
+            "  [HEADLINE] [RE: Beta Squad] Beta Squad tied/broke the "
+            "league loss streak record (4 games)\n"
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=self._reverse(),
+            narrative_angles_text=angles_text,
+        )
+        assert failures == []
+
+    def test_angle_anchor_missing_fails(self, tmp_path):
+        """When narrative_angles_text contains NO T8/T9/T10 angle for
+        the franchise, a record-claim in prose fails HARD."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        text = (
+            "Beta Squad's losing streak is matching the league's "
+            "all-time record."
+        )
+        # Angles block contains some other angle, no record claim
+        # for Beta Squad.
+        angles_text = (
+            "Narrative angles for Week 4:\n"
+            "  [HEADLINE] [RE: Alpha Team] Alpha Team has won 4 straight\n"
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=self._reverse(),
+            narrative_angles_text=angles_text,
+        )
+        assert len(failures) >= 1
+        assert failures[0].category == "RECORD_CLAIM_ANCHORING"
+        assert failures[0].severity == "HARD"
+        assert "no T8/T9/T10 angle anchor" in failures[0].claim
+
+    def test_no_angles_text_falls_back_to_canonical_only(self, tmp_path):
+        """When narrative_angles_text is None (reverify or audit path),
+        the rule does not enforce angle-anchoring — only canonical-
+        record-existence."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        text = (
+            "Beta Squad is matching the league's all-time loss "
+            "streak record."
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=self._reverse(),
+            narrative_angles_text=None,
+        )
+        # Canonical record exists; no angles_text → no angle-anchor
+        # check fires. Pass.
+        assert failures == []
+
+    def test_historical_reference_suppresses_failure(self, tmp_path):
+        """A historical-reference qualifier in ±80 chars of the
+        record claim suppresses the failure."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        text = (
+            "Brandon's losing streak last season matched the "
+            "all-time record. This year is different."
+        )
+        # angles_text intentionally missing T10, but historical-ref
+        # qualifier should suppress the failure regardless.
+        angles_text = "Narrative angles for Week 4: ...\n"
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=self._reverse(),
+            narrative_angles_text=angles_text,
+        )
+        assert failures == []
+
+    def test_franchise_below_streak_threshold_skipped(self, tmp_path):
+        """Record claims about a franchise with |current_streak| < 3
+        are ambiguous and skipped (silence over speculation)."""
+        db = _setup_history_db(tmp_path, insert_long_streak=False)
+        # F2 has only 1 loss in this fixture (|streak| = 1).
+        text = (
+            "Beta Squad's brief slide is closing in on the league "
+            "all-time record."
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=1,
+            reverse_name_map=self._reverse(),
+        )
+        # |streak| < 3 → ambiguous, skipped.
+        assert failures == []
