@@ -45,6 +45,7 @@ from collections.abc import Sequence
 
 from squadvault.core.recaps.context.league_history_v1 import HistoricalMatchup
 from squadvault.core.recaps.context.narrative_angles_v1 import NarrativeAngle
+from squadvault.core.recaps.render.streak_strings_v1 import format_streak_phrase
 from squadvault.core.resolvers import NameFn
 from squadvault.core.resolvers import identity as _identity
 from squadvault.core.storage.session import DatabaseSession
@@ -861,6 +862,10 @@ def detect_scoring_momentum_in_streak(
 
         margin_str = ", ".join(f"{m:.0f}" for m in streak_margins)
         n_games = len(streak_margins)
+        # Canonical noun phrase shared by all four D49 tier headlines.
+        # n_games >= 4 by the guard above, so format_streak_phrase is non-None.
+        streak_phrase = format_streak_phrase(n_games)
+        assert streak_phrase is not None
 
         # ── Tier 1: strictly growing ──
         if all(
@@ -870,7 +875,7 @@ def detect_scoring_momentum_in_streak(
             angles.append(NarrativeAngle(
                 category="SCORING_MOMENTUM_IN_STREAK",
                 headline=(
-                    f"{fname(fid)}'s {n_games}-game win streak "
+                    f"{fname(fid)}'s {streak_phrase} "
                     f"has growing margins: {margin_str}"
                 ),
                 detail="Each win more dominant than the last.",
@@ -884,7 +889,7 @@ def detect_scoring_momentum_in_streak(
             angles.append(NarrativeAngle(
                 category="SCORING_MOMENTUM_IN_STREAK",
                 headline=(
-                    f"{fname(fid)}'s {n_games}-game win streak "
+                    f"{fname(fid)}'s {streak_phrase} "
                     f"has shrinking margins: {margin_str}"
                 ),
                 detail="Still winning, but each result closer than the last.",
@@ -895,7 +900,7 @@ def detect_scoring_momentum_in_streak(
             angles.append(NarrativeAngle(
                 category="SCORING_MOMENTUM_IN_STREAK",
                 headline=(
-                    f"{fname(fid)}'s {n_games}-game win streak "
+                    f"{fname(fid)}'s {streak_phrase} "
                     f"has mostly growing margins: {margin_str}"
                 ),
                 detail="Winning by wider margins on balance.",
@@ -906,7 +911,7 @@ def detect_scoring_momentum_in_streak(
             angles.append(NarrativeAngle(
                 category="SCORING_MOMENTUM_IN_STREAK",
                 headline=(
-                    f"{fname(fid)}'s {n_games}-game win streak "
+                    f"{fname(fid)}'s {streak_phrase} "
                     f"has mostly shrinking margins: {margin_str}"
                 ),
                 detail="Still winning, but margins tightening on balance.",

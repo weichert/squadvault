@@ -32,6 +32,11 @@ from squadvault.core.recaps.context.league_history_v1 import (
 )
 from squadvault.core.recaps.context.season_context_v1 import SeasonContextV1
 from squadvault.core.recaps.render.score_strings_v1 import format_matchup_score_str
+from squadvault.core.recaps.render.streak_strings_v1 import (
+    format_streak_outcome,
+    format_streak_record,
+    format_streak_status,
+)
 from squadvault.core.resolvers import NameFn
 from squadvault.core.resolvers import identity as _identity
 
@@ -161,42 +166,48 @@ def _detect_streaks(ctx: SeasonContextV1, *, fname: NameFn = _identity) -> list[
             return f"Record: {rec_str}."
         won, opp_id = outcome
         opp_name = fname(opp_id)
-        if won:
-            return f"Record: {rec_str}. Beat {opp_name} this week — streak continues."
-        return f"Record: {rec_str}. Lost to {opp_name} this week — streak extended, not snapped."
+        return format_streak_outcome(fname(fid), rec_str, won, opp_name)
 
     for rec in ctx.standings:
         streak = rec.current_streak
         rec_str = f"{rec.wins}-{rec.losses}"
+        # Compute headline once. format_streak_status returns None for
+        # |streak| < 3 (the threshold matches each branch guard below),
+        # so the cascade only consumes a non-None value.
+        headline = format_streak_status(fname(rec.franchise_id), streak)
 
         if streak >= 4:
+            assert headline is not None
             angles.append(NarrativeAngle(
                 category="STREAK",
-                headline=f"{fname(rec.franchise_id)} on {streak}-game win streak",
+                headline=headline,
                 detail=_outcome_detail(rec.franchise_id, rec_str),
                 strength=3 if streak >= 5 else 2,
                 franchise_ids=(rec.franchise_id,),
             ))
         elif streak == 3:
+            assert headline is not None
             angles.append(NarrativeAngle(
                 category="STREAK",
-                headline=f"{fname(rec.franchise_id)} has won 3 straight",
+                headline=headline,
                 detail=_outcome_detail(rec.franchise_id, rec_str),
                 strength=1,
                 franchise_ids=(rec.franchise_id,),
             ))
         elif streak <= -4:
+            assert headline is not None
             angles.append(NarrativeAngle(
                 category="STREAK",
-                headline=f"{fname(rec.franchise_id)} on {abs(streak)}-game losing streak",
+                headline=headline,
                 detail=_outcome_detail(rec.franchise_id, rec_str),
                 strength=3 if streak <= -5 else 2,
                 franchise_ids=(rec.franchise_id,),
             ))
         elif streak == -3:
+            assert headline is not None
             angles.append(NarrativeAngle(
                 category="STREAK",
-                headline=f"{fname(rec.franchise_id)} has lost 3 straight",
+                headline=headline,
                 detail=_outcome_detail(rec.franchise_id, rec_str),
                 strength=1,
                 franchise_ids=(rec.franchise_id,),
@@ -551,30 +562,31 @@ def _detect_streak_records(
 
         if streak >= 3 and history.longest_win_streak:
             record = history.longest_win_streak.length
-            if streak >= record:
+            holder = fname(history.longest_win_streak.franchise_id)
+            result = format_streak_record(fname(rec.franchise_id), streak, record, holder)
+            if result is not None:
+                headline, detail = result
+                # T8 (streak >= record): strength 3. T9 (streak == record-1): strength 2.
+                strength = 3 if streak >= record else 2
                 angles.append(NarrativeAngle(
                     category="STREAK",
-                    headline=f"{fname(rec.franchise_id)} tied/broke the league win streak record ({streak} games)",
-                    detail=f"Previous record: {record} by {fname(history.longest_win_streak.franchise_id)}.",
-                    strength=3,
-                    franchise_ids=(rec.franchise_id,),
-                ))
-            elif streak == record - 1:
-                angles.append(NarrativeAngle(
-                    category="STREAK",
-                    headline=f"{fname(rec.franchise_id)} is 1 win from the league win streak record ({record})",
-                    detail="",
-                    strength=2,
+                    headline=headline,
+                    detail=detail,
+                    strength=strength,
                     franchise_ids=(rec.franchise_id,),
                 ))
 
         if streak <= -3 and history.longest_loss_streak:
             record = history.longest_loss_streak.length
-            if abs(streak) >= record:
+            holder = fname(history.longest_loss_streak.franchise_id)
+            result = format_streak_record(fname(rec.franchise_id), streak, record, holder)
+            if result is not None:
+                headline, detail = result
+                # T10 (only loss-side form): always strength 3.
                 angles.append(NarrativeAngle(
                     category="STREAK",
-                    headline=f"{fname(rec.franchise_id)} tied/broke the league loss streak record ({abs(streak)} games)",
-                    detail=f"Previous record: {record} by {fname(history.longest_loss_streak.franchise_id)}.",
+                    headline=headline,
+                    detail=detail,
                     strength=3,
                     franchise_ids=(rec.franchise_id,),
                 ))

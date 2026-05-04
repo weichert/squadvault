@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from squadvault.core.recaps.render.score_strings_v1 import format_matchup_score_str
+from squadvault.core.recaps.render.streak_strings_v1 import format_streak_marker
 from squadvault.core.storage.session import DatabaseSession
 
 # ── Data classes (all frozen for determinism) ────────────────────────
@@ -613,14 +614,6 @@ def render_season_context_for_prompt(
                 pass
         return fid
 
-    def _streak_str(s: int) -> str:
-        """Format streak as W3, L2, or - for no streak."""
-        if s > 0:
-            return f"W{s}"
-        elif s < 0:
-            return f"L{abs(s)}"
-        return "-"
-
     lines: list[str] = []
 
     # Playoff context — CRITICAL for creative layer to know what kind of week this is
@@ -648,7 +641,7 @@ def render_season_context_for_prompt(
         record = f"{rec.wins}-{rec.losses}"
         if rec.ties > 0:
             record += f"-{rec.ties}"
-        streak = _streak_str(rec.current_streak)
+        streak = format_streak_marker(rec.current_streak)
         pf = f"{rec.points_for:.1f}"
         lines.append(f"  {i}. {name} ({record}, PF: {pf}, Streak: {streak})")
 
