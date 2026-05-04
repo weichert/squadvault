@@ -1821,6 +1821,64 @@ def _is_historical_reference(recap_text: str, match_start: int, match_end: int) 
     return bool(_HISTORICAL_REFERENCE_RE.search(recap_text[hist_start:hist_end]))
 
 
+# Record-claim-aware historical filter (Cat 3c only).
+#
+# The shared _is_historical_reference filter suppresses any match
+# whose ±80 char window contains "last season" / "previous season"
+# / etc. For STREAK_INVERSION (Cat 3b) this is correct discipline:
+# "Brandon's win streak last season was impressive" is a true past-
+# tense reference that shouldn't fire inversion against the current
+# loss streak.
+#
+# For RECORD_CLAIM_ANCHORING (Cat 3c) the same heuristic over-fires.
+# The model's record-claim phrasings frequently identify the holder
+# via prior-season attribution: "one short of the league record he
+# set last season" — the claim about Brandon's CURRENT streak is
+# being anchored to a record HELD by Brandon from last season. The
+# claim is current, not historical; the qualifier just identifies
+# whose record is being approached.
+#
+# This Cat 3c helper accepts the shared filter's match but exempts
+# spans where a record-claim attribution verb is present — "set",
+# "holds", "set the record", "holder of", "owns the record". When
+# such a verb appears in the ±80 window alongside the historical
+# qualifier, the qualifier is identifying a record holder, not
+# describing a past streak. Treat as current-claim.
+#
+# Surfaced by post-fix probe on rows 126/127 (W13 2025): both
+# contain "set last season" attached to a current Brandon streak
+# claim; the shared filter suppressed the failure incorrectly.
+_RECORD_HOLDER_ATTRIBUTION_RE = re.compile(
+    r'\b(?:set|sets|setting|holds|held|holding|owns|owned|'
+    r'is\s+the\s+holder|holder\s+of)\b',
+    re.IGNORECASE,
+)
+
+
+def _is_historical_reference_for_record_claim(
+    recap_text: str, match_start: int, match_end: int,
+) -> bool:
+    """Cat 3c-specific historical-reference filter.
+
+    Augments _is_historical_reference with a record-holder-attribution
+    exception. Returns False (treat as current claim) when the ±80
+    window contains both the historical qualifier and a record-holder
+    attribution verb, indicating the qualifier is identifying the
+    record holder rather than describing a past streak.
+    """
+    hist_start = max(0, match_start - 80)
+    hist_end = min(len(recap_text), match_end + 80)
+    window = recap_text[hist_start:hist_end]
+    if not _HISTORICAL_REFERENCE_RE.search(window):
+        return False
+    # Historical qualifier present. Check for record-holder-attribution
+    # verb in the same window — if present, this is a current-claim
+    # phrasing identifying the holder, not a past mention.
+    if _RECORD_HOLDER_ATTRIBUTION_RE.search(window):
+        return False
+    return True
+
+
 def verify_streak_inversion(
     recap_text: str,
     season_matchups: list[_MatchupFact],
@@ -2119,7 +2177,9 @@ def verify_record_claim_anchoring(
     actual_streaks = _compute_streaks(season_matchups, through_week=week)
 
     for match in _RECORD_CLAIM_PATTERN.finditer(recap_text):
-        if _is_historical_reference(recap_text, match.start(), match.end()):
+        if _is_historical_reference_for_record_claim(
+            recap_text, match.start(), match.end(),
+        ):
             continue
 
         franchise_id = _resolve_franchise_in_window(

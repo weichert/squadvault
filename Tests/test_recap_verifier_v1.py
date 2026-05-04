@@ -5335,3 +5335,73 @@ class TestVerifyRecordClaimAnchoring:
         # Beta Squad is the canonical display name; resolver should
         # have correctly attributed via lowercase-alias match.
         assert "Beta Squad" in failures[0].claim
+
+    def test_record_holder_attribution_overrides_historical_filter(
+        self, tmp_path,
+    ):
+        """The model's record-claim phrasings frequently identify the
+        holder via prior-season attribution: "one short of the league
+        record he set last season". The Cat 3c filter must treat these
+        as current claims, not historical references — the qualifier
+        identifies whose record is being approached, the claim itself
+        is about the current streak.
+
+        Surfaced by post-fix probe on rows 126/127 (W13 2025): both
+        contained "set last season" and were incorrectly suppressed by
+        the shared _is_historical_reference filter."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        reverse_name_map = {
+            "Beta Squad": "F2",
+            "beta squad": "F2",
+            "brandon": "F2",
+            "Alpha Team": "F1",
+            "alpha team": "F1",
+        }
+        # Mirrors the actual pa.id=127 phrasing.
+        text = (
+            "Brandon's losing streak now sits at 4 games — one "
+            "short of the league record he set last season."
+        )
+        angles_text = (
+            "Narrative angles for Week 4:\n"
+            "  [HEADLINE] [RE: Alpha Team] Alpha Team has won 4 straight\n"
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=reverse_name_map,
+            narrative_angles_text=angles_text,
+        )
+        # "set" attribution verb in window with "last season" → current
+        # claim qualifier, not historical reference. Should EMIT.
+        assert len(failures) == 1
+        assert failures[0].category == "RECORD_CLAIM_ANCHORING"
+
+    def test_pure_historical_reference_still_suppressed(self, tmp_path):
+        """Pure historical mentions without holder-attribution verbs
+        (set/holds/owns) should still be suppressed by the filter.
+
+        E.g. "Brandon's streak from last season" — no "set" / "holds"
+        in the window, just a past-streak mention. Should suppress."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        reverse_name_map = {
+            "Beta Squad": "F2",
+            "beta squad": "F2",
+            "brandon": "F2",
+            "Alpha Team": "F1",
+            "alpha team": "F1",
+        }
+        text = (
+            "Brandon's losing streak from last season matched the "
+            "all-time record."
+        )
+        angles_text = "Narrative angles for Week 4: ...\n"
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=reverse_name_map,
+            narrative_angles_text=angles_text,
+        )
+        # "from last season" with no record-holder attribution verb →
+        # historical reference, suppress.
+        assert failures == []
