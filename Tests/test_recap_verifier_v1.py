@@ -1197,37 +1197,16 @@ class TestVerifyRecapV1AllTime:
         assert any("61.30" in f.evidence for f in result.hard_failures)
 
     def test_correct_alltime_claim_passes(self, tmp_path):
-        """A correct all-time claim should not produce a SUPERLATIVE failure.
-
-        Note: this test deliberately omits a verbatim matchup score
-        from the prose, so SCORE_VERBATIM will hard-fail. The test's
-        scope is whether SUPERLATIVE correctly accepts a true
-        all-time claim, not whether the recap is fully verifiable.
-        Asserts on SUPERLATIVE absence rather than full passed=True.
-
-        Adding a verbatim "to"-form matchup score to this prose
-        currently exposes a latent V8 SUPERLATIVE-matchup-line
-        filter bug (the filter recognizes hyphen-form but not
-        "to"-form matchup lines, fell out of sync with Step 2's
-        format change). Tracked as a follow-up thread in the
-        Step 5 commit message.
-        """
         db_path = self._build_db(tmp_path)
         text = (
             "--- SHAREABLE RECAP ---\n"
+            "Alpha Team beat Beta Squad 135.50 to 100.20. "
             "The all-time high player score remains 61.30 from last season.\n"
             "--- END SHAREABLE RECAP ---\n"
         )
         result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
                                   season=SEASON, week=1)
-        superlative_failures = [
-            f for f in result.hard_failures if f.category == "SUPERLATIVE"
-        ]
-        assert len(superlative_failures) == 0, (
-            f"expected no SUPERLATIVE failures (61.30 IS the actual "
-            f"all-time player high), got: "
-            f"{[(f.claim, f.evidence) for f in superlative_failures]}"
-        )
+        assert result.passed is True
 
     def test_team_alltime_high_passes(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -4587,6 +4566,107 @@ class TestRegressionV8SuperlativeMatchupLine:
         assert sup == [], (
             f"expected no SUPERLATIVE failures (90.10 is in a matchup "
             f"line AND has an ordinal qualifier), "
+            f"got {[(f.claim, f.evidence) for f in sup]}"
+        )
+
+    def test_v8_to_form_winner_first_not_flagged_as_season_high(self):
+        """Post-Step-2 (commit ff613a9) "to"-form matchup line, winner-
+        first ordering. The V8 guard's separator check originally
+        recognized only the hyphen form ("137.50-103.10"); when the
+        data layer's format_matchup_score_str switched to "X.XX to
+        Y.YY", the guard fell out of sync and matchup-line scores
+        leaked through to _extract_nearby_score, producing false
+        SUPERLATIVE failures when a superlative keyword was within
+        100 chars.
+
+        Note: this is genuinely-triggering coverage. Unlike the older
+        test_v8_matchup_line_not_flagged_as_season_high (whose prose
+        "best output of the season" does not hit _SEASON_HIGH_PATTERN),
+        the prose here lands a real "season high" keyword that fires
+        the SUPERLATIVE check, exercising _extract_nearby_score's V8
+        guard for real. Without the V8 "to"-form fix, 103.10 (the
+        nearer matchup-line loser score) is extracted as a claim and
+        compared against the actual season-high 145.30, producing a
+        SUPERLATIVE failure.
+        """
+        matchups = [
+            _make_matchup(1, "F1", "F2", 145.30, 100.10),
+            _make_matchup(10, "F3", "F4", 137.50, 103.10),
+        ]
+        text = (
+            "F3 cruised to a 137.50 to 103.10 win over F4. That set "
+            "a new season high mark."
+        )
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        sup = [f for f in failures if f.category == "SUPERLATIVE"]
+        assert sup == [], (
+            f"expected no SUPERLATIVE failures (137.50 and 103.10 "
+            f"are matchup-line scores in 'to' form, winner-first), "
+            f"got {[(f.claim, f.evidence) for f in sup]}"
+        )
+
+    def test_v8_to_form_loser_first_not_flagged_as_season_high(self):
+        """Loser-first ordering: models writing from the losing team's
+        perspective sometimes emit "loser_score to winner_score" even
+        though format_matchup_score_str renders winner-first. The V8
+        guard's "to"-form check must recognize both orderings, since
+        the separator is the same — the score ordering inside the
+        pair is voice-driven, not format-driven.
+
+        Without the V8 "to"-form fix, 137.50 (the nearer matchup-line
+        winner score in this ordering) is extracted and compared
+        against the actual season-high 145.30, producing a false
+        SUPERLATIVE failure.
+        """
+        matchups = [
+            _make_matchup(1, "F1", "F2", 145.30, 100.10),
+            _make_matchup(10, "F3", "F4", 137.50, 103.10),
+        ]
+        text = (
+            "F4 was crushed 103.10 to 137.50 by F3. It was a "
+            "team-wide season high collapse."
+        )
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        sup = [f for f in failures if f.category == "SUPERLATIVE"]
+        assert sup == [], (
+            f"expected no SUPERLATIVE failures (103.10 and 137.50 "
+            f"are matchup-line scores in 'to' form, loser-first), "
+            f"got {[(f.claim, f.evidence) for f in sup]}"
+        )
+
+    def test_v8_to_form_winner_first_not_flagged_as_season_low(self):
+        """Parallel coverage for _SEASON_LOW_PATTERN. Without the
+        V8 "to"-form fix, 103.10 (the nearer matchup-line loser
+        score) is extracted and compared against the actual
+        season-low 80.00, producing a false SUPERLATIVE failure.
+
+        Unlike the older test_v8_matchup_line_not_flagged_as_season_low
+        (whose "second-lowest" prose is skipped by the ordinal-
+        qualifier guard before _extract_nearby_score runs), this
+        prose has no ordinal qualifier and reaches the V8 guard.
+        Prose deliberately contains no standalone score within the
+        100-char window around the keyword, so any extracted score
+        must come from the matchup line and reflects the V8 path.
+        """
+        matchups = [
+            _make_matchup(1, "F1", "F2", 145.30, 80.00),
+            _make_matchup(10, "F3", "F4", 137.50, 103.10),
+        ]
+        text = (
+            "F3 wrapped up a 137.50 to 103.10 win over F4. That "
+            "game marked the season low for the league."
+        )
+        failures = verify_superlatives(
+            text, matchups, None, SEASON, None, None,
+        )
+        sup = [f for f in failures if f.category == "SUPERLATIVE"]
+        assert sup == [], (
+            f"expected no SUPERLATIVE failures (137.50 and 103.10 "
+            f"are matchup-line scores in 'to' form), "
             f"got {[(f.claim, f.evidence) for f in sup]}"
         )
 

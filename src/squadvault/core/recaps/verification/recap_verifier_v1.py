@@ -968,11 +968,16 @@ _SEASON_LOW_PATTERN = re.compile(
 def _extract_nearby_score(text: str, match_pos: int, *, window: int = 100) -> float | None:
     """Extract the closest score (XX.XX) near a superlative keyword.
 
-    V8 guard: skips scores that are part of a matchup-line format
-    (A.AA-B.BB or B.BB-A.AA), where the dash connects two team scores.
-    Source: OBSERVATIONS_2026_04_15 Finding 3, FP-SUPERLATIVE-MATCHUP-LINE.
-    Prose "in their 137.50-103.10 win" → 103.10 is a team score, not a
-    season-superlative claim.
+    V8 guard: skips scores that are part of a matchup-line score-pair
+    format. Two separator forms are recognized:
+      - hyphen form (pre-Step-2 bullet):  "137.50-103.10"
+      - "to" form (post-Step-2, ff613a9): "137.50 to 103.10"
+    Both produce team scores in matchup-line context, not standalone
+    player/season superlative claims.
+    Source: OBSERVATIONS_2026_04_15 Finding 3, FP-SUPERLATIVE-MATCHUP-LINE
+    (hyphen form) + four-step plan V8 follow-up ("to" form).
+    Prose "in their 137.50 to 103.10 win" → 103.10 is a team score,
+    not a season-superlative claim.
     """
     start = max(0, match_pos - window)
     end = min(len(text), match_pos + window)
@@ -985,21 +990,38 @@ def _extract_nearby_score(text: str, match_pos: int, *, window: int = 100) -> fl
         except ValueError:
             continue
 
-        # V8 matchup-line guard: skip scores connected by a dash to
-        # another score (e.g. "137.50-103.10"). These are team scores
-        # in a matchup line, not standalone player/season claims.
+        # V8 matchup-line guard: skip scores in "<score><sep><score>"
+        # format. Both hyphen ("-") and "to" (" to ") separators are
+        # recognized. Lookback/lookahead is 8 chars for hyphen form,
+        # 14 for "to" form (longer separator + score).
         in_matchup_line = False
-        # Before: "137.50-[103.10]" — dash immediately preceding
+
+        # Before: "<other_score>-[CURRENT]" — hyphen form
         if m.start() > 0 and context[m.start() - 1] == "-":
             pre_start = max(0, m.start() - 8)
             pre = context[pre_start:m.start() - 1]
             if re.search(r"\d{2,3}\.\d{2}$", pre):
                 in_matchup_line = True
-        # After: "[103.10]-137.50" — dash immediately following
+
+        # Before: "<other_score> to [CURRENT]" — "to" form
+        if not in_matchup_line:
+            pre_start = max(0, m.start() - 14)
+            pre = context[pre_start:m.start()]
+            if re.search(r"\d{2,3}\.\d{2} to $", pre):
+                in_matchup_line = True
+
+        # After: "[CURRENT]-<other_score>" — hyphen form
         if not in_matchup_line and m.end() < len(context) and context[m.end()] == "-":
             post = context[m.end() + 1:min(len(context), m.end() + 8)]
             if re.match(r"\d{2,3}\.\d{2}", post):
                 in_matchup_line = True
+
+        # After: "[CURRENT] to <other_score>" — "to" form
+        if not in_matchup_line:
+            post = context[m.end():min(len(context), m.end() + 14)]
+            if re.match(r" to \d{2,3}\.\d{2}", post):
+                in_matchup_line = True
+
         if in_matchup_line:
             continue
 
