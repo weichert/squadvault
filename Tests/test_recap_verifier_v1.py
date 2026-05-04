@@ -5405,3 +5405,123 @@ class TestVerifyRecordClaimAnchoring:
         # "from last season" with no record-holder attribution verb →
         # historical reference, suppress.
         assert failures == []
+
+    def test_subject_aware_resolution_over_proximity(self, tmp_path):
+        """When prose has a possessive subject ("Brandon's") earlier
+        in the window AND a closer non-subject mention of another
+        franchise, _resolve_franchise_in_window should prefer the
+        possessive subject.
+
+        Mirrors the reverify probe row 64 case: 'Brandon\\'s misery
+        continues at 0-14, now holding the longest losing streak in
+        available records'. Pre-fix, the closest-alias heuristic
+        picked Weichert (closer in window), leading to wrong
+        attribution. Subject-aware pass picks Brandon."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        # Simulate W14 fixture: F2 has 4-game loss streak (extended).
+        # Add a winning F1 streak too (3+ wins so it's also in
+        # |streak| >= 3 territory and could be incorrectly resolved).
+        # Use the existing fixture which gives F1 4 wins, F2 4 losses.
+        reverse_name_map = {
+            "Beta Squad": "F2",
+            "beta squad": "F2",
+            "brandon": "F2",
+            "Alpha Team": "F1",
+            "alpha team": "F1",
+            "steve": "F1",  # closer in the window for the test phrase
+        }
+        # Crafted prose: subject "Brandon's" early; "Steve" appears
+        # closer (lexically) to the record-claim phrase. Pre-fix
+        # behavior would pick Steve; subject-aware picks Brandon.
+        text = (
+            "Brandon's misery continues at 0-14. Meanwhile Steve "
+            "won, but the real story is the longest losing streak "
+            "in available records."
+        )
+        angles_text = (
+            "Narrative angles for Week 4:\n"
+            "  [HEADLINE] [RE: Alpha Team] Alpha Team has won 4 straight\n"
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=reverse_name_map,
+            narrative_angles_text=angles_text,
+        )
+        # Should fire on Beta Squad (resolved via possessive
+        # "Brandon's"), NOT on Alpha Team (closer "Steve" mention).
+        assert len(failures) == 1
+        assert "Beta Squad" in failures[0].claim
+        assert "Alpha Team" not in failures[0].claim
+
+    def test_direction_mismatch_skips(self, tmp_path):
+        """When the claim's prose direction (loss/win) doesn't match
+        the resolved franchise's actual streak direction, the rule
+        skips rather than emit a confused failure.
+
+        Surfaced by reverify probe row 64: prose direction was
+        "longest LOSING streak", franchise resolved was Weichert
+        (W3 win streak), pre-fix emitted an incoherent failure
+        mixing loss-prose with longest_win_streak canonical."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        # Fixture state: F1 on a win streak, F2 on a loss streak.
+        # Prose mentions Alpha Team (F1, win streak) but claims
+        # "longest losing streak" — direction mismatch should skip.
+        reverse_name_map = {
+            "Alpha Team": "F1",
+            "alpha team": "F1",
+            "Beta Squad": "F2",
+            "beta squad": "F2",
+        }
+        # Note the carefully constructed prose: "Alpha Team's" is
+        # the only possessive subject; the claim is loss-direction.
+        text = (
+            "Alpha Team's run continues — they're now reaching the "
+            "longest losing streak in available records."
+        )
+        angles_text = (
+            "Narrative angles for Week 4:\n"
+            "  [HEADLINE] [RE: Alpha Team] Alpha Team has won 4 straight\n"
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=reverse_name_map,
+            narrative_angles_text=angles_text,
+        )
+        # Alpha Team (F1) is on a WIN streak, but the claim's prose
+        # direction is LOSS. Direction mismatch → skip rather than
+        # emit an incoherent failure.
+        assert failures == []
+
+    def test_direction_extraction_ambiguous_passes_through(self, tmp_path):
+        """When direction can't be confidently extracted from prose
+        (both win and loss markers in the ±60 window), fall back to
+        franchise-direction inference from current_streak sign."""
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        reverse_name_map = {
+            "Beta Squad": "F2",
+            "beta squad": "F2",
+            "brandon": "F2",
+            "Alpha Team": "F1",
+            "alpha team": "F1",
+        }
+        # Both "winning" and "losing" appear in the ±60 window —
+        # direction ambiguous. The rule should still emit based on
+        # franchise-direction (F2 is on a loss streak; canonical
+        # record is loss).
+        text = (
+            "Brandon's losing streak ended Alpha's winning run, "
+            "but Brandon is now matching the all-time record."
+        )
+        angles_text = "Narrative angles for Week 4: ...\n"
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=reverse_name_map,
+            narrative_angles_text=angles_text,
+        )
+        # Direction ambiguous in prose, but franchise direction is
+        # loss (F2). Should fire on the angle-anchor missing branch.
+        assert len(failures) == 1
+        assert failures[0].category == "RECORD_CLAIM_ANCHORING"

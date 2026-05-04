@@ -2024,47 +2024,120 @@ _RECORD_CLAIM_PATTERN = re.compile(
 )
 
 
+def _extract_claim_direction_from_match(
+    recap_text: str, match_start: int, match_end: int,
+) -> str | None:
+    """Determine whether a record-claim phrase concerns a win or loss
+    streak by scanning ±60 chars of context around the match.
+
+    Returns "win" / "loss" / None (ambiguous).
+
+    The matched _RECORD_CLAIM_PATTERN phrase often does NOT contain
+    direction by itself (e.g. "all-time league record of"). The
+    direction lives nearby — either in the matched phrase ("longest
+    losing streak") or in adjacent prose ("Brandon's losing streak
+    ... matching the all-time record"). This helper looks at the
+    same span the regex matched plus ±60 chars on each side, since
+    record-claim direction is almost always asserted in the
+    immediate sentence.
+
+    Returns None when both win and loss markers appear (ambiguous —
+    typical when discussing both teams' streaks in the same sentence)
+    or neither appears.
+    """
+    ctx_start = max(0, match_start - 60)
+    ctx_end = min(len(recap_text), match_end + 60)
+    ctx = recap_text[ctx_start:ctx_end].lower()
+
+    has_loss = bool(re.search(
+        r"\b(?:losing\s+streak|loss\s+streak|loss\s+record|"
+        r"futility|winless|skid|lost\s+\d+|\d+\s+straight\s+losses)\b",
+        ctx,
+    ))
+    has_win = bool(re.search(
+        r"\b(?:winning\s+streak|win\s+streak|win\s+record|"
+        r"won\s+\d+|\d+\s+straight\s+wins?)\b",
+        ctx,
+    ))
+    if has_loss and not has_win:
+        return "loss"
+    if has_win and not has_loss:
+        return "win"
+    return None
+
+
 def _resolve_franchise_in_window(
     recap_text: str,
     match_start: int,
     match_end: int,
     reverse_name_map: dict[str, str],
 ) -> str | None:
-    """Find the franchise alias closest to a match span and return its id.
+    """Resolve the franchise that owns a record-claim match.
 
-    Looks within ±200 chars of the match for any alias from
-    reverse_name_map; returns the franchise_id of the alias with the
-    smallest distance to the match span. None if no alias resolves.
+    Subject-aware resolution: prefer the most recent possessive
+    construction (`{alias}'s` or `{alias}\u2019s`) before the match
+    span. Possessive attachment is a strong signal that the named
+    franchise is the SUBJECT of the record claim — exactly what
+    Cat 3c needs.
+
+    If no possessive is found in the ±200 char window, fall back to
+    closest-alias-by-character-distance (the v1 heuristic). This
+    keeps coverage on prose like "...the longest losing streak in
+    available records, a mark Brandon set himself last season"
+    where the franchise is mentioned but not as the immediate
+    subject of the record-claim phrase.
+
+    Surfaced by reverify probe rows 64 and 76 post-c435864: the
+    closest-alias heuristic resolved "longest losing streak in" to
+    Weichert (closer in window) when the actual subject was
+    "Brandon's misery" 60 chars before, leading to a wrong-franchise
+    failure attribution.
     """
     window_start = max(0, match_start - 200)
     window_end = min(len(recap_text), match_end + 200)
     window = recap_text[window_start:window_end]
     relative_start = match_start - window_start
-    relative_end = match_end - window_start
 
-    best_distance = None
-    best_fid = None
-    # Iterate aliases longest-first so multi-word aliases match
-    # before their single-word substrings.
+    # Pass 1: subject-aware. Find the most recent possessive
+    # construction `{alias}'s` (with straight or curly apostrophe)
+    # BEFORE the match span. If multiple aliases have possessive
+    # forms, prefer the one closest to the match (most recent).
     aliases = sorted(reverse_name_map.keys(), key=len, reverse=True)
+    best_possessive_distance = None
+    best_possessive_fid = None
     for alias in aliases:
         if not alias:
             continue
-        # Case-insensitive: pass 4b owner-first-word aliases
-        # (_build_reverse_name_map line 504) are stored lowercase
-        # (e.g. "brandon" -> "0010"). The model's prose uses
-        # title-case ("Brandon"). Without re.IGNORECASE, the
-        # lowercase alias never matches the title-case prose, and
-        # _resolve_franchise_in_window returns None, suppressing
-        # legitimate RECORD_CLAIM_ANCHORING failures. Surfaced by
-        # the reverify-angle-anchor probe on rows 122/123/125/140
-        # where Brandon's record-claim fabrication would otherwise
-        # fire.
+        for amatch in re.finditer(
+            rf"\b{re.escape(alias)}(?:\u2019s|\'s)\b",
+            window,
+            re.IGNORECASE,
+        ):
+            # Only consider possessives that appear before the match.
+            if amatch.end() > relative_start:
+                continue
+            distance = relative_start - amatch.end()
+            if best_possessive_distance is None or distance < best_possessive_distance:
+                best_possessive_distance = distance
+                best_possessive_fid = reverse_name_map[alias]
+    if best_possessive_fid is not None:
+        return best_possessive_fid
+
+    # Pass 2: fall back to closest-alias-by-distance (v1 heuristic).
+    # Used when no possessive subject construction precedes the match,
+    # e.g. "the longest losing streak in available records, a mark
+    # Brandon set last season" — Brandon appears in the window but
+    # not as a possessive subject.
+    relative_end = match_end - window_start
+    best_distance = None
+    best_fid = None
+    for alias in aliases:
+        if not alias:
+            continue
         for amatch in re.finditer(
             rf"\b{re.escape(alias)}\b", window, re.IGNORECASE,
         ):
             if amatch.start() >= relative_start and amatch.end() <= relative_end:
-                # Inside the match itself — prefer this; distance 0.
                 distance = 0
             elif amatch.end() <= relative_start:
                 distance = relative_start - amatch.end()
@@ -2195,7 +2268,26 @@ def verify_record_claim_anchoring(
             # Could be a true historical reference; defer.
             continue
 
+        # Direction check: extract the direction from the matched
+        # prose and confirm the resolved franchise's actual streak
+        # runs the same direction. If they conflict, the resolution
+        # is wrong (either subject-aware pass picked the wrong
+        # franchise, or fallback closest-alias picked an unrelated
+        # neighbor). Silence over speculation: skip rather than emit
+        # a wrong-direction failure with mismatched canonical record
+        # (post-c435864 reverify rows 64, 76: claim was "longest
+        # losing streak", franchise resolved to Weichert with W3
+        # streak, evidence string mixed loss-prose + win-canonical).
         is_loss = current_streak < 0
+        claim_direction = _extract_claim_direction_from_match(
+            recap_text, match.start(), match.end(),
+        )
+        if claim_direction is not None:
+            franchise_direction = "loss" if is_loss else "win"
+            if claim_direction != franchise_direction:
+                # Direction mismatch — wrong attribution. Skip.
+                continue
+
         canonical_record = (
             history.longest_loss_streak if is_loss else history.longest_win_streak
         )
