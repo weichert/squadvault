@@ -998,7 +998,7 @@ class TestVerifyRecapV1Pipeline:
         db_path = self._build_db(tmp_path)
         text = (
             "--- SHAREABLE RECAP ---\n"
-            "Beta Squad posted 135.50 to beat Alpha Team's 110.20 in Week 5. "
+            "Beta Squad beat Alpha Team 135.50 to 110.20 in Week 5. "
             "Alpha Team had won 4 straight before this loss.\n"
             "--- END SHAREABLE RECAP ---\n"
         )
@@ -1006,7 +1006,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 8
+        assert result.checks_run == 9
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -1051,7 +1051,8 @@ class TestVerifyRecapV1Pipeline:
         db_path = self._build_db(tmp_path)
         text = (
             "--- SHAREABLE RECAP ---\n"
-            "Beta Squad posted a season-high 135.50 in Week 5.\n"
+            "Beta Squad beat Alpha Team 135.50 to 110.20, "
+            "posting a season-high 135.50 in Week 5.\n"
             "--- END SHAREABLE RECAP ---\n"
         )
         result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
@@ -1079,7 +1080,7 @@ class TestVerifyRecapV1Pipeline:
         db_path = self._build_db(tmp_path)
         text = (
             "--- SHAREABLE RECAP ---\n"
-            "Beta Squad posted 135.50.\n"
+            "Beta Squad beat Alpha Team 135.50 to 110.20.\n"
             "--- END SHAREABLE RECAP ---\n"
         )
         result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
@@ -1087,7 +1088,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 8
+        assert result.checks_run == 9
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -1121,6 +1122,7 @@ class TestVerifyRecapV1WithPlayerScores:
         db_path = self._build_db(tmp_path)
         text = (
             "--- SHAREABLE RECAP ---\n"
+            "Alpha Team beat Beta Squad 120.50 to 100.20. "
             "Josh Allen posted a season-high 51.85 for Alpha Team.\n"
             "--- END SHAREABLE RECAP ---\n"
         )
@@ -1195,6 +1197,21 @@ class TestVerifyRecapV1AllTime:
         assert any("61.30" in f.evidence for f in result.hard_failures)
 
     def test_correct_alltime_claim_passes(self, tmp_path):
+        """A correct all-time claim should not produce a SUPERLATIVE failure.
+
+        Note: this test deliberately omits a verbatim matchup score
+        from the prose, so SCORE_VERBATIM will hard-fail. The test's
+        scope is whether SUPERLATIVE correctly accepts a true
+        all-time claim, not whether the recap is fully verifiable.
+        Asserts on SUPERLATIVE absence rather than full passed=True.
+
+        Adding a verbatim "to"-form matchup score to this prose
+        currently exposes a latent V8 SUPERLATIVE-matchup-line
+        filter bug (the filter recognizes hyphen-form but not
+        "to"-form matchup lines, fell out of sync with Step 2's
+        format change). Tracked as a follow-up thread in the
+        Step 5 commit message.
+        """
         db_path = self._build_db(tmp_path)
         text = (
             "--- SHAREABLE RECAP ---\n"
@@ -1203,12 +1220,20 @@ class TestVerifyRecapV1AllTime:
         )
         result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
                                   season=SEASON, week=1)
-        assert result.passed is True
+        superlative_failures = [
+            f for f in result.hard_failures if f.category == "SUPERLATIVE"
+        ]
+        assert len(superlative_failures) == 0, (
+            f"expected no SUPERLATIVE failures (61.30 IS the actual "
+            f"all-time player high), got: "
+            f"{[(f.claim, f.evidence) for f in superlative_failures]}"
+        )
 
     def test_team_alltime_high_passes(self, tmp_path):
         db_path = self._build_db(tmp_path)
         text = (
             "--- SHAREABLE RECAP ---\n"
+            "Alpha Team beat Beta Squad 135.50 to 100.20. "
             "The 160.00 remains the all-time team scoring record.\n"
             "--- END SHAREABLE RECAP ---\n"
         )
@@ -1257,7 +1282,8 @@ class TestVerifyRecapV1StreakSnap:
         db_path = self._build_db(tmp_path, f1_wins_week3=True)
         text = (
             "--- SHAREABLE RECAP ---\n"
-            "Alpha Team snapped their losing streak with a win.\n"
+            "Alpha Team beat Beta Squad 130.00 to 90.00, "
+            "snapping their losing streak with a win.\n"
             "--- END SHAREABLE RECAP ---\n"
         )
         result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
@@ -1527,7 +1553,7 @@ class TestVerifyBannedPhrases:
 
         text = (
             "--- SHAREABLE RECAP ---\n"
-            "Alpha Team delivered a statement with 120.50-100.20.\n"
+            "Alpha Team delivered a statement with 120.50 to 100.20.\n"
             "--- END SHAREABLE RECAP ---\n"
         )
         result = verify_recap_v1(text, db_path=db_path, league_id=LEAGUE,
@@ -4494,7 +4520,10 @@ class TestPlayerFranchiseAttribution:
         result = verify_recap_v1(
             text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
         )
-        assert result.checks_run == 8
+        # checks_run increments to 9 in the post-Step-5 lifecycle
+        # (Category 1b — SCORE_VERBATIM — added between SCORE and
+        # SUPERLATIVE per be76817 / Step 4 correction memo).
+        assert result.checks_run == 9
         pf = [f for f in result.hard_failures
               if f.category == "PLAYER_FRANCHISE"]
         assert len(pf) == 1, (
@@ -4713,7 +4742,10 @@ class TestFaabClaimVerification:
         result = verify_recap_v1(
             text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
         )
-        assert result.checks_run == 8
+        # checks_run increments to 9 in the post-Step-5 lifecycle
+        # (Category 1b — SCORE_VERBATIM — added per be76817 / Step 4
+        # correction memo).
+        assert result.checks_run == 9
 
 
 # ── Phase 2 addendum conformance: as-of-week scoping ─────────────────

@@ -26,6 +26,7 @@ import json
 import re
 from dataclasses import dataclass
 
+from squadvault.core.recaps.render.score_strings_v1 import format_matchup_score_str
 from squadvault.core.storage.session import DatabaseSession
 
 # ── Output dataclasses ───────────────────────────────────────────────
@@ -1008,6 +1009,74 @@ def _extract_nearby_score(text: str, match_pos: int, *, window: int = 100) -> fl
             best_dist = dist
             best = val
     return best
+
+
+def verify_score_strings_verbatim(
+    recap_text: str,
+    week_matchups: list[_MatchupFact],
+    week: int,
+) -> list[VerificationFailure]:
+    """Verify that each canonical matchup score appears verbatim in prose.
+
+    Policy A (HARD verbatim) per the four-step plan in d76e71b:
+    selected by the post-fix observation evidence in
+    _observations/OBSERVATIONS_2026_05_03_SCORE_RENDERING_POST_FIX_CORRECTION.md
+    (15/15 verbatim observed under the post-Wave-1 prompt and data
+    layer; the brief's selection rule >= 95% VERBATIM -> Policy A
+    cleanly applies).
+
+    Pass condition: for each matchup in week_matchups whose .week ==
+    `week`, the canonical score string in either ordering appears as
+    a substring of recap_text. The score string is rendered via
+    format_matchup_score_str so the format declaration is owned by a
+    single source — if the format ever changes, this check tracks
+    automatically.
+
+    Severity: HARD. The post-fix evidence shows the model produces
+    verbatim score strings reliably (100% in observed sample) when
+    the data layer pre-renders the score and the prompt instructs
+    verbatim copy. A miss is therefore an actual fault to surface in
+    the review queue, not legitimate stylistic variation.
+
+    Additive to verify_scores: that function checks whether decimal
+    scores in prose are correct relative to canonical values. This
+    function checks whether the canonical score STRING is present.
+    Both checks contribute to the SCORE-category enforcement
+    surface; this function gets its own SCORE_VERBATIM category for
+    triage clarity.
+
+    Defensive return: if no matchups for the requested week exist
+    (week_matchups empty or every entry is a different week), return
+    [] without iterating — matches verify_scores' early-return at
+    line 610-611.
+    """
+    failures: list[VerificationFailure] = []
+    week_pairs = [m for m in week_matchups if m.week == week]
+    if not week_pairs:
+        return []
+
+    for m in week_pairs:
+        winner_first = format_matchup_score_str(m.winner_score, m.loser_score)
+        loser_first = format_matchup_score_str(m.loser_score, m.winner_score)
+        if winner_first in recap_text or loser_first in recap_text:
+            continue
+        failures.append(
+            VerificationFailure(
+                category="SCORE_VERBATIM",
+                severity="HARD",
+                claim=(
+                    f"Matchup {m.winner_id} vs {m.loser_id} "
+                    f"(week {week}): canonical score string"
+                ),
+                evidence=(
+                    f"Neither '{winner_first}' nor '{loser_first}' "
+                    f"appears verbatim in recap text. Canonical scores: "
+                    f"{m.winner_score:.2f} (winner) / "
+                    f"{m.loser_score:.2f} (loser)."
+                ),
+            )
+        )
+    return failures
 
 
 def verify_superlatives(
@@ -3047,6 +3116,16 @@ def verify_recap_v1(
     checks_run += 1
     all_failures.extend(verify_scores(
         narrative, season_matchups, week, reverse_name_map,
+    ))
+
+    # Category 1b: Score-string verbatim verification (Policy A)
+    # Selected per Step 4 correction memo (be76817) — post-fix
+    # evidence shows 100% verbatim compliance, brief's >= 95% rule
+    # cleanly applies. Additive to verify_scores' decimal-correctness
+    # check; this enforces the verbatim FORMAT.
+    checks_run += 1
+    all_failures.extend(verify_score_strings_verbatim(
+        narrative, season_matchups, week,
     ))
 
     # Category 2: Superlative verification
