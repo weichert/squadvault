@@ -35,6 +35,16 @@ The harness is helper-bound: canonical phrases come from
 follow-up lesson, hand-written format expectations leak silent
 regressions.
 
+§10 Q1 extension (added by the post-review brief):
+Per-(row, franchise) fabrication-shape classification across five
+buckets (RECORD_APPROACH, STATUS_CLAIM_EVICTED, STATUS_CLAIM_OMITTED,
+STATUS_CLAIM_NOT_EVICTED, MISS) in addition to the per-claim VERBATIM/
+PARAPHRASE/INVERTED/OMITTED classifier. The fabrication-shape
+classifier requires per-row counterfactual angle reconstruction
+(re-running _detect_streaks against derived canonical context) because
+prompt_audit.angles_summary_json strips franchise_ids and headline
+fields per prompt_audit_v1.py:174.
+
 Usage:
 
     scripts/py scripts/step_1_streak_diagnostic_harness.py \\
@@ -58,6 +68,7 @@ Outputs:
   template, canonical phrase, classification, [optional] prose
   snippet around the relevant franchise name).
 * Aggregate counts by classification, total claims, total rows.
+* §10 Q1 fabrication-shape bucket aggregate.
 * If `--show-snippets`: a short prose snippet for each non-VERBATIM
   classification, to support manual classification audit.
 
@@ -73,12 +84,23 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # Add src/ to path so the helper module resolves when the harness is
 # invoked from the repo root.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
+from squadvault.core.recaps.context.league_history_v1 import (  # noqa: E402
+    derive_league_history_v1,
+)
+from squadvault.core.recaps.context.narrative_angles_v1 import (  # noqa: E402
+    _detect_streak_records,
+    _detect_streaks,
+)
+from squadvault.core.recaps.context.season_context_v1 import (  # noqa: E402
+    derive_season_context_v1,
+)
 from squadvault.core.recaps.render.streak_strings_v1 import (  # noqa: E402
     format_streak_marker,
     format_streak_outcome,
@@ -97,6 +119,12 @@ _HELPERS = (
     format_streak_phrase,
     format_streak_record,
     format_streak_status,
+)
+# §10 Q1 reserves these for use after Step 1 (helper extension); at
+# 0a-time they are imported-but-unused above the predicate definition.
+_DETECTORS = (
+    _detect_streak_records,
+    _detect_streaks,
 )
 
 
@@ -138,6 +166,28 @@ class Classification:
     snippet: str              # short prose excerpt around franchise mention
 
 
+@dataclass(frozen=True)
+class FabricationShape:
+    """Fabrication-shape classification for one (row, franchise) pair.
+
+    Per §10 Q1 paired-thread brief. A single prompt_audit row can yield
+    multiple FabricationShape entries (one per franchise in the row's
+    standings); aggregate counts represent franchise-instances, not
+    rows.
+    """
+
+    row_id: int
+    season: int
+    week_index: int
+    attempt: int
+    franchise_id: str
+    franchise_name: str
+    bucket: str               # RECORD_APPROACH | STATUS_CLAIM_EVICTED |
+                              # STATUS_CLAIM_OMITTED | STATUS_CLAIM_NOT_EVICTED |
+                              # MISS
+    evidence: str             # short prose snippet or per-bucket diagnostic
+
+
 # ── Angle-block parsing ─────────────────────────────────────────────
 
 
@@ -177,46 +227,50 @@ def parse_streak_claims(angles_text: str) -> list[StreakClaim]:
         if not m:
             continue
         body = m.group("body")
-        # Split headline from detail on first " — " (em-dash separator
-        # used by lifecycle's angle renderer).
-        if " \u2014 " in body:
-            headline, detail = body.split(" \u2014 ", 1)
+        # Split headline from outcome detail at the em-dash separator.
+        # Format: "<headline> — <detail>" where detail is "Record: <rec>." or
+        # "<outcome clause>". We want the headline component for template match,
+        # and any "Beat/Lost to/etc." outcome clause for the canonical_outcome.
+        if " — " in body:
+            headline, _sep, detail = body.partition(" — ")
         else:
             headline, detail = body, ""
-
-        # Match streak templates against the headline.
         for pattern, template_id, direction in _STREAK_TEMPLATES:
-            mm = pattern.match(headline)
-            if not mm:
+            tm = pattern.match(headline.strip())
+            if not tm:
                 continue
-            franchise = mm.group("name").strip()
-            # Outcome clause (T5/T6) is appended to detail for T1/T2/T3/T4
-            # streaks. Extract just the outcome portion if present —
-            # detail format is "Record: W-L. Beat <opp> this week — streak continues."
-            outcome_clause = ""
-            if detail:
-                # The outcome clause is everything after the first ". "
-                # (record string ends with period, then space, then verb).
-                if ". " in detail:
-                    after_record = detail.split(". ", 1)[1]
-                    # Verb-bearing minimum span per memo §4
-                    if "streak continues" in after_record or "streak extended" in after_record:
-                        outcome_clause = after_record.rstrip()
+            # canonical_outcome: the T5/T6 clause if it appears anywhere in
+            # the rendered detail. Detected by presence of "Beat", "Lost to",
+            # "snapped" (rare, post-snap form), or "streak continues".
+            outcome = ""
+            if detail and (
+                "Beat " in detail
+                or "Lost to " in detail
+                or "snapped" in detail
+                or "streak continues" in detail
+            ):
+                # Strip "Record: X-Y." prefix and trailing period if present.
+                # The outcome clause is the substring after "Record: <rec>."
+                # marker; we keep the verb-bearing minimum span.
+                rec_marker = re.search(r"Record:\s*\d+-\d+\.\s*", detail)
+                outcome = detail[rec_marker.end():] if rec_marker else detail
+                outcome = outcome.strip().rstrip(".").strip()
             claims.append(StreakClaim(
-                franchise_name=franchise,
+                franchise_name=tm.group("name"),
                 template_id=template_id,
                 direction=direction,
-                canonical_headline=headline,
-                canonical_outcome=outcome_clause,
+                canonical_headline=headline.strip(),
+                canonical_outcome=outcome,
             ))
             break
     return claims
 
 
-# ── Classification ──────────────────────────────────────────────────
+# ── Inversion detection ─────────────────────────────────────────────
 
 
-# Inversion signals — phrases that contradict the canonical direction.
+# Inversion phrases for each direction. These are the verb-bearing
+# forms the model uses when it commits the streak-direction error.
 # "snapped" is direction-AGNOSTIC for active streak claims: for either
 # a win-direction or loss-direction CONTINUING streak, "snapped" implies
 # the streak ended, which contradicts the active-streak angle.
@@ -267,6 +321,50 @@ def _is_inversion_attached_to_alias(
                 if gap <= 30:
                     return True
     return False
+
+
+def _is_record_approach_attached_to_alias(
+    prose: str, aliases: list[str], record_re: re.Pattern[str]
+) -> tuple[bool, str]:
+    """Return (True, snippet) if any record-approach phrase has an
+    alias of the franchise within ~200 chars before it; else (False, '').
+
+    Mirrors the look-backward-from-regex pattern of
+    _is_inversion_attached_to_alias but with a wider lookback window
+    (200 chars vs. 30) because record-approach prose typically follows
+    the franchise mention by more characters than the verb-bearing
+    inversion phrases — the model writes "Brandon's streak to 11
+    straight defeats, matching the league's all-time record" with
+    intermediate clauses.
+
+    The earlier earliest-alias-window approach
+    (_extract_window(prose, found_alias, before=120, after=200))
+    misses W11 id=140-shape rows: BKB is mentioned at the start of a
+    long franchise paragraph and the matching-record phrase appears
+    267 chars later, outside the +200 window. Look-backward from the
+    regex match to ANY alias-variant mention catches the closer
+    later possessive ("Brandon's" at gap=31 chars) and attributes
+    correctly.
+
+    The returned snippet is 100 chars before + 200 chars after the
+    regex match, suitable for memo specimen citation.
+    """
+    for match in record_re.finditer(prose):
+        m_start = match.start()
+        lookback_start = max(0, m_start - 200)
+        lookback = prose[lookback_start:m_start]
+        for alias in aliases:
+            if not alias:
+                continue
+            for variant in (alias + "'s ", alias + "' ", alias + " ", alias + ","):
+                pos = lookback.rfind(variant)
+                if pos < 0:
+                    continue
+                # Found alias-variant before the regex match — attribute.
+                snippet_start = max(0, m_start - 100)
+                snippet_end = min(len(prose), match.end() + 100)
+                return (True, prose[snippet_start:snippet_end].strip()[:240])
+    return (False, "")
 
 
 def _extract_window(prose: str, name: str, before: int = 100, after: int = 200) -> str:
@@ -377,6 +475,214 @@ def classify(claim: StreakClaim, prose: str, aliases: list[str]) -> tuple[str, s
 
     # Mentioned, neither verbatim nor inverted → PARAPHRASE.
     return ("PARAPHRASE", snippet)
+
+
+# ── §10 Q1 fabrication-shape classifier ─────────────────────────────
+
+
+_T9_LOSS_RECORD_APPROACH = re.compile(
+    # Verb phrase + optional "the" + optional 0..3 modifier words + "record".
+    # The original brief regex used (?:league|all-time)? which permits ONE
+    # adjective; specimens like "the league's all-time record" and
+    # "the all-time league record" need TWO. The {0,3} window covers the
+    # observed phrasings without unbounded false-positive risk; the
+    # alternation '|longest...streak' carries the second canonical shape.
+    r"(?:closing in on|short of|shy of|matching|matches)\s+"
+    r"(?:the\s+)?(?:[a-zA-Z'\-]+\s+){0,3}record"
+    r"|longest\s+(?:active\s+)?(?:losing|loss)\s+streak",
+    re.IGNORECASE,
+)
+
+_T3_STATUS_CLAIM = re.compile(
+    r"\b(?:on|riding)\s+(?:a|an)?\s*(?P<count>\d+)[- ](?:game\s+)?"
+    r"(?:losing|loss|win|winning)\s+streak",
+    re.IGNORECASE,
+)
+
+_T9_LOSS_IN_ANGLES_RE = re.compile(
+    r"is\s+1\s+loss\s+from\s+the\s+league\s+loss\s+streak\s+record",
+    re.IGNORECASE,
+)
+
+
+def _would_t9_loss_fire(streak: int, record_length: int) -> bool:
+    """Mirror the post-Step-1 T9-LOSS gate condition.
+
+    At Step 0a-time the format_streak_record helper does not yet emit a
+    T9-LOSS form; this predicate replicates only the gate (streak <= -3
+    AND abs(streak) == record_length - 1) without constructing the
+    headline string. Replace with a direct format_streak_record() call
+    after Step 1 lands.
+    """
+    return streak <= -3 and abs(streak) == record_length - 1
+
+
+def classify_fabrication_shape(
+    row: PromptAuditRow,
+    standings: list[Any],
+    longest_loss_record: int | None,
+    is_multi_season: bool,
+    fid_to_name: dict[str, str],
+    aliases_by_name: dict[str, list[str]],
+) -> list[FabricationShape]:
+    """Classify per-(row, franchise) fabrication shape per §10 Q1 thread.
+
+    Buckets:
+    * RECORD_APPROACH         — T9-LOSS-shaped fabrication (Bug 2): the
+                                losing-streak record-approach prose
+                                pattern fires AND no T9-LOSS angle is
+                                present in the rendered angles block
+                                AND the post-fix detector gate would
+                                fire (streak <= -3 AND abs(streak) ==
+                                record - 1) AND the prose match falls
+                                in a window mentioning this franchise.
+    * STATUS_CLAIM_EVICTED    — Bug 1 fabrication shape: |streak| >= 5
+                                (the strength=3 long-form gate at
+                                narrative_angles_v1.py:185, :203) AND
+                                the canonical T1/T3 angle is absent
+                                from the rendered angles block AND the
+                                prose contains a status claim attributed
+                                to this franchise AND the count in the
+                                prose disagrees with abs(streak) from
+                                STANDINGS.
+    * STATUS_CLAIM_OMITTED    — Bug 1 silent-omission shape: |streak|
+                                >= 5 AND the canonical angle is absent
+                                from the rendered angles block AND the
+                                franchise IS named in prose AND no
+                                T3-shape status claim is attributed to
+                                that franchise. This is the §6
+                                silence-fallback's observable signature
+                                (model talks about the franchise in
+                                some other context but skips the
+                                canonical streak status claim).
+    * STATUS_CLAIM_NOT_EVICTED — Distribution-context bucket: prose
+                                matches the status-claim pattern in a
+                                window mentioning this franchise AND
+                                the canonical T1/T3 angle is present in
+                                the rendered angles block. Not a Bug 1
+                                signal.
+    * MISS                    — None of the above applies. (Includes
+                                the brief's "paraphrase, fine" case
+                                where the angle is absent but the
+                                count agrees.)
+
+    The strength=3 / |streak| >= 5 gate reads the brief's "strength-3
+    T3 STREAK angle" criterion as referring to the strength assignment
+    actually produced by _detect_streaks at the long-form gate; the
+    brief's |streak| >= 4 wording is a drafting carryover from the
+    long-form streak threshold and does not co-occur with strength=3
+    in the production code.
+    """
+    out: list[FabricationShape] = []
+    angles_text = row.narrative_angles_text or ""
+    prose = row.narrative_draft or ""
+
+    # Parse which canonical streak phrasings reached the angles block,
+    # keyed by franchise name (the same key _detect_streaks emits via
+    # fname()).
+    angle_claims_by_name: dict[str, set[str]] = {}
+    for c in parse_streak_claims(angles_text):
+        angle_claims_by_name.setdefault(c.franchise_name, set()).add(
+            c.template_id
+        )
+
+    has_t9_loss_in_text = (
+        _T9_LOSS_IN_ANGLES_RE.search(angles_text) is not None
+    )
+
+    for rec in standings:
+        fid = rec.franchise_id
+        streak = rec.current_streak
+        name = fid_to_name.get(fid, fid)
+        aliases = aliases_by_name.get(name, [name])
+
+        bucket: str | None = None
+        evidence = ""
+
+        # RECORD_APPROACH (Bug 2). Multi-season guard mirrors
+        # _detect_streak_records:551–556. Attribution uses look-backward
+        # from regex match (mirrors _is_inversion_attached_to_alias);
+        # the earlier earliest-alias-window approach missed W11 id=140-
+        # shape rows where the franchise is named at the start of a
+        # long paragraph and the record-approach phrase appears past
+        # the +200-char window.
+        if (
+            is_multi_season
+            and longest_loss_record is not None
+            and _would_t9_loss_fire(streak, longest_loss_record)
+            and not has_t9_loss_in_text
+        ):
+            matched, snippet = _is_record_approach_attached_to_alias(
+                prose, aliases, _T9_LOSS_RECORD_APPROACH
+            )
+            if matched:
+                bucket = "RECORD_APPROACH"
+                evidence = snippet
+
+        # STATUS_CLAIM family — only when |streak| >= 5 (the strength=3
+        # gate in _detect_streaks at narrative_angles_v1.py:185, :203).
+        if bucket is None and abs(streak) >= 5:
+            template_ids = angle_claims_by_name.get(name, set())
+            angle_present = bool(template_ids & {"T1", "T3"})
+            _, found_alias = _find_any_alias(prose, aliases)
+            window = (
+                _extract_window(prose, found_alias, before=120, after=200)
+                if found_alias
+                else ""
+            )
+            status_match = (
+                _T3_STATUS_CLAIM.search(window) if window else None
+            )
+
+            if status_match and angle_present:
+                bucket = "STATUS_CLAIM_NOT_EVICTED"
+                evidence = window.strip()[:200]
+            elif status_match and not angle_present:
+                # Compare prose count against canonical |streak|.
+                try:
+                    prose_count = int(status_match.group("count"))
+                except (TypeError, ValueError):
+                    prose_count = -1
+                if prose_count != abs(streak):
+                    bucket = "STATUS_CLAIM_EVICTED"
+                    evidence = (
+                        f"prose_count={prose_count} canonical={abs(streak)} "
+                        f"window={window.strip()[:160]}"
+                    )
+                # If counts agree but angle is absent, falls through to
+                # MISS — the brief's "paraphrase, fine" case.
+            elif found_alias and not status_match and not angle_present:
+                # Bug 1 silent-omission shape: franchise IS mentioned in
+                # prose but no T3-shape status claim is attributed AND the
+                # canonical T1/T3 angle is absent from the angles block.
+                # This is the §6 silence-fallback's observable signature
+                # — model talks about the franchise (e.g., in a non-status
+                # context like a record-approach claim or a matchup recap)
+                # but skips the canonical streak status claim. The
+                # earlier draft of this gate required `not found_alias`
+                # (interpretation: franchise NOT named at all), which
+                # would have miscounted W11 id=140-shape rows as MISS;
+                # corrected here to require franchise IS named.
+                bucket = "STATUS_CLAIM_OMITTED"
+                evidence = (
+                    f"|streak|={abs(streak)} mentioned but no canonical claim"
+                )
+
+        if bucket is None:
+            bucket = "MISS"
+
+        out.append(FabricationShape(
+            row_id=row.id,
+            season=row.season,
+            week_index=row.week_index,
+            attempt=row.attempt,
+            franchise_id=fid,
+            franchise_name=name,
+            bucket=bucket,
+            evidence=evidence,
+        ))
+
+    return out
 
 
 # ── DB access ───────────────────────────────────────────────────────
@@ -491,6 +797,26 @@ def load_franchise_aliases(
     return aliases_by_name
 
 
+def load_franchise_id_to_name(
+    conn: sqlite3.Connection, league_id: str, season: int
+) -> dict[str, str]:
+    """Build {franchise_id -> name} map for the given (league, season).
+
+    Used by classify_fabrication_shape to resolve standings.franchise_id
+    back to the name string that load_franchise_aliases keys by.
+    """
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT franchise_id, name
+          FROM franchise_directory
+         WHERE league_id = ? AND season = ?
+        """,
+        (league_id, season),
+    )
+    return {fid: name for fid, name in cur.fetchall() if name}
+
+
 # ── Output ──────────────────────────────────────────────────────────
 
 
@@ -538,6 +864,24 @@ def print_aggregate(classifications: list[Classification]) -> None:
         print("  " + "  ".join(line_parts))
 
 
+def print_fabrication_aggregate(shapes: list[FabricationShape]) -> None:
+    """Aggregate counts across §10 Q1 fabrication-shape buckets."""
+    counts = Counter(s.bucket for s in shapes)
+    print()
+    print("=== FABRICATION SHAPE BUCKETS (§10 Q1) ===")
+    for bucket in (
+        "RECORD_APPROACH",
+        "STATUS_CLAIM_EVICTED",
+        "STATUS_CLAIM_OMITTED",
+        "STATUS_CLAIM_NOT_EVICTED",
+        "MISS",
+    ):
+        print(f"  {bucket:26s}: {counts.get(bucket, 0):4d}")
+    non_miss = sum(c for b, c in counts.items() if b != "MISS")
+    print(f"  Total non-MISS entries: {non_miss}")
+    print(f"  Total franchise-instances: {len(shapes)}")
+
+
 # ── CLI ─────────────────────────────────────────────────────────────
 
 
@@ -573,19 +917,35 @@ def main(argv: list[str] | None = None) -> int:
         else:
             rows = fetch_rows_week(conn, args.league_id, args.season, args.week_index)
 
-        # Pre-load alias maps per season encountered in the row set.
+        # Pre-load alias maps and fid→name maps per season encountered
+        # in the row set. Both are used by the §10 Q1 fabrication-shape
+        # classifier; aliases_by_season is also used by the per-claim
+        # classifier (existing behavior).
         seasons_seen = {row.season for row in rows}
         aliases_by_season: dict[int, dict[str, list[str]]] = {}
+        fid_to_name_by_season: dict[int, dict[str, str]] = {}
         for season in seasons_seen:
             aliases_by_season[season] = load_franchise_aliases(
+                conn, args.league_id, season
+            )
+            fid_to_name_by_season[season] = load_franchise_id_to_name(
                 conn, args.league_id, season
             )
     finally:
         conn.close()
 
     classifications: list[Classification] = []
+    fabrications: list[FabricationShape] = []
+    # Cache derived contexts per (season, week_index) to amortize cost
+    # across rows in the same week (e.g. multiple attempt rows at the
+    # same prompt-audit week get one context derivation).
+    context_cache: dict[tuple[int, int], tuple[Any, Any]] = {}
+
     for row in rows:
         season_aliases = aliases_by_season.get(row.season, {})
+        season_fid_to_name = fid_to_name_by_season.get(row.season, {})
+
+        # Existing per-claim classification (T1/T2/T3/T4/T8/T9-WIN/T10).
         for claim in parse_streak_claims(row.narrative_angles_text):
             aliases = season_aliases.get(
                 claim.franchise_name, [claim.franchise_name]
@@ -601,8 +961,45 @@ def main(argv: list[str] | None = None) -> int:
                 snippet=snippet,
             ))
 
+        # §10 Q1 fabrication-shape classification (per row, per franchise).
+        # Counterfactual angle reconstruction requires canonical context;
+        # the cache amortizes the derive cost across rows in the same week.
+        key = (row.season, row.week_index)
+        if key not in context_cache:
+            sctx = derive_season_context_v1(
+                db_path=args.db,
+                league_id=args.league_id,
+                season=row.season,
+                week_index=row.week_index,
+            )
+            hctx = derive_league_history_v1(
+                db_path=args.db,
+                league_id=args.league_id,
+                as_of_season=row.season,
+                as_of_week=row.week_index,
+            )
+            context_cache[key] = (sctx, hctx)
+        sctx, hctx = context_cache[key]
+
+        longest_loss_record = (
+            hctx.longest_loss_streak.length
+            if hctx is not None and hctx.longest_loss_streak is not None
+            else None
+        )
+        is_multi_season = bool(hctx is not None and hctx.is_multi_season)
+
+        fabrications.extend(classify_fabrication_shape(
+            row=row,
+            standings=sctx.standings,
+            longest_loss_record=longest_loss_record,
+            is_multi_season=is_multi_season,
+            fid_to_name=season_fid_to_name,
+            aliases_by_name=season_aliases,
+        ))
+
     print_per_row(classifications, show_snippets=args.show_snippets)
     print_aggregate(classifications)
+    print_fabrication_aggregate(fabrications)
     return 0
 
 
