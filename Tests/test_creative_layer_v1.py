@@ -116,9 +116,12 @@ class TestDraftNarrativeV1APIError(unittest.TestCase):
 
 class TestDraftNarrativeV1SuccessPath(unittest.TestCase):
     def _mock(self, text: str) -> MagicMock:
-        mc = MagicMock(); mc.text = text
-        mr = MagicMock(); mr.content = [mc]
-        ma = MagicMock(); ma.Anthropic.return_value.messages.create.return_value = mr
+        mc = MagicMock()
+        mc.text = text
+        mr = MagicMock()
+        mr.content = [mc]
+        ma = MagicMock()
+        ma.Anthropic.return_value.messages.create.return_value = mr
         return ma
 
     def test_returns_narrative_string(self) -> None:
@@ -209,9 +212,12 @@ class TestBuildUserPromptDeterminism(unittest.TestCase):
 class TestNarrativeIsAdditive(unittest.TestCase):
     def test_facts_precede_narrative_in_combined_output(self) -> None:
         narrative = "Active week of moves."
-        mc = MagicMock(); mc.text = narrative
-        mr = MagicMock(); mr.content = [mc]
-        ma = MagicMock(); ma.Anthropic.return_value.messages.create.return_value = mr
+        mc = MagicMock()
+        mc.text = narrative
+        mr = MagicMock()
+        mr.content = [mc]
+        ma = MagicMock()
+        ma.Anthropic.return_value.messages.create.return_value = mr
 
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "fake-key"}):
             with patch.dict("sys.modules", {"anthropic": ma}):

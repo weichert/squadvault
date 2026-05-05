@@ -149,9 +149,12 @@ class TestDraftNarrativeV1AcceptsPlayerHighlights(unittest.TestCase):
     """draft_narrative_v1() accepts and passes through player_highlights."""
 
     def _mock(self, text: str) -> MagicMock:
-        mc = MagicMock(); mc.text = text
-        mr = MagicMock(); mr.content = [mc]
-        ma = MagicMock(); ma.Anthropic.return_value.messages.create.return_value = mr
+        mc = MagicMock()
+        mc.text = text
+        mr = MagicMock()
+        mr.content = [mc]
+        ma = MagicMock()
+        ma.Anthropic.return_value.messages.create.return_value = mr
         return ma
 
     def test_accepts_player_highlights_kwarg(self) -> None:
