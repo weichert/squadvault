@@ -236,7 +236,7 @@ class TestGoldenPathLock:
             canonical_ids=[str(c) for c in sel2.canonical_ids],
             counts_by_type=sel2.counts_by_type,
         ))
-        draft2 = generate_weekly_recap_draft(
+        generate_weekly_recap_draft(
             db_path=db, league_id=LEAGUE, season=SEASON,
             week_index=2, reason="golden_path_week2",
         )

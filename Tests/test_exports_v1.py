@@ -77,7 +77,7 @@ class TestFetchLatestApproved:
         assert artifact.version == v
 
     def test_latest_when_multiple(self, db):
-        v1 = _create_and_approve(db, rendered="V1", fp="a" * 64)
+        _create_and_approve(db, rendered="V1", fp="a" * 64)  # creates v1 row
         # Force a second version
         v2, _ = create_recap_artifact_draft_idempotent(
             db, LEAGUE, SEASON, WEEK, "b" * 64,

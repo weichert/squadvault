@@ -33,6 +33,7 @@ class TestApplyMigrationsIdempotent:
         db_path = _fresh_db(tmp_path)
 
         first = apply_migrations(db_path)
+        assert first, "Expected first apply to record applied migrations"
         second = apply_migrations(db_path)
         # Second call should apply nothing (all already tracked)
         assert second == [], f"Expected empty on re-apply, got {second}"
