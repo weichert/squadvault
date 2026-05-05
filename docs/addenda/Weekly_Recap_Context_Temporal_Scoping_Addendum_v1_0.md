@@ -59,10 +59,17 @@ Changes require explicit versioning and review.
 
 ---
 
-## Implementation note (non-binding)
+## Implementation note (non-binding; historical)
 
-The current implementation of `derive_league_history_v1` is
-non-conformant: it accepts only `db_path` and `league_id` and reads all
-seasons without a window cutoff. Bringing the code into conformance
-with this addendum is a downstream code session. This addendum does
-not specify the implementation path.
+At addendum-draft time, `derive_league_history_v1` was non-conformant:
+it accepted only `db_path` and `league_id` and read all seasons
+without a window cutoff. Conformance landed across two phases —
+Phase 1 (`bd680e3`, Apr 2026) added `as_of_season` / `as_of_week` as
+required keyword-only parameters on `derive_league_history_v1` and
+its primary callers; Phase 2 (`10e12a8`, Apr 2026) extended the same
+shape to `franchise_deep_angles_v1._load_all_matchups_flat` and
+`recap_verifier_v1._load_all_matchups`. Block-level conformance was
+validated against W13 (2024) at commit `10e12a8` with 0 leak rows;
+see `_observations/OBSERVATIONS_2026_04_20_W13_VALIDATION.md`. This
+note is preserved for historical context; the addendum itself does
+not specify any implementation path.
