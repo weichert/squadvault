@@ -426,7 +426,8 @@ class TestMatchupBulletRendering:
             CanonicalEventRow,
             render_deterministic_bullets_v1,
         )
-        resolver = lambda fid: {"0001": "The Destroyers", "0002": "Lucky Strikes"}.get(fid, fid)
+        def resolver(fid):
+            return {"0001": "The Destroyers", "0002": "Lucky Strikes"}.get(fid, fid)
         events = [
             CanonicalEventRow(
                 canonical_id="c1",

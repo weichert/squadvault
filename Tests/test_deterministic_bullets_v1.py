@@ -242,7 +242,8 @@ class TestDeterministicOrdering:
 
 class TestResolvers:
     def test_team_resolver_applied(self):
-        resolver = lambda fid: {"F01": "Eagles", "F02": "Hawks"}.get(fid, fid)
+        def resolver(fid):
+            return {"F01": "Eagles", "F02": "Hawks"}.get(fid, fid)
         row = _row(event_type="TRADE", payload={
             "from_franchise_id": "F01",
             "to_franchise_id": "F02",
@@ -252,7 +253,8 @@ class TestResolvers:
         assert "Hawks acquired P1 from Eagles." == bullets[0]
 
     def test_player_resolver_applied(self):
-        resolver = lambda pid: {"P1": "Patrick Mahomes"}.get(pid, pid)
+        def resolver(pid):
+            return {"P1": "Patrick Mahomes"}.get(pid, pid)
         row = _row(event_type="TRANSACTION_FREE_AGENT", payload={
             "franchise_id": "F01",
             "player_id": "P1",
@@ -412,8 +414,10 @@ class TestMflTradeRendering:
         assert "15754" in bullets[0] and "16214" in bullets[0]
 
     def test_mfl_trade_with_resolvers(self):
-        team_res = lambda fid: {"0004": "Eagles", "0010": "Hawks"}.get(fid, fid)
-        player_res = lambda pid: {"15754": "Chris Olave", "16214": "Sam LaPorta"}.get(pid, pid)
+        def team_res(fid):
+            return {"0004": "Eagles", "0010": "Hawks"}.get(fid, fid)
+        def player_res(pid):
+            return {"15754": "Chris Olave", "16214": "Sam LaPorta"}.get(pid, pid)
         row = _row(event_type="TRANSACTION_TRADE", payload={
             "franchise_id": "0004",
             "raw_mfl_json": '{"franchise":"0004","franchise2":"0010",'
@@ -515,10 +519,10 @@ class TestTradeCanonicalPath:
 
     def test_canonical_path_renders_bullet_with_resolvers(self):
         # Canonical fields only; no raw_mfl_json.
-        team_res = lambda fid: {"0004": "Eagles", "0010": "Hawks"}.get(fid, fid)
-        player_res = lambda pid: {
-            "15754": "Chris Olave", "16214": "Sam LaPorta",
-        }.get(pid, pid)
+        def team_res(fid):
+            return {"0004": "Eagles", "0010": "Hawks"}.get(fid, fid)
+        def player_res(pid):
+            return {"15754": "Chris Olave", "16214": "Sam LaPorta"}.get(pid, pid)
         row = _row(event_type="TRANSACTION_TRADE", payload={
             "mfl_type": "TRADE",
             "franchise_id": "0004",
