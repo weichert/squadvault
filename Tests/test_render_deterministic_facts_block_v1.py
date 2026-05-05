@@ -334,5 +334,5 @@ class TestBuildFactsBlock:
         )
         # 3 events found, exactly at threshold
         assert result.startswith("What happened (facts)\n")
-        lines = [l for l in result.strip().split("\n") if l.startswith("- ")]
+        lines = [line for line in result.strip().split("\n") if line.startswith("- ")]
         assert len(lines) == 3

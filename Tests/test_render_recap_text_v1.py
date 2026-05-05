@@ -119,7 +119,7 @@ class TestRenderRecapText:
     def test_breakdown_sorted(self):
         text = render_recap_text_v1(_artifact())
         lines = text.split("\n")
-        breakdown_lines = [l for l in lines if l.strip().startswith("- ")]
+        breakdown_lines = [line for line in lines if line.strip().startswith("- ")]
         # MATCHUP_RESULT and TRADE, alphabetically
         assert "MATCHUP_RESULT" in breakdown_lines[0]
         assert "TRADE" in breakdown_lines[1]
@@ -176,12 +176,12 @@ class TestTraceChunking:
         text = render_recap_text_v1(art)
         lines = text.split("\n")
         # Find the "Trace" header and count indented lines after it
-        trace_idx = next(i for i, l in enumerate(lines) if "Trace (selection ids)" in l)
+        trace_idx = next(i for i, line in enumerate(lines) if "Trace (selection ids)" in line)
         trace_lines = []
-        for l in lines[trace_idx + 1:]:
-            if l.startswith("  ") and any(c.isdigit() for c in l) and "- " not in l:
-                trace_lines.append(l)
-            elif l.strip() == "":
+        for line in lines[trace_idx + 1:]:
+            if line.startswith("  ") and any(c.isdigit() for c in line) and "- " not in line:
+                trace_lines.append(line)
+            elif line.strip() == "":
                 continue
             else:
                 break

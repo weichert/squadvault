@@ -241,7 +241,7 @@ def _make_context(matchups: tuple, standings_order: list[tuple[str, int, int]]):
     standings list. standings_order is [(franchise_id, wins, losses), ...]
     in rank order (best first); the rank is the list position + 1."""
     from squadvault.core.recaps.context.season_context_v1 import SeasonContextV1
-    standings = tuple(_stub_team_record(fid, w, l) for fid, w, l in standings_order)
+    standings = tuple(_stub_team_record(fid, w, losses) for fid, w, losses in standings_order)
     return SeasonContextV1(
         league_id="test_league",
         season=2025,
