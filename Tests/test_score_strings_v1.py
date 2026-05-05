@@ -13,13 +13,16 @@ Covers:
 
 from __future__ import annotations
 
+from squadvault.core.recaps.context.season_context_v1 import (
+    TeamRecord,
+    WeekMatchupContext,
+)
 from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     _ascii_punct,
     render_deterministic_bullets_v1,
 )
 from squadvault.core.recaps.render.score_strings_v1 import format_matchup_score_str
-
 
 # =====================================================================
 # Helper format correctness
@@ -214,8 +217,7 @@ def test_bullet_handles_string_score_input() -> None:
 # Behavioral: narrative_angles UPSET-angle detail string
 # =====================================================================
 
-def _stub_team_record(fid: str, wins: int, losses: int) -> "TeamRecord":
-    from squadvault.core.recaps.context.season_context_v1 import TeamRecord
+def _stub_team_record(fid: str, wins: int, losses: int) -> TeamRecord:
     return TeamRecord(
         franchise_id=fid, wins=wins, losses=losses, ties=0,
         points_for=100.0 * (wins + losses), points_against=95.0 * (wins + losses),
@@ -225,8 +227,7 @@ def _stub_team_record(fid: str, wins: int, losses: int) -> "TeamRecord":
 
 def _stub_matchup(
     winner_id: str, loser_id: str, winner_score: float, loser_score: float
-) -> "WeekMatchupContext":
-    from squadvault.core.recaps.context.season_context_v1 import WeekMatchupContext
+) -> WeekMatchupContext:
     return WeekMatchupContext(
         winner_id=winner_id, loser_id=loser_id,
         winner_score=winner_score, loser_score=loser_score,

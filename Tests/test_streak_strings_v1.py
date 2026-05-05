@@ -19,6 +19,14 @@ Covers:
 
 from __future__ import annotations
 
+from squadvault.core.recaps.context.league_history_v1 import (
+    LeagueHistoryContextV1,
+    StreakRecord,
+)
+from squadvault.core.recaps.context.season_context_v1 import (
+    TeamRecord,
+    WeekMatchupContext,
+)
 from squadvault.core.recaps.render.deterministic_bullets_v1 import _ascii_punct
 from squadvault.core.recaps.render.streak_strings_v1 import (
     format_streak_marker,
@@ -27,7 +35,6 @@ from squadvault.core.recaps.render.streak_strings_v1 import (
     format_streak_record,
     format_streak_status,
 )
-
 
 # =====================================================================
 # format_streak_phrase — noun phrase, |streak| >= 2 floor
@@ -295,8 +302,7 @@ def test_ascii_punct_marker_idempotent() -> None:
 # Behavioral parity — synthetic context drives _detect_streaks
 # =====================================================================
 
-def _stub_team_record(fid: str, wins: int, losses: int, streak: int) -> "TeamRecord":  # type: ignore[name-defined]
-    from squadvault.core.recaps.context.season_context_v1 import TeamRecord
+def _stub_team_record(fid: str, wins: int, losses: int, streak: int) -> TeamRecord:
     return TeamRecord(
         franchise_id=fid, wins=wins, losses=losses, ties=0,
         points_for=100.0 * (wins + losses), points_against=95.0 * (wins + losses),
@@ -306,8 +312,7 @@ def _stub_team_record(fid: str, wins: int, losses: int, streak: int) -> "TeamRec
 
 def _stub_matchup(
     winner_id: str, loser_id: str, winner_score: float = 110.0, loser_score: float = 90.0,
-) -> "WeekMatchupContext":  # type: ignore[name-defined]
-    from squadvault.core.recaps.context.season_context_v1 import WeekMatchupContext
+) -> WeekMatchupContext:
     return WeekMatchupContext(
         winner_id=winner_id, loser_id=loser_id,
         winner_score=winner_score, loser_score=loser_score,
@@ -424,8 +429,7 @@ def test_parity_detect_streaks_below_threshold_no_angle() -> None:
 # Behavioral parity — _detect_streak_records
 # =====================================================================
 
-def _stub_streak_record(fid: str, length: int, kind: str) -> "StreakRecord":  # type: ignore[name-defined]
-    from squadvault.core.recaps.context.league_history_v1 import StreakRecord
+def _stub_streak_record(fid: str, length: int, kind: str) -> StreakRecord:
     return StreakRecord(
         franchise_id=fid, streak_type=kind, length=length,
         start_season=2020, start_week=1, end_season=2020, end_week=length,
@@ -433,10 +437,9 @@ def _stub_streak_record(fid: str, length: int, kind: str) -> "StreakRecord":  # 
 
 
 def _stub_history(
-    win_streak: "StreakRecord | None",  # type: ignore[name-defined]
-    loss_streak: "StreakRecord | None",  # type: ignore[name-defined]
-) -> "LeagueHistoryContextV1":  # type: ignore[name-defined]
-    from squadvault.core.recaps.context.league_history_v1 import LeagueHistoryContextV1
+    win_streak: StreakRecord | None,
+    loss_streak: StreakRecord | None,
+) -> LeagueHistoryContextV1:
     return LeagueHistoryContextV1(
         league_id="test_league",
         seasons_available=(2020, 2021, 2022, 2023, 2024, 2025),  # multi-season
