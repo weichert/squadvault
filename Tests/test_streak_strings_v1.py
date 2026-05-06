@@ -5,8 +5,8 @@ Covers:
 - Threshold parity with _detect_streaks
   (|streak| in {-2, -1, 0, 1, 2} -> None; |streak| == 3 short form;
   |streak| >= 4 long form).
-- Branching coverage for format_streak_record (tied/broke/approach
-  on winning side; tied/broke only on losing side; asymmetric None).
+- Branching coverage for format_streak_record (tied/broke +
+  approach-to-record on both winning and losing sides).
 - _ascii_punct interaction: helper outputs without em-dash are
   idempotent under _ascii_punct; format_streak_outcome contains
   em-dash and gets normalized to hyphen if/when _ascii_punct is
@@ -157,7 +157,7 @@ def test_outcome_franchise_name_param_accepted_unused() -> None:
 
 
 # =====================================================================
-# format_streak_record — T8/T9/T10 + asymmetric None branches
+# format_streak_record — T8/T9-WIN/T10/T9-LOSS branches
 # =====================================================================
 
 def test_record_t8_tied_winning() -> None:
@@ -210,10 +210,28 @@ def test_record_t10_broke_losing() -> None:
     assert detail == "Previous record: 8 by Pelicans."
 
 
-def test_record_losing_one_from_record_returns_none() -> None:
-    # ASYMMETRIC: there is no "1 loss from record" form on the losing
-    # side. Helper preserves the existing detector's behavior (memo §10 Q1).
-    assert format_streak_record("Bears", -7, 8, "Pelicans") is None
+def test_record_t9_one_loss_from_record() -> None:
+    # streak == -(record - 1): T9-LOSS approach (added in §10 Q1 thread closure).
+    result = format_streak_record("Bears", -7, 8, "Pelicans")
+    assert result is not None
+    headline, detail = result
+    assert headline == "Bears is 1 loss from the league loss streak record (8)"
+    assert detail == ""  # T9-LOSS has empty detail by design (mirrors T9-WIN)
+
+
+def test_record_t9_loss_below_outer_gate() -> None:
+    """Edge case: arithmetic alone is insufficient — outer gate governs.
+
+    abs(-2) == 3 - 1 satisfies the T9-LOSS arithmetic, but the
+    helper's outer gate ``streak <= -3`` (mirroring T9-WIN's
+    ``streak >= 3`` at line 217) excludes |streak| == 2. Returns None.
+
+    Consumer-side gate in ``_detect_streak_records``
+    (narrative_angles_v1.py:579) is also -3, so this is doubly
+    gated. Helper-internal symmetry with T9-WIN is the design
+    intent (Path A in the §10 Q1 Step 1 brief).
+    """
+    assert format_streak_record("Bears", -2, 3, "Pelicans") is None
 
 
 def test_record_below_threshold_returns_none() -> None:
@@ -497,17 +515,23 @@ def test_parity_detect_streak_records_t10_tied_losing() -> None:
     assert angles[0].detail == expected[1]
 
 
-def test_parity_detect_streak_records_loss_one_from_record_no_angle() -> None:
-    """ASYMMETRIC: -7 vs record 8 produces no angle (no T9-loss form)."""
+def test_parity_detect_streak_records_t9_loss_approach() -> None:
+    """T9-LOSS: -7 vs record 8 produces a one-from-record angle.
+
+    Mirrors test_parity_detect_streak_records_t9_approach above;
+    the §10 Q1 thread closure added the loss-side approach form.
+    """
     from squadvault.core.recaps.context.narrative_angles_v1 import _detect_streak_records
 
-    standings = (_stub_team_record("F1", 0, 7, -7),)
+    standings = (_stub_team_record("F1", 0, 7, -7),)  # one loss short of record (8)
     ctx = _make_context((), standings)
     history = _stub_history(None, _stub_streak_record("LHOLDER", 8, "loss"))
     angles = _detect_streak_records(ctx, history)
-    assert angles == []
-    # And the helper returns None for the same shape:
-    assert format_streak_record("F1", -7, 8, "LHOLDER") is None
+    assert len(angles) == 1
+    expected = format_streak_record("F1", -7, 8, "LHOLDER")
+    assert expected is not None
+    assert angles[0].headline == expected[0]
+    assert angles[0].detail == expected[1]
 
 
 # =====================================================================

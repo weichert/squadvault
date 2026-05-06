@@ -27,9 +27,9 @@ _observations/OBSERVATIONS_2026_05_04_STREAK_VERB_PRE_COMPUTATION_SCOPE.md
   from the existing _outcome_detail body — the angle path does not
   apply _ascii_punct, so the em-dash reaches the prompt unchanged.
 - Record forms (T8/T9/T10): tied/broke headlines plus an
-  approach-to-record headline on the winning side only. Asymmetric
-  by design (no "1 loss from record" form on the losing side); see
-  memo §10 Q1.
+  approach-to-record headline on both sides (T9-WIN and T9-LOSS).
+  The §10 Q1 thread closed the prior loss-side gap; see Notes in
+  format_streak_record.
 - Marker form (T7): compact "W{N}" / "L{N}" / "-" used in the
   standings rows of the season-context prompt block.
 
@@ -192,21 +192,22 @@ def format_streak_record(
     Returns:
         ``(headline, detail)`` tuple for an applicable record claim:
 
-        * ``streak >= record_length``      → T8 tied/broke (winning)
-        * ``streak == record_length - 1``  → T9 one-from-record (winning); detail is ``""``
-        * ``abs(streak) >= record_length`` → T10 tied/broke (losing)
+        * ``streak >= record_length``           → T8 tied/broke (winning)
+        * ``streak == record_length - 1``       → T9-WIN one-from-record (winning); detail is ``""``
+        * ``abs(streak) >= record_length``      → T10 tied/broke (losing)
+        * ``abs(streak) == record_length - 1``  → T9-LOSS one-from-record (losing); detail is ``""``
 
-        ``None`` when no record claim applies (including the
-        deliberately absent T9-loss form — see Notes).
+        ``None`` when no record claim applies.
 
     Notes:
         - Branch order matches ``_detect_streak_records``
           (narrative_angles_v1.py:552-580).
-        - Asymmetry by design: there is no "{name} is 1 loss from
-          the league loss streak record" form. The existing detector
-          does not emit it; the helper preserves that behavior.
-          Coverage gap surfaced as memo §10 Q1 and out of scope for
-          Step 3.1.
+        - T9-LOSS form mirrors T9-WIN: ``"{name} is 1 loss from the
+          league loss streak record ({R})"``. Added in the §10 Q1
+          thread closure; the prior asymmetric "winning side only"
+          shape produced anchor-less RECORD_APPROACH fabrications
+          (W11/W13 2025 pre-fix evidence in
+          OBSERVATIONS_2026_05_05_T9_LOSS_PRE_FIX_DIAGNOSTIC.md).
         - T9 returns an empty detail string, matching the existing
           detector (narrative_angles_v1.py:566). The empty string is
           a deliberate convention — ``NarrativeAngle.detail`` is
@@ -223,7 +224,7 @@ def format_streak_record(
             headline = f"{franchise_name} is 1 win from the league win streak record ({record_length})"
             return (headline, "")
 
-    # Losing side: T10 (tied/broke) only — no T9-loss form (memo §10 Q1).
+    # Losing side: T10 (tied/broke) first, then T9-LOSS (one loss from record).
     if streak <= -3:
         if abs(streak) >= record_length:
             headline = (
@@ -232,6 +233,9 @@ def format_streak_record(
             )
             detail = f"Previous record: {record_length} by {record_holder_name}."
             return (headline, detail)
+        if abs(streak) == record_length - 1:
+            headline = f"{franchise_name} is 1 loss from the league loss streak record ({record_length})"
+            return (headline, "")
 
     return None
 
