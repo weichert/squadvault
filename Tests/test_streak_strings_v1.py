@@ -534,6 +534,40 @@ def test_parity_detect_streak_records_t9_loss_approach() -> None:
     assert angles[0].detail == expected[1]
 
 
+def test_detect_streak_records_t9_loss_strength_2() -> None:
+    """T9-LOSS angle is emitted at strength=2, mirroring T9-WIN.
+
+    Path A in the §10 Q1 Step 1 brief: strength=2 decouples Bug 2
+    from Bug 1 (HEADLINE budget eviction); editorial-weight
+    asymmetry (Path B) was rejected on constitutional grounds.
+    """
+    from squadvault.core.recaps.context.narrative_angles_v1 import _detect_streak_records
+
+    standings = (_stub_team_record("F1", 0, 7, -7),)  # one loss short of record (8)
+    ctx = _make_context((), standings)
+    history = _stub_history(None, _stub_streak_record("LHOLDER", 8, "loss"))
+    angles = _detect_streak_records(ctx, history)
+    assert len(angles) == 1
+    assert angles[0].strength == 2
+
+
+def test_detect_streak_records_t10_strength_3() -> None:
+    """T10 angle (loss tied/broke record) is emitted at strength=3.
+
+    Step 1.2 made the loss-side strength conditional. This sentinel
+    guards the T10 branch from regressing under the conditional —
+    a swap of branches would silently flip T10 to strength=2.
+    """
+    from squadvault.core.recaps.context.narrative_angles_v1 import _detect_streak_records
+
+    standings = (_stub_team_record("F1", 0, 8, -8),)  # streak ties record
+    ctx = _make_context((), standings)
+    history = _stub_history(None, _stub_streak_record("LHOLDER", 8, "loss"))
+    angles = _detect_streak_records(ctx, history)
+    assert len(angles) == 1
+    assert angles[0].strength == 3
+
+
 # =====================================================================
 # Behavioral parity — season_context_v1 standings marker
 # =====================================================================

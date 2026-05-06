@@ -582,12 +582,14 @@ def _detect_streak_records(
             result = format_streak_record(fname(rec.franchise_id), streak, record, holder)
             if result is not None:
                 headline, detail = result
-                # T10 (only loss-side form): always strength 3.
+                # T10 (streak <= -record): strength 3. T9-LOSS (streak == -(record-1)): strength 2.
+                # Mirrors win-side ordering at line 570.
+                strength = 3 if abs(streak) >= record else 2
                 angles.append(NarrativeAngle(
                     category="STREAK",
                     headline=headline,
                     detail=detail,
-                    strength=3,
+                    strength=strength,
                     franchise_ids=(rec.franchise_id,),
                 ))
 
