@@ -1992,9 +1992,11 @@ def verify_streak_inversion(
 # not anchor to canonical league history.
 #
 # Two failure modes documented in the post-fix memo:
-#   - T9-LOSS fabrication: T3 angle fires (streak claim is real),
-#     model invents the asymmetric record-approach form the helpers
-#     don't emit. Pre-fix corpus: 5/13 W13 2025 rows.
+#   - T9-LOSS form fabrication: model produces T9-LOSS-shaped
+#     prose without anchor. Pre-§10 Q1 closure: helpers did not
+#     emit T9-LOSS (corpus 5/13 W13 2025 rows). Post-closure:
+#     helpers emit and verifier recognizes canonical phrasing as
+#     anchor; non-canonical paraphrase still fails HARD.
 #   - Anchor-less record fabrication: NO STREAK angle fires, model
 #     invents a record claim from STANDINGS + LEAGUE_HISTORY. Post-
 #     fix evidence: id=140 W11 2025 ("matching the league's all-time
@@ -2160,9 +2162,10 @@ def _angle_anchor_present(
 
     Looks for the canonical record-claim phrasings emitted by
     streak_strings_v1.format_streak_record:
-        - T8 (win):  "{name} tied/broke the league win streak record"
-        - T9 (win):  "{name} is 1 win from the league win streak record"
-        - T10 (loss):"{name} tied/broke the league loss streak record"
+        - T8 (win):       "{name} tied/broke the league win streak record"
+        - T9-WIN (win):   "{name} is 1 win from the league win streak record"
+        - T10 (loss):     "{name} tied/broke the league loss streak record"
+        - T9-LOSS (loss): "{name} is 1 loss from the league loss streak record"
 
     The franchise-name in the angle block uses the canonical full
     name (rendered via fname() in detect_narrative_angles_v1), so we
@@ -2172,15 +2175,15 @@ def _angle_anchor_present(
     direction_token = "loss" if is_loss else "win"
     for alias in aliases:
         alias_re = re.escape(alias)
-        # T8 / T10
+        # T8 (win) / T10 (loss): tied/broke
         if re.search(
             rf"\b{alias_re}\s+tied/broke\s+the\s+league\s+{direction_token}\s+streak\s+record",
             narrative_angles_text,
         ):
             return True
-        # T9 (winning side only — no T9-LOSS form per memo §10 Q1)
-        if not is_loss and re.search(
-            rf"\b{alias_re}\s+is\s+1\s+win\s+from\s+the\s+league\s+win\s+streak\s+record",
+        # T9-WIN (win) / T9-LOSS (loss): 1 from. Symmetric post-§10 Q1 Step 1.
+        if re.search(
+            rf"\b{alias_re}\s+is\s+1\s+{direction_token}\s+from\s+the\s+league\s+{direction_token}\s+streak\s+record",
             narrative_angles_text,
         ):
             return True

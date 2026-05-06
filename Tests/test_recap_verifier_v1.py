@@ -5241,6 +5241,90 @@ class TestVerifyRecordClaimAnchoring:
         assert failures[0].severity == "HARD"
         assert "no T8/T9/T10 angle anchor" in failures[0].claim
 
+    def test_t9_loss_anchor_present_passes(self, tmp_path):
+        """When narrative_angles_text contains a T9-LOSS angle for the
+        franchise, a record-approach claim does NOT fail.
+
+        Mirrors test_angle_anchor_present_passes (T10 case); the
+        §10 Q1 Step 1 thread closure added T9-LOSS phrasing as a
+        recognized anchor in _angle_anchor_present.
+        """
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        text = (
+            "Beta Squad is one short of the all-time record for futility."
+        )
+        angles_text = (
+            "Narrative angles for Week 4:\n"
+            "  [HEADLINE] [RE: Beta Squad] Beta Squad is 1 loss from "
+            "the league loss streak record (5)\n"
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=self._reverse(),
+            narrative_angles_text=angles_text,
+        )
+        assert failures == []
+
+    def test_t9_loss_wrong_direction_anchor_fails(self, tmp_path):
+        """Direction-specific gate: a T9-WIN angle does NOT anchor a
+        T9-LOSS-shaped prose claim about the same franchise.
+
+        Pre-Step-1.3 the verifier excluded loss direction from the
+        "1 X from record" check entirely; post-Step-1.3 the check
+        is direction-aware via direction_token. This test guards
+        the direction gate from regressing to win-side-only or to
+        a direction-agnostic match.
+        """
+        db = _setup_history_db(tmp_path, insert_long_streak=True)
+        text = (
+            "Beta Squad is one short of the all-time record for futility."
+        )
+        angles_text = (
+            "Narrative angles for Week 4:\n"
+            "  [HEADLINE] [RE: Beta Squad] Beta Squad is 1 win from "
+            "the league win streak record (5)\n"
+        )
+        failures = verify_record_claim_anchoring(
+            text,
+            db_path=db, league_id="L1", season=2024, week=4,
+            reverse_name_map=self._reverse(),
+            narrative_angles_text=angles_text,
+        )
+        assert len(failures) >= 1
+        assert failures[0].category == "RECORD_CLAIM_ANCHORING"
+        assert failures[0].severity == "HARD"
+
+    def test_angle_anchor_t9_loss_helper_bound(self):
+        """Helper-bound discipline: feed format_streak_record T9-LOSS
+        output directly into _angle_anchor_present and assert
+        recognition.
+
+        If format_streak_record's T9-LOSS phrasing changes (e.g.
+        shorter form for mobile), this test breaks first; the
+        verifier's regex must be updated in lockstep. Closes the
+        helper-bound discipline gate ("every canonical-phrase
+        reference in tests and verifier code routes through
+        streak_strings_v1").
+        """
+        from squadvault.core.recaps.render.streak_strings_v1 import (
+            format_streak_record,
+        )
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            _angle_anchor_present,
+        )
+        result = format_streak_record("Beta Squad", -7, 8, "HOLDER")
+        assert result is not None
+        headline, _ = result
+        angles_text = f"  [HEADLINE] [RE: Beta Squad] {headline}\n"
+        reverse_name_map = {"Beta Squad": "F2"}
+        assert _angle_anchor_present(
+            angles_text,
+            franchise_id="F2",
+            reverse_name_map=reverse_name_map,
+            is_loss=True,
+        ) is True
+
     def test_no_angles_text_falls_back_to_canonical_only(self, tmp_path):
         """When narrative_angles_text is None (reverify or audit path),
         the rule does not enforce angle-anchoring — only canonical-
