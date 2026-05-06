@@ -505,17 +505,6 @@ _T9_LOSS_IN_ANGLES_RE = re.compile(
 )
 
 
-def _would_t9_loss_fire(streak: int, record_length: int) -> bool:
-    """Mirror the post-Step-1 T9-LOSS gate condition.
-
-    At Step 0a-time the format_streak_record helper does not yet emit a
-    T9-LOSS form; this predicate replicates only the gate (streak <= -3
-    AND abs(streak) == record_length - 1) without constructing the
-    headline string. Replace with a direct format_streak_record() call
-    after Step 1 lands.
-    """
-    return streak <= -3 and abs(streak) == record_length - 1
-
 
 def classify_fabrication_shape(
     row: PromptAuditRow,
@@ -606,10 +595,25 @@ def classify_fabrication_shape(
         # shape rows where the franchise is named at the start of a
         # long paragraph and the record-approach phrase appears past
         # the +200-char window.
+        # Post-§10 Q1 closure: the predicate _would_t9_loss_fire
+        # has been retired in favor of routing through the helper.
+        # Helper returns non-None for both T9-LOSS and T10 on the
+        # loss side; the abs(streak) < record check filters to
+        # T9-LOSS specifically (RECORD_APPROACH bucket scope).
+        helper_t9_loss_result = (
+            format_streak_record(name, streak, longest_loss_record, "")
+            if longest_loss_record is not None
+            else None
+        )
+        helper_would_t9_loss_fire = (
+            helper_t9_loss_result is not None
+            and longest_loss_record is not None
+            and abs(streak) < longest_loss_record
+        )
         if (
             is_multi_season
             and longest_loss_record is not None
-            and _would_t9_loss_fire(streak, longest_loss_record)
+            and helper_would_t9_loss_fire
             and not has_t9_loss_in_text
         ):
             matched, snippet = _is_record_approach_attached_to_alias(
