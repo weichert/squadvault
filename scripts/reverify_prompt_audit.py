@@ -11,11 +11,26 @@ The 4-way delta is the merge gate for verifier code changes:
   fail→pass:   original failed, reverify passed
   pass→fail:   original passed, reverify failed  ← must be 0
 
+When --baseline-tag is provided, the script additionally computes
+per-category hard-failure counts for both the current and baseline
+verifier tags and shifts the regression verdict from row-level
+pass→fail to category-NEW. This codifies the merge-gate technique
+captured in earlier observation memos: legacy-drift row counts
+fluctuate but a category appearing at zero failures in baseline and
+>0 in current indicates genuine new failure surface.
+
 Usage:
     scripts/py scripts/reverify_prompt_audit.py \\
         --db .local_squadvault.sqlite \\
         --league-id 70985 \\
         --verifier-tag $(git rev-parse --short HEAD)
+
+    # With baseline comparison (merge-gate use case):
+    scripts/py scripts/reverify_prompt_audit.py \\
+        --db .local_squadvault.sqlite \\
+        --league-id 70985 \\
+        --verifier-tag $(git rev-parse --short HEAD) \\
+        --baseline-tag <prior-tag>
 """
 from __future__ import annotations
 
@@ -94,6 +109,94 @@ def _result_to_json(result: VerificationResult) -> str:
     )
 
 
+def _category_counts_for_tag(db_path: str, tag: str) -> dict[str, int]:
+    """Return {category: count} of hard_failures across all reverify rows for tag."""
+    with DatabaseSession(db_path) as con:
+        cur = con.execute(
+            """SELECT json_extract(je.value, '$.category') AS cat,
+                      COUNT(*) AS n
+               FROM prompt_audit_reverify r,
+                    json_each(r.result_json, '$.hard_failures') je
+               WHERE r.verifier_tag = ?
+               GROUP BY cat""",
+            (tag,),
+        )
+        return {row[0]: row[1] for row in cur.fetchall() if row[0] is not None}
+
+
+def _validate_baseline_tag_exists(db_path: str, baseline_tag: str) -> None:
+    """Exit with helpful error if baseline_tag has no reverify rows."""
+    with DatabaseSession(db_path) as con:
+        cur = con.execute(
+            "SELECT COUNT(*) FROM prompt_audit_reverify WHERE verifier_tag = ?",
+            (baseline_tag,),
+        )
+        n = int(cur.fetchone()[0])
+    if n == 0:
+        sys.exit(
+            f"FATAL: baseline-tag {baseline_tag!r} has 0 rows in "
+            f"prompt_audit_reverify. Run reverify with that tag first, "
+            f"or verify the tag string."
+        )
+
+
+def _print_category_attribution_summary(
+    db_path: str, current_tag: str, baseline_tag: str
+) -> int:
+    """Print per-category baseline/current/delta table; return NEW-category count.
+
+    A category is NEW when baseline_count == 0 and current_count > 0. This is
+    the merge-gate criterion documented in the SCORE_VERBATIM Step 0 closure
+    memo: legacy-drift counts fluctuate, but the appearance of a previously-
+    absent failure category indicates genuine new failure surface.
+    """
+    current_cats = _category_counts_for_tag(db_path, current_tag)
+    baseline_cats = _category_counts_for_tag(db_path, baseline_tag)
+    all_cats = sorted(set(current_cats) | set(baseline_cats))
+
+    print()
+    print("=" * 72)
+    print(
+        f"Category attribution: tag={current_tag}  baseline={baseline_tag}"
+    )
+    print()
+    if not all_cats:
+        print("  (no hard-failure categories in either tag)")
+        return 0
+
+    print(
+        f"  {'Category':<32}  {'Baseline':>8}  {'Current':>7}  "
+        f"{'Delta':>6}  Status"
+    )
+    print(
+        f"  {'-' * 32}  {'-' * 8}  {'-' * 7}  {'-' * 6}  {'-' * 9}"
+    )
+
+    n_new = 0
+    for cat in all_cats:
+        baseline_n = baseline_cats.get(cat, 0)
+        current_n = current_cats.get(cat, 0)
+        delta = current_n - baseline_n
+        if baseline_n == 0 and current_n > 0:
+            status = "NEW"
+            n_new += 1
+        elif baseline_n > 0 and current_n == 0:
+            status = "cleared"
+        elif delta > 0:
+            status = "+drift"
+        elif delta < 0:
+            status = "-drift"
+        else:
+            status = "unchanged"
+        delta_str = f"+{delta}" if delta > 0 else str(delta)
+        print(
+            f"  {cat:<32}  {baseline_n:>8}  {current_n:>7}  "
+            f"{delta_str:>6}  {status}"
+        )
+
+    return n_new
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Re-verify captured prompt_audit drafts.",
@@ -101,7 +204,20 @@ def main() -> None:
     parser.add_argument("--db", type=str, default=DB_PATH)
     parser.add_argument("--league-id", type=str, default="70985")
     parser.add_argument("--verifier-tag", type=str, required=True)
+    parser.add_argument(
+        "--baseline-tag",
+        type=str,
+        default=None,
+        help=(
+            "Optional prior verifier_tag to compare against. When provided, "
+            "the regression verdict shifts from row-level pass->fail to "
+            "category-NEW (any category with baseline=0, current>0)."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.baseline_tag is not None:
+        _validate_baseline_tag_exists(args.db, args.baseline_tag)
 
     _ensure_table(args.db)
 
@@ -248,13 +364,30 @@ def main() -> None:
     print(f"  fail→pass:   {fail_to_pass}")
     print(f"  pass→fail:   {pass_to_fail}")
 
-    if pass_to_fail > 0:
+    if args.baseline_tag is not None:
+        n_new = _print_category_attribution_summary(
+            args.db, args.verifier_tag, args.baseline_tag
+        )
         print()
-        print("*** REGRESSION: pass→fail > 0 — do NOT merge. ***")
-        sys.exit(1)
+        if n_new > 0:
+            print(
+                f"*** REGRESSION: {n_new} NEW category/categories — "
+                f"do NOT merge. ***"
+            )
+            sys.exit(1)
+        else:
+            print(
+                f"No regressions in new categories. "
+                f"Row-level pass→fail={pass_to_fail} is legacy drift."
+            )
     else:
-        print()
-        print("No regressions (pass→fail = 0).")
+        if pass_to_fail > 0:
+            print()
+            print("*** REGRESSION: pass→fail > 0 — do NOT merge. ***")
+            sys.exit(1)
+        else:
+            print()
+            print("No regressions (pass→fail = 0).")
 
 
 if __name__ == "__main__":
