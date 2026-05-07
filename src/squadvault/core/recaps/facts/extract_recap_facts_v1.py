@@ -176,16 +176,11 @@ def _extract_details(event_type: str, payload: dict[str, Any]) -> dict[str, Any]
         if key in payload:
             d[key] = payload[key]
 
-    # Parse raw_mfl_json. Live uses: (a) transaction-type dispatch
+    # Parse raw_mfl_json. Used for (a) transaction-type dispatch
     # below via raw.get("type"), (b) pre-promotion fallback when
     # per-type extractors need values absent from canonical keys.
-    # The d["raw_mfl"] stash written below is retained pending scope
-    # decision; former consumer render_recap_text_from_facts_v1 was
-    # retired (see memo 0b280cb). No current reader.
     raw = _parse_raw_mfl_json(payload)
     if raw:
-        d["raw_mfl"] = raw
-
         # Dispatch by transaction type. Precedence preserved from
         # pre-S10 behavior (raw["type"] first, then canonical mfl_type,
         # then event_type) — in practice the two type signals always
