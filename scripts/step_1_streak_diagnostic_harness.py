@@ -889,6 +889,187 @@ def print_fabrication_aggregate(shapes: list[FabricationShape]) -> None:
 # ── CLI ─────────────────────────────────────────────────────────────
 
 
+
+# -- §10 Q1 Bug 1 specimen #2 hunt --------------------------------
+#
+# Cross-season scan for T9-LOSS-eligible (week, franchise) candidates
+# from a franchise other than Brandon Knows Ball (fid=0010), whose
+# specimen #1 is recorded in
+# _observations/OBSERVATIONS_2026_05_06_T9_LOSS_POST_FIX_REVERIFY.md.
+#
+# Per the post-fix memo's diversity-trigger criterion, Bug 1
+# (HEADLINE budget eviction) needs >=2 distinct franchises across
+# >=2 distinct weeks of T9-LOSS angles generated-but-evicted before
+# promotion to actionable thread. Specimen #1 is single-franchise
+# (Brandon W11-W18 2025); specimen #2 must be cross-franchise.
+#
+# This scan walks every (season, week) tuple from
+# WEEKLY_MATCHUP_RESULT events for the league, derives the
+# canonical SeasonContextV1 and LeagueHistoryContextV1 (with
+# temporal scoping per LEAGUE_HISTORY discipline), invokes
+# _detect_streak_records, and reports any T9-LOSS angle whose
+# franchise_id != "0010".
+#
+# Diagnostic-only. No production-path changes. No prompt_audit
+# inspection -- this scans canonical data only and reports
+# detector-eligibility, not generated-but-evicted (the eviction
+# half is not measurable from canonical data alone since the recap
+# lifecycle's budget filter operates on rendered output).
+# Detector-eligibility is necessary for eviction; if zero
+# detector-eligible non-Brandon specimens exist, eviction is
+# trivially zero, and the diversity trigger cannot be satisfied
+# by any prior season.
+
+_BRANDON_FID = "0010"
+_T9_LOSS_HEADLINE_RE = re.compile(
+    r"is 1 loss from the league loss streak record",
+    re.IGNORECASE,
+)
+
+
+def _enumerate_season_weeks(
+    db_path: str, league_id: str
+) -> list[tuple[int, int]]:
+    """Return sorted (season, max_week) tuples for every season with
+    WEEKLY_MATCHUP_RESULT events.
+    """
+    conn = sqlite3.connect(db_path)
+    try:
+        rows = conn.execute(
+            """
+            SELECT
+              season,
+              MAX(CAST(json_extract(payload_json, '$.week') AS INTEGER)) AS max_week
+            FROM v_canonical_best_events
+            WHERE league_id = ?
+              AND event_type = 'WEEKLY_MATCHUP_RESULT'
+            GROUP BY season
+            ORDER BY season
+            """,
+            (league_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [(int(s), int(w)) for s, w in rows if s is not None and w]
+
+
+def _build_fname_resolver(
+    db_path: str, league_id: str, season: int
+):
+    """Resolve franchise_id -> display name for a given season."""
+    conn = sqlite3.connect(db_path)
+    try:
+        rows = conn.execute(
+            """
+            SELECT franchise_id, name
+              FROM franchise_directory
+             WHERE league_id = ? AND season = ?
+            """,
+            (league_id, season),
+        ).fetchall()
+    finally:
+        conn.close()
+    name_map = {fid: name for fid, name in rows}
+
+    def fname(fid: str) -> str:
+        return name_map.get(fid, fid)
+
+    return fname
+
+
+def _scan_t9_loss_cross_season(db_path: str, league_id: str) -> int:
+    """Specimen #2 hunt. Returns 0 on success regardless of hit count
+    (the hit count is the diagnostic output, not a pass/fail signal).
+    """
+    print("=" * 78)
+    print("  SECTION 10 Q1 BUG 1 SPECIMEN #2 HUNT -- CROSS-SEASON T9-LOSS SCAN")
+    print(f"  league_id={league_id}  excluded_fid={_BRANDON_FID} (Brandon Knows Ball)")
+    print("=" * 78)
+
+    season_weeks = _enumerate_season_weeks(db_path, league_id)
+    if not season_weeks:
+        print("\n  No WEEKLY_MATCHUP_RESULT data found for league.")
+        return 0
+
+    print(f"\n  Seasons in scope: {len(season_weeks)} ({season_weeks[0][0]}..{season_weeks[-1][0]})")
+    total_weeks = sum(mw for _, mw in season_weeks)
+    print(f"  (season, week) tuples to scan: {total_weeks}")
+
+    specimens = []
+    brandon_hits = []
+    weeks_scanned = 0
+    weeks_with_history = 0
+
+    for season, max_week in season_weeks:
+        fname = _build_fname_resolver(db_path, league_id, season)
+        for week in range(1, max_week + 1):
+            weeks_scanned += 1
+            try:
+                sctx = derive_season_context_v1(
+                    db_path=db_path,
+                    league_id=league_id,
+                    season=season,
+                    week_index=week,
+                )
+                hctx = derive_league_history_v1(
+                    db_path=db_path,
+                    league_id=league_id,
+                    as_of_season=season,
+                    as_of_week=week,
+                )
+            except Exception as exc:
+                print(f"  WARN context derivation failed for season={season} week={week}: {exc}")
+                continue
+
+            if hctx is None or not hctx.is_multi_season:
+                continue
+            weeks_with_history += 1
+
+            angles = _detect_streak_records(sctx, hctx, fname=fname)
+            for a in angles:
+                if not _T9_LOSS_HEADLINE_RE.search(a.headline):
+                    continue
+                if not a.franchise_ids:
+                    continue
+                fid = a.franchise_ids[0]
+                if fid == _BRANDON_FID:
+                    brandon_hits.append((season, week))
+                    continue
+                streak = next(
+                    (r.current_streak for r in sctx.standings if r.franchise_id == fid),
+                    0,
+                )
+                record_length = (
+                    hctx.longest_loss_streak.length
+                    if hctx.longest_loss_streak is not None else 0
+                )
+                specimens.append((
+                    season, week, fid, a.headline,
+                    int(streak), int(record_length),
+                ))
+
+    print(f"\n  Weeks scanned:                   {weeks_scanned}")
+    print(f"  Weeks with multi-season history: {weeks_with_history}")
+    print(f"  Brandon T9-LOSS hits (excluded): {len(brandon_hits)}")
+    print(f"  Non-Brandon T9-LOSS specimens:   {len(specimens)}")
+
+    if specimens:
+        print("\n  -- NON-BRANDON SPECIMENS --")
+        for season, week, fid, headline, streak, record_length in specimens:
+            print(f"\n  season={season} week={week} fid={fid} streak={streak} record_length={record_length}")
+            print(f"    headline: {headline!r}")
+        print("\n  *** DIVERSITY TRIGGER SATISFIED -- Bug 1 promotes to actionable thread.")
+    else:
+        print(f"\n  No non-Brandon T9-LOSS specimens across {weeks_scanned} (season, week) tuples.")
+        print("  Diversity trigger NOT satisfied; Bug 1 stays at single-specimen status.")
+
+    if brandon_hits:
+        hits_str = ", ".join(f"{s}W{w}" for s, w in brandon_hits)
+        print(f"\n  Brandon hit weeks (excluded; for completeness): {hits_str}")
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Step 3.2 streak verb diagnostic harness."
@@ -898,7 +1079,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--scope",
         required=True,
-        choices=("last10-approved", "week"),
+        choices=("last10-approved", "week", "hunt-t9-loss-cross-season"),
         help="Scope selector.",
     )
     parser.add_argument("--season", type=int, default=None, help="Required for --scope week.")
@@ -912,6 +1093,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.scope == "week" and (args.season is None or args.week_index is None):
         parser.error("--scope week requires --season and --week-index.")
+
+    if args.scope == "hunt-t9-loss-cross-season":
+        return _scan_t9_loss_cross_season(args.db, args.league_id)
 
     conn = sqlite3.connect(args.db)
     conn.row_factory = None
