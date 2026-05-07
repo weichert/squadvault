@@ -600,17 +600,53 @@ def _budget_angles(
     budgeted: list[NarrativeAngle] = []
     h_count = n_count = 0
     minor_pool: list[NarrativeAngle] = []
+
+    # Phase 1: HEADLINE (strength 3) — alphabetical tiebreak
+    # via the (-strength, category, headline) sort precondition
+    # gives deterministic ordering for the 3-slot HEADLINE cap.
     for a in _all_angles:
         if a.strength >= 3 and h_count < 3:
             budgeted.append(a)
             h_count += 1
-        elif a.strength == 2 and n_count < 6:
+
+    # Phase 2: NOTABLE (strength 2) — rotation-hash tiebreak
+    # prevents alphabetical lockout of late-alphabet categories
+    # (STREAK, REVENGE_GAME, TRADE_OUTCOME, FAAB_FRANCHISE_-
+    # EFFICIENCY, POSITIONAL_STRENGTH, FRANCHISE_ALLTIME_-
+    # SCORING, RIVALRY, SCHEDULE_STRENGTH, SEASON_TRAJECTORY_-
+    # MATCH, ZERO_POINT_STARTER, SCORING_VOLATILITY,
+    # PLAYER_BREAKOUT) when 6+ strength-2 angles compete for
+    # the 6-slot NOTABLE cap. The probe at
+    # scripts/notable_saturation_probe.py showed NOTABLE
+    # saturating in 33 of 34 weeks (2024-2025); 10+ categories
+    # systematically lose under alphabetical tiebreak.
+    #
+    # Domain `category:season:week` matches the MINOR rotation
+    # hash below: same week always produces the same ordering
+    # (deterministic, reconstructable); different weeks vary
+    # which category wins ties.
+    notable_pool = [a for a in _all_angles if a.strength == 2]
+    if notable_pool:
+
+        def _notable_key(a: NarrativeAngle) -> tuple[str, str]:
+            rotation = hashlib.md5(
+                f"{a.category}:{season}:{week_index}".encode()
+            ).hexdigest()
+            return (rotation, a.headline)
+
+        notable_pool.sort(key=_notable_key)
+        for a in notable_pool:
+            if n_count >= 6:
+                break
             budgeted.append(a)
             n_count += 1
-        elif a.strength <= 1:
+
+    # Phase 3a: MINOR (strength 1) pool collection.
+    for a in _all_angles:
+        if a.strength <= 1:
             minor_pool.append(a)
 
-    # Phase 2: MINOR — coverage-aware, category-diverse fill
+    # Phase 3b: MINOR — coverage-aware, category-diverse fill
     # with deterministic week-seeded rotation.
     #
     # Prior behavior: alphabetical tiebreak within coverage tier,
