@@ -188,6 +188,32 @@ class FabricationShape:
     evidence: str             # short prose snippet or per-bucket diagnostic
 
 
+@dataclass(frozen=True)
+class Bug1Classification:
+    """Per-specimen classification for the §10 Q1 Bug 1 actionable thread.
+
+    Step 0a output. Distinguishes systemic-eviction evidence
+    (EVICTION_LIKELY) from absence-as-proxy via the omitted-tail signal
+    on narrative_angles_text plus a pre/post-helper-shipped boundary on
+    captured_at. Six buckets total; see module-level docstring for the
+    decision tree.
+    """
+
+    season: int
+    week_index: int
+    fid: str
+    franchise_name_hint: str    # the name at memo-capture time
+    streak: int
+    record_length: int
+    audit_row_id: int | None    # None when NO_AUDIT_DATA
+    captured_at: str | None     # ISO; None when NO_AUDIT_DATA
+    has_t9_loss_line: bool
+    omitted_tail_count: int     # 0 when no tail rendered
+    record_claim_in_prose: bool
+    bucket: str                 # one of the six buckets above
+    evidence: str               # short prose snippet or per-bucket diagnostic
+
+
 # ── Angle-block parsing ─────────────────────────────────────────────
 
 
@@ -927,6 +953,62 @@ _T9_LOSS_HEADLINE_RE = re.compile(
 )
 
 
+# ── Section 10 Q1 Bug 1 classify-bug1-specimens constants ──────────
+# The 13 detector-eligible specimens identified by the cross-season
+# scan committed at cdaf1cd and memoed at af80f12. Tuple shape:
+# (season, week, fid, franchise_name_at_capture, streak, record_length).
+# Sourced verbatim from
+# _observations/OBSERVATIONS_2026_05_06_T9_LOSS_BUG_1_SPECIMEN_HUNT.md
+# section 3. Brandon (fid=0010) excluded per the memo's diversity-trigger
+# scoping; specimen #1 (Brandon W14 2025) is observed separately in the
+# post-fix memo a5c5c1b and is not part of this list.
+_BUG_1_SPECIMENS: list[tuple[int, int, str, str, int, int]] = [
+    (2011,  4, "0008", "Ben's Gods",              -4,  5),
+    (2011,  5, "0006", "MGD",                     -4,  5),
+    (2011,  6, "0006", "MGD",                     -5,  6),
+    (2011, 12, "0002", "Paradis' Playmakers",     -6,  7),
+    (2012,  9, "0003", "Purple Haze",             -6,  7),
+    (2014,  9, "0002", "Paradis' Playmakers",     -6,  7),
+    (2016, 13, "0008", "Ben's Gods",              -7,  8),
+    (2016, 14, "0008", "Ben's Gods",              -7,  8),
+    (2016, 15, "0008", "Ben's Gods",              -7,  8),
+    (2016, 16, "0008", "Ben's Gods",              -7,  8),
+    (2017, 11, "0006", "MGD",                     -7,  8),
+    (2019,  8, "0006", "Miller's Genuine Draft",  -8,  9),
+    (2019,  9, "0006", "Miller's Genuine Draft",  -9, 10),
+]
+
+# Pre-/post-helper boundary. Section 10 Q1 Step 1 (T9-LOSS form helper
+# at format_streak_record) shipped at 0887556 on 2026-05-06. Prompt
+# audits captured before this date could not have surfaced a T9-LOSS
+# angle even where the detector data state qualifies — the helper
+# simply did not emit the form. Compared as ISO-prefix string against
+# prompt_audit.captured_at.
+_T9_LOSS_HELPER_SHIPPED_DATE = "2026-05-06"
+
+# Captures the omitted-count tail rendered by weekly_recap_lifecycle.py
+# at line 903 when the budget filter evicts angles into the tail:
+# "  (+ 112 minor angles omitted)\n"
+_OMITTED_TAIL_RE = re.compile(
+    r"\(\+\s+(\d+)\s+minor\s+angles?\s+omitted\)",
+    re.IGNORECASE,
+)
+
+# Prose detector for "did the model surface a T9-LOSS-shape claim?"
+# Augments the existing _T9_LOSS_RECORD_APPROACH (which targets the
+# fabrication-shape paraphrases) with the canonical helper output
+# pattern "1 loss from ... record". Used with
+# _is_record_approach_attached_to_alias for franchise attribution.
+_T9_LOSS_PROSE_SURFACED_RE = re.compile(
+    r"(?:1\s+loss\s+(?:from|away\s+from|shy\s+of)\s+"
+    r"(?:the\s+)?(?:[a-zA-Z'\-]+\s+){0,3}record"
+    r"|(?:closing\s+in\s+on|short\s+of|shy\s+of|matching|matches)\s+"
+    r"(?:the\s+)?(?:[a-zA-Z'\-]+\s+){0,3}(?:loss|losing)\s+streak\s+record"
+    r"|longest\s+(?:active\s+)?(?:losing|loss)\s+streak)",
+    re.IGNORECASE,
+)
+
+
 def _enumerate_season_weeks(
     db_path: str, league_id: str
 ) -> list[tuple[int, int]]:
@@ -1070,6 +1152,222 @@ def _scan_t9_loss_cross_season(db_path: str, league_id: str) -> int:
     return 0
 
 
+# ── §10 Q1 Bug 1 classify-bug1-specimens entrypoint ────────────────
+
+
+def _has_t9_loss_line_for_franchise(
+    angles_text: str, franchise_names: list[str]
+) -> bool:
+    """True if any line in angles_text contains both the canonical
+    T9-LOSS suffix AND any of the franchise's possible name-strings.
+
+    Per-season name resolution matters: fid 0006 emits as 'MGD' in
+    2011/2017 and 'Miller's Genuine Draft' in 2019. The caller passes
+    the union of plausible names; we accept a hit on any.
+    """
+    for line in angles_text.splitlines():
+        if not _T9_LOSS_HEADLINE_RE.search(line):
+            continue
+        for name in franchise_names:
+            if name and name in line:
+                return True
+    return False
+
+
+def _extract_omitted_tail_count(angles_text: str) -> int:
+    """Return N from '(+ N minor angles omitted)' or 0 if not present."""
+    match = _OMITTED_TAIL_RE.search(angles_text)
+    if match is None:
+        return 0
+    try:
+        return int(match.group(1))
+    except (ValueError, IndexError):
+        return 0
+
+
+def _classify_one_bug1_specimen(
+    conn: sqlite3.Connection,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week: int,
+    fid: str,
+    franchise_name_hint: str,
+    streak: int,
+    record_length: int,
+) -> Bug1Classification:
+    """Classify one (season, week, fid) specimen against captured audit."""
+    cur = conn.cursor()
+
+    # Resolve franchise name as it would have been emitted by the helper
+    # at recap-time (per-season directory lookup) and at memo-capture
+    # time (the hint string). Pass both into the line-match check.
+    fname = _build_fname_resolver(db_path, league_id, season)
+    resolved_name = fname(fid)
+    candidate_names = [n for n in {franchise_name_hint, resolved_name} if n]
+
+    # Latest prompt_audit row for this (league, season, week).
+    cur.execute(
+        _SCHEMA_PROBE_SQL
+        + " WHERE pa.league_id = ? AND pa.season = ? AND pa.week_index = ? "
+          "ORDER BY pa.id DESC LIMIT 1",
+        (league_id, season, week),
+    )
+    pa_raw = cur.fetchone()
+
+    if pa_raw is None:
+        return Bug1Classification(
+            season=season, week_index=week, fid=fid,
+            franchise_name_hint=franchise_name_hint,
+            streak=streak, record_length=record_length,
+            audit_row_id=None, captured_at=None,
+            has_t9_loss_line=False, omitted_tail_count=0,
+            record_claim_in_prose=False,
+            bucket="NO_AUDIT_DATA",
+            evidence="no prompt_audit row for (league, season, week)",
+        )
+
+    pa = PromptAuditRow(*pa_raw)
+
+    # Pre-helper boundary check. ISO-prefix string compare is safe.
+    if pa.captured_at < _T9_LOSS_HELPER_SHIPPED_DATE:
+        return Bug1Classification(
+            season=season, week_index=week, fid=fid,
+            franchise_name_hint=franchise_name_hint,
+            streak=streak, record_length=record_length,
+            audit_row_id=pa.id, captured_at=pa.captured_at,
+            has_t9_loss_line=False, omitted_tail_count=0,
+            record_claim_in_prose=False,
+            bucket="NOT_GENERATED_PRE_HELPER",
+            evidence=f"captured_at={pa.captured_at} < helper-shipped {_T9_LOSS_HELPER_SHIPPED_DATE}",
+        )
+
+    # Post-helper: parse angles_text and prose.
+    has_line = _has_t9_loss_line_for_franchise(
+        pa.narrative_angles_text, candidate_names
+    )
+    omitted = _extract_omitted_tail_count(pa.narrative_angles_text)
+
+    # Build aliases for franchise attribution in prose.
+    aliases_by_name = load_franchise_aliases(conn, league_id, season)
+    aliases = aliases_by_name.get(resolved_name, [resolved_name])
+    record_in_prose, snippet = _is_record_approach_attached_to_alias(
+        pa.narrative_draft, aliases, _T9_LOSS_PROSE_SURFACED_RE
+    )
+
+    if has_line:
+        if record_in_prose:
+            bucket = "GENERATED_AND_SURFACED"
+            evidence = snippet[:180] if snippet else "T9-LOSS line present; prose record-claim attached."
+        else:
+            bucket = "GENERATED_AND_BUDGETED_NOT_SURFACED"
+            evidence = "T9-LOSS line present in angles block; no record-claim in prose attached to franchise."
+    else:
+        if omitted > 0:
+            bucket = "EVICTION_LIKELY"
+            evidence = f"no T9-LOSS line; '(+ {omitted} minor angles omitted)' tail present."
+        else:
+            bucket = "NOT_GENERATED_POST_HELPER"
+            evidence = "no T9-LOSS line; no omitted tail. Detector data state at recap-time may have differed."
+
+    return Bug1Classification(
+        season=season, week_index=week, fid=fid,
+        franchise_name_hint=franchise_name_hint,
+        streak=streak, record_length=record_length,
+        audit_row_id=pa.id, captured_at=pa.captured_at,
+        has_t9_loss_line=has_line, omitted_tail_count=omitted,
+        record_claim_in_prose=record_in_prose,
+        bucket=bucket, evidence=evidence,
+    )
+
+
+def _classify_bug1_specimens(db_path: str, league_id: str) -> int:
+    """Step 0a entrypoint. Six-bucket classifier across the 13 specimens
+    from OBSERVATIONS_2026_05_06_T9_LOSS_BUG_1_SPECIMEN_HUNT.md.
+
+    Returns 0 on success regardless of bucket distribution; the
+    distribution itself is the diagnostic output that drives the
+    Step 0b memo's gate decision.
+    """
+    print("=" * 78)
+    print("  SECTION 10 Q1 BUG 1 STEP 0a -- GENERATION/EVICTION CLASSIFIER")
+    print(f"  league_id={league_id}  specimens={len(_BUG_1_SPECIMENS)}")
+    print(f"  helper-shipped boundary: {_T9_LOSS_HELPER_SHIPPED_DATE}")
+    print("=" * 78)
+
+    classifications: list[Bug1Classification] = []
+    conn = sqlite3.connect(db_path)
+    try:
+        for season, week, fid, name_hint, streak, record_length in _BUG_1_SPECIMENS:
+            try:
+                c = _classify_one_bug1_specimen(
+                    conn=conn, db_path=db_path, league_id=league_id,
+                    season=season, week=week, fid=fid,
+                    franchise_name_hint=name_hint,
+                    streak=streak, record_length=record_length,
+                )
+            except Exception as exc:
+                print(f"  WARN classification failed for {season}W{week} fid={fid}: {exc}")
+                continue
+            classifications.append(c)
+    finally:
+        conn.close()
+
+    # Per-specimen table.
+    print("\n  -- PER-SPECIMEN CLASSIFICATIONS --")
+    print(f"\n  {'#':>2}  {'Season':>6}  {'Wk':>3}  {'fid':>4}  "
+          f"{'Franchise':<26}  {'captured_at':<25}  "
+          f"{'line':>4}  {'omit':>4}  {'prose':>5}  Bucket")
+    print(f"  {'-'*2}  {'-'*6}  {'-'*3}  {'-'*4}  {'-'*26}  {'-'*25}  "
+          f"{'-'*4}  {'-'*4}  {'-'*5}  {'-'*40}")
+    for i, c in enumerate(classifications, 1):
+        captured = c.captured_at or "-"
+        line_flag = "Y" if c.has_t9_loss_line else "n"
+        prose_flag = "Y" if c.record_claim_in_prose else "n"
+        print(f"  {i:>2}  {c.season:>6}  {c.week_index:>3}  {c.fid:>4}  "
+              f"{c.franchise_name_hint:<26}  {captured:<25}  "
+              f"{line_flag:>4}  {c.omitted_tail_count:>4}  {prose_flag:>5}  {c.bucket}")
+        if c.evidence:
+            print(f"      evidence: {c.evidence}")
+
+    # Bucket aggregate.
+    buckets: dict[str, int] = {}
+    franchises_per_bucket: dict[str, set[str]] = {}
+    for c in classifications:
+        buckets[c.bucket] = buckets.get(c.bucket, 0) + 1
+        franchises_per_bucket.setdefault(c.bucket, set()).add(c.fid)
+
+    print("\n  -- BUCKET COUNTS --")
+    bucket_order = [
+        "GENERATED_AND_SURFACED",
+        "GENERATED_AND_BUDGETED_NOT_SURFACED",
+        "EVICTION_LIKELY",
+        "NOT_GENERATED_POST_HELPER",
+        "NOT_GENERATED_PRE_HELPER",
+        "NO_AUDIT_DATA",
+    ]
+    for bucket in bucket_order:
+        n = buckets.get(bucket, 0)
+        n_fids = len(franchises_per_bucket.get(bucket, set()))
+        print(f"    {bucket:<40}  count={n:>2}  distinct_fids={n_fids}")
+
+    # Gate evaluation.
+    eviction_n = buckets.get("EVICTION_LIKELY", 0)
+    eviction_fids = len(franchises_per_bucket.get("EVICTION_LIKELY", set()))
+    print("\n  -- GATE EVALUATION --")
+    if eviction_n >= 2 and eviction_fids >= 2:
+        print(f"  EVICTION_LIKELY count={eviction_n} fids={eviction_fids} >= 2-and-2 threshold.")
+        print("  GATE: PROCEED to Step 1 (production-path budget reservation).")
+    elif eviction_n > 0:
+        print(f"  EVICTION_LIKELY count={eviction_n} fids={eviction_fids} below 2-and-2 threshold.")
+        print("  GATE: MIXED. Editorial call; see Step 0b memo.")
+    else:
+        print("  EVICTION_LIKELY count=0. No direct eviction evidence post-helper.")
+        print("  GATE: DEFER Step 1 pending live post-helper observation.")
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Step 3.2 streak verb diagnostic harness."
@@ -1079,7 +1377,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--scope",
         required=True,
-        choices=("last10-approved", "week", "hunt-t9-loss-cross-season"),
+        choices=(
+            "last10-approved",
+            "week",
+            "hunt-t9-loss-cross-season",
+            "classify-bug1-specimens",
+        ),
         help="Scope selector.",
     )
     parser.add_argument("--season", type=int, default=None, help="Required for --scope week.")
@@ -1096,6 +1399,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.scope == "hunt-t9-loss-cross-season":
         return _scan_t9_loss_cross_season(args.db, args.league_id)
+
+    if args.scope == "classify-bug1-specimens":
+        return _classify_bug1_specimens(args.db, args.league_id)
 
     conn = sqlite3.connect(args.db)
     conn.row_factory = None
