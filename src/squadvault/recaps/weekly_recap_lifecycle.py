@@ -570,6 +570,90 @@ class _PromptContext:
     budgeted: list[NarrativeAngle] = field(default_factory=list)
 
 
+def _budget_angles(
+    _all_angles: list[NarrativeAngle],
+    *,
+    season: int,
+    week_index: int,
+) -> list[NarrativeAngle]:
+    """Apply the tiered angle budget; return the budgeted list.
+
+    Tiered angle budget (per scope doc):
+      HEADLINE (strength 3): cap 3, NOTABLE (strength 2): cap 6,
+      MINOR (strength 1): cap 4 (only if total < 12). Total cap: 15.
+
+    Within MINOR, selection is coverage-aware and category-diverse:
+      - At most 1 angle per category (prevents one high-volume
+        category from consuming all MINOR slots).
+      - Angles about franchises not yet covered by HEADLINE/NOTABLE
+        are preferred (ensures MINOR slots add breadth, not depth).
+      - Within each coverage tier, alphabetical by category/headline
+        provides deterministic ordering.
+
+    Precondition: _all_angles is sorted by
+    (-strength, category, headline) — caller is responsible.
+    Returns [] for empty input.
+    """
+    if not _all_angles:
+        return []
+
+    budgeted: list[NarrativeAngle] = []
+    h_count = n_count = 0
+    minor_pool: list[NarrativeAngle] = []
+    for a in _all_angles:
+        if a.strength >= 3 and h_count < 3:
+            budgeted.append(a)
+            h_count += 1
+        elif a.strength == 2 and n_count < 6:
+            budgeted.append(a)
+            n_count += 1
+        elif a.strength <= 1:
+            minor_pool.append(a)
+
+    # Phase 2: MINOR — coverage-aware, category-diverse fill
+    # with deterministic week-seeded rotation.
+    #
+    # Prior behavior: alphabetical tiebreak within coverage tier,
+    # which permanently locked out categories starting with letters
+    # later in the alphabet (REVENGE_GAME, TRADE_OUTCOME, etc.).
+    # 19 detectors at 0% budget rate across 43 audit rows.
+    #
+    # Current behavior: hash(category + season + week) produces a
+    # different ordering each week. Over a season, every MINOR
+    # category gets multiple chances at the 4 MINOR slots. Same
+    # week always produces the same order (deterministic,
+    # reconstructable). Coverage-first and 1-per-category limits
+    # are preserved.
+    if minor_pool and len(budgeted) < 12:
+        _covered_fids: set[str] = set()
+        for a in budgeted:
+            _covered_fids.update(a.franchise_ids)
+
+        def _minor_key(a: NarrativeAngle) -> tuple[int, str, str]:
+            fids = set(a.franchise_ids)
+            is_covered = 1 if fids and fids.issubset(_covered_fids) else 0
+            rotation = hashlib.md5(
+                f"{a.category}:{season}:{week_index}".encode()
+            ).hexdigest()
+            return (is_covered, rotation, a.headline)
+
+        minor_pool.sort(key=_minor_key)
+
+        m_count = 0
+        _minor_cats: set[str] = set()
+        for a in minor_pool:
+            if m_count >= 4 or len(budgeted) >= 12:
+                break
+            if a.category in _minor_cats:
+                continue
+            budgeted.append(a)
+            m_count += 1
+            _minor_cats.add(a.category)
+            _covered_fids.update(a.franchise_ids)
+
+    return budgeted
+
+
 def _derive_prompt_context(
     *,
     db_path: str,
@@ -759,71 +843,10 @@ def _derive_prompt_context(
 
         _all_angles.sort(key=lambda a: (-a.strength, a.category, a.headline))
 
-        # Tiered angle budget (per scope doc):
-        #   HEADLINE (strength 3): cap 3, NOTABLE (strength 2): cap 6,
-        #   MINOR (strength 1): cap 4 (only if total < 12). Total cap: 15.
-        #
-        # Within MINOR, selection is coverage-aware and category-diverse:
-        #   - At most 1 angle per category (prevents one high-volume
-        #     category from consuming all MINOR slots).
-        #   - Angles about franchises not yet covered by HEADLINE/NOTABLE
-        #     are preferred (ensures MINOR slots add breadth, not depth).
-        #   - Within each coverage tier, alphabetical by category/headline
-        #     provides deterministic ordering.
         if _all_angles:
-            budgeted = []
-            h_count = n_count = 0
-            minor_pool: list[NarrativeAngle] = []
-            for a in _all_angles:
-                if a.strength >= 3 and h_count < 3:
-                    budgeted.append(a)
-                    h_count += 1
-                elif a.strength == 2 and n_count < 6:
-                    budgeted.append(a)
-                    n_count += 1
-                elif a.strength <= 1:
-                    minor_pool.append(a)
-
-            # Phase 2: MINOR — coverage-aware, category-diverse fill
-            # with deterministic week-seeded rotation.
-            #
-            # Prior behavior: alphabetical tiebreak within coverage tier,
-            # which permanently locked out categories starting with letters
-            # later in the alphabet (REVENGE_GAME, TRADE_OUTCOME, etc.).
-            # 19 detectors at 0% budget rate across 43 audit rows.
-            #
-            # Current behavior: hash(category + season + week) produces a
-            # different ordering each week. Over a season, every MINOR
-            # category gets multiple chances at the 4 MINOR slots. Same
-            # week always produces the same order (deterministic,
-            # reconstructable). Coverage-first and 1-per-category limits
-            # are preserved.
-            if minor_pool and len(budgeted) < 12:
-                _covered_fids: set[str] = set()
-                for a in budgeted:
-                    _covered_fids.update(a.franchise_ids)
-
-                def _minor_key(a: NarrativeAngle) -> tuple[int, str, str]:
-                    fids = set(a.franchise_ids)
-                    is_covered = 1 if fids and fids.issubset(_covered_fids) else 0
-                    rotation = hashlib.md5(
-                        f"{a.category}:{season}:{week_index}".encode()
-                    ).hexdigest()
-                    return (is_covered, rotation, a.headline)
-
-                minor_pool.sort(key=_minor_key)
-
-                m_count = 0
-                _minor_cats: set[str] = set()
-                for a in minor_pool:
-                    if m_count >= 4 or len(budgeted) >= 12:
-                        break
-                    if a.category in _minor_cats:
-                        continue
-                    budgeted.append(a)
-                    m_count += 1
-                    _minor_cats.add(a.category)
-                    _covered_fids.update(a.franchise_ids)
+            budgeted = _budget_angles(
+                _all_angles, season=season, week_index=week_index,
+            )
 
             lines: list[str] = [
                 f"Narrative angles for Week {week_index} (what's interesting):",
