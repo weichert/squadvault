@@ -15,6 +15,8 @@ import json
 import os
 import sqlite3
 
+import pytest
+
 from squadvault.core.recaps.verification.recap_verifier_v1 import (
     VerificationFailure,
     VerificationResult,
@@ -5295,17 +5297,32 @@ class TestVerifyRecordClaimAnchoring:
         assert failures[0].category == "RECORD_CLAIM_ANCHORING"
         assert failures[0].severity == "HARD"
 
-    def test_angle_anchor_t9_loss_helper_bound(self):
-        """Helper-bound discipline: feed format_streak_record T9-LOSS
-        output directly into _angle_anchor_present and assert
-        recognition.
+    @pytest.mark.parametrize(
+        "branch_id, streak, record_length, is_loss",
+        [
+            ("T8",      8, 8, False),  # tied/broke win streak
+            ("T9-WIN",  7, 8, False),  # one win from win record
+            ("T10",    -8, 8, True),   # tied/broke loss streak
+            ("T9-LOSS",-7, 8, True),   # one loss from loss record
+        ],
+    )
+    def test_angle_anchor_record_phrasings_helper_bound(
+        self, branch_id, streak, record_length, is_loss,
+    ):
+        """Helper-bound discipline: feed every canonical
+        format_streak_record output directly into
+        _angle_anchor_present and assert recognition.
 
-        If format_streak_record's T9-LOSS phrasing changes (e.g.
-        shorter form for mobile), this test breaks first; the
-        verifier's regex must be updated in lockstep. Closes the
-        helper-bound discipline gate ("every canonical-phrase
-        reference in tests and verifier code routes through
-        streak_strings_v1").
+        Parametrized over all four record-claim branches (T8,
+        T9-WIN, T10, T9-LOSS). If format_streak_record's phrasing
+        for any branch changes (e.g. shorter form for mobile),
+        this test breaks first on that branch; the verifier's
+        regex must be updated in lockstep.
+
+        Closes the helper-bound discipline gate ("every canonical-
+        phrase reference in tests and verifier code routes through
+        streak_strings_v1") for the full record-claim surface,
+        not just T9-LOSS. Standing-backlog item #10 closure.
         """
         from squadvault.core.recaps.render.streak_strings_v1 import (
             format_streak_record,
@@ -5313,8 +5330,11 @@ class TestVerifyRecordClaimAnchoring:
         from squadvault.core.recaps.verification.recap_verifier_v1 import (
             _angle_anchor_present,
         )
-        result = format_streak_record("Beta Squad", -7, 8, "HOLDER")
-        assert result is not None
+        result = format_streak_record("Beta Squad", streak, record_length, "HOLDER")
+        assert result is not None, (
+            f"format_streak_record returned None for branch {branch_id} "
+            f"(streak={streak}, record_length={record_length})"
+        )
         headline, _ = result
         angles_text = f"  [HEADLINE] [RE: Beta Squad] {headline}\n"
         reverse_name_map = {"Beta Squad": "F2"}
@@ -5322,8 +5342,8 @@ class TestVerifyRecordClaimAnchoring:
             angles_text,
             franchise_id="F2",
             reverse_name_map=reverse_name_map,
-            is_loss=True,
-        ) is True
+            is_loss=is_loss,
+        ) is True, f"_angle_anchor_present did not recognize {branch_id} canonical phrasing"
 
     def test_no_angles_text_falls_back_to_canonical_only(self, tmp_path):
         """When narrative_angles_text is None (reverify or audit path),
