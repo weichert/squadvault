@@ -55,7 +55,7 @@ Per Reset Memo v1.0 §6.5, the ten documents enumerated in §5 of that memo (the
 A parallel-to-Tier-0 designation for binding-vision documents. The binding-vision sections enumerated below fall within the default-loading expectation of the Compression Rule; reference-only sections do not.
 
 - **SquadVault Business Plan**
-  - **Binding-vision** (per Reset Memo v1.0 §4.3): Founder's Letter; §3 ¶¶1–2; §5 ¶¶1–3; §6; §7.
+  - **Binding-vision** (per Reset Memo v1.0 §4.2): Founder's Letter; §3 ¶¶1–2; §5 ¶¶1–3; §6; §7.
   - **Reference-only** (per Reset Memo v1.0 §4.3): §4; §8–§22; §23; §24; all 26 appendices.
 
   The Business Plan binds only as vision source for the enumerated sections. It does not bind operational, technical, or governance decisions; conflicts between binding-vision sections and Tier 0 / Tier 1 / Tier 2 documents resolve per the Canonical Declaration above.
