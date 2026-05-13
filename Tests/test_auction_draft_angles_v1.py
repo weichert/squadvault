@@ -10,10 +10,8 @@ import os
 import sqlite3
 
 from squadvault.core.recaps.context.auction_draft_angles_v1 import (
-    _AuctionPick,
-    _load_all_auction_picks,
-    _load_player_season_scoring,
-    _PlayerSeasonScoring,
+    AuctionPick,
+    PlayerSeasonScoring,
     detect_auction_budget_allocation,
     detect_auction_bust,
     detect_auction_dollar_per_point,
@@ -23,6 +21,8 @@ from squadvault.core.recaps.context.auction_draft_angles_v1 import (
     detect_auction_positional_spending,
     detect_auction_price_vs_production,
     detect_auction_strategy_consistency,
+    load_all_auction_picks,
+    load_player_season_scoring,
 )
 
 SCHEMA_PATH = os.path.join(
@@ -91,12 +91,12 @@ def _insert_player_directory(con, *, league_id, season, player_id, name, positio
 
 
 def _make_pick(season, franchise_id, player_id, bid, position=""):
-    return _AuctionPick(season=season, franchise_id=franchise_id,
+    return AuctionPick(season=season, franchise_id=franchise_id,
                          player_id=player_id, bid_amount=bid, position=position)
 
 
 def _make_scoring(season, franchise_id, player_id, total, weeks, starters=None):
-    return _PlayerSeasonScoring(season=season, franchise_id=franchise_id,
+    return PlayerSeasonScoring(season=season, franchise_id=franchise_id,
                                  player_id=player_id, total_points=total,
                                  weeks_played=weeks, starter_weeks=starters or weeks)
 
@@ -314,7 +314,7 @@ class TestAuctionDataLoading:
         con.commit()
         con.close()
 
-        picks = _load_all_auction_picks(db_path, LEAGUE)
+        picks = load_all_auction_picks(db_path, LEAGUE)
         assert len(picks) == 1
         assert picks[0].position == "QB"
         assert picks[0].bid_amount == 50.0
@@ -329,7 +329,7 @@ class TestAuctionDataLoading:
         con.commit()
         con.close()
 
-        scoring = _load_player_season_scoring(db_path, LEAGUE)
+        scoring = load_player_season_scoring(db_path, LEAGUE)
         key = (SEASON, "F1", "P1")
         assert key in scoring
         assert scoring[key].total_points == 45.0
@@ -337,8 +337,8 @@ class TestAuctionDataLoading:
 
     def test_empty_data(self, tmp_path):
         db_path = _fresh_db(tmp_path)
-        assert _load_all_auction_picks(db_path, LEAGUE) == []
-        assert _load_player_season_scoring(db_path, LEAGUE) == {}
+        assert load_all_auction_picks(db_path, LEAGUE) == []
+        assert load_player_season_scoring(db_path, LEAGUE) == {}
 
 
 # ── Full pipeline (DB integration) ──────────────────────────────────

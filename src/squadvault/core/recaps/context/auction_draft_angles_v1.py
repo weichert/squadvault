@@ -37,7 +37,7 @@ from squadvault.core.storage.session import DatabaseSession
 
 
 @dataclass(frozen=True)
-class _AuctionPick:
+class AuctionPick:
     """A single auction draft pick with position context."""
     season: int
     franchise_id: str
@@ -47,7 +47,7 @@ class _AuctionPick:
 
 
 @dataclass(frozen=True)
-class _PlayerSeasonScoring:
+class PlayerSeasonScoring:
     """Aggregated scoring for a player on a franchise in a season."""
     season: int
     franchise_id: str
@@ -60,16 +60,16 @@ class _PlayerSeasonScoring:
 # ── Data loading ─────────────────────────────────────────────────────
 
 
-def _load_all_auction_picks(
+def load_all_auction_picks(
     db_path: str,
     league_id: str,
-) -> list[_AuctionPick]:
+) -> list[AuctionPick]:
     """Load all DRAFT_PICK events across all seasons with position enrichment.
 
     Joins with player_directory to attach position data.
     Returns picks sorted by (season, franchise_id, player_id) for determinism.
     """
-    picks: list[_AuctionPick] = []
+    picks: list[AuctionPick] = []
 
     # Load position lookup
     positions: dict[tuple[int, str], str] = {}  # (season, player_id) -> position
@@ -123,7 +123,7 @@ def _load_all_auction_picks(
 
         position = positions.get((season, player_id), "")
 
-        picks.append(_AuctionPick(
+        picks.append(AuctionPick(
             season=season,
             franchise_id=franchise_id,
             player_id=player_id,
@@ -135,13 +135,13 @@ def _load_all_auction_picks(
     return picks
 
 
-def _load_player_season_scoring(
+def load_player_season_scoring(
     db_path: str,
     league_id: str,
     *,
     current_season: int = 0,
     target_week: int = 99,
-) -> dict[tuple[int, str, str], _PlayerSeasonScoring]:
+) -> dict[tuple[int, str, str], PlayerSeasonScoring]:
     """Load aggregated player scoring per (season, franchise_id, player_id).
 
     When current_season and target_week are specified, scores for the
@@ -202,9 +202,9 @@ def _load_player_season_scoring(
             totals[key] = []
         totals[key].append((score, is_starter))
 
-    result: dict[tuple[int, str, str], _PlayerSeasonScoring] = {}
+    result: dict[tuple[int, str, str], PlayerSeasonScoring] = {}
     for (season, fid, pid), entries in totals.items():
-        result[(season, fid, pid)] = _PlayerSeasonScoring(
+        result[(season, fid, pid)] = PlayerSeasonScoring(
             season=season,
             franchise_id=fid,
             player_id=pid,
@@ -284,8 +284,8 @@ def _load_season_faab_by_position(
 
 
 def detect_auction_price_vs_production(
-    picks: list[_AuctionPick],
-    scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
+    picks: list[AuctionPick],
+    scoring: dict[tuple[int, str, str], PlayerSeasonScoring],
     *,
     current_season: int = 0,
     target_week: int = 0,
@@ -363,8 +363,8 @@ def detect_auction_price_vs_production(
 
 
 def detect_auction_dollar_per_point(
-    picks: list[_AuctionPick],
-    scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
+    picks: list[AuctionPick],
+    scoring: dict[tuple[int, str, str], PlayerSeasonScoring],
     current_season: int,
     *,
     min_weeks: int = 3,
@@ -376,7 +376,7 @@ def detect_auction_dollar_per_point(
     if len(season_picks) < 3:
         return []
 
-    efficiencies: list[tuple[_AuctionPick, float, float]] = []  # (pick, ppd, total)
+    efficiencies: list[tuple[AuctionPick, float, float]] = []  # (pick, ppd, total)
     for pk in season_picks:
         sc = scoring.get((current_season, pk.franchise_id, pk.player_id))
         if sc is None or sc.weeks_played < min_weeks:
@@ -411,8 +411,8 @@ def detect_auction_dollar_per_point(
 
 
 def detect_auction_bust(
-    picks: list[_AuctionPick],
-    scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
+    picks: list[AuctionPick],
+    scoring: dict[tuple[int, str, str], PlayerSeasonScoring],
     current_season: int,
     *,
     min_weeks: int = 4,
@@ -441,7 +441,7 @@ def detect_auction_bust(
         return []
 
     # Group picks by franchise, take top 3 by bid
-    by_franchise: dict[str, list[_AuctionPick]] = {}
+    by_franchise: dict[str, list[AuctionPick]] = {}
     for pk in season_picks:
         if pk.franchise_id not in by_franchise:
             by_franchise[pk.franchise_id] = []
@@ -477,7 +477,7 @@ def detect_auction_bust(
 
 
 def detect_auction_budget_allocation(
-    picks: list[_AuctionPick],
+    picks: list[AuctionPick],
     current_season: int,
     *,
     budget: float = 200.0,
@@ -555,7 +555,7 @@ def detect_auction_budget_allocation(
 
 
 def detect_auction_positional_spending(
-    picks: list[_AuctionPick],
+    picks: list[AuctionPick],
     current_season: int,
     *,
     budget: float = 200.0,
@@ -604,7 +604,7 @@ def detect_auction_positional_spending(
 
 
 def detect_auction_strategy_consistency(
-    picks: list[_AuctionPick],
+    picks: list[AuctionPick],
     current_season: int,
     *,
     min_seasons: int = 3,
@@ -672,7 +672,7 @@ def detect_auction_strategy_consistency(
 
 
 def detect_auction_league_inflation(
-    picks: list[_AuctionPick],
+    picks: list[AuctionPick],
     current_season: int,
     *,
     min_seasons: int = 3,
@@ -729,8 +729,8 @@ def detect_auction_league_inflation(
 
 
 def detect_auction_draft_to_faab_pipeline(
-    picks: list[_AuctionPick],
-    scoring: dict[tuple[int, str, str], _PlayerSeasonScoring],
+    picks: list[AuctionPick],
+    scoring: dict[tuple[int, str, str], PlayerSeasonScoring],
     faab_by_position: dict[tuple[str, str], float],
     current_season: int,
     *,
@@ -801,7 +801,7 @@ def detect_auction_draft_to_faab_pipeline(
 
 
 def detect_auction_most_expensive_history(
-    picks: list[_AuctionPick],
+    picks: list[AuctionPick],
     *,
     pname: NameFn = _identity,
     fname: NameFn = _identity,
@@ -815,7 +815,7 @@ def detect_auction_most_expensive_history(
         return []
 
     # Max bid per position across all drafts
-    pos_max: dict[str, tuple[_AuctionPick, float]] = {}  # pos -> (pick, bid)
+    pos_max: dict[str, tuple[AuctionPick, float]] = {}  # pos -> (pick, bid)
     for pk in picks:
         if not pk.position:
             continue
@@ -870,11 +870,11 @@ def detect_auction_draft_angles_v1(
 
     Returns an empty list when no auction data exists.
     """
-    all_picks = _load_all_auction_picks(db_path, league_id)
+    all_picks = load_all_auction_picks(db_path, league_id)
     if not all_picks:
         return []
 
-    scoring = _load_player_season_scoring(
+    scoring = load_player_season_scoring(
         db_path, league_id,
         current_season=season, target_week=week,
     )

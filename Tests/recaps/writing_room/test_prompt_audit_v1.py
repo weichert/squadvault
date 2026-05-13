@@ -361,6 +361,7 @@ def test_maybe_capture_attempt_default_prompt_text_empty(
 # ---------------------------------------------------------------------------
 _NON_EMITTING_CONTEXT_MODULES: set[str] = {
     "__init__.py",
+    "draft_history_vault_aggregations_v1.py",
     "hall_of_fame_aggregations_v1.py",
     "season_context_v1.py",
     "league_history_v1.py",
