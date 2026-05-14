@@ -19,7 +19,13 @@ commissioner reviews the regenerated files via `git diff` before
 `git commit`.
 
 Default invocation:
-  ./scripts/generate_hall_of_fame_archive.py
+  ./scripts/py scripts/generate_hall_of_fame_archive.py
+
+This script imports from `squadvault.core` and must be run through the
+`./scripts/py` shim, which sets `PYTHONPATH=src` (and is CWD-independent).
+Running the file directly (`./scripts/generate_hall_of_fame_archive.py`)
+fails with `ModuleNotFoundError` because the script does no `sys.path`
+manipulation of its own.
 
 Default settings target PFL Buddies (league_id = 70985) against
 `.local_squadvault.sqlite`. Override per spec §6.4 layout invariants
