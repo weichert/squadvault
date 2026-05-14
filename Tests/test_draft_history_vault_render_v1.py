@@ -122,20 +122,20 @@ class TestRenderMostExpensiveMarkdown:
         result = MostExpensiveResult(
             overall=MostExpensivePick(
                 season=2018, franchise_id="0002", player_id="9988",
-                bid_amount=62.0, position="QB",
+                bid_amount=62.0, position="WR",
             ),
             per_position=(),
         )
         md = render_most_expensive_markdown(
             result,
             {"0002": "Italian Cavallini"},
-            {"9988": "Patrick Mahomes"},
+            {"9988": "Antonio Brown"},
         )
         assert "Italian Cavallini" in md
-        assert "Patrick Mahomes" in md
+        assert "Antonio Brown" in md
         assert "$62" in md
         assert "2018" in md
-        assert "QB" in md
+        assert "WR" in md
         assert "Overall Record" in md
 
     def test_renders_per_position_table(self):
@@ -208,7 +208,7 @@ class TestRenderMostExpensiveMarkdown:
         result = MostExpensiveResult(
             overall=MostExpensivePick(
                 season=2018, franchise_id="0002", player_id="9988",
-                bid_amount=62.0, position="QB",
+                bid_amount=62.0, position="WR",
             ),
             per_position=(),
         )

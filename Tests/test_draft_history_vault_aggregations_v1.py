@@ -6,10 +6,13 @@ sequences and mappings. Integration with `load_all_auction_picks` and
 `load_player_season_scoring` is covered by the existing
 `test_auction_draft_angles_v1.py` test surface.
 
-Includes a regression test against the Cavallini/Mahomes 2018 anchor
-(franchise 0002, player 9988, $62, QB) per A2 spec section 4.5 / Step 1
-section 4.5 - the anchor must surface as the QB-position record under
-`compute_auction_most_expensive_v1`.
+Includes a test that the per-position record derivation is computed
+independently of the overall record under `compute_auction_most_expensive_v1`.
+(Earlier versions of this test referenced a "Cavallini/Mahomes 2018
+anchor"; that anchor was revoked 2026-05-14 - player 9988 is Antonio
+Brown, a WR, not Patrick Mahomes - see
+`_observations/OBSERVATIONS_2026_05_14_PHASE_11_A2_ANCHOR_REVOCATION.md`.
+The derivation behavior under test is unaffected by that revocation.)
 """
 from __future__ import annotations
 
@@ -180,25 +183,29 @@ class TestComputeAuctionMostExpensiveV1:
         c = compute_auction_most_expensive_v1(list(reversed(picks)))
         assert a == c
 
-    def test_cavallini_mahomes_2018_qb_anchor_regression(self):
-        """A2 spec section 4.5 / Step 1 section 4.5 anchor.
+    def test_qb_position_record_computed_independently_of_overall(self):
+        """Per-position record derivation is independent of the overall record.
 
-        The Italian Cavallini / Mahomes 2018 pick (franchise 0002,
-        player 9988, $62, QB) must surface as the QB-position
-        record under appropriate substrate state. This test
-        validates the derivation against a substrate-fragment
-        synthesized to match the empirically-confirmed historical
-        facts: $62 is the highest QB bid in the substrate when
-        all other 2018+ QB picks are lower-bid.
+        Given a set of auction picks where the highest QB bid is
+        lower than the highest overall (non-QB) bid, the derivation
+        must surface BOTH: the overall record (the highest bid of
+        any position) AND the QB-position record (the highest QB
+        bid specifically). The QB-position record is not displaced
+        by a higher non-QB pick.
 
-        Per the anti-drift discipline in the session brief: the
-        Cavallini anchor is a TEST TARGET, not a hardcode. The
-        derivation surfaces it; the test validates the derivation.
+        Synthetic test data: a TEST TARGET for the derivation, not
+        a hardcode of any real pick. (The "Cavallini / Mahomes 2018"
+        anchor that earlier versions of this test referenced was
+        revoked 2026-05-14 - see
+        `_observations/OBSERVATIONS_2026_05_14_PHASE_11_A2_ANCHOR_REVOCATION.md`
+        - player 9988 is Antonio Brown, a WR, not Patrick Mahomes.
+        The derivation behavior this test validates is unaffected by
+        that revocation; only the example-anchor labeling was wrong.)
         """
         picks = [
-            # The anchor pick.
+            # The highest QB bid in the synthetic substrate.
             AuctionPick(
-                season=2018, franchise_id="0002", player_id="9988",
+                season=2018, franchise_id="0002", player_id="qb_anchor",
                 bid_amount=62.0, position="QB",
             ),
             # Other QB picks across seasons, all lower-bid.
@@ -228,13 +235,14 @@ class TestComputeAuctionMostExpensiveV1:
         assert result.overall.player_id == "rb_top"
         assert result.overall.bid_amount == 75.0
 
-        # The QB-position record is the Cavallini anchor.
+        # The QB-position record is the highest QB bid ($62), computed
+        # independently of the higher overall (RB) record.
         qb_records = [r for r in result.per_position if r.position == "QB"]
         assert len(qb_records) == 1
         qb_record = qb_records[0]
         assert qb_record.season == 2018
         assert qb_record.franchise_id == "0002"
-        assert qb_record.player_id == "9988"
+        assert qb_record.player_id == "qb_anchor"
         assert qb_record.bid_amount == 62.0
 
 
