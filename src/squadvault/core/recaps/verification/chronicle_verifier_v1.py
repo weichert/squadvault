@@ -151,7 +151,7 @@ def _check_trace(
     text: str,
     hh_block: str | None,
 ) -> list[ChronicleVerificationFailure]:
-    failures = []
+    failures: list[ChronicleVerificationFailure] = []
     trace_block = _extract_section(text, "Trace")
     if trace_block is None:
         # Already caught by STRUCTURE check; skip double-reporting.
@@ -202,7 +202,7 @@ def _check_score_claims(
 
     hh_scores = _scores_in_text(hh_block)
 
-    failures = []
+    failures: list[ChronicleVerificationFailure] = []
     for score in sorted(narrative_scores):
         if score not in hh_scores:
             failures.append(ChronicleVerificationFailure(
@@ -226,7 +226,7 @@ def _check_restraint(
         return []
 
     lower = narrative_block.lower()
-    failures = []
+    failures: list[ChronicleVerificationFailure] = []
     for phrase in _BANNED_PHRASES:
         if phrase in lower:
             # Find the surrounding context (up to 80 chars)
