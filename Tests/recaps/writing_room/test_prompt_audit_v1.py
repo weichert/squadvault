@@ -368,6 +368,7 @@ _NON_EMITTING_CONTEXT_MODULES: set[str] = {
     "league_history_v1.py",
     "player_week_context_v1.py",
     "writer_room_context_v1.py",
+    "franchise_display_overrides_v1.py",
 }
 
 

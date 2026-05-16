@@ -406,3 +406,23 @@ CREATE INDEX IF NOT EXISTS idx_reverify_source
 
 CREATE INDEX IF NOT EXISTS idx_reverify_tag
     ON prompt_audit_reverify (verifier_tag);
+
+-- Commissioner display override table.
+-- Facts are immutable; presentation is governed.
+-- This table governs how franchise slots are displayed without
+-- altering canonical_events or memory_events.
+CREATE TABLE IF NOT EXISTS franchise_display_overrides (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    league_id             TEXT    NOT NULL,
+    franchise_id          TEXT    NOT NULL,
+    season_from           INTEGER,
+    season_to             INTEGER,
+    display_name_override TEXT,
+    suppressed            BOOLEAN DEFAULT 0,
+    memorial_flag         BOOLEAN DEFAULT 0,
+    narrative_excluded    BOOLEAN DEFAULT 0,
+    override_reason       TEXT,
+    set_by                TEXT    NOT NULL,
+    set_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (league_id, franchise_id, season_from, season_to)
+);
