@@ -24,7 +24,7 @@ not what was approvable.
    `recap_artifacts`. Confirm with:
    ```
    ./scripts/py scripts/recap.py status \
-       --db data/squadvault.db \
+       --db .local_squadvault.sqlite \
        --league-id 70985 --season <S> --week-index <W>
    ```
 2. The working tree is clean. The archive write produces a single small
@@ -35,7 +35,7 @@ not what was approvable.
 
 ```
 ./scripts/py scripts/distribute_recap.py \
-    --db data/squadvault.db \
+    --db .local_squadvault.sqlite \
     --season 2025 \
     --week-index 7
 ```
