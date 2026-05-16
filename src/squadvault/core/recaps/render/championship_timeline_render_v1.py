@@ -132,6 +132,20 @@ def _resolve(name_map: dict[str, str], franchise_id: str) -> str:
     return name_map.get(franchise_id, franchise_id)
 
 
+def _resolve_season(
+    season_map: dict[tuple[str, int], str],
+    franchise_id: str,
+    season: int,
+) -> str:
+    """Resolve a franchise_id to its era-correct display name.
+
+    Uses (franchise_id, season) key so historical results are
+    attributed to the name that existed in that season. Falls back
+    to the raw franchise_id if not found.
+    """
+    return season_map.get((franchise_id, season), franchise_id)
+
+
 def _scope_block() -> str:
     """Standard scope-declaration block prefixed to every page."""
     return f"{SCOPE_DECLARATION_LINE}\n"
@@ -149,7 +163,7 @@ def _format_score(winner_score: float, loser_score: float, is_tie: bool) -> str:
 
 def render_playoff_brackets_markdown(
     brackets: Sequence[SeasonBracket],
-    name_map: dict[str, str],
+    season_map: dict[tuple[str, int], str],
 ) -> str:
     """Render the Per-Season Playoff Bracket sub-shape per spec §3.1 / §5.1.
 
@@ -164,8 +178,9 @@ def render_playoff_brackets_markdown(
     Args:
         brackets: Aggregation output from `compute_playoff_bracket`.
             Expected sort: season ascending.
-        name_map: franchise_id → display name. Missing entries fall
-            back to the raw franchise_id.
+        season_map: (franchise_id, season) -> display name. Enables
+            era-correct attribution for per-season bracket rows.
+            Missing entries fall back to the raw franchise_id.
 
     Returns:
         Markdown string. Empty `brackets` produces a "no data" page;
@@ -201,8 +216,8 @@ def render_playoff_brackets_markdown(
             lines.append("| Winner | Score | Loser |")
             lines.append("|---|---|---|")
             for m in rnd.matchups:
-                winner = _resolve(name_map, m.winner_id)
-                loser = _resolve(name_map, m.loser_id)
+                winner = _resolve_season(season_map, m.winner_id, bracket.season)
+                loser = _resolve_season(season_map, m.loser_id, bracket.season)
                 score = _format_score(
                     m.winner_score, m.loser_score, m.is_tie,
                 )

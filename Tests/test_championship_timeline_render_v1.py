@@ -249,7 +249,7 @@ class TestRenderPlayoffBracketsMarkdown:
     def test_renders_matchup_rows(self):
         md = render_playoff_brackets_markdown(
             [_sample_bracket(2018)],
-            {"A": "Team A", "C": "Team C"},
+            {("A", 2018): "Team A", ("C", 2018): "Team C"},
         )
         # championship row: Team A 130.00 to 95.00 Team C
         assert "Team A" in md

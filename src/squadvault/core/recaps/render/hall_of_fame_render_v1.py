@@ -97,6 +97,21 @@ def _resolve(name_map: dict[str, str], franchise_id: str) -> str:
     return name_map.get(franchise_id, franchise_id)
 
 
+def _resolve_season(
+    season_map: dict[tuple[str, int], str],
+    franchise_id: str,
+    season: int,
+) -> str:
+    """Resolve a franchise_id to its era-correct display name.
+
+    Uses (franchise_id, season) key so historical results are
+    attributed to the name that existed in that season, not the
+    current occupant of the slot. Falls back to the raw
+    franchise_id if not found.
+    """
+    return season_map.get((franchise_id, season), franchise_id)
+
+
 def _format_record(wins: int, losses: int, ties: int) -> str:
     """Format a W-L-T record as 'W-L-T'. Hides ties when zero."""
     if ties == 0:
@@ -130,7 +145,7 @@ def _scope_block() -> str:
 
 def render_championship_roll_markdown(
     results: Sequence[ChampionshipResult],
-    name_map: dict[str, str],
+    season_map: dict[tuple[str, int], str],
 ) -> str:
     """Render the Championship Roll sub-shape per spec §3.3 / §5.1.
 
@@ -145,8 +160,9 @@ def render_championship_roll_markdown(
     Args:
         results: Aggregation output from `compute_championship_roll`.
             Expected sort: season ascending.
-        name_map: franchise_id → display name. Missing entries fall
-            back to the raw franchise_id.
+        season_map: (franchise_id, season) -> display name. Enables
+            era-correct attribution when a franchise slot has changed
+            ownership. Missing entries fall back to the raw franchise_id.
 
     Returns:
         Markdown string. Empty `results` produces a "no data" page;
@@ -168,8 +184,8 @@ def render_championship_roll_markdown(
     lines.append("| Season | Champion | Runner-Up | Week | Score |")
     lines.append("|---|---|---|---|---|")
     for r in results:
-        champ = _resolve(name_map, r.champion_id)
-        runner = _resolve(name_map, r.runner_up_id)
+        champ = _resolve_season(season_map, r.champion_id, r.season)
+        runner = _resolve_season(season_map, r.runner_up_id, r.season)
         score = (
             f"{r.champion_score:.2f} to {r.runner_up_score:.2f}"
             if not r.is_tie
@@ -180,25 +196,29 @@ def render_championship_roll_markdown(
         )
     lines.append("")
 
-    # Aggregate per-franchise title counts.
-    title_counts: dict[str, int] = {}
+    # Aggregate title counts keyed by era-correct display name.
+    # A franchise slot that changed ownership across seasons appears
+    # as separate rows, each attributed to the name that existed
+    # during the winning season.
+    era_titles: dict[str, list[int]] = {}
     for r in results:
-        title_counts[r.champion_id] = title_counts.get(r.champion_id, 0) + 1
+        era_name = _resolve_season(season_map, r.champion_id, r.season)
+        era_titles.setdefault(era_name, []).append(r.season)
 
     lines.append("## Titles by Franchise")
     lines.append("")
     lines.append("| Franchise | Titles | Seasons |")
     lines.append("|---|---|---|")
     # Sort: titles desc, then franchise display name asc for stability.
-    ordered_fids = sorted(
-        title_counts.keys(),
-        key=lambda fid: (-title_counts[fid], _resolve(name_map, fid)),
+    ordered_names = sorted(
+        era_titles.keys(),
+        key=lambda name: (-len(era_titles[name]), name),
     )
-    for fid in ordered_fids:
-        seasons_won = sorted(r.season for r in results if r.champion_id == fid)
+    for name in ordered_names:
+        seasons_won = sorted(era_titles[name])
         seasons_str = ", ".join(str(s) for s in seasons_won)
         lines.append(
-            f"| {_resolve(name_map, fid)} | {title_counts[fid]} | {seasons_str} |"
+            f"| {name} | {len(seasons_won)} | {seasons_str} |"
         )
     lines.append("")
 

@@ -581,6 +581,34 @@ def build_cross_season_name_resolver(
     return name_map
 
 
+def build_season_scoped_name_map(
+    db_path: str,
+    league_id: str,
+) -> dict[tuple[str, int], str]:
+    """Build a (franchise_id, season) -> name map for era-correct attribution.
+
+    Unlike build_cross_season_name_resolver, this preserves every
+    franchise slot's name as it existed in each season. Use for
+    historical archive rendering where a slot may have changed
+    ownership across eras (e.g. the same slot number held by
+    different owners in different seasons).
+    """
+    season_map: dict[tuple[str, int], str] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT franchise_id, season, name FROM franchise_directory
+               WHERE league_id = ?
+               ORDER BY franchise_id, season ASC""",
+            (str(league_id),),
+        ).fetchall()
+    for row in rows:
+        fid = str(row[0]).strip()
+        season = int(row[1])
+        name = str(row[2]).strip() if row[2] else fid
+        season_map[(fid, season)] = name
+    return season_map
+
+
 # ── Franchise tenure ──────────────────────────────────────────────────
 
 

@@ -14,21 +14,21 @@ For the championship-week result per season â€” and the aggregate title counts â
 |---|---|---|
 | Paradis' Playmakers | 120.00 to 100.00 | Eddie & the Cruisers |
 | Purple Haze | 143.50 to 120.50 | Italian Cavallini |
-| Miller's Genuine Draft | 109.00 to 84.50 | Stu's Crew |
+| MGD | 109.00 to 84.50 | Stu's Crew |
 | Robb's Raiders | 81.00 to 59.50 | Weichert's Warmongers |
 
 ### Semifinal (Week 15)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Miller's Genuine Draft | 143.00 to 104.50 | Purple Haze |
+| MGD | 143.00 to 104.50 | Purple Haze |
 | Robb's Raiders | 110.50 to 96.00 | Paradis' Playmakers |
 
 ### Championship (Week 16)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Robb's Raiders | 129.50 to 97.50 | Miller's Genuine Draft |
+| Robb's Raiders | 129.50 to 97.50 | MGD |
 
 ## 2011
 
@@ -38,14 +38,14 @@ For the championship-week result per season â€” and the aggregate title counts â
 |---|---|---|
 | Stu's Crew | 136.00 to 119.50 | Eddie & the Cruisers |
 | Purple Haze | 111.00 to 105.50 | Weichert's Warmongers |
-| Miller's Genuine Draft | 148.50 to 137.50 | Robb's Raiders |
-| Italian Cavallini | 126.00 to 105.00 | Brandon Knows Ball |
+| MGD | 148.50 to 137.50 | Robb's Raiders |
+| Italian Cavallini | 126.00 to 105.00 | SS Express |
 
 ### Semifinal (Week 15)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Purple Haze | 128.00 to 113.00 | Miller's Genuine Draft |
+| Purple Haze | 128.00 to 113.00 | MGD |
 | Italian Cavallini | 142.00 to 94.00 | Stu's Crew |
 
 ### Championship (Week 16)
@@ -63,13 +63,13 @@ For the championship-week result per season â€” and the aggregate title counts â
 | Stu's Crew | 123.00 to 68.50 | Robb's Raiders |
 | Paradis' Playmakers | 130.50 to 120.50 | Italian Cavallini |
 | Ben's Gods | 145.00 to 94.00 | Weichert's Warmongers |
-| Brandon Knows Ball | 99.50 to 99.50 | Miller's Genuine Draft |
+| SS Express | 99.50 to 99.50 | MGD |
 
 ### Semifinal (Week 15)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Paradis' Playmakers | 122.50 to 119.50 | Brandon Knows Ball |
+| Paradis' Playmakers | 122.50 to 119.50 | SS Express |
 | Ben's Gods | 112.00 to 106.50 | Stu's Crew |
 
 ### Championship (Week 16)
@@ -86,21 +86,21 @@ For the championship-week result per season â€” and the aggregate title counts â
 |---|---|---|
 | Robb's Raiders | 148.00 to 97.50 | Purple Haze |
 | Ben's Gods | 144.00 to 75.00 | Weichert's Warmongers |
-| Italian Cavallini | 131.00 to 67.00 | Miller's Genuine Draft |
-| Brandon Knows Ball | 143.50 to 80.50 | Eddie & the Cruisers |
+| Italian Cavallini | 131.00 to 67.00 | MGD |
+| SS Express | 143.50 to 80.50 | Eddie & the Cruisers |
 
 ### Semifinal (Week 15)
 
 | Winner | Score | Loser |
 |---|---|---|
 | Italian Cavallini | 123.00 to 86.50 | Ben's Gods |
-| Brandon Knows Ball | 166.50 to 110.50 | Robb's Raiders |
+| SS Express | 166.50 to 110.50 | Robb's Raiders |
 
 ### Championship (Week 16)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Italian Cavallini | 95.00 to 94.00 | Brandon Knows Ball |
+| Italian Cavallini | 95.00 to 94.00 | SS Express |
 
 ## 2014
 
@@ -111,7 +111,7 @@ For the championship-week result per season â€” and the aggregate title counts â
 | Stu's Crew | 149.50 to 136.00 | Eddie & the Cruisers |
 | Paradis' Playmakers | 123.00 to 84.00 | Weichert's Warmongers |
 | Purple Haze | 108.00 to 73.50 | Italian Cavallini |
-| Ben's Gods | 120.50 to 113.50 | Brandon Knows Ball |
+| Ben's Gods | 120.50 to 113.50 | SS Express |
 
 ### Semifinal (Week 15)
 
@@ -132,7 +132,7 @@ For the championship-week result per season â€” and the aggregate title counts â
 
 | Winner | Score | Loser |
 |---|---|---|
-| Eddie & the Cruisers | 117.00 to 108.50 | Brandon Knows Ball |
+| Eddie & the Cruisers | 117.00 to 108.50 | SS Express |
 | Weichert's Warmongers | 128.00 to 76.50 | Stu's Crew |
 | Ben's Gods | 98.50 to 98.00 | Paradis' Playmakers |
 | Italian Cavallini | 98.50 to 85.50 | Robb's Raiders |
@@ -158,21 +158,21 @@ For the championship-week result per season â€” and the aggregate title counts â
 |---|---|---|
 | Paradis' Playmakers | 130.00 to 70.00 | Italian Cavallini |
 | Weichert's Warmongers | 77.00 to 54.00 | Eddie & the Cruisers |
-| Miller's Genuine Draft | 83.50 to 76.00 | Ben's Gods |
-| Brandon Knows Ball | 51.00 to 40.50 | Robb's Raiders |
+| MGD | 83.50 to 76.00 | Ben's Gods |
+| SS Express | 51.00 to 40.50 | Robb's Raiders |
 
 ### Semifinal (Week 15)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Weichert's Warmongers | 85.00 to 71.00 | Miller's Genuine Draft |
-| Brandon Knows Ball | 140.50 to 99.50 | Paradis' Playmakers |
+| Weichert's Warmongers | 85.00 to 71.00 | MGD |
+| SS Express | 140.50 to 99.50 | Paradis' Playmakers |
 
 ### Championship (Week 16)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Brandon Knows Ball | 107.00 to 100.00 | Weichert's Warmongers |
+| SS Express | 107.00 to 100.00 | Weichert's Warmongers |
 
 ## 2017
 
@@ -183,13 +183,13 @@ For the championship-week result per season â€” and the aggregate title counts â
 | Stu's Crew | 128.45 to 105.60 | Italian Cavallini |
 | Purple Haze | 92.25 to 81.45 | Paradis' Playmakers |
 | Eddie & the Cruisers | 120.15 to 115.45 | Ben's Gods |
-| Brandon Knows Ball | 95.95 to 83.85 | Weichert's Warmongers |
+| SS Express | 95.95 to 83.85 | Weichert's Warmongers |
 
 ### Semifinal (Week 15)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Purple Haze | 95.75 to 91.40 | Brandon Knows Ball |
+| Purple Haze | 95.75 to 91.40 | SS Express |
 | Eddie & the Cruisers | 111.30 to 95.30 | Stu's Crew |
 
 ### Championship (Week 16)
@@ -231,13 +231,13 @@ For the championship-week result per season â€” and the aggregate title counts â
 | Paradis' Playmakers | 102.15 to 74.30 | Ben's Gods |
 | Weichert's Warmongers | 93.55 to 80.65 | Robb's Raiders |
 | Italian Cavallini | 126.45 to 114.05 | Stu's Crew |
-| Brandon Knows Ball | 117.30 to 87.85 | Purple Haze |
+| Neal's Neat Guy's | 117.30 to 87.85 | Purple Haze |
 
 ### Semifinal (Week 15)
 
 | Winner | Score | Loser |
 |---|---|---|
-| Paradis' Playmakers | 124.80 to 116.65 | Brandon Knows Ball |
+| Paradis' Playmakers | 124.80 to 116.65 | Neal's Neat Guy's |
 | Weichert's Warmongers | 115.20 to 114.10 | Italian Cavallini |
 
 ### Championship (Week 16)
@@ -255,7 +255,7 @@ For the championship-week result per season â€” and the aggregate title counts â
 | Stu's Crew | 121.85 to 111.90 | Weichert's Warmongers |
 | Paradis' Playmakers | 126.50 to 99.50 | Miller's Genuine Draft |
 | Robb's Raiders | 111.20 to 107.05 | Eddie & the Cruisers |
-| Italian Cavallini | 125.70 to 124.30 | Brandon Knows Ball |
+| Italian Cavallini | 125.70 to 124.30 | Neal's Neat Guys |
 
 ### Semifinal (Week 15)
 
@@ -276,7 +276,7 @@ For the championship-week result per season â€” and the aggregate title counts â
 
 | Winner | Score | Loser |
 |---|---|---|
-| Stu's Crew | 101.70 to 96.00 | Brandon Knows Ball |
+| Stu's Crew | 101.70 to 96.00 | Baber's Barristers |
 | Paradis' Playmakers | 124.80 to 95.70 | Eddie & the Cruisers |
 | Purple Haze | 98.30 to 94.85 | Robb's Raiders |
 | Ben's Gods | 82.70 to 78.40 | Miller's Genuine Draft |
@@ -301,7 +301,7 @@ For the championship-week result per season â€” and the aggregate title counts â
 | Winner | Score | Loser |
 |---|---|---|
 | Paradis' Playmakers | 134.20 to 120.55 | Robb's Raiders |
-| Weichert's Warmongers | 164.10 to 108.40 | Brandon Knows Ball |
+| Weichert's Warmongers | 164.10 to 108.40 | Baber's Barristers |
 | Miller's Genuine Draft | 119.20 to 104.45 | Purple Haze |
 | Ben's Gods | 104.50 to 92.45 | Stu's Crew |
 
@@ -327,14 +327,14 @@ For the championship-week result per season â€” and the aggregate title counts â
 | Paradis' Playmakers | 131.20 to 67.60 | Stu's Crew |
 | Eddie & the Cruisers | 121.70 to 110.60 | Miller's Genuine Draft |
 | Italian Cavallini | 102.45 to 71.45 | Purple Haze |
-| Brandon Knows Ball | 109.30 to 94.40 | Ben's Gods |
+| Jack of All Trades | 109.30 to 94.40 | Ben's Gods |
 
 ### Semifinal (Week 16)
 
 | Winner | Score | Loser |
 |---|---|---|
 | Eddie & the Cruisers | 108.35 to 77.55 | Paradis' Playmakers |
-| Italian Cavallini | 131.90 to 112.10 | Brandon Knows Ball |
+| Italian Cavallini | 131.90 to 112.10 | Jack of All Trades |
 
 ### Championship (Week 17)
 

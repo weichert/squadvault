@@ -53,6 +53,7 @@ from squadvault.core.recaps.context.hall_of_fame_aggregations_v1 import (
 )
 from squadvault.core.recaps.context.league_history_v1 import (
     build_cross_season_name_resolver,
+    build_season_scoped_name_map,
     load_all_matchups,
 )
 from squadvault.core.recaps.render.hall_of_fame_render_v1 import (
@@ -126,6 +127,9 @@ def _render_all_pages(
     name_map = build_cross_season_name_resolver(
         db_path=db_path, league_id=league_id,
     )
+    season_map = build_season_scoped_name_map(
+        db_path=db_path, league_id=league_id,
+    )
 
     champ_roll = compute_championship_roll(matchups)
     season_records = compute_all_season_records(matchups)
@@ -134,7 +138,7 @@ def _render_all_pages(
     return {
         INDEX_FILENAME: render_index_markdown(),
         CHAMPIONSHIP_ROLL_FILENAME: render_championship_roll_markdown(
-            champ_roll, name_map,
+            champ_roll, season_map,
         ),
         WORST_SEASONS_FILENAME: render_worst_seasons_markdown(
             season_records, name_map, top_n=top_n,

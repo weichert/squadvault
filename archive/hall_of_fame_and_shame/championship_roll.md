@@ -6,13 +6,13 @@ The Digital Archive: PFL Buddies, 2010 – 2025. The league has been running con
 
 | Season | Champion | Runner-Up | Week | Score |
 |---|---|---|---|---|
-| 2010 | Robb's Raiders | Miller's Genuine Draft | 16 | 129.50 to 97.50 |
+| 2010 | Robb's Raiders | MGD | 16 | 129.50 to 97.50 |
 | 2011 | Italian Cavallini | Purple Haze | 16 | 137.00 to 92.00 |
 | 2012 | Paradis' Playmakers | Ben's Gods | 16 | 142.00 to 105.50 |
-| 2013 | Italian Cavallini | Brandon Knows Ball | 16 | 95.00 to 94.00 |
+| 2013 | Italian Cavallini | SS Express | 16 | 95.00 to 94.00 |
 | 2014 | Stu's Crew | Paradis' Playmakers | 16 | 62.50 to 50.00 |
 | 2015 | Eddie & the Cruisers | Ben's Gods | 16 | 118.00 to 92.50 |
-| 2016 | Brandon Knows Ball | Weichert's Warmongers | 16 | 107.00 to 100.00 |
+| 2016 | SS Express | Weichert's Warmongers | 16 | 107.00 to 100.00 |
 | 2017 | Purple Haze | Eddie & the Cruisers | 16 | 72.95 to 63.35 |
 | 2018 | Stu's Crew | Miller's Genuine Draft | 16 | 133.65 to 108.45 |
 | 2019 | Paradis' Playmakers | Weichert's Warmongers | 16 | 109.85 to 108.40 |
@@ -30,9 +30,9 @@ The Digital Archive: PFL Buddies, 2010 – 2025. The league has been running con
 | Paradis' Playmakers | 4 | 2012, 2019, 2020, 2025 |
 | Italian Cavallini | 3 | 2011, 2013, 2023 |
 | Stu's Crew | 3 | 2014, 2018, 2021 |
-| Brandon Knows Ball | 1 | 2016 |
 | Eddie & the Cruisers | 1 | 2015 |
 | Miller's Genuine Draft | 1 | 2022 |
 | Purple Haze | 1 | 2017 |
 | Robb's Raiders | 1 | 2010 |
+| SS Express | 1 | 2016 |
 | Weichert's Warmongers | 1 | 2024 |

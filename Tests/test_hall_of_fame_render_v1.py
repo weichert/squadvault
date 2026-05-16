@@ -133,7 +133,7 @@ class TestRenderChampionshipRoll:
     def test_single_season_table_row(self):
         results = [_champ(season=2020, champ="A", runner="B")]
         md = render_championship_roll_markdown(
-            results, _name_map(A="Alpha Team", B="Beta Team"),
+            results, {("A", 2020): "Alpha Team", ("B", 2020): "Beta Team"},
         )
         assert "| 2020 |" in md
         assert "Alpha Team" in md
@@ -151,7 +151,7 @@ class TestRenderChampionshipRoll:
         results = [
             _champ(season=2020, champ="A", runner="B", cs=120.0, rs=120.0, is_tie=True),
         ]
-        md = render_championship_roll_markdown(results, _name_map(A="Alpha", B="Beta"))
+        md = render_championship_roll_markdown(results, {("A", 2020): "Alpha", ("B", 2020): "Beta"})
         assert "tie" in md.lower()
 
     def test_per_franchise_title_counts_section(self):
@@ -161,7 +161,12 @@ class TestRenderChampionshipRoll:
             _champ(season=2022, champ="B", runner="A"),
         ]
         md = render_championship_roll_markdown(
-            results, _name_map(A="Alpha", B="Beta", C="Gamma"),
+            results,
+            {
+                ("A", 2020): "Alpha", ("A", 2021): "Alpha", ("A", 2022): "Alpha",
+                ("B", 2020): "Beta", ("B", 2021): "Beta", ("B", 2022): "Beta",
+                ("C", 2020): "Gamma", ("C", 2021): "Gamma", ("C", 2022): "Gamma",
+            },
         )
         assert "Titles by Franchise" in md
         # Alpha has 2; should sort before Beta which has 1.
