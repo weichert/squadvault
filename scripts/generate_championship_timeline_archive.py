@@ -163,7 +163,7 @@ def _render_all_pages(
             records, name_map, top_n=top_n,
         ),
         BRIDESMAIDS_FILENAME: render_bridesmaids_markdown(
-            bridesmaids, name_map,
+            bridesmaids, season_map,
         ),
     }
 

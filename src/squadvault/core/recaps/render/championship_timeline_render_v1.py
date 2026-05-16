@@ -337,7 +337,7 @@ def render_playoff_records_markdown(
 
 def render_bridesmaids_markdown(
     bridesmaids: Sequence[BridesmaidRecord],
-    name_map: dict[str, str],
+    season_map: dict[tuple[str, int], str],
 ) -> str:
     """Render the Bridesmaids sub-shape per spec §3.1 / §3.7.
 
@@ -355,8 +355,14 @@ def render_bridesmaids_markdown(
         bridesmaids: Aggregation output from `compute_bridesmaids`.
             Expected sort: runner-up count descending, then fewer
             titles first.
-        name_map: franchise_id → display name. Missing entries fall
-            back to the raw franchise_id.
+        season_map: (franchise_id, season) -> era-correct display name.
+            Enables era-correct attribution -- a franchise that changed
+            names between its runner-up seasons is attributed to the
+            name it carried in its *earliest* runner-up season (the
+            stable anchor for the leaderboard row). Falls back to the
+            raw franchise_id if not found. Uses the same map as
+            `render_playoff_brackets_markdown`, so the generation script
+            builds it once and threads it through.
 
     Returns:
         Markdown string. Empty `bridesmaids` produces a "no data" page.
@@ -382,7 +388,11 @@ def render_bridesmaids_markdown(
     )
     lines.append("|---|---|---|---|---|")
     for rank, r in enumerate(bridesmaids, start=1):
-        franchise = _resolve(name_map, r.franchise_id)
+        # Use the earliest runner-up season as the era anchor for the
+        # franchise display name. `runner_up_seasons` is always a
+        # non-empty sorted tuple (enforced by compute_bridesmaids).
+        anchor_season = r.runner_up_seasons[0]
+        franchise = _resolve_season(season_map, r.franchise_id, anchor_season)
         seasons_str = ", ".join(str(s) for s in r.runner_up_seasons)
         lines.append(
             f"| {rank} | {franchise} | {r.runner_up_count} | "

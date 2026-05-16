@@ -370,8 +370,9 @@ class TestRenderBridesmaidsMarkdown:
     def test_surfaces_titles_column_for_bridesmaid_archetype(self):
         # Per spec section 3.7 / 4.5: the Titles column surfaces the
         # perennial-bridesmaid archetype (runner-ups, zero titles).
+        # Franchise C earliest runner-up season is 2014; key accordingly.
         md = render_bridesmaids_markdown(
-            _sample_bridesmaids(), {"C": "Charlie"},
+            _sample_bridesmaids(), {("C", 2014): "Charlie"},
         )
         # franchise C: 3 runner-ups, 0 titles
         c_line = next(
@@ -385,11 +386,34 @@ class TestRenderBridesmaidsMarkdown:
 
     def test_preserves_input_order(self):
         # compute_bridesmaids already sorts; the render keeps that order.
+        # C earliest: 2014, B earliest: 2012, D earliest: 2019.
         md = render_bridesmaids_markdown(
             _sample_bridesmaids(),
-            {"C": "Charlie", "B": "Bravo", "D": "Delta"},
+            {
+                ("C", 2014): "Charlie",
+                ("B", 2012): "Bravo",
+                ("D", 2019): "Delta",
+            },
         )
         assert md.index("Charlie") < md.index("Bravo") < md.index("Delta")
+
+    def test_era_correct_name_resolution(self):
+        # The canonical residual from the predecessor session:
+        # a franchise that changed names between eras is attributed
+        # to the name it carried in its earliest runner-up season.
+        # Slot 0010 was "SS Express" in 2013 and "Brandon Knows Ball"
+        # in later seasons; the season_map key ("0010", 2013) resolves
+        # to "SS Express" and must appear in the output.
+        record = BridesmaidRecord(
+            franchise_id="0010",
+            runner_up_count=1,
+            runner_up_seasons=(2013,),
+            championship_count=1,
+        )
+        season_map = {("0010", 2013): "SS Express"}
+        md = render_bridesmaids_markdown((record,), season_map)
+        assert "SS Express" in md
+        assert "Brandon Knows Ball" not in md
 
     def test_contains_rank_derivation_note(self):
         md = render_bridesmaids_markdown(_sample_bridesmaids(), {})
