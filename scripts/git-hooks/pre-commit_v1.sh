@@ -7,13 +7,21 @@
 # Escape hatch:
 #   SV_SKIP_PRECOMMIT=1 -> skip checks, exit 0
 #
-# Notes:
-#   - This file is repo-tracked. Install manually into .git/hooks/pre-commit:
+# Installation:
+#   This file is repo-tracked. Install manually into .git/hooks/pre-commit:
 #       cp scripts/git-hooks/pre-commit_v1.sh .git/hooks/pre-commit
 #       chmod +x .git/hooks/pre-commit
-#     Re-run after any changes to this file to keep the installed hook in
-#     sync with the tracked version.
-#   - Keep bash3-safe.
+#   Re-run after any changes to this file to keep the installed hook in
+#   sync with the tracked version. (The installer script that previously
+#   automated this step has been archived; manual cp is the current pattern.)
+#
+# Gates (in order):
+#   1. Terminal banner paste gate   -- catches pasted terminal output in staged files
+#   2. No-xtrace guardrail gate     -- forbids 'set -x' in prove/gate scripts
+#   3. Repo-root allowlist gate     -- no phantom files at repo root
+#   4. docs/ Map registration gate  -- new top-level docs/ files need a Map touch
+#
+# Keep bash3-safe.
 
 set -euo pipefail
 
@@ -35,5 +43,8 @@ bash scripts/gate_no_xtrace_v1.sh
 
 echo "==> pre-commit: repo-root allowlist gate"
 bash scripts/gate_repo_root_allowlist_v1.sh
+
+echo "==> pre-commit: docs/ Map registration gate"
+bash scripts/gate_docs_map_registration_v1.sh
 
 echo "OK: pre-commit checks passed."
