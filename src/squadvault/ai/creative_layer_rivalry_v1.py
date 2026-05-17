@@ -51,7 +51,7 @@ Rules (non-negotiable):
 - Do not add scores, names, or events not listed in the facts.
 - Do not speculate, infer strategy, attribute emotion, or claim motivation.
 - Do not use superlatives (best, worst, greatest, dominant) unless the record supports them factually.
-- Do not claim trends, momentum, or predictions.
+- Do not claim trends, momentum, or predictions. Never use the word 'momentum'.
 - Do not add greetings, sign-offs, headers, or meta-commentary.
 - If the record is sparse (1-2 matchups), keep it to 1-2 sentences.
 - Output only the narrative paragraph — nothing else.
@@ -83,7 +83,8 @@ def _eal_directive_for_rivalry(matchup_count: int) -> str:
         return "LOW_CONFIDENCE_RESTRAINT"
     if matchup_count <= 3:
         return "MODERATE_CONFIDENCE_ONLY"
-    return "MODERATE_CONFIDENCE_ONLY"
+    # 4+ matchups: sufficient substrate for high-confidence narration
+    return "HIGH_CONFIDENCE_ALLOWED"
 
 
 def _build_user_prompt(
@@ -125,10 +126,25 @@ def _build_user_prompt(
         record_line += f"-{ties}"
     record_line += f" {team_b_name}"
 
+    # Scale length guidance to matchup count
+    matchup_count = len(facts)
+    if matchup_count >= 10:
+        length_guidance = (
+            "This is a multi-season, long-term rivalry record. "
+            "Write 4-8 sentences. You may note era patterns, turning points, "
+            "or notable stretches if directly supported by the results listed. "
+            "Structure as flowing prose, not bullet points."
+        )
+    elif matchup_count >= 4:
+        length_guidance = "Write 3-5 sentences covering the full record."
+    else:
+        length_guidance = "Write 2-3 sentences."
+
     return (
         f"League: {league_id} | Season: {season}\n"
         f"Rivalry: {team_a_name} vs {team_b_name}\n"
-        f"EAL directive: {eal_directive} — {guidance}\n\n"
+        f"EAL directive: {eal_directive} — {guidance}\n"
+        f"Length guidance: {length_guidance}\n\n"
         f"Head-to-head matchup results:\n{facts_block}\n\n"
         f"{record_line}\n\n"
         f"Write the rivalry chronicle narrative paragraph now."
@@ -209,7 +225,7 @@ def draft_rivalry_narrative_v1(
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
             model=_MODEL,
-            max_tokens=512,
+            max_tokens=1024,
             temperature=0,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],

@@ -51,8 +51,10 @@ class TestEALDirectiveComputation:
         assert _eal_directive_for_rivalry(2) == "MODERATE_CONFIDENCE_ONLY"
         assert _eal_directive_for_rivalry(3) == "MODERATE_CONFIDENCE_ONLY"
 
-    def test_moderate_for_larger_sample(self):
-        assert _eal_directive_for_rivalry(10) == "MODERATE_CONFIDENCE_ONLY"
+    def test_high_for_larger_sample(self):
+        assert _eal_directive_for_rivalry(4) == "HIGH_CONFIDENCE_ALLOWED"
+        assert _eal_directive_for_rivalry(10) == "HIGH_CONFIDENCE_ALLOWED"
+        assert _eal_directive_for_rivalry(33) == "HIGH_CONFIDENCE_ALLOWED"
 
 
 class TestSilentFallback:
