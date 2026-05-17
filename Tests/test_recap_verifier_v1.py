@@ -6079,7 +6079,7 @@ class TestHistoricalClaimVerification:
         assert champ[0].severity == "HARD"
         assert "7" in champ[0].evidence
 
-
+    def test_championship_week_w18_for_2021_plus(self, tmp_path):
         """Championship week is W18 for seasons 2021+, not W16."""
         db_path = self._build_db(tmp_path)
         # Insert W18 2022 as the championship week
@@ -6104,6 +6104,36 @@ class TestHistoricalClaimVerification:
         # This test confirms W18 is used for 2022, not W16
         # (a W16 match in 2022 would not count as championship)
         assert champ == []  # no numeric count detected → no check fired
+
+    def test_ordinal_championship_count_flags(self, tmp_path):
+        """'sixth championship game appearance' (ordinal form) is caught.
+
+        Regression: W17 2025 model wrote 'KP's sixth championship game
+        appearance across 16 seasons' (actual: 7). Ordinals (sixth, seventh)
+        were not in the original word-form count list -- only cardinals
+        (six, seven) and numerics (6 times) were checked.
+        """
+        db_path = self._build_db(tmp_path)
+        # 7 championship appearances in prior seasons
+        seasons = [2012, 2014, 2018, 2019, 2020, 2021, 2024]
+        for i, s in enumerate(seasons):
+            w, l = ("KP", "F2") if i % 2 == 0 else ("F2", "KP")
+            self._insert_champ_matchup(db_path, season=s, winner_id=w, loser_id=l)
+
+        rmap = {"kp": "KP", "kp squad": "KP"}
+        text = self._wrap(
+            "This marks KP's sixth championship game appearance across 16 seasons."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=2025, week=17,
+            reverse_name_map=rmap,
+        )
+        champ = [f for f in failures if f.category == "CHAMPIONSHIP_CLAIM"]
+        assert len(champ) == 1, (
+            f"expected CHAMPIONSHIP_CLAIM for ordinal 'sixth' (actual 7), got {champ}"
+        )
+        assert champ[0].severity == "HARD"
+        assert "7" in champ[0].evidence
 
 
 # ── Category 10: Player Scoring Average Claims (B3) ──────────────────

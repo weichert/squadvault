@@ -3674,7 +3674,7 @@ def verify_historical_claims(
         # Look for a numeric count ("N times") in the window
         count_match = _COUNT_NUMBER_PATTERN.search(window)
         if not count_match:
-            # Also try word-form counts
+            # Try word-form counts ("six times", "seven times")
             claimed_count: int | None = None
             window_lower = window.lower()
             for phrase, val in sorted(
@@ -3683,6 +3683,13 @@ def verify_historical_claims(
                 if phrase in window_lower:
                     claimed_count = val
                     break
+            # Try ordinal forms ("sixth", "seventh") — e.g. "KP's sixth
+            # championship game appearance"
+            if claimed_count is None:
+                for word, val in _ORDINAL_TO_INT.items():
+                    if re.search(rf"\b{re.escape(word)}\b", window_lower):
+                        claimed_count = val
+                        break
             if claimed_count is None:
                 continue
         else:
