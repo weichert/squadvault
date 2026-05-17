@@ -18,10 +18,12 @@ from squadvault.core.recaps.context.player_week_context_v1 import (
     FaabWeekAppearance,
     FranchiseWeekContext,
     PlayerScore,
+    PlayerSeasonStats,
     PlayerWeekContextV1,
     _build_faab_lookup,
     _build_faab_performer_timelines,
     _build_franchise_context,
+    _derive_player_season_stats,
     _empty_context,
     _load_season_player_history,
     _render_faab_timeline,
@@ -1059,3 +1061,190 @@ class TestFaabTimelineDbIntegration:
             db_path=db_with_faab, league_id="70985", season=2025, week=14,
         )
         assert ctx1 == ctx2
+
+
+# ── Arc 2 Phase A: Season-to-date player stats ───────────────────────
+
+
+class TestDerivePlayerSeasonStats:
+    """Unit tests for _derive_player_season_stats (Arc 2 Phase A).
+
+    Season-to-date averages and recent scores derived from season_history
+    give the creative layer verified figures to cite.
+    """
+
+    def _history(self, entries: list[tuple[int, float, bool]]) -> dict:
+        """Build a minimal season_history dict for one franchise+player."""
+        return {("F1", "P1"): entries}
+
+    def test_basic_average(self):
+        """Average computed correctly from scored weeks."""
+        history = self._history([(1, 20.0, True), (2, 30.0, True), (3, 25.0, True)])
+        stats = _derive_player_season_stats(["P1"], "F1", 3, history)
+        assert "P1" in stats
+        assert stats["P1"].season_avg == 25.0
+        assert stats["P1"].weeks_scored == 3
+
+    def test_zero_score_weeks_excluded(self):
+        """Weeks with score=0 (bye/inactive) are excluded from average."""
+        history = self._history([(1, 20.0, True), (2, 0.0, True), (3, 30.0, True)])
+        stats = _derive_player_season_stats(["P1"], "F1", 3, history)
+        assert stats["P1"].weeks_scored == 2
+        assert stats["P1"].season_avg == 25.0
+
+    def test_only_current_and_prior_weeks(self):
+        """Weeks after current_week are excluded."""
+        history = self._history([
+            (1, 10.0, True), (2, 20.0, True),
+            (3, 99.0, True),  # future week, excluded
+        ])
+        stats = _derive_player_season_stats(["P1"], "F1", 2, history)
+        assert stats["P1"].weeks_scored == 2
+        assert stats["P1"].season_avg == 15.0
+
+    def test_recent_scores_last_four(self):
+        """recent_scores contains last 4 weeks oldest-first."""
+        entries = [(w, float(w * 10), True) for w in range(1, 7)]
+        history = self._history(entries)
+        stats = _derive_player_season_stats(["P1"], "F1", 6, history)
+        assert stats["P1"].recent_scores == (30.0, 40.0, 50.0, 60.0)
+
+    def test_fewer_than_four_weeks_all_included(self):
+        """Fewer than 4 scored weeks: recent_scores has all of them."""
+        history = self._history([(1, 15.0, True), (2, 25.0, True)])
+        stats = _derive_player_season_stats(["P1"], "F1", 2, history)
+        assert stats["P1"].recent_scores == (15.0, 25.0)
+
+    def test_season_high_and_low(self):
+        """season_high and season_low correctly derived."""
+        history = self._history([(1, 5.0, True), (2, 40.0, True), (3, 20.0, True)])
+        stats = _derive_player_season_stats(["P1"], "F1", 3, history)
+        assert stats["P1"].season_high == 40.0
+        assert stats["P1"].season_low == 5.0
+
+    def test_only_one_week_excluded_from_output(self):
+        """Players with fewer than 2 data points are excluded (not enough for avg)."""
+        history = self._history([(1, 20.0, True)])
+        stats = _derive_player_season_stats(["P1"], "F1", 1, history)
+        assert "P1" not in stats
+
+    def test_player_not_in_history_skipped(self):
+        """Player with no history entry is silently skipped."""
+        history: dict = {}
+        stats = _derive_player_season_stats(["P1"], "F1", 5, history)
+        assert stats == {}
+
+    def test_multiple_players(self):
+        """Stats derived for multiple players independently."""
+        history = {
+            ("F1", "P1"): [(1, 20.0, True), (2, 30.0, True)],
+            ("F1", "P2"): [(1, 10.0, False), (2, 15.0, False), (3, 5.0, False)],
+        }
+        stats = _derive_player_season_stats(["P1", "P2"], "F1", 3, history)
+        assert stats["P1"].season_avg == 25.0
+        assert stats["P2"].season_avg == 10.0
+
+
+class TestFranchiseContextSeasonStats:
+    """Integration: player_season_stats populated via _build_franchise_context."""
+
+    def _payloads(self, pid: str, score: float, is_starter: bool = True) -> list[dict]:
+        return [{"player_id": pid, "score": score,
+                 "is_starter": is_starter, "should_start": False}]
+
+    def test_stats_populated_when_history_provided(self):
+        """player_season_stats populated when season_history and current_week given."""
+        history = {("F1", "P1"): [(1, 20.0, True), (2, 25.0, True), (3, 30.0, True)]}
+        ctx = _build_franchise_context(
+            "F1", self._payloads("P1", 30.0), {}, history, current_week=3,
+        )
+        assert "P1" in ctx.player_season_stats
+        assert ctx.player_season_stats["P1"].season_avg == 25.0
+
+    def test_stats_empty_without_history(self):
+        """player_season_stats empty when no season_history provided."""
+        ctx = _build_franchise_context("F1", self._payloads("P1", 30.0), {})
+        assert ctx.player_season_stats == {}
+
+    def test_stats_empty_for_first_week_player(self):
+        """Player appearing for first time has no prior data; excluded from stats."""
+        # Only week 1 entry; but current_week is 1 so min 2 weeks not met
+        history = {("F1", "P1"): [(1, 20.0, True)]}
+        ctx = _build_franchise_context(
+            "F1", self._payloads("P1", 20.0), {}, history, current_week=1,
+        )
+        # Only 1 week of data -- excluded (need >= 2)
+        assert "P1" not in ctx.player_season_stats
+
+
+class TestRenderSeasonStats:
+    """Render: season stats appear in player highlights block."""
+
+    def _make_ctx(self, avg: float, weeks: int, recent: tuple,
+                  high: float, low: float) -> PlayerWeekContextV1:
+        """Build a minimal PlayerWeekContextV1 with one franchise and one player."""
+        stats = PlayerSeasonStats(
+            player_id="P1", season_avg=avg, weeks_scored=weeks,
+            recent_scores=recent, season_high=high, season_low=low,
+        )
+        history = {("F1", "P1"): [(w, s, True) for w, s in
+                                   enumerate(recent, start=1)]}
+        fc = FranchiseWeekContext(
+            franchise_id="F1",
+            starters=(PlayerScore("P1", 28.0, True, False),),
+            bench=(),
+            top_starter=PlayerScore("P1", 28.0, True, False),
+            bust_starter=None,
+            starter_total=28.0,
+            bench_total=0.0,
+            bench_points_over_starters=0.0,
+            best_bench_player=None,
+            faab_performers=(),
+            player_season_stats={"P1": stats},
+        )
+        return PlayerWeekContextV1(
+            league_id="70985", season=2025, week=5,
+            franchises=(fc,),
+            week_top_scorer=("F1", "P1", 28.0),
+            week_lowest_starter=None,
+            total_players=1, total_starters=1,
+        )
+
+    def test_season_stats_appear_in_render(self):
+        """Season avg and recent scores appear in rendered highlights."""
+        ctx = self._make_ctx(
+            avg=22.5, weeks=4,
+            recent=(18.0, 25.0, 19.0, 28.0),
+            high=28.0, low=18.0,
+        )
+        rendered = render_player_highlights_for_prompt(ctx)
+        assert "Season (4w)" in rendered
+        assert "avg 22.50" in rendered
+        assert "18.00 / 25.00 / 19.00 / 28.00" in rendered
+
+    def test_single_week_player_no_stats_shown(self):
+        """Player with only 1 week of data: no season stats line rendered."""
+        stats = PlayerSeasonStats(
+            player_id="P1", season_avg=20.0, weeks_scored=1,
+            recent_scores=(20.0,), season_high=20.0, season_low=20.0,
+        )
+        fc = FranchiseWeekContext(
+            franchise_id="F1",
+            starters=(PlayerScore("P1", 20.0, True, False),),
+            bench=(),
+            top_starter=PlayerScore("P1", 20.0, True, False),
+            bust_starter=None,
+            starter_total=20.0, bench_total=0.0,
+            bench_points_over_starters=0.0,
+            best_bench_player=None,
+            faab_performers=(),
+            player_season_stats={"P1": stats},
+        )
+        ctx = PlayerWeekContextV1(
+            league_id="70985", season=2025, week=1,
+            franchises=(fc,),
+            week_top_scorer=None, week_lowest_starter=None,
+            total_players=1, total_starters=1,
+        )
+        rendered = render_player_highlights_for_prompt(ctx)
+        assert "Season" not in rendered

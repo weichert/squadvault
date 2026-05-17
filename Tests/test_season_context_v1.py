@@ -383,7 +383,7 @@ class TestPromptRendering:
         )
         text = render_season_context_for_prompt(ctx)
 
-        assert "Season standings through Week 3:" in text
+        assert "Season power rankings through Week 3:" in text
         assert "2-1" in text
         assert "1-2" in text
         assert "Week 3 results:" in text

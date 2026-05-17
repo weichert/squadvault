@@ -586,3 +586,191 @@ class TestFaabAcquisitions:
         )
         assert text == ""
         assert "Individual FAAB" not in text
+
+
+# ── Phase C: FAAB ROI (Arc 2) ─────────────────────────────────────────
+
+
+class TestFaabRoi:
+    """Arc 2 Phase C: FAAB return-on-investment derivation.
+
+    Post-acquisition points scored per player give the creative layer
+    a factual basis for "paid off" or "hasn't delivered" claims.
+    """
+
+    def test_basic_roi(self, tmp_path):
+        """ROI computed from season history for a FAAB acquisition."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            FaabAcquisition,
+            derive_faab_roi,
+        )
+
+        acquisitions = (
+            FaabAcquisition(
+                franchise_id="F1", player_id="P1",
+                bid_amount=30.0, occurred_at="2024-09-15T12:00:00Z",
+            ),
+        )
+        # Player scored 15.0, 0.0 (bye), 22.5 across 3 weeks
+        history: dict = {
+            ("F1", "P1"): [(1, 15.0, True), (2, 0.0, True), (3, 22.5, True)],
+        }
+        roi = derive_faab_roi(acquisitions, player_season_history=history, current_week=3)
+        assert len(roi) == 1
+        assert roi[0].franchise_id == "F1"
+        assert roi[0].player_id == "P1"
+        assert roi[0].bid_amount == 30.0
+        assert roi[0].total_points_since_acquisition == 37.5   # 15 + 0 ignored? No — 0 weeks included
+        assert roi[0].weeks_scored == 2   # only scored (>0) weeks
+
+    def test_zero_bid_excluded(self):
+        """Acquisitions with bid_amount=0 are excluded."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            FaabAcquisition,
+            derive_faab_roi,
+        )
+
+        acquisitions = (
+            FaabAcquisition(
+                franchise_id="F1", player_id="P1",
+                bid_amount=0.0, occurred_at=None,
+            ),
+        )
+        history: dict = {("F1", "P1"): [(1, 20.0, True)]}
+        roi = derive_faab_roi(acquisitions, player_season_history=history, current_week=3)
+        assert roi == ()
+
+    def test_no_history_excluded(self):
+        """Acquisition with no season history is excluded."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            FaabAcquisition,
+            derive_faab_roi,
+        )
+
+        acquisitions = (
+            FaabAcquisition(
+                franchise_id="F1", player_id="P_UNKNOWN",
+                bid_amount=25.0, occurred_at=None,
+            ),
+        )
+        roi = derive_faab_roi(acquisitions, player_season_history={}, current_week=3)
+        assert roi == ()
+
+    def test_roi_appears_in_render(self):
+        """ROI block appears in render_writer_room_context_for_prompt output."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            FaabRoiEntry,
+            render_writer_room_context_for_prompt,
+        )
+
+        roi = (
+            FaabRoiEntry(
+                franchise_id="F1", player_id="P1",
+                bid_amount=30.0,
+                total_points_since_acquisition=87.5,
+                weeks_scored=4,
+                acquisition_week=2,
+            ),
+        )
+        text = render_writer_room_context_for_prompt(
+            deltas=(), faab=(), roi=roi,
+            name_map={"F1": "Brandon"},
+            player_name_map={"P1": "Thomas, Brian"},
+        )
+        assert "FAAB post-acquisition" in text
+        assert "Brandon" in text
+        assert "Brian Thomas" in text
+        assert "$30" in text
+        assert "87.50 pts" in text
+        assert "4 week(s)" in text
+
+
+# ── Phase D: Manager Identity (Arc 2) ─────────────────────────────────
+
+
+class TestManagerIdentity:
+    """Arc 2 Phase D: derive_manager_identities and render."""
+
+    def _build_db(self, tmp_path, *, owner_name: str | None = "Brandon Weichert",
+                   nickname: str | None = "Brandon"):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+
+        # Insert franchise_directory row with owner_name
+        con.execute(
+            "INSERT OR REPLACE INTO franchise_directory "
+            "(league_id, season, franchise_id, name, owner_name) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "F1", "Brandon Knows Ball", owner_name),
+        )
+
+        # Insert nickname if provided
+        if nickname:
+            con.execute(
+                "INSERT OR REPLACE INTO franchise_nicknames "
+                "(league_id, franchise_id, nickname) "
+                "VALUES (?, ?, ?)",
+                (LEAGUE, "F1", nickname),
+            )
+        con.commit()
+        con.close()
+        return db_path
+
+    def test_derives_owner_first_name(self, tmp_path):
+        """owner_first extracted from owner_name."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            derive_manager_identities,
+        )
+        db_path = self._build_db(tmp_path, nickname=None)
+        identities = derive_manager_identities(
+            db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        assert len(identities) == 1
+        assert identities[0].owner_first == "Brandon"
+        assert identities[0].nickname is None
+        assert identities[0].preferred_short_form == "Brandon"
+
+    def test_nickname_takes_priority(self, tmp_path):
+        """Nickname preferred over owner_first as short-form."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            derive_manager_identities,
+        )
+        db_path = self._build_db(tmp_path, owner_name="Brandon Weichert", nickname="BK")
+        identities = derive_manager_identities(
+            db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        assert identities[0].nickname == "BK"
+        assert identities[0].preferred_short_form == "BK"
+
+    def test_render_includes_short_forms(self, tmp_path):
+        """Rendered block contains the preferred short-form."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            ManagerIdentity,
+            render_manager_identities_for_prompt,
+        )
+        identities = (
+            ManagerIdentity(
+                franchise_id="F1", team_name="Brandon Knows Ball",
+                owner_name="Brandon Weichert", owner_first="Brandon",
+                nickname=None,
+            ),
+        )
+        text = render_manager_identities_for_prompt(identities)
+        assert "Manager identity" in text
+        assert "Brandon Knows Ball" in text
+        assert '"Brandon"' in text
+
+    def test_render_empty_when_no_short_forms(self):
+        """Render returns empty string when no identity has a short-form."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            ManagerIdentity,
+            render_manager_identities_for_prompt,
+        )
+        identities = (
+            ManagerIdentity(
+                franchise_id="F1", team_name="Anonymous Team",
+                owner_name=None, owner_first=None, nickname=None,
+            ),
+        )
+        text = render_manager_identities_for_prompt(identities)
+        assert text == ""

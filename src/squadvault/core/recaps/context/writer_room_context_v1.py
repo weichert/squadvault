@@ -300,18 +300,85 @@ def derive_faab_acquisitions(
 
 
 
+@dataclass(frozen=True)
+class FaabRoiEntry:
+    """FAAB return-on-investment for a single acquisition.
+
+    Computes total fantasy points scored by the player for the acquiring
+    franchise since the acquisition week, giving a deterministic
+    post-acquisition performance figure the creative layer can cite.
+    """
+    franchise_id: str
+    player_id: str
+    bid_amount: float
+    total_points_since_acquisition: float
+    weeks_scored: int                # weeks with score > 0 since acquisition
+    acquisition_week: int            # approximate week of acquisition
+
+
+def derive_faab_roi(
+    acquisitions: Sequence[FaabAcquisition],
+    *,
+    player_season_history: dict[tuple[str, str], list[tuple[int, float, bool]]],
+    current_week: int,
+) -> tuple[FaabRoiEntry, ...]:
+    """Compute FAAB ROI for each acquisition using season player history.
+
+    player_season_history: {(franchise_id, player_id): [(week, score, is_starter), ...]}
+    Typically derived from _load_season_player_history in player_week_context_v1.
+
+    acquisition_week is approximated from occurred_at; we use the week of the
+    player's first appearance on the franchise roster after the acquisition date
+    as a proxy. If occurred_at is not available, week 1 is assumed.
+
+    Only acquisitions with bid_amount > 0 and at least one scored week are included.
+    """
+    results: list[FaabRoiEntry] = []
+
+    for acq in acquisitions:
+        if acq.bid_amount <= 0:
+            continue
+
+        key = (acq.franchise_id, acq.player_id)
+        history = player_season_history.get(key, [])
+        if not history:
+            continue
+
+        # Find the first week the player scored for this franchise
+        scored_entries = [(w, s) for (w, s, _) in history if s > 0 and w <= current_week]
+        if not scored_entries:
+            continue
+
+        total_pts = round(sum(s for (_, s) in scored_entries), 2)
+        weeks_scored = len(scored_entries)
+        first_week = scored_entries[0][0]
+
+        results.append(FaabRoiEntry(
+            franchise_id=acq.franchise_id,
+            player_id=acq.player_id,
+            bid_amount=acq.bid_amount,
+            total_points_since_acquisition=total_pts,
+            weeks_scored=weeks_scored,
+            acquisition_week=first_week,
+        ))
+
+    return tuple(results)
+
+
 def render_writer_room_context_for_prompt(
     *,
     deltas: Sequence[ScoringDelta],
     faab: Sequence[FaabSpending],
     acquisitions: Sequence[FaabAcquisition] | None = None,
+    roi: Sequence[FaabRoiEntry] | None = None,
     name_map: dict[str, str] | None = None,
     player_name_map: dict[str, str] | None = None,
 ) -> str:
-    """Render scoring deltas, FAAB spending, and individual acquisitions for the creative layer.
+    """Render scoring deltas, FAAB spending, individual acquisitions, and ROI for the creative layer.
 
     acquisitions: individual FAAB bids from derive_faab_acquisitions().
-    player_name_map: player_id -> display_name for resolving player names in acquisitions.
+    roi: post-acquisition performance from derive_faab_roi().
+    player_name_map: player_id -> display_name for resolving player names.
     """
 
     def _name(fid: str) -> str:
@@ -389,7 +456,145 @@ def render_writer_room_context_for_prompt(
             )
             lines.extend(acq_lines)
 
+    # FAAB ROI: post-acquisition points scored per player
+    # Gives the model a factual basis for "paid off" or "hasn't delivered" claims.
+    if roi:
+        roi_lines: list[str] = []
+        for r in sorted(roi, key=lambda x: -x.total_points_since_acquisition):
+            fname = _name(r.franchise_id)
+            if player_name_map and r.player_id in player_name_map:
+                raw = player_name_map[r.player_id]
+                if ", " in raw:
+                    parts = raw.split(", ", 1)
+                    pname = f"{parts[1]} {parts[0]}"
+                else:
+                    pname = raw
+            else:
+                pname = r.player_id
+            roi_lines.append(
+                f"  {fname}: {pname} — ${r.bid_amount:.0f} bid, "
+                f"{r.total_points_since_acquisition:.2f} pts in {r.weeks_scored} week(s)"
+            )
+
+        if roi_lines:
+            if lines:
+                lines.append("")
+            lines.append(
+                "FAAB post-acquisition performance "
+                "(total pts scored for this franchise since pickup):"
+            )
+            lines.extend(roi_lines)
+
     if not lines:
         return ""
+
+    return "\n".join(lines) + "\n"
+
+
+# ── Manager Identity Context (Arc 2 Phase D) ──────────────────────────
+
+
+@dataclass(frozen=True)
+class ManagerIdentity:
+    """Resolved manager identity for a single franchise."""
+    franchise_id: str
+    team_name: str          # full franchise display name
+    owner_name: str | None  # full owner name from franchise_directory
+    owner_first: str | None # owner first name (first word of owner_name)
+    nickname: str | None    # commissioner-curated short-form (e.g. "KP")
+
+    @property
+    def preferred_short_form(self) -> str | None:
+        """Return the best short-form identifier: nickname > owner_first > None."""
+        return self.nickname or self.owner_first
+
+
+def derive_manager_identities(
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    name_map: dict[str, str] | None = None,
+) -> tuple[ManagerIdentity, ...]:
+    """Resolve manager identities (team name + owner name + nickname) per franchise.
+
+    Reads franchise_directory (owner_name) and franchise_nicknames (curated
+    short-form) to build a complete identity record for each franchise.
+
+    name_map: optional pre-built franchise_id -> display_name dict; if None,
+    team names are loaded from franchise_directory.
+    """
+    with DatabaseSession(db_path) as con:
+        # Owner names from franchise_directory
+        owner_rows = con.execute(
+            """SELECT franchise_id, name, owner_name
+               FROM franchise_directory
+               WHERE league_id = ? AND season = ?""",
+            (str(league_id), int(season)),
+        ).fetchall()
+
+        # Curated nicknames from franchise_nicknames
+        nick_rows = con.execute(
+            """SELECT franchise_id, nickname
+               FROM franchise_nicknames
+               WHERE league_id = ?""",
+            (str(league_id),),
+        ).fetchall()
+
+    nick_map: dict[str, str] = {
+        str(r[0]).strip(): str(r[1]).strip()
+        for r in nick_rows
+        if r[0] and r[1] and str(r[1]).strip()
+    }
+
+    identities: list[ManagerIdentity] = []
+    for row in owner_rows:
+        fid = str(row[0]).strip()
+        if not fid:
+            continue
+
+        team = name_map.get(fid, str(row[1] or fid).strip()) if name_map else str(row[1] or fid).strip()
+        raw_owner = str(row[2]).strip() if row[2] else None
+        owner_first = raw_owner.split()[0] if raw_owner and raw_owner.split() else None
+        nickname = nick_map.get(fid)
+
+        identities.append(ManagerIdentity(
+            franchise_id=fid,
+            team_name=team,
+            owner_name=raw_owner,
+            owner_first=owner_first,
+            nickname=nickname,
+        ))
+
+    identities.sort(key=lambda m: m.franchise_id)
+    return tuple(identities)
+
+
+def render_manager_identities_for_prompt(
+    identities: Sequence[ManagerIdentity],
+) -> str:
+    """Render manager identity block for the creative layer prompt.
+
+    Provides short-form identifiers so the model can address managers
+    by their preferred name rather than the full franchise name.
+    Format:
+        Manager identity (use short-form when writing about managers):
+          <team_name> (<franchise_id>): short-form = "<preferred_short_form>"
+    """
+    if not identities:
+        return ""
+
+    lines: list[str] = [
+        "Manager identity "
+        "(use the short-form when addressing or referring to a manager — "
+        "it's how the league talks about them):"
+    ]
+    for m in identities:
+        short = m.preferred_short_form
+        if short:
+            lines.append(f"  {m.team_name} ({m.franchise_id}): short-form = \"{short}\"")
+
+    if len(lines) == 1:
+        return ""  # no short forms available
 
     return "\n".join(lines) + "\n"

@@ -47,6 +47,24 @@ class PlayerScore:
 
 
 @dataclass(frozen=True)
+class PlayerSeasonStats:
+    """Season-to-date scoring stats for a player, through (and including) current week.
+
+    Arc 2 Phase A: gives the creative layer verified aggregate figures to cite
+    so it does not synthesize cross-week averages from nothing.
+
+    All figures are derived from canonical WEEKLY_PLAYER_SCORE events.
+    Only weeks where score > 0 are counted (excludes bye/inactive weeks).
+    """
+    player_id: str
+    season_avg: float           # average score across all scored weeks this season
+    weeks_scored: int           # number of weeks with score > 0
+    recent_scores: tuple[float, ...]  # last up to 4 weeks' scores, oldest first
+    season_high: float          # highest single-week score this season
+    season_low: float           # lowest single-week score this season (scored weeks only)
+
+
+@dataclass(frozen=True)
 class FaabPickup:
     """A FAAB acquisition linked to a player's weekly performance."""
     player_id: str
@@ -111,6 +129,11 @@ class FranchiseWeekContext:
     # FAAB performer, keyed by player_id for deterministic access.
     # Empty tuple when season history is unavailable (backward compat).
     faab_performer_timelines: tuple[FaabPerformerTimeline, ...] = field(default=())
+
+    # Season-to-date stats per player (Arc 2 Phase A).
+    # Keyed by player_id; covers all players (starters + bench) with prior
+    # scoring data this season. Empty dict when season history unavailable.
+    player_season_stats: dict[str, PlayerSeasonStats] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -443,6 +466,69 @@ def _build_faab_performer_timelines(
 # ── Core derivation ─────────────────────────────────────────────────
 
 
+# ── Season-to-date stat derivation (Arc 2 Phase A) ──────────────────
+
+
+def _derive_player_season_stats(
+    player_ids: list[str],
+    franchise_id: str,
+    current_week: int,
+    season_history: dict[tuple[str, str], list[tuple[int, float, bool]]],
+    recent_window: int = 4,
+) -> dict[str, PlayerSeasonStats]:
+    """Derive season-to-date stats for a set of players on a franchise.
+
+    Uses the same season_history dict already loaded for FAAB timelines,
+    so no additional DB query is needed.
+
+    Only weeks with score > 0 and week <= current_week are included.
+    Weeks where the player scored 0 (bye, inactive, DNP) are excluded
+    from averages and counts to avoid diluting the meaningful data.
+
+    recent_window: number of most-recent weeks to include in recent_scores.
+
+    Returns a dict {player_id: PlayerSeasonStats}. Players with no prior
+    data (e.g. first week in the league) are excluded from the result.
+    """
+    stats: dict[str, PlayerSeasonStats] = {}
+
+    for pid in player_ids:
+        history = season_history.get((franchise_id, pid), [])
+        # Only weeks through current_week with score > 0
+        scored_weeks = [
+            (w, s, starter)
+            for (w, s, starter) in history
+            if w <= current_week and s > 0
+        ]
+        if not scored_weeks:
+            continue
+        # Need at least 2 data points for a meaningful average
+        if len(scored_weeks) < 2:
+            continue
+
+        scores = [s for (_, s, _) in scored_weeks]
+        avg = round(sum(scores) / len(scores), 2)
+        high = round(max(scores), 2)
+        low = round(min(scores), 2)
+
+        # Recent scores: last `recent_window` weeks, oldest first
+        recent = tuple(round(s, 2) for (_, s, _) in scored_weeks[-recent_window:])
+
+        stats[pid] = PlayerSeasonStats(
+            player_id=pid,
+            season_avg=avg,
+            weeks_scored=len(scored_weeks),
+            recent_scores=recent,
+            season_high=high,
+            season_low=low,
+        )
+
+    return stats
+
+
+# ── Franchise context assembly ────────────────────────────────────────
+
+
 def _build_franchise_context(
     franchise_id: str,
     player_payloads: list[dict[str, Any]],
@@ -520,6 +606,14 @@ def _build_franchise_context(
             faab_performers, franchise_id, current_week, season_history,
         )
 
+    # Season-to-date stats for all players (Arc 2 Phase A)
+    season_stats: dict[str, PlayerSeasonStats] = {}
+    if season_history is not None and current_week is not None:
+        all_pids = [ps.player_id for ps in list(starters) + list(bench)]
+        season_stats = _derive_player_season_stats(
+            all_pids, franchise_id, current_week, season_history,
+        )
+
     return FranchiseWeekContext(
         franchise_id=franchise_id,
         starters=tuple(starters),
@@ -532,6 +626,7 @@ def _build_franchise_context(
         best_bench_player=best_bench,
         faab_performers=tuple(faab_performers),
         faab_performer_timelines=timelines,
+        player_season_stats=season_stats,
     )
 
 
@@ -674,6 +769,18 @@ def render_player_highlights_for_prompt(
                 pass
         return pid
 
+    def _season_stats_line(pid: str, fc: FranchiseWeekContext) -> str | None:
+        """Render a compact season-stats line for a player, or None if unavailable."""
+        stats = fc.player_season_stats.get(pid)
+        if stats is None or stats.weeks_scored < 2:
+            # Only render when there are at least 2 data points
+            return None
+        recent_str = " / ".join(f"{s:.2f}" for s in stats.recent_scores)
+        return (
+            f"    Season ({stats.weeks_scored}w): avg {stats.season_avg:.2f}, "
+            f"last {len(stats.recent_scores)}w: {recent_str}"
+        )
+
     def _franchise_block(fc: FranchiseWeekContext) -> list[str]:
         """Render a single franchise's player lines (header + details)."""
         team_name = _team(fc.franchise_id)
@@ -684,12 +791,18 @@ def render_player_highlights_for_prompt(
             detail_lines.append(
                 f"  Top: {_player(fc.top_starter.player_id)} [{team_name}] — {fc.top_starter.score:.2f} pts"
             )
+            stats_line = _season_stats_line(fc.top_starter.player_id, fc)
+            if stats_line:
+                detail_lines.append(stats_line)
 
         # Bust (only if different from top and there are multiple starters)
         if fc.bust_starter and fc.top_starter and fc.bust_starter != fc.top_starter:
             detail_lines.append(
                 f"  Bust: {_player(fc.bust_starter.player_id)} [{team_name}] — {fc.bust_starter.score:.2f} pts"
             )
+            stats_line = _season_stats_line(fc.bust_starter.player_id, fc)
+            if stats_line:
+                detail_lines.append(stats_line)
 
         # Bench analysis — only if there are bench points worth mentioning
         if fc.best_bench_player and fc.bust_starter:

@@ -38,6 +38,7 @@ from squadvault.core.recaps.context.player_narrative_angles_v1 import (
     detect_player_narrative_angles_v1,
 )
 from squadvault.core.recaps.context.player_week_context_v1 import (
+    _load_season_player_history,
     derive_player_week_context_v1,
     render_player_highlights_for_prompt,
 )
@@ -47,8 +48,11 @@ from squadvault.core.recaps.context.season_context_v1 import (
 )
 from squadvault.core.recaps.context.writer_room_context_v1 import (
     derive_faab_acquisitions,
+    derive_faab_roi,
     derive_faab_spending,
+    derive_manager_identities,
     derive_scoring_deltas,
+    render_manager_identities_for_prompt,
     render_writer_room_context_for_prompt,
 )
 from squadvault.core.recaps.recap_artifacts import latest_approved_version
@@ -561,6 +565,7 @@ class _PromptContext:
     narrative_angles_text: str
     writer_room_text: str
     player_highlights_text: str
+    manager_identity_text: str   # Arc 2 Phase D: owner short-forms
     tone_preset: str
     voice_profile: str
     seasons_count: int
@@ -689,6 +694,26 @@ def _budget_angles(
             _covered_fids.update(a.franchise_ids)
 
     return budgeted
+
+
+def _load_season_player_history_for_roi(
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+) -> dict[tuple[str, str], list[tuple[int, float, bool]]]:
+    """Load season player history for FAAB ROI derivation (Phase C Arc 2).
+
+    Thin shim over player_week_context_v1._load_season_player_history.
+    Filters to weeks <= week_index post-load (the underlying loader fetches
+    the full season; we want only through current week for ROI calculation).
+    """
+    full = _load_season_player_history(db_path, league_id, season)
+    # Filter each player's history to weeks <= current week
+    return {
+        key: [(w, s, starter) for (w, s, starter) in entries if w <= week_index]
+        for key, entries in full.items()
+    }
 
 
 def _derive_prompt_context(
@@ -955,9 +980,19 @@ def _derive_prompt_context(
             db_path=db_path, league_id=league_id, season=season, week_index=week_index,
             through_occurred_at=window_end,
         )
+        # Phase C: FAAB ROI — load player season history for post-acquisition pts
+        _roi_season_history = _load_season_player_history_for_roi(
+            db_path, league_id, season, week_index,
+        )
+        _roi = derive_faab_roi(
+            _acquisitions,
+            player_season_history=_roi_season_history,
+            current_week=week_index,
+        )
         writer_room_text = render_writer_room_context_for_prompt(
             deltas=_deltas, faab=_faab,
             acquisitions=_acquisitions,
+            roi=_roi,
             name_map=_name_map,
             player_name_map=_player_name_map,
         )
@@ -1014,12 +1049,24 @@ def _derive_prompt_context(
     except Exception as e:
         logger.debug("Voice profile lookup failed: %s", e)
 
+    # Phase D Arc 2: manager identity (owner short-forms for insider voice)
+    manager_identity_text = ""
+    try:
+        _mgr_identities = derive_manager_identities(
+            db_path=db_path, league_id=league_id, season=season,
+            name_map=_name_map,
+        )
+        manager_identity_text = render_manager_identities_for_prompt(_mgr_identities)
+    except Exception as e:
+        logger.debug("Manager identity derivation failed: %s", e)
+
     return _PromptContext(
         season_context_text=season_context_text,
         league_history_text=league_history_text,
         narrative_angles_text=narrative_angles_text,
         writer_room_text=writer_room_text,
         player_highlights_text=player_highlights_text,
+        manager_identity_text=manager_identity_text,
         tone_preset=tone_preset,
         voice_profile=voice_profile,
         seasons_count=(
@@ -1254,6 +1301,7 @@ def generate_weekly_recap_draft(
                 narrative_angles=_ctx.narrative_angles_text,
                 writer_room_context=_ctx.writer_room_text,
                 player_highlights=_ctx.player_highlights_text,
+                manager_identity=_ctx.manager_identity_text,
                 tone_preset=_ctx.tone_preset,
                 voice_profile=_ctx.voice_profile,
                 seasons_count=_ctx.seasons_count,

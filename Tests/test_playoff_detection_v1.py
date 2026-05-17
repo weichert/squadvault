@@ -147,7 +147,7 @@ class TestPlayoffAwareRendering:
         )
         text = render_season_context_for_prompt(ctx)
         assert "PLAYOFF" not in text
-        assert "Season standings through Week 10:" in text
+        assert "Season power rankings through Week 10:" in text
 
     def test_playoff_week_has_header(self):
         """Playoff weeks should show explicit playoff header."""

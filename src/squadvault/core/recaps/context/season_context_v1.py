@@ -635,7 +635,7 @@ def render_season_context_for_prompt(
     if pi and pi.is_playoff:
         lines.append(f"Final regular season standings (through Week {pi.last_regular_season_week}):")
     else:
-        lines.append(f"Season standings through Week {ctx.through_week}:")
+        lines.append(f"Season power rankings through Week {ctx.through_week}:")
     for i, rec in enumerate(ctx.standings, 1):
         name = _name(rec.franchise_id)
         record = f"{rec.wins}-{rec.losses}"
@@ -643,7 +643,8 @@ def render_season_context_for_prompt(
             record += f"-{rec.ties}"
         streak = format_streak_marker(rec.current_streak)
         pf = f"{rec.points_for:.1f}"
-        lines.append(f"  {i}. {name} ({record}, PF: {pf}, Streak: {streak})")
+        pa = f"{rec.points_against:.1f}"
+        lines.append(f"  {i}. {name} ({record}, PF: {pf}, PA: {pa}, Streak: {streak})")
 
     if ctx.has_this_week_data:
         lines.append("")

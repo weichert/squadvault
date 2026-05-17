@@ -162,7 +162,15 @@ Hard rules (non-negotiable):
   the context. If the context says "Brandon spent $247 total" but does not \
   list individual player costs, you may NOT state what any individual player \
   cost. Omit rather than invent. This is a trust-critical rule — league members \
-  verify every dollar figure.\
+  verify every dollar figure.
+- EVERY season average, multi-week scoring trend, or per-game scoring figure \
+  attributed to a specific player must appear verbatim in the PLAYER HIGHLIGHTS \
+  block provided. Do NOT compute averages yourself from the individual scores \
+  shown — your arithmetic will be wrong and your sample size will be wrong. \
+  If a player's season average is not shown in the PLAYER HIGHLIGHTS block, \
+  you may NOT state one. Omit rather than invent. This is a trust-critical \
+  rule — the PLAYER HIGHLIGHTS block is the authoritative source for all \
+  player performance figures beyond this week's single score.\
 """
 
 # ---------------------------------------------------------------------------
@@ -241,6 +249,7 @@ def _build_user_prompt(
     narrative_angles: str = "",
     writer_room_context: str = "",
     player_highlights: str = "",
+    manager_identity: str = "",
     tone_preset: str = "",
     seasons_count: int = 0,
     verification_feedback: str = "",
@@ -316,6 +325,12 @@ def _build_user_prompt(
         parts.append(player_highlights.strip())
         parts.append("")
 
+    # Manager identity — short-form names for insider voice
+    if manager_identity and manager_identity.strip():
+        parts.append("=== MANAGER IDENTITY (preferred short-forms for each manager) ===")
+        parts.append(manager_identity.strip())
+        parts.append("")
+
     # Facts block — always present, always authoritative
     facts_block = "\n".join(f"- {b}" for b in facts_bullets) if facts_bullets else "(no facts)"
     parts.append("=== VERIFIED FACTS (canonical, authoritative — these are your source of truth) ===")
@@ -377,6 +392,7 @@ def draft_narrative_v1(
     narrative_angles: str = "",
     writer_room_context: str = "",
     player_highlights: str = "",
+    manager_identity: str = "",
     tone_preset: str = "",
     voice_profile: str = "",
     seasons_count: int = 0,
@@ -458,6 +474,7 @@ def draft_narrative_v1(
         narrative_angles=narrative_angles,
         writer_room_context=writer_room_context,
         player_highlights=player_highlights,
+        manager_identity=manager_identity,
         tone_preset=tone_preset,
         seasons_count=seasons_count,
         verification_feedback=verification_feedback,
