@@ -356,3 +356,46 @@ That is a fact. It is reportable.
 Implementation note: league average figures must be computed at the
 data layer and passed to the Writer's Room as verified context.
 They are not to be synthesized or estimated by the Writer's Room.
+
+---
+
+## Platform scope: domain-agnostic by design
+
+The storytelling engine is the product. Fantasy football is the first
+implementation. The underlying capability is domain-agnostic.
+
+Any competitive league with historical data, recurring participants,
+and decisions that produce measurable outcomes is a candidate. The
+structural requirements are identical regardless of domain:
+
+- Participants who make decisions
+- Outcomes those decisions produce
+- History that accumulates over time
+- A community that shares the experience
+
+The Signal Scout detects stories from those four elements regardless
+of what the competition is. The Writer's Room renders them in the voice
+appropriate to that community. The verifier ensures every claim is
+grounded in actual data.
+
+Examples of eligible domains:
+- Fantasy sports of any kind (football, baseball, basketball, hockey,
+  golf, soccer, and any sport with statistical output)
+- Season-long recreational competitions (bowling leagues, dart leagues,
+  golf handicap leagues, poker leagues)
+- Gaming leagues (chess clubs, esports, card game tournaments)
+- Any recurring competition where the same people compete over time
+  and accumulate a history worth telling
+
+The platform should not be described as a fantasy football tool.
+It is a league storytelling engine. Fantasy football is the proof of
+concept and the first tenant. PFL Buddies is the first league.
+The architecture was designed for the general case.
+
+Implementation note: domain-agnostic architecture requires that the
+Signal Scout's detector suite be configurable per league type, and
+that the data ingest pipeline be extensible to non-football data
+sources. This is a design constraint that should inform every
+architectural decision from this point forward. Nothing built for
+football should be hardcoded in a way that prevents adaptation to
+another domain.
