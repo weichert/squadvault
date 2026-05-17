@@ -3697,7 +3697,7 @@ def verify_historical_claims(
         kw_offset = kw_pos - window_start
 
         for alias, fid in reverse_name_map.items():
-            if len(alias) <= 3:
+            if len(alias) <= 1:
                 continue
             alias_lower = alias.lower()
             idx = window.lower().find(alias_lower)
@@ -3762,7 +3762,7 @@ def verify_historical_claims(
         rec_offset = rec_pos - window_start
 
         for alias, fid in reverse_name_map.items():
-            if len(alias) <= 3:
+            if len(alias) <= 1:
                 continue
             idx = window.lower().find(alias.lower())
             if idx >= 0:

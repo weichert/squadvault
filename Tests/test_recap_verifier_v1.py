@@ -6045,7 +6045,41 @@ class TestHistoricalClaimVerification:
         rec = [f for f in failures if f.category == "SEASON_RECORD_CLAIM"]
         assert rec == []
 
-    def test_championship_week_w18_for_2021_plus(self, tmp_path):
+    def test_short_alias_franchise_detected(self, tmp_path):
+        """Short aliases like 'KP' (len=2) are now recognized as franchise identifiers.
+
+        Regression: W16 2025 recap wrote 'KP... appeared in the championship
+        matchup 6 times' but the checker skipped it because 'kp' has len=2
+        which was <= the old threshold of 3.
+        """
+        db_path = self._build_db(tmp_path)
+        # KP in 7 championship games in prior seasons
+        seasons = [2012, 2014, 2018, 2019, 2020, 2021, 2024]
+        for i, s in enumerate(seasons):
+            w, l = ("KP", "F2") if i % 2 == 0 else ("F2", "KP")
+            self._insert_champ_matchup(db_path, season=s, winner_id=w, loser_id=l)
+
+        # Use reverse_name_map with 'kp' alias for KP Squad
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            VerificationFailure,
+        )
+        rmap = {"kp": "KP", "kp squad": "KP"}
+
+        text = self._wrap(
+            "KP has appeared in the championship six times across the league's history."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=2025, week=14,
+            reverse_name_map=rmap,
+        )
+        champ = [f for f in failures if f.category == "CHAMPIONSHIP_CLAIM"]
+        assert len(champ) == 1, (
+            f"expected CHAMPIONSHIP_CLAIM for short alias 'KP', got {champ}"
+        )
+        assert champ[0].severity == "HARD"
+        assert "7" in champ[0].evidence
+
+
         """Championship week is W18 for seasons 2021+, not W16."""
         db_path = self._build_db(tmp_path)
         # Insert W18 2022 as the championship week
