@@ -14,6 +14,198 @@ from squadvault.consumers.editorial_actions import insert_editorial_action
 from squadvault.core.storage.session import DatabaseSession
 
 
+# ── Verification Report (Phase D) ────────────────────────────────────
+
+
+def _load_latest_verification_result(
+    conn: sqlite3.Connection,
+    league_id: str,
+    season: int,
+    week_index: int,
+) -> dict | None:
+    """Load the most recent verification result JSON from prompt_audit.
+
+    Returns the parsed result dict, or None if no audit record exists.
+    Only returns results from passing attempts (verification_passed=1)
+    where available; falls back to latest regardless of pass status.
+    """
+    # Prefer the last passing attempt
+    row = conn.execute(
+        """SELECT verification_result_json
+           FROM prompt_audit
+           WHERE league_id=? AND season=? AND week_index=?
+             AND verification_passed=1
+           ORDER BY id DESC LIMIT 1""",
+        (league_id, int(season), int(week_index)),
+    ).fetchone()
+    if not row:
+        # Fall back to latest regardless of pass/fail
+        row = conn.execute(
+            """SELECT verification_result_json
+               FROM prompt_audit
+               WHERE league_id=? AND season=? AND week_index=?
+               ORDER BY id DESC LIMIT 1""",
+            (league_id, int(season), int(week_index)),
+        ).fetchone()
+    if not row or not row[0]:
+        return None
+    try:
+        result = json.loads(row[0])
+        return result if isinstance(result, dict) else None
+    except (ValueError, TypeError):
+        return None
+
+
+def render_verification_report(
+    conn: sqlite3.Connection,
+    db: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    recap_text: str | None = None,
+) -> str:
+    """Render a human-readable verification status block for the review surface.
+
+    D1: Shows hard and soft failures with claim + evidence.
+    D2: Shows summary header (PASSED / FLAGGED / WITHHELD).
+    D3: Suggests edits for hard failures.
+    D4: Reports edit burden count.
+
+    recap_text: if supplied, re-runs the verifier live so the commissioner
+    sees the current state. Falls back to stored prompt_audit result.
+    """
+    lines: list[str] = []
+    lines.append("=== VERIFICATION REPORT ===")
+
+    stored = _load_latest_verification_result(conn, league_id, season, week_index)
+    live_result = None
+
+    # Live re-verification if we have the recap text and the DB
+    if recap_text and recap_text.strip():
+        try:
+            from squadvault.core.recaps.verification.recap_verifier_v1 import (
+                verify_recap_v1,
+            )
+            live_result = verify_recap_v1(
+                recap_text,
+                db_path=db,
+                league_id=league_id,
+                season=season,
+                week=week_index,
+            )
+        except Exception:
+            live_result = None
+
+    # Choose which result to display
+    if live_result is not None:
+        passed = live_result.passed
+        hard_failures = [
+            {"category": f.category, "claim": f.claim, "evidence": f.evidence}
+            for f in live_result.hard_failures
+        ]
+        soft_failures = [
+            {"category": f.category, "claim": f.claim, "evidence": f.evidence}
+            for f in live_result.soft_failures
+        ]
+        checks_run = live_result.checks_run
+        source = "live"
+    elif stored:
+        passed = bool(stored.get("passed", True))
+        hard_failures = stored.get("hard_failures", [])
+        soft_failures = stored.get("soft_failures", [])
+        checks_run = stored.get("checks_run", 0)
+        source = "stored"
+    else:
+        lines.append("  No verification record found for this week.")
+        lines.append("  Regenerate the draft to produce a verification report.")
+        return "\n".join(lines)
+
+    # D2: Summary header
+    if passed:
+        status = "PASSED"
+    elif hard_failures:
+        status = "FLAGGED"
+    else:
+        status = "SOFT WARNINGS"
+
+    n_hard = len(hard_failures)
+    n_soft = len(soft_failures)
+    lines.append(
+        f"  Status: {status}  |  "
+        f"Checks run: {checks_run}  |  "
+        f"Hard failures: {n_hard}  |  "
+        f"Soft warnings: {n_soft}  "
+        f"({source})"
+    )
+    lines.append("")
+
+    # D1: Hard failure detail + D3: Suggested edits
+    if hard_failures:
+        lines.append(f"  HARD FAILURES ({n_hard}) — these are factual errors:")
+        for i, f in enumerate(hard_failures, 1):
+            cat = f.get("category", "?")
+            claim = f.get("claim", "")
+            evidence = f.get("evidence", "")
+            lines.append(f"    [{i}] [{cat}] {claim}")
+            if evidence:
+                lines.append(f"         CORRECT: {evidence}")
+        lines.append("")
+        # D3: Edit suggestions
+        lines.append("  SUGGESTED EDITS:")
+        for i, f in enumerate(hard_failures, 1):
+            cat = f.get("category", "?")
+            claim = f.get("claim", "")
+            evidence = f.get("evidence", "")
+            if cat == "FAAB_CLAIM":
+                lines.append(
+                    f"    [{i}] Remove or correct the dollar amount — {claim}. "
+                    f"Canonical: {evidence}"
+                )
+            elif cat in ("CHAMPIONSHIP_CLAIM", "SEASON_RECORD_CLAIM"):
+                lines.append(
+                    f"    [{i}] Correct the count/record — {claim}. "
+                    f"Canonical: {evidence}"
+                )
+            elif cat == "SCORE":
+                lines.append(
+                    f"    [{i}] Fix the score — {claim}. Canonical: {evidence}"
+                )
+            elif cat == "STREAK":
+                lines.append(
+                    f"    [{i}] Fix the streak claim — {claim}. Canonical: {evidence}"
+                )
+            else:
+                lines.append(
+                    f"    [{i}] Fix: {claim}. Canonical: {evidence}"
+                )
+        lines.append("")
+
+    # Soft warnings (D1 — informational)
+    if soft_failures:
+        lines.append(f"  SOFT WARNINGS ({n_soft}) — style/speculation flags:")
+        for f in soft_failures:
+            cat = f.get("category", "?")
+            claim = f.get("claim", "")
+            lines.append(f"    [{cat}] {claim}")
+        lines.append("")
+
+    # D4: Edit burden guidance
+    if n_hard >= 3:
+        lines.append(
+            f"  EDIT BURDEN: {n_hard} hard failures — "
+            "REGENERATION RECOMMENDED before approval."
+        )
+    elif n_hard > 0:
+        lines.append(
+            f"  EDIT BURDEN: {n_hard} hard failure(s) — "
+            "manual edits required before approval."
+        )
+    else:
+        lines.append("  EDIT BURDEN: None. Draft is clean.")
+
+    return "\n".join(lines)
+
+
 def latest_version_and_state(
     conn: sqlite3.Connection, league_id: str, season: int, week_index: int
 ) -> tuple[int | None, str | None]:
@@ -232,6 +424,20 @@ def review_loop(
     print("")
     print("=== REVIEW PACKET (renderer output) ===")
     print(rendered)
+    print("")
+
+    # Phase D: Verification report — D1 claim annotation, D2 summary header,
+    # D3 suggested edits, D4 edit burden counter.
+    # Extracts recap text from the rendered packet for live re-verification.
+    _recap_for_verify = rendered if rendered.strip() else None
+    try:
+        _verif_report = render_verification_report(
+            conn, db, league_id, season, week_index,
+            recap_text=_recap_for_verify,
+        )
+        print(_verif_report)
+    except Exception as _ve:
+        print(f"  (Verification report unavailable: {_ve})")
     print("")
 
     print("Decision:")
