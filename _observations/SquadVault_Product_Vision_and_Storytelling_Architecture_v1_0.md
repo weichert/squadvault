@@ -312,3 +312,47 @@ moments, and their worst. It reads like something written by someone
 who watched every season. It was not. It was derived entirely from data.
 
 That is the product.
+
+---
+
+## Governing principle: league average as baseline
+
+Individual performance is most meaningful in context. League average
+is the baseline that makes every personal metric legible.
+
+Without context: "You left 23 points on your bench per week."
+With context: "You left 23 points on your bench per week. The league
+average was 18. Your lineup decisions were the costliest in the league
+this season -- an estimated 3 additional wins with average decision
+quality."
+
+The same data. Completely different meaning.
+
+This principle applies to every personal metric the system surfaces:
+
+- Points scored vs league average
+- Points allowed vs league average
+- Bench points left vs league average (lineup decision quality)
+- FAAB efficiency (points per dollar) vs league average
+- Auction efficiency (points per dollar) vs league average
+- Start/sit decision accuracy vs league average
+- Trade outcome value vs league average
+- Acquisition timing vs league average (who moves first)
+
+League average comparison works in both directions. Underperformance
+is a story. Outperformance is equally a story. Both deserve to be told
+with the same specificity.
+
+Percentile framing is encouraged where it adds clarity. "Your lineup
+decisions placed you in the bottom 20% of the league" is more legible
+than a raw bench points figure. Both the number and the percentile
+should be available.
+
+Historical league average comparison is also valid. "Your FAAB
+efficiency this season (9.1 points per dollar) was the highest in
+league history. The previous record was 8.3, set by Miller in 2019."
+That is a fact. It is reportable.
+
+Implementation note: league average figures must be computed at the
+data layer and passed to the Writer's Room as verified context.
+They are not to be synthesized or estimated by the Writer's Room.
