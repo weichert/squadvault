@@ -42,6 +42,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     verify_historical_claims,
     verify_player_avg_claims,
     verify_numeric_unanchored,
+    verify_player_scoring_streaks,
     _load_franchise_names,
     _load_franchise_nicknames,
     _load_franchise_owner_names,
@@ -1016,7 +1017,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 14
+        assert result.checks_run == 15
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -1098,7 +1099,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 14
+        assert result.checks_run == 15
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -4512,7 +4513,7 @@ class TestPlayerFranchiseAttribution:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added between SCORE and
         # SUPERLATIVE per be76817 / Step 4 correction memo).
-        assert result.checks_run == 14
+        assert result.checks_run == 15
         pf = [f for f in result.hard_failures
               if f.category == "PLAYER_FRANCHISE"]
         assert len(pf) == 1, (
@@ -4948,7 +4949,7 @@ class TestFaabClaimVerification:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added per be76817 / Step 4
         # correction memo).
-        assert result.checks_run == 14
+        assert result.checks_run == 15
 
 
 # ── Phase 2 addendum conformance: as-of-week scoping ─────────────────
@@ -6266,9 +6267,153 @@ class TestNumericUnanchoredVerification:
         result = verify_recap_v1(
             text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=5,
         )
-        assert result.checks_run == 14
+        assert result.checks_run == 15
         # NUMERIC_UNANCHORED is SOFT — should not block
         assert result.hard_failure_count == 0
         soft = [f for f in result.soft_failures if f.category == "NUMERIC_UNANCHORED"]
         assert len(soft) == 1
         assert result.passed is True  # SOFT failures don't fail the result
+
+
+# ── Category 12: Player Scoring Streak Claims (Arc 3) ────────────────
+
+
+class TestPlayerScoringStreakVerification:
+    """Arc 3 Cat 12: 'N straight X+ point game' streak claim verification.
+
+    Regression target: W8 2025: 'Patrick Mahomes' fifth straight 25+ point game'
+    -- actual streak was 2 consecutive weeks.
+    """
+
+    def _build_db_with_scores(self, tmp_path, *,
+                               player_id: str, player_name: str,
+                               week_scores: list[tuple[int, float]]) -> str:
+        """Build a DB with a player's weekly scores."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, player_id, player_name, "QB"),
+        )
+        for week_num, score in week_scores:
+            payload = json.dumps({
+                "player_id": player_id, "week": week_num,
+                "score": score, "franchise_id": "F1", "is_starter": 1,
+            }, sort_keys=True)
+            ext_id = f"wps_{LEAGUE}_{SEASON}_{player_id}_w{week_num}"
+            con.execute(
+                """INSERT INTO memory_events
+                   (league_id, season, external_source, external_id,
+                    event_type, occurred_at, ingested_at, payload_json)
+                   VALUES (?, ?, 'test', ?, 'WEEKLY_PLAYER_SCORE',
+                           '2024-10-01T00:00:00Z', '2024-10-01T00:00:00Z', ?)""",
+                (LEAGUE, SEASON, ext_id, payload),
+            )
+            me_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+            con.execute(
+                """INSERT INTO canonical_events
+                   (league_id, season, event_type, action_fingerprint,
+                    best_memory_event_id, best_score, updated_at, occurred_at)
+                   VALUES (?, ?, 'WEEKLY_PLAYER_SCORE', ?, ?, 100,
+                           '2024-10-01T00:00:00Z', '2024-10-01T00:00:00Z')""",
+                (LEAGUE, SEASON, f"fp_{ext_id}", me_id),
+            )
+        con.commit()
+        con.close()
+        return db_path
+
+    def _wrap(self, text):
+        return "--- SHAREABLE RECAP ---\n" + text + "\n--- END SHAREABLE RECAP ---\n"
+
+    def test_correct_streak_passes(self, tmp_path):
+        """Correct streak count passes verification."""
+        # Player scored 28, 30, 26 in weeks 1-3 -- 3 straight 25+
+        db_path = self._build_db_with_scores(
+            tmp_path, player_id="P_QB",
+            player_name="Allen, Josh",
+            week_scores=[(1, 28.0), (2, 30.0), (3, 26.0)],
+        )
+        text = self._wrap(
+            "Josh Allen is on a three straight 25+ point game stretch."
+        )
+        failures = verify_player_scoring_streaks(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=3,
+        )
+        streak = [f for f in failures if f.category == "PLAYER_STREAK_CLAIM"]
+        assert streak == [], f"expected no failures for correct streak, got {streak}"
+
+    def test_wrong_streak_count_flags(self, tmp_path):
+        """'Fifth straight 25+' when actual streak is 2 is a hard failure.
+
+        Regression: W8 2025 recap claimed a player had 'fifth straight 25+ point
+        game' when the actual consecutive count was 2.
+        """
+        # Only weeks 2-3 are above 25; week 1 is below threshold
+        db_path = self._build_db_with_scores(
+            tmp_path, player_id="P_QB",
+            player_name="Allen, Josh",
+            week_scores=[(1, 18.0), (2, 30.0), (3, 27.0)],
+        )
+        text = self._wrap(
+            "Josh Allen delivered his fifth straight 25+ point game this week."
+        )
+        failures = verify_player_scoring_streaks(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=3,
+        )
+        streak = [f for f in failures if f.category == "PLAYER_STREAK_CLAIM"]
+        assert len(streak) == 1, f"expected 1 PLAYER_STREAK_CLAIM, got {streak}"
+        assert streak[0].severity == "HARD"
+        assert "5" in streak[0].claim or "five" in streak[0].claim.lower()
+        assert "2" in streak[0].evidence
+
+    def test_word_form_count_detected(self, tmp_path):
+        """'Three straight 20+ point weeks' with word form is detected."""
+        # Only 2 straight weeks above 20
+        db_path = self._build_db_with_scores(
+            tmp_path, player_id="P_WR",
+            player_name="Chase, Jamarr",
+            week_scores=[(1, 15.0), (2, 22.0), (3, 25.0)],
+        )
+        text = self._wrap(
+            "Jamarr Chase has scored 20+ in three straight weeks."
+        )
+        failures = verify_player_scoring_streaks(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=3,
+        )
+        streak = [f for f in failures if f.category == "PLAYER_STREAK_CLAIM"]
+        assert len(streak) == 1
+        assert streak[0].severity == "HARD"
+
+    def test_no_player_name_no_check(self, tmp_path):
+        """Streak claim with no recognizable player name is skipped."""
+        db_path = _fresh_db(tmp_path)
+        text = self._wrap(
+            "Three straight 25+ point games is quite a run for any player."
+        )
+        failures = verify_player_scoring_streaks(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=3,
+        )
+        assert failures == []
+
+    def test_no_player_data_skips(self, tmp_path):
+        """Player with no scoring data is skipped (not a false positive)."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "P_NEW", "Hill, Tyreek", "WR"),
+        )
+        con.commit()
+        con.close()
+
+        text = self._wrap(
+            "Tyreek Hill delivered his fourth straight 20+ point game."
+        )
+        failures = verify_player_scoring_streaks(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=5,
+        )
+        assert failures == []

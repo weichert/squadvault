@@ -24,6 +24,8 @@ Verification Categories (V1):
     average from WEEKLY_PLAYER_SCORE; >10% deviation = HARD
 11. NUMERIC_UNANCHORED — aggregate transaction counts ("made 8 moves",
     "9 acquisitions") that cannot be derived from the facts block; SOFT
+12. PLAYER_STREAK_CLAIM — "N straight X+ point game" claims vs canonical
+    consecutive-weeks-above-threshold from WEEKLY_PLAYER_SCORE; HARD
 
 Categories 1–4, 6–8 are HARD. Category 5 is SOFT. A hard failure means
 the recap contains a provably false factual claim.
@@ -1356,7 +1358,7 @@ def verify_superlatives(
 # it there too. Kept as parallel literals (not derived from one
 # another) for readability and mypy clarity.
 _SPELLED_COUNTS_1_18 = (
-    r'one|two|three|four|five|six|seven|eight|nine|ten|'
+    r'one|second|two|third|three|fourth|four|fifth|five|sixth|six|seventh|seven|eighth|eight|ninth|nine|tenth|ten|'
     r'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen'
 )
 
@@ -2022,7 +2024,7 @@ _RECORD_CLAIM_PATTERN = re.compile(
     r"(?:"
     r"(?:matching|matches|tied|tying|broke|broken|breaks?|breaking)"
     r"\s+(?:the\s+)?(?:league|all-time|league\s+all-time)?\s*record"
-    r"|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)"
+    r"|(?:one|second|two|third|three|fourth|four|fifth|five|sixth|six|seventh|seven|eighth|eight|ninth|nine|tenth|ten|\d+)"
     r"\s+(?:short|shy|away|games?\s+(?:short|shy|away))"
     r"\s+(?:of|from)\s+(?:the\s+)?(?:league|all-time)?\s*record"
     r"|closing\s+in\s+on\s+(?:the\s+)?(?:league|all-time)?\s*record"
@@ -4088,6 +4090,213 @@ def verify_numeric_unanchored(
 
     return failures
 
+# ── Category 12: Player Scoring Streak Claims ────────────────────────
+#
+# Catches "fifth straight 25+ point game", "scored 20+ in three straight
+# weeks", and similar cross-week player scoring streak claims.
+# The model synthesizes these from context that contains only this week's
+# scores; it has no access to prior-week scores without the Player Highlights
+# extension (Arc 2 Phase A).
+#
+# Detection: numeric count + threshold pattern near a player name
+#   e.g. "fifth straight 25+ point game", "three straight weeks of 30+"
+# Verification: count consecutive weeks the player scored >= threshold,
+#   working backward from current week.
+# Tolerance: exact count required (streak counts are integers).
+# HARD failure.
+
+_PLAYER_STREAK_THRESHOLD_PATTERN = re.compile(
+    r"""(?x)
+    (?:
+        # "three straight 25+ point" / "fifth straight 30+ point game"
+        (\b(?:\d+)(?:st|nd|rd|th)?\b | \b(?:second|two|third|three|fourth|four|fifth|five|sixth|six|seventh|seven|eighth|eight|ninth|nine|tenth|ten)\b)
+        \s+straight\s+
+        (\d{1,3})\+\s*(?:-\s*)?point
+    |
+        # "25+ points in three straight weeks" / "20+ in five straight"
+        (\d{1,3})\+\s*(?:points?)?\s+in\s+
+        (\b(?:\d+)(?:st|nd|rd|th)?\b | \b(?:second|two|third|three|fourth|four|fifth|five|sixth|six|seventh|seven|eighth|eight|ninth|nine|tenth|ten)\b)
+        \s+(?:straight|consecutive)
+    )
+    """,
+    re.IGNORECASE,
+)
+
+_STREAK_WORD_TO_INT: dict[str, int] = {
+    "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+
+_ORDINAL_TO_INT: dict[str, int] = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+    "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10,
+}
+
+
+def _parse_streak_count(raw: str) -> int | None:
+    """Parse a streak count word or number to int."""
+    raw = raw.strip().lower()
+    if raw in _STREAK_WORD_TO_INT:
+        return _STREAK_WORD_TO_INT[raw]
+    if raw in _ORDINAL_TO_INT:
+        return _ORDINAL_TO_INT[raw]
+    # strip ordinal suffix and try int
+    num_str = re.sub(r"(st|nd|rd|th)$", "", raw).strip()
+    try:
+        return int(num_str)
+    except ValueError:
+        return None
+
+
+def _compute_scoring_streak_above(
+    db_path: str,
+    league_id: str,
+    season: int,
+    player_id: str,
+    threshold: float,
+    through_week: int,
+) -> int:
+    """Count consecutive weeks (ending at through_week) where player scored >= threshold.
+
+    Returns 0 if no data or no consecutive weeks at threshold.
+    Only counts weeks where score > 0 (excludes bye/inactive).
+    """
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT CAST(json_extract(payload_json, '$.week') AS INTEGER),
+                      CAST(json_extract(payload_json, '$.score') AS REAL)
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WEEKLY_PLAYER_SCORE'
+                 AND json_extract(payload_json, '$.player_id') = ?
+                 AND CAST(json_extract(payload_json, '$.week') AS INTEGER) <= ?
+               ORDER BY CAST(json_extract(payload_json, '$.week') AS INTEGER) DESC""",
+            (str(league_id), int(season), str(player_id), int(through_week)),
+        ).fetchall()
+
+    streak = 0
+    for week_num, score in rows:
+        if score is None or score <= 0:
+            break
+        if score >= threshold:
+            streak += 1
+        else:
+            break
+    return streak
+
+
+def verify_player_scoring_streaks(
+    recap_text: str,
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week: int,
+) -> list[VerificationFailure]:
+    """Verify player scoring streak threshold claims against WEEKLY_PLAYER_SCORE.
+
+    Catches: "fifth straight 25+ point game", "three straight weeks of 20+".
+    Matching: player name within 120 chars of the streak claim.
+    Hard failure when the stated consecutive count does not match actual.
+
+    Limitation: only checks within the current season through the current
+    week. Cross-season streaks are not verified (data available but out
+    of scope at v1).
+    """
+    failures: list[VerificationFailure] = []
+
+    narrative = _extract_shareable_recap(recap_text)
+    if not narrative:
+        return []
+
+    player_name_map = _load_player_name_map_for_verify(db_path, league_id)
+    display_to_pid: dict[str, str] = {}
+    for pid, display in player_name_map.items():
+        if not display:
+            continue
+        if ", " in display:
+            parts = display.split(", ", 1)
+            first_last = f"{parts[1]} {parts[0]}".strip().lower()
+            if first_last not in display_to_pid:
+                display_to_pid[first_last] = pid
+        else:
+            key = display.strip().lower()
+            if key not in display_to_pid:
+                display_to_pid[key] = pid
+
+    checked: set[tuple[str, int, float]] = set()
+
+    for m in _PLAYER_STREAK_THRESHOLD_PATTERN.finditer(narrative):
+        # Extract count and threshold from whichever pattern arm fired
+        g = m.groups()
+        if g[0] is not None:
+            # Arm 1: "N straight X+ point"
+            count_raw, threshold_raw = g[0], g[1]
+        else:
+            # Arm 2: "X+ in N straight"
+            count_raw, threshold_raw = g[3], g[2]
+
+        claimed_count = _parse_streak_count(count_raw)
+        if claimed_count is None or claimed_count < 2:
+            continue
+        try:
+            threshold = float(threshold_raw)
+        except ValueError:
+            continue
+        if threshold <= 0 or threshold > 100:
+            continue
+
+        # Find nearest player name within 120 chars
+        search_start = max(0, m.start() - 120)
+        search_end = min(len(narrative), m.end() + 120)
+        window = narrative[search_start:search_end].lower()
+        match_offset = m.start() - search_start
+
+        best_name: str | None = None
+        best_dist = len(window) + 1
+        for display_name in display_to_pid:
+            if len(display_name) <= 4:
+                continue
+            idx = window.find(display_name)
+            if idx >= 0:
+                dist = abs(idx - match_offset)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_name = display_name
+
+        if best_name is None:
+            continue
+
+        pid = display_to_pid[best_name]
+        check_key = (pid, claimed_count, threshold)
+        if check_key in checked:
+            continue
+        checked.add(check_key)
+
+        actual_streak = _compute_scoring_streak_above(
+            db_path, league_id, season, pid, threshold, week,
+        )
+        if actual_streak == 0:
+            # No data for this player — skip (cannot verify, not a known fabrication)
+            continue
+
+        if claimed_count != actual_streak:
+            failures.append(VerificationFailure(
+                category="PLAYER_STREAK_CLAIM",
+                severity="HARD",
+                claim=(
+                    f"{claimed_count} consecutive week(s) scoring {threshold:.0f}+ "
+                    f"attributed to {best_name.title()} (player {pid})"
+                ),
+                evidence=(
+                    f"Canonical consecutive weeks scoring {threshold:.0f}+ "
+                    f"for {best_name.title()} through week {week}: {actual_streak}."
+                ),
+            ))
+
+    return failures
+
+
 
 # ── Category 8: FAAB Transaction Verification ───────────────────────
 
@@ -4480,6 +4689,16 @@ def verify_recap_v1(
     # be derived from the facts block. SOFT: commissioner-visible, not blocking.
     checks_run += 1
     all_failures.extend(verify_numeric_unanchored(narrative))
+
+    # Category 12: Player scoring streak claims (HARD)
+    checks_run += 1
+    all_failures.extend(verify_player_scoring_streaks(
+        narrative,
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
+        week=week,
+    ))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")
     soft = tuple(f for f in all_failures if f.severity == "SOFT")
