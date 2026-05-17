@@ -25,6 +25,7 @@ from squadvault.chronicle.input_contract_v1 import (
 )
 from squadvault.chronicle.matchup_facts_v1 import (
     facts_block_hash_v1,
+    query_head_to_head_matchups_multi_season_v1,
     query_head_to_head_matchups_v1,
 )
 from squadvault.core.exports.approved_weekly_recap_export_v1 import fetch_latest_approved_weekly_recap
@@ -255,3 +256,94 @@ def generate_rivalry_chronicle_v1(
     )
     anchor_week_index = int(max(resolved.week_indices))
     return RivalryChronicleGeneratedV1(text=out_text, missing_weeks=missing, fingerprint=fp, anchor_week_index=anchor_week_index)
+
+def generate_rivalry_chronicle_multi_season_v1(
+    *,
+    db_path: str,
+    league_id: int,
+    start_season: int,
+    end_season: int,
+    team_a_id: str,
+    team_b_id: str,
+    created_at_utc: str,
+) -> "RivalryChronicleGeneratedV1":
+    """Generate a multi-season rivalry chronicle for a team pair.
+
+    Covers all head-to-head matchups between team_a and team_b from
+    start_season through end_season (inclusive). Week indices are not
+    applicable across seasons; the scope is the full season range.
+    """
+    matchup_facts = query_head_to_head_matchups_multi_season_v1(
+        db_path=db_path,
+        league_id=str(league_id),
+        team_a_id=str(team_a_id),
+        team_b_id=str(team_b_id),
+        start_season=int(start_season),
+        end_season=int(end_season),
+    )
+
+    # Resolve display names from the most recent season available
+    name_season = end_season
+    team_a_name = _resolve_team_name(db_path, league_id, name_season, team_a_id)
+    team_b_name = _resolve_team_name(db_path, league_id, name_season, team_b_id)
+
+    mf_hash = facts_block_hash_v1(matchup_facts)
+
+    # Fingerprint uses start/end season instead of week indices
+    import hashlib, json as _json
+    fp_payload = {
+        "league_id": int(league_id),
+        "start_season": int(start_season),
+        "end_season": int(end_season),
+        "team_a_id": str(team_a_id),
+        "team_b_id": str(team_b_id),
+        "matchup_facts_hash": mf_hash,
+        "scope": "multi_season",
+    }
+    fp = hashlib.sha256(
+        _json.dumps(fp_payload, sort_keys=True).encode()
+    ).hexdigest()
+
+    scope_label = f"{start_season}-{end_season} ({len(matchup_facts)} meetings)"
+
+    # Creative layer
+    narrative_prose = None
+    try:
+        from squadvault.ai.creative_layer_rivalry_v1 import draft_rivalry_narrative_v1
+        narrative_prose = draft_rivalry_narrative_v1(
+            matchup_facts=matchup_facts,
+            team_a_name=team_a_name,
+            team_b_name=team_b_name,
+            league_id=int(league_id),
+            season=int(end_season),
+        )
+    except Exception as exc:
+        logger.debug("%s", exc)
+
+    # Use season=end_season and empty week list for renderer compatibility;
+    # scope_label overrides the Season/Scope header lines
+    out_text = render_rivalry_chronicle_contract_v1(
+        league_id=int(league_id),
+        season=int(end_season),
+        team_a_id=str(team_a_id),
+        team_b_id=str(team_b_id),
+        team_a_name=team_a_name,
+        team_b_name=team_b_name,
+        week_indices_requested=[],
+        matchup_facts=matchup_facts,
+        missing_weeks=[],
+        created_at_utc=created_at_utc,
+        narrative_prose=narrative_prose,
+        scope_label=scope_label,
+    )
+
+    # anchor_week_index: use end_season * 100 as a synthetic key to avoid
+    # colliding with single-season artifacts (max real week is 18)
+    anchor_week_index = int(end_season) * 100 + int(start_season)
+
+    return RivalryChronicleGeneratedV1(
+        text=out_text,
+        missing_weeks=(),
+        fingerprint=fp,
+        anchor_week_index=anchor_week_index,
+    )

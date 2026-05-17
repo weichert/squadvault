@@ -52,6 +52,7 @@ def render_rivalry_chronicle_contract_v1(
     created_at_utc: str,
     version: int = 1,
     narrative_prose: str | None = None,
+    scope_label: str | None = None,
 ) -> str:
     """Render contract-compliant rivalry chronicle output.
 
@@ -73,8 +74,11 @@ def render_rivalry_chronicle_contract_v1(
     lines.append(_nl(f"## {team_a_name} vs {team_b_name}"))
     lines.append(_nl(""))
     lines.append(_nl(f"League: {int(league_id)}"))
-    lines.append(_nl(f"Season: {int(season)}"))
-    lines.append(_nl(f"Scope: Weeks {min(requested)}-{max(requested)}"))
+    if scope_label is not None:
+        lines.append(_nl(f"Scope: {scope_label}"))
+    else:
+        lines.append(_nl(f"Season: {int(season)}"))
+        lines.append(_nl(f"Scope: Weeks {min(requested)}-{max(requested)}"))
     lines.append(_nl(f"Generated: {created_at_utc}"))
     lines.append(_nl(f"Version: {version}"))
     lines.append(_nl(""))
@@ -122,21 +126,28 @@ def render_rivalry_chronicle_contract_v1(
     # ── Disclosures ──
     lines.append(_nl("## Disclosures"))
     lines.append(_nl(""))
-    lines.append(_nl(
-        f"This chronicle covers head-to-head matchups between "
-        f"{team_a_name} and {team_b_name} "
-        f"for Season {season}, Weeks {min(requested)}-{max(requested)}."
-    ))
-    if missing:
+    if scope_label is not None:
         lines.append(_nl(
-            f"Missing approved recap data for weeks: {missing}. "
-            f"No gaps are filled; missing weeks are acknowledged."
+            f"This chronicle covers head-to-head matchups between "
+            f"{team_a_name} and {team_b_name} "
+            f"across {scope_label}."
         ))
-    weeks_without_matchup = sorted(set(requested) - {f.week for f in facts} - set(missing))
-    if weeks_without_matchup:
+    else:
         lines.append(_nl(
-            f"Weeks in scope where these teams did not face each other: {weeks_without_matchup}"
+            f"This chronicle covers head-to-head matchups between "
+            f"{team_a_name} and {team_b_name} "
+            f"for Season {season}, Weeks {min(requested)}-{max(requested)}."
         ))
+        if missing:
+            lines.append(_nl(
+                f"Missing approved recap data for weeks: {missing}. "
+                f"No gaps are filled; missing weeks are acknowledged."
+            ))
+        weeks_without_matchup = sorted(set(requested) - {f.week for f in facts} - set(missing))
+        if weeks_without_matchup:
+            lines.append(_nl(
+                f"Weeks in scope where these teams did not face each other: {weeks_without_matchup}"
+            ))
     lines.append(_nl(""))
 
     return "".join(lines)

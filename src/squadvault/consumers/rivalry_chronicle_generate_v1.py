@@ -17,7 +17,10 @@ from dotenv import load_dotenv
 load_dotenv(".env")
 load_dotenv(".env.local", override=True)
 
-from squadvault.chronicle.generate_rivalry_chronicle_v1 import generate_rivalry_chronicle_v1
+from squadvault.chronicle.generate_rivalry_chronicle_v1 import (
+    generate_rivalry_chronicle_v1,
+    generate_rivalry_chronicle_multi_season_v1,
+)
 from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
 from squadvault.chronicle.persist_rivalry_chronicle_v1 import persist_rivalry_chronicle_v1
 
@@ -33,14 +36,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Generate + persist Rivalry Chronicle v1 (APPROVED recaps only).")
     ap.add_argument("--db", required=True)
     ap.add_argument("--league-id", type=int, required=True)
-    ap.add_argument("--season", type=int, required=True)
+    # Single-season mode (--season) or multi-season mode (--start-season/--end-season)
+    season_group = ap.add_mutually_exclusive_group(required=True)
+    season_group.add_argument("--season", type=int, default=None)
+    season_group.add_argument("--start-season", type=int, default=None,
+        help="Multi-season start (requires --end-season)")
+    ap.add_argument("--end-season", type=int, default=None,
+        help="Multi-season end (requires --start-season)")
 
     # Team pair (contract-compliant path)
     ap.add_argument("--team-a-id", type=str, default=None, help="Franchise ID for Team A")
     ap.add_argument("--team-b-id", type=str, default=None, help="Franchise ID for Team B")
 
     # Week selection: either --start-week/--end-week or --week-range or --weeks
-    week_group = ap.add_mutually_exclusive_group(required=True)
+    week_group = ap.add_mutually_exclusive_group(required=False)
     week_group.add_argument("--week-range", type=str, help="inclusive start:end (e.g., 1:14)")
     week_group.add_argument("--weeks", type=str, help="comma-separated week indices (e.g., 1,2,3)")
     week_group.add_argument("--start-week", type=int, help="Start week (requires --end-week)")
@@ -76,12 +85,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         start_s, end_s = args.week_range.split(":")
         week_range = (int(start_s), int(end_s))
         week_indices = tuple(range(int(start_s), int(end_s) + 1))
-    else:
+    elif args.weeks:
         week_indices = tuple(int(x.strip()) for x in args.weeks.split(",") if x.strip() != "")
         week_range = (min(week_indices), max(week_indices)) if week_indices else None
+    else:
+        week_indices = ()
 
-    if not week_indices:
-        raise SystemExit("ERROR: no weeks specified")
 
     # Validate team pair: both or neither
     team_a_id = getattr(args, "team_a_id", None)
@@ -89,6 +98,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     if (team_a_id is None) != (team_b_id is None):
         raise SystemExit("ERROR: --team-a-id and --team-b-id must both be provided or both omitted")
 
+    # Multi-season path
+    if args.start_season is not None:
+        if args.end_season is None:
+            raise SystemExit("ERROR: --start-season requires --end-season")
+        if team_a_id is None or team_b_id is None:
+            raise SystemExit("ERROR: --team-a-id and --team-b-id required for multi-season")
+        from squadvault.chronicle.persist_rivalry_chronicle_v1 import persist_rivalry_chronicle_multi_season_v1
+        res = persist_rivalry_chronicle_multi_season_v1(
+            db_path=args.db,
+            league_id=int(args.league_id),
+            start_season=int(args.start_season),
+            end_season=int(args.end_season),
+            team_a_id=str(team_a_id),
+            team_b_id=str(team_b_id),
+            created_at_utc=str(created_at_utc),
+        )
+        _debug(f"OK multi-season: v={res.version} created_new={res.created_new}")
+        return 0
+
+    # Single-season path
+    if not week_indices:
+        raise SystemExit("ERROR: single-season mode requires week selection (--week-range, --weeks, or --start-week/--end-week)")
     gen = generate_rivalry_chronicle_v1(
         db_path=args.db,
         league_id=int(args.league_id),

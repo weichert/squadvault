@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from squadvault.chronicle.generate_rivalry_chronicle_v1 import (
     RivalryChronicleGeneratedV1,
+    generate_rivalry_chronicle_multi_season_v1,
     generate_rivalry_chronicle_v1,
 )
 from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
@@ -207,6 +208,77 @@ def persist_rivalry_chronicle_v1(
         return PersistedChronicleV1(
             league_id=int(league_id),
             season=int(season),
+            anchor_week_index=int(gen.anchor_week_index),
+            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
+            version=int(new_v),
+            created_new=True,
+        )
+
+def persist_rivalry_chronicle_multi_season_v1(
+    *,
+    db_path: str,
+    league_id: int,
+    start_season: int,
+    end_season: int,
+    team_a_id: str,
+    team_b_id: str,
+    created_at_utc: str,
+) -> PersistedChronicleV1:
+    """Persist a multi-season rivalry chronicle as a versioned DRAFT artifact."""
+    gen: RivalryChronicleGeneratedV1 = generate_rivalry_chronicle_multi_season_v1(
+        db_path=db_path,
+        league_id=league_id,
+        start_season=start_season,
+        end_season=end_season,
+        team_a_id=team_a_id,
+        team_b_id=team_b_id,
+        created_at_utc=created_at_utc,
+    )
+    season = int(end_season)
+    with DatabaseSession(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        existing = conn.execute(
+            """
+            SELECT version, state, selection_fingerprint
+            FROM recap_artifacts
+            WHERE league_id = ?
+              AND season = ?
+              AND week_index = ?
+              AND artifact_type = ?
+              AND selection_fingerprint = ?
+              AND state != 'SUPERSEDED'
+            ORDER BY version DESC
+            LIMIT 1
+            """,
+            (int(league_id), season, int(gen.anchor_week_index),
+             ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1, gen.fingerprint),
+        ).fetchone()
+        if existing is not None:
+            return PersistedChronicleV1(
+                league_id=int(league_id),
+                season=season,
+                anchor_week_index=int(gen.anchor_week_index),
+                artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
+                version=int(existing["version"]),
+                created_new=False,
+            )
+        new_v = _next_version(conn, league_id, season, gen.anchor_week_index)
+        _insert_recap_artifact_row_schema_resilient(
+            conn,
+            league_id=int(league_id),
+            season=season,
+            week_index=int(gen.anchor_week_index),
+            artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
+            version=int(new_v),
+            state="DRAFT",
+            selection_fingerprint=str(gen.fingerprint),
+            rendered_text=str(gen.text),
+            created_at_utc=str(created_at_utc),
+        )
+        conn.commit()
+        return PersistedChronicleV1(
+            league_id=int(league_id),
+            season=season,
             anchor_week_index=int(gen.anchor_week_index),
             artifact_type=ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
             version=int(new_v),

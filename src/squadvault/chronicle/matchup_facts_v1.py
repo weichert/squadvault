@@ -134,6 +134,80 @@ def query_head_to_head_matchups_v1(
         return facts
 
 
+
+def query_head_to_head_matchups_multi_season_v1(
+    *,
+    db_path: str,
+    league_id: str,
+    team_a_id: str,
+    team_b_id: str,
+    start_season: int,
+    end_season: int,
+) -> list[MatchupFactV1]:
+    """Query canonical WEEKLY_MATCHUP_RESULT events for a team pair across
+    multiple seasons (start_season through end_season, inclusive).
+    Returns matchup facts ordered chronologically (season, then week).
+    Only includes weeks where team_a and team_b faced each other.
+    """
+    sorted_pair = tuple(sorted([str(team_a_id), str(team_b_id)]))
+    with DatabaseSession(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        tables = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        has_franchise_dir = "franchise_directory" in tables
+        rows = conn.execute(
+            """
+            SELECT
+                ce.action_fingerprint,
+                ce.season,
+                me.payload_json
+            FROM canonical_events ce
+            JOIN memory_events me ON me.id = ce.best_memory_event_id
+            WHERE ce.league_id = ?
+              AND ce.season BETWEEN ? AND ?
+              AND ce.event_type = 'WEEKLY_MATCHUP_RESULT'
+            ORDER BY ce.season, me.occurred_at, ce.action_fingerprint
+            """,
+            (str(league_id), int(start_season), int(end_season)),
+        ).fetchall()
+        facts: list[MatchupFactV1] = []
+        for row in rows:
+            payload = json.loads(row["payload_json"])
+            winner_fid = str(payload.get("winner_franchise_id", ""))
+            loser_fid = str(payload.get("loser_franchise_id", ""))
+            matchup_pair = tuple(sorted([winner_fid, loser_fid]))
+            if matchup_pair != sorted_pair:
+                continue
+            season = int(row["season"])
+            week = int(payload.get("week", 0))
+            if has_franchise_dir:
+                winner_name = _resolve_franchise_name(
+                    conn, league_id, season, winner_fid
+                )
+                loser_name = _resolve_franchise_name(
+                    conn, league_id, season, loser_fid
+                )
+            else:
+                winner_name = winner_fid
+                loser_name = loser_fid
+            facts.append(MatchupFactV1(
+                season=season,
+                week=week,
+                winner_franchise_id=winner_fid,
+                loser_franchise_id=loser_fid,
+                winner_name=winner_name,
+                loser_name=loser_name,
+                winner_score=str(payload.get("winner_score", "")),
+                loser_score=str(payload.get("loser_score", "")),
+                is_tie=bool(payload.get("is_tie", False)),
+                canonical_event_fingerprint=str(row["action_fingerprint"]),
+            ))
+        facts.sort(key=lambda f: (f.season, f.week))
+        return facts
+
 def facts_block_hash_v1(facts: Sequence[MatchupFactV1]) -> str:
     """Compute deterministic SHA256 hash of the facts block."""
     payload = [

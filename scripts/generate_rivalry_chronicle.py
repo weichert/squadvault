@@ -49,9 +49,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--team-a-id", required=True, help="Franchise ID for Team A (e.g. 0001).")
     ap.add_argument("--team-b-id", required=True, help="Franchise ID for Team B (e.g. 0002).")
-    ap.add_argument("--season", type=int, required=True, help="NFL season year.")
+    ap.add_argument("--season", type=int, default=None, help="NFL season year (omit when using --all-time or --start-season).")
 
-    week_group = ap.add_mutually_exclusive_group(required=True)
+    week_group = ap.add_mutually_exclusive_group(required=False)
     week_group.add_argument("--start-week", type=int, help="Start week (requires --end-week).")
     week_group.add_argument("--weeks", type=str, help="Comma-separated weeks (e.g. 1,2,3).")
     week_group.add_argument("--week-range", type=str, help="Inclusive range start:end (e.g. 1:18).")
@@ -65,9 +65,36 @@ def main(argv: list[str] | None = None) -> int:
         help="Policy for weeks without approved recaps (default: acknowledge_missing).",
     )
     ap.add_argument("--out", default=None, help="Optional: write draft payload JSON to this path.")
+    ap.add_argument("--all-time", action="store_true",
+        help="Generate chronicle across all digital-era seasons (2010-2025).")
+    ap.add_argument("--start-season", type=int, default=None,
+        help="Multi-season start year.")
+    ap.add_argument("--end-season", type=int, default=None,
+        help="Multi-season end year (with --start-season).")
     args = ap.parse_args(argv)
 
     # Build args for the underlying consumer.
+    # Multi-season path
+    if args.all_time or args.start_season is not None:
+        start = 2010 if args.all_time else args.start_season
+        end = 2025 if args.all_time else args.end_season
+        if end is None:
+            print("ERROR: --start-season requires --end-season", file=sys.stderr)
+            return 2
+        consumer_argv = [
+            "--db", args.db,
+            "--league-id", str(DEFAULT_LEAGUE_ID),
+            "--start-season", str(start),
+            "--end-season", str(end),
+            "--team-a-id", args.team_a_id,
+            "--team-b-id", args.team_b_id,
+            "--missing-weeks-policy", args.missing_weeks_policy,
+        ]
+        if args.out:
+            consumer_argv += ["--out", args.out]
+        return _generate_main(consumer_argv)
+
+    # Single-season path
     consumer_argv = [
         "--db", args.db,
         "--league-id", str(DEFAULT_LEAGUE_ID),
