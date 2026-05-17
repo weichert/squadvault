@@ -3604,8 +3604,12 @@ def verify_faab_claims(
     failures: list[VerificationFailure] = []
 
     faab_bids = _load_faab_bids(db_path, league_id, season)
-    if not faab_bids:
-        return []
+    # Note: do NOT early-return when faab_bids is empty. An empty dict means
+    # no players were acquired via FAAB this season. If the recap claims any
+    # player was a FAAB pickup, that claim is fabricated and must be caught.
+    # The per-player check below handles both cases: no record (HARD fail)
+    # and wrong amount (HARD fail). Only skip when the recap has no
+    # FAAB-keyword dollar amounts (handled naturally by the loop below).
 
     player_name_map = _load_player_name_map_for_verify(db_path, league_id)
 

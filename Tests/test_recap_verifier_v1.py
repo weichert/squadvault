@@ -5704,3 +5704,91 @@ class TestVerifyRecordClaimAnchoring:
         # loss (F2). Should fire on the angle-anchor missing branch.
         assert len(failures) == 1
         assert failures[0].category == "RECORD_CLAIM_ANCHORING"
+
+
+# ── Phase C: Tier-aware retry policy ─────────────────────────────────
+
+
+class TestPhaseCRetryTiers:
+    """Phase C contract: FAAB_CLAIM is a Tier 2 (no-retry) category.
+
+    The lifecycle uses _NO_RETRY_CATEGORIES to short-circuit retries when
+    the model produces a fabricated dollar amount. The verifier must emit
+    category='FAAB_CLAIM' so the lifecycle can detect the Tier 2 failure.
+
+    This test pins the contract end-to-end: fabricated FAAB claim ->
+    FAAB_CLAIM hard failure -> lifecycle skips retries -> facts-only fallback.
+    """
+
+    def _build_db_with_player(self, tmp_path, *, player_id, player_name,
+                               has_faab_record=False, bid_amount=None):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, player_id, player_name, "WR"),
+        )
+        if has_faab_record and bid_amount is not None:
+            payload = json.dumps({
+                "franchise_id": "F1", "player_id": player_id,
+                "bid_amount": bid_amount,
+            }, sort_keys=True)
+            ext_id = f"faab_{LEAGUE}_{SEASON}_F1_{player_id}_{bid_amount}"
+            con.execute(
+                """INSERT INTO memory_events
+                   (league_id, season, external_source, external_id,
+                    event_type, occurred_at, ingested_at, payload_json)
+                   VALUES (?, ?, 'test', ?, 'WAIVER_BID_AWARDED',
+                           '2024-09-15T12:00:00Z', '2024-09-15T12:00:00Z', ?)""",
+                (LEAGUE, SEASON, ext_id, payload),
+            )
+            me_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+            con.execute(
+                """INSERT INTO canonical_events
+                   (league_id, season, event_type, action_fingerprint,
+                    best_memory_event_id, best_score, updated_at, occurred_at)
+                   VALUES (?, ?, 'WAIVER_BID_AWARDED', ?, ?, 100,
+                           '2024-09-15T12:00:00Z', '2024-09-15T12:00:00Z')""",
+                (LEAGUE, SEASON, f"fp_{ext_id}", me_id),
+            )
+        con.commit()
+        con.close()
+        return db_path
+
+    def test_faab_claim_category_emitted_for_no_record(self, tmp_path):
+        """Fabricated FAAB claim (player has no record) emits FAAB_CLAIM hard failure.
+
+        This is the Tier 2 signal the lifecycle uses to short-circuit retries.
+        Contract: verify_faab_claims() -> VerificationFailure(category='FAAB_CLAIM',
+        severity='HARD') when a FAAB dollar amount is attributed to a player
+        with no WAIVER_BID_AWARDED record.
+        """
+        db_path = self._build_db_with_player(
+            tmp_path, player_id="P_BTJ", player_name="Thomas, Brian",
+            has_faab_record=False,
+        )
+        # Fabricated claim: Brian Thomas has no WAIVER_BID_AWARDED record
+        text = "Brandon claimed Brian Thomas off the waiver wire for $51."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 1, f"expected 1 FAAB_CLAIM, got {faab}"
+        assert faab[0].severity == "HARD", "FAAB_CLAIM must be HARD (Tier 2)"
+
+    def test_faab_claim_category_emitted_for_wrong_amount(self, tmp_path):
+        """Wrong FAAB amount (player HAS record but different amount) also FAAB_CLAIM HARD."""
+        db_path = self._build_db_with_player(
+            tmp_path, player_id="P_BTJ", player_name="Thomas, Brian",
+            has_faab_record=True, bid_amount=20.0,
+        )
+        # Model claims $51 but canonical is $20
+        text = "Brian Thomas, a $51 FAAB acquisition, scored big."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 1
+        assert faab[0].severity == "HARD"

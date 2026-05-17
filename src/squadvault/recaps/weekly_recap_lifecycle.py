@@ -1173,6 +1173,15 @@ def generate_weekly_recap_draft(
     # Each attempt is an independent LLM call — stochastic output means
     # different drafts may pass verification even with identical inputs.
     _MAX_VERIFICATION_RETRIES = 3
+
+    # Phase C: Tier-aware retry policy.
+    # Tier 1 — retry-eligible: model can self-correct with feedback.
+    #   SERIES, PLAYER_FRANCHISE, PLAYER_SCORE
+    # Tier 2 — no-retry: same context produces same hallucination.
+    #   FAAB_CLAIM: fabricated dollar amounts recur because the model
+    #   synthesizes from cumulative FAAB totals regardless of feedback.
+    #   Retry wastes API calls. The fix is A2/A3 context + verifier, not retries.
+    _NO_RETRY_CATEGORIES: frozenset[str] = frozenset({"FAAB_CLAIM"})
     _verification_result: VerificationResult | None = None
     _verification_attempts = 0
 
@@ -1313,6 +1322,33 @@ def generate_weekly_recap_draft(
                 break  # Clean draft — done
 
             # Hard failure(s) detected
+            # Phase C: if any failure is Tier 2 (no-retry), skip remaining
+            # attempts. Same context produces same hallucination — correction
+            # feedback won't fix it. Silence over fabrication.
+            _has_no_retry = any(
+                f.category in _NO_RETRY_CATEGORIES
+                for f in _verification_result.hard_failures
+            )
+            if _has_no_retry:
+                _no_retry_cats = ", ".join(sorted({
+                    f.category for f in _verification_result.hard_failures
+                    if f.category in _NO_RETRY_CATEGORIES
+                }))
+                logger.warning(
+                    "Verification V1: Tier 2 failure(s) [%s] on attempt %d — "
+                    "skipping retries, falling back to facts-only "
+                    "(same context produces same hallucination) — "
+                    "league=%s season=%d week=%d",
+                    _no_retry_cats, _attempt, league_id, season, week_index,
+                )
+                rendered_text = (
+                    _base_rendered_text.rstrip()
+                    + "\n\nNote: Narrative draft contained fabricated claims "
+                    + f"({_no_retry_cats}) that cannot be corrected by retry. "
+                    + "Falling back to facts-only output — silence over fabrication.\n"
+                )
+                break
+
             if _attempt < _MAX_VERIFICATION_RETRIES:
                 # Build correction feedback for the next attempt
                 _fb_lines: list[str] = []
