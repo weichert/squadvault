@@ -458,3 +458,131 @@ class TestWriterRoomPromptRendering:
         )
         text = render_writer_room_context_for_prompt(deltas=(), faab=())
         assert text == ""
+
+
+# ── Individual FAAB Acquisitions (A3) ────────────────────────────────
+
+
+class TestFaabAcquisitions:
+    """Arc 1 A3: derive_faab_acquisitions and render integration.
+
+    Individual player+bid pairs now flow into the Writer Room context
+    so the creative layer has explicit dollar amounts to cite rather
+    than synthesizing from cumulative totals.
+    """
+
+    def test_derives_acquisitions(self, tmp_path):
+        """derive_faab_acquisitions returns one entry per WAIVER_BID_AWARDED."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            derive_faab_acquisitions,
+        )
+
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _insert_waiver_bid(con, league_id=LEAGUE, season=SEASON,
+                           franchise_id="F1", player_id="P_BTJ",
+                           bid_amount=51.0,
+                           occurred_at="2024-09-15T12:00:00Z")
+        _insert_waiver_bid(con, league_id=LEAGUE, season=SEASON,
+                           franchise_id="F2", player_id="P_MCQ",
+                           bid_amount=32.0,
+                           occurred_at="2024-09-16T12:00:00Z")
+        con.commit()
+        con.close()
+
+        acqs = derive_faab_acquisitions(
+            db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=5,
+        )
+        assert len(acqs) == 2
+        pids = {a.player_id for a in acqs}
+        assert "P_BTJ" in pids
+        assert "P_MCQ" in pids
+        bid_map = {a.player_id: a.bid_amount for a in acqs}
+        assert bid_map["P_BTJ"] == 51.0
+        assert bid_map["P_MCQ"] == 32.0
+
+    def test_through_occurred_at_filters(self, tmp_path):
+        """through_occurred_at excludes bids after the cutoff."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            derive_faab_acquisitions,
+        )
+
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _insert_waiver_bid(con, league_id=LEAGUE, season=SEASON,
+                           franchise_id="F1", player_id="P_EARLY",
+                           bid_amount=20.0,
+                           occurred_at="2024-09-10T00:00:00Z")
+        _insert_waiver_bid(con, league_id=LEAGUE, season=SEASON,
+                           franchise_id="F1", player_id="P_LATE",
+                           bid_amount=40.0,
+                           occurred_at="2024-10-20T00:00:00Z")
+        con.commit()
+        con.close()
+
+        acqs = derive_faab_acquisitions(
+            db_path=db_path, league_id=LEAGUE, season=SEASON, week_index=5,
+            through_occurred_at="2024-10-01T00:00:00Z",
+        )
+        assert len(acqs) == 1
+        assert acqs[0].player_id == "P_EARLY"
+
+    def test_render_includes_individual_bids(self, tmp_path):
+        """render_writer_room_context_for_prompt includes individual acquisitions block."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            FaabAcquisition,
+            render_writer_room_context_for_prompt,
+        )
+
+        acqs = (
+            FaabAcquisition(franchise_id="F1", player_id="P_BTJ",
+                            bid_amount=51.0, occurred_at=None),
+            FaabAcquisition(franchise_id="F2", player_id="P_MCQ",
+                            bid_amount=32.0, occurred_at=None),
+        )
+        player_names = {"P_BTJ": "Thomas, Brian", "P_MCQ": "McConkey, Ladd"}
+        names = {"F1": "Brandon", "F2": "Eddie"}
+
+        text = render_writer_room_context_for_prompt(
+            deltas=(), faab=(),
+            acquisitions=acqs,
+            name_map=names,
+            player_name_map=player_names,
+        )
+
+        assert "Individual FAAB acquisitions" in text
+        assert "ONLY these amounts may be cited" in text
+        assert "Brandon: $51 for Brian Thomas" in text
+        assert "Eddie: $32 for Ladd McConkey" in text
+
+    def test_render_name_format_last_first_converted(self, tmp_path):
+        """Storage format 'Last, First' is converted to 'First Last' in render."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            FaabAcquisition,
+            render_writer_room_context_for_prompt,
+        )
+
+        acqs = (
+            FaabAcquisition(franchise_id="F1", player_id="P1",
+                            bid_amount=25.0, occurred_at=None),
+        )
+        text = render_writer_room_context_for_prompt(
+            deltas=(), faab=(),
+            acquisitions=acqs,
+            name_map={"F1": "Steve"},
+            player_name_map={"P1": "Jefferson, Justin"},
+        )
+        assert "Justin Jefferson" in text
+        assert "Jefferson, Justin" not in text
+
+    def test_no_acquisitions_omits_block(self):
+        """Empty acquisitions list omits the individual bids block entirely."""
+        from squadvault.core.recaps.context.writer_room_context_v1 import (
+            render_writer_room_context_for_prompt,
+        )
+
+        text = render_writer_room_context_for_prompt(
+            deltas=(), faab=(), acquisitions=(),
+        )
+        assert text == ""
+        assert "Individual FAAB" not in text

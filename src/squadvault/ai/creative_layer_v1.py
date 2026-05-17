@@ -155,7 +155,14 @@ Hard rules (non-negotiable):
   similar superlatives when the NARRATIVE ANGLES section contains a matching \
   PLAYER_SEASON_HIGH, PLAYER_ALLTIME_HIGH, or equivalent angle for that specific \
   player and score. If no such angle exists, do NOT claim a season or all-time \
-  record — your guess will be wrong.\
+  record — your guess will be wrong.
+- EVERY specific dollar amount in this recap — FAAB bids, waiver claims, auction \
+  draft prices — must appear verbatim in the Signal Scout context provided. \
+  Do NOT compute, synthesize, estimate, or infer dollar amounts not present in \
+  the context. If the context says "Brandon spent $247 total" but does not \
+  list individual player costs, you may NOT state what any individual player \
+  cost. Omit rather than invent. This is a trust-critical rule — league members \
+  verify every dollar figure.\
 """
 
 # ---------------------------------------------------------------------------

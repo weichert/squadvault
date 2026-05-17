@@ -14,7 +14,9 @@ Verification Categories (V1):
 5. BANNED_PHRASE — cliché / speculation detection (SOFT)
 6. PLAYER_SCORE — individual player scores vs canonical WEEKLY_PLAYER_SCORE
 7. PLAYER_FRANCHISE — player-franchise attribution vs canonical roster
-8. FAAB_CLAIM — FAAB dollar amounts vs canonical WAIVER_BID_AWARDED
+8. FAAB_CLAIM — FAAB dollar amounts vs canonical WAIVER_BID_AWARDED;
+   also catches claims for players with NO WAIVER_BID_AWARDED record
+   (fabricated acquisitions, not just wrong amounts)
 
 Categories 1–4, 6–8 are HARD. Category 5 is SOFT. A hard failure means
 the recap contains a provably false factual claim.
@@ -3638,21 +3640,22 @@ def verify_faab_claims(
         if not _FAAB_KEYWORD_PATTERN.search(kw_context):
             continue
 
-        # Find nearest player name within 100 chars
+        # Find nearest player name within 100 chars.
+        # Two-pass: first find the closest player name (any known player),
+        # then check whether that player has a WAIVER_BID_AWARDED record.
+        # The old single-pass filtered to players WITH bids, which silently
+        # passed fabricated claims for players who were never FAAB pickups.
         search_start = max(0, dollar_match.start() - 100)
         search_end = min(len(text_lower), dollar_match.end() + 100)
         search_context = text_lower[search_start:search_end]
 
         best_name: str | None = None
         best_dist = 101
-        for display_name, pid in display_to_pid.items():
+        for display_name in display_to_pid:
             if len(display_name) <= 5:
-                continue
-            if pid not in faab_bids:
                 continue
             idx = search_context.find(display_name)
             if idx >= 0:
-                # Distance from player name to dollar sign
                 dollar_offset = dollar_match.start() - search_start
                 dist = abs(idx - dollar_offset)
                 if dist < best_dist:
@@ -3670,8 +3673,24 @@ def verify_faab_claims(
         pid = display_to_pid[best_name]
         canonical_amounts = faab_bids.get(pid, [])
 
-        # Match within ±1.0 to handle model rounding ($20 vs $20.45)
-        if not any(abs(claimed - ca) <= 1.0 for ca in canonical_amounts):
+        if not canonical_amounts:
+            # Player has NO WAIVER_BID_AWARDED record this season.
+            # Any FAAB dollar amount attributed to them is fabricated.
+            failures.append(VerificationFailure(
+                category="FAAB_CLAIM",
+                severity="HARD",
+                claim=(
+                    f"${claimed:.0f} FAAB attributed to "
+                    f"{best_name.title()}"
+                ),
+                evidence=(
+                    f"No WAIVER_BID_AWARDED record found for "
+                    f"{best_name.title()} this season. "
+                    f"This player was not acquired via FAAB."
+                ),
+            ))
+        elif not any(abs(claimed - ca) <= 1.0 for ca in canonical_amounts):
+            # Player was a FAAB acquisition but the stated amount is wrong.
             canonical_str = ", ".join(f"${a:.2f}" for a in canonical_amounts)
             failures.append(VerificationFailure(
                 category="FAAB_CLAIM",
@@ -3682,7 +3701,7 @@ def verify_faab_claims(
                 ),
                 evidence=(
                     f"Canonical FAAB bids for {best_name.title()}: "
-                    f"{canonical_str if canonical_str else 'none found'}."
+                    f"{canonical_str}."
                 ),
             ))
 

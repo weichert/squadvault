@@ -46,6 +46,7 @@ from squadvault.core.recaps.context.season_context_v1 import (
     render_season_context_for_prompt,
 )
 from squadvault.core.recaps.context.writer_room_context_v1 import (
+    derive_faab_acquisitions,
     derive_faab_spending,
     derive_scoring_deltas,
     render_writer_room_context_for_prompt,
@@ -950,9 +951,15 @@ def _derive_prompt_context(
             db_path=db_path, league_id=league_id, season=season, week_index=week_index,
             through_occurred_at=window_end,
         )
+        _acquisitions = derive_faab_acquisitions(
+            db_path=db_path, league_id=league_id, season=season, week_index=week_index,
+            through_occurred_at=window_end,
+        )
         writer_room_text = render_writer_room_context_for_prompt(
             deltas=_deltas, faab=_faab,
+            acquisitions=_acquisitions,
             name_map=_name_map,
+            player_name_map=_player_name_map,
         )
     except Exception as e:
         logger.debug("Writer room context failed: %s", e)

@@ -207,16 +207,112 @@ def derive_faab_spending(
 # ── Roster Activity (season cumulative) ──────────────────────────────
 
 
+# ── Individual FAAB Acquisitions ─────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class FaabAcquisition:
+    """A single FAAB acquisition: player picked up by a franchise."""
+    franchise_id: str
+    player_id: str
+    bid_amount: float
+    occurred_at: str | None
+
+
+def derive_faab_acquisitions(
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    through_occurred_at: str | None = None,
+) -> tuple[FaabAcquisition, ...]:
+    """Derive individual FAAB acquisitions (franchise, player, bid) through a week.
+
+    Returns one FaabAcquisition per WAIVER_BID_AWARDED event, ordered by
+    occurred_at ascending (earliest first).  Player names are NOT resolved
+    here — callers must resolve via PlayerResolver if display names are needed.
+    """
+    sql = """SELECT payload_json, occurred_at
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WAIVER_BID_AWARDED'"""
+    params: list = [str(league_id), int(season)]
+
+    if through_occurred_at:
+        sql += " AND occurred_at IS NOT NULL AND occurred_at <= ?"
+        params.append(through_occurred_at)
+
+    sql += " ORDER BY occurred_at ASC NULLS LAST"
+
+    acquisitions: list[FaabAcquisition] = []
+
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(sql, params).fetchall()
+
+    for row in rows:
+        try:
+            p = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(p, dict):
+            continue
+
+        fid = p.get("franchise_id") or p.get("team_id")
+        if not fid:
+            continue
+        fid = str(fid).strip()
+
+        # Resolve player_id (single or first-of-many)
+        pid = str(p.get("player_id", "")).strip()
+        if not pid:
+            added = p.get("players_added_ids")
+            if isinstance(added, str) and added.strip():
+                pid = added.split(",")[0].strip()
+            elif isinstance(added, list) and added:
+                pid = str(added[0]).strip()
+        if not pid:
+            continue
+
+        bid = p.get("bid") or p.get("bid_amount") or p.get("amount")
+        if bid is None:
+            continue
+        try:
+            bid_val = float(bid)
+        except (ValueError, TypeError):
+            continue
+        if bid_val <= 0:
+            continue
+
+        occurred_at = str(row[1]) if row[1] else None
+
+        acquisitions.append(FaabAcquisition(
+            franchise_id=fid,
+            player_id=pid,
+            bid_amount=round(bid_val, 2),
+            occurred_at=occurred_at,
+        ))
+
+    return tuple(acquisitions)
+
+
 # ── Prompt rendering ─────────────────────────────────────────────────
+
 
 
 def render_writer_room_context_for_prompt(
     *,
     deltas: Sequence[ScoringDelta],
     faab: Sequence[FaabSpending],
+    acquisitions: Sequence[FaabAcquisition] | None = None,
     name_map: dict[str, str] | None = None,
+    player_name_map: dict[str, str] | None = None,
 ) -> str:
-    """Render scoring deltas and FAAB spending for the creative layer."""
+    """Render scoring deltas, FAAB spending, and individual acquisitions for the creative layer.
+
+    acquisitions: individual FAAB bids from derive_faab_acquisitions().
+    player_name_map: player_id -> display_name for resolving player names in acquisitions.
+    """
 
     def _name(fid: str) -> str:
         """Resolve franchise ID to display name."""
@@ -255,6 +351,43 @@ def render_writer_room_context_for_prompt(
             lines.append(
                 f"  {name}: ${f.total_spent:.0f} spent{budget_str}"
             )
+
+    # Individual FAAB acquisitions: per-franchise list of player+bid pairs
+    # These are the ONLY dollar figures the creative layer may attribute to
+    # individual players. Any amount not present here must not appear in prose.
+    if acquisitions:
+        # Group by franchise
+        by_franchise: dict[str, list[FaabAcquisition]] = {}
+        for acq in acquisitions:
+            by_franchise.setdefault(acq.franchise_id, []).append(acq)
+
+        acq_lines: list[str] = []
+        for fid in sorted(by_franchise.keys()):
+            fname = _name(fid)
+            fid_acqs = sorted(by_franchise[fid], key=lambda a: -a.bid_amount)
+            for acq in fid_acqs:
+                if player_name_map and acq.player_id in player_name_map:
+                    raw = player_name_map[acq.player_id]
+                    # Convert "Last, First" storage format to "First Last"
+                    if ", " in raw:
+                        parts = raw.split(", ", 1)
+                        player_display = f"{parts[1]} {parts[0]}"
+                    else:
+                        player_display = raw
+                else:
+                    player_display = acq.player_id
+                acq_lines.append(
+                    f"  {fname}: ${acq.bid_amount:.0f} for {player_display}"
+                )
+
+        if acq_lines:
+            if lines:
+                lines.append("")
+            lines.append(
+                "Individual FAAB acquisitions this season "
+                "(ONLY these amounts may be cited in prose — do not invent others):"
+            )
+            lines.extend(acq_lines)
 
     if not lines:
         return ""

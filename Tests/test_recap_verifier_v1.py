@@ -4847,6 +4847,81 @@ class TestFaabClaimVerification:
         faab = [f for f in failures if f.category == "FAAB_CLAIM"]
         assert len(faab) == 1
 
+    def test_fabricated_faab_player_not_in_db_flags(self, tmp_path):
+        """FAAB claim for a player with NO WAIVER_BID_AWARDED record is a
+        hard failure.
+
+        Regression: Arc 1 B1 fix. Prior logic filtered the player-name search
+        to players WITH bids, so fabricated acquisitions of players never in
+        WAIVER_BID_AWARDED passed silently.
+
+        Confirmed fabrications from 2025 commissioner review:
+          Brian Thomas Jr. ($51, Brandon) -- W4, W12
+          Ladd McConkey ($32, Eddie) -- W4
+          Brock Bowers ($46, Steve) -- W4
+        """
+        db_path = self._build_db(tmp_path)
+        # Brian Thomas Jr. is in player_directory but has NO WAIVER_BID_AWARDED record
+        con = sqlite3.connect(db_path)
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "P_BTJ", "Thomas, Brian", "WR"),
+        )
+        con.commit()
+        con.close()
+
+        text = (
+            "Brandon grabbed Brian Thomas for $51 via waivers, "
+            "and the pickup has paid off."
+        )
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 1, (
+            f"expected 1 FAAB_CLAIM failure for player with no bid record, "
+            f"got {len(faab)}: {[(f.claim, f.evidence) for f in faab]}"
+        )
+        assert faab[0].severity == "HARD"
+        assert "No WAIVER_BID_AWARDED" in faab[0].evidence
+
+    def test_fabricated_faab_player_no_keyword_no_check(self, tmp_path):
+        """No FAAB keyword = no check, even for a player with no bid record."""
+        db_path = self._build_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "P_BTJ", "Thomas, Brian", "WR"),
+        )
+        con.commit()
+        con.close()
+
+        # No FAAB/waiver/pickup keyword -- not a FAAB claim, e.g. auction price
+        text = "Brian Thomas drafted for $51 in the preseason auction."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        assert failures == [], (
+            f"expected no failures (no FAAB keyword), "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
+    def test_correct_faab_player_with_record_passes(self, tmp_path):
+        """Player WITH a WAIVER_BID_AWARDED record and matching amount still passes."""
+        db_path = self._build_db(tmp_path)
+        # Watson is already in _build_db at $20.45
+        text = "Christian Watson, a $20 FAAB pickup, scored big."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        assert failures == [], (
+            f"expected no failures, got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
     def test_integration_checks_run_includes_category_8(self, tmp_path):
         """Full pipeline includes FAAB check in checks_run."""
         db_path = self._build_db(tmp_path)
