@@ -41,6 +41,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     verify_superlatives,
     verify_historical_claims,
     verify_player_avg_claims,
+    verify_numeric_unanchored,
     _load_franchise_names,
     _load_franchise_nicknames,
     _load_franchise_owner_names,
@@ -1015,7 +1016,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 13
+        assert result.checks_run == 14
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -1097,7 +1098,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 13
+        assert result.checks_run == 14
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -4511,7 +4512,7 @@ class TestPlayerFranchiseAttribution:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added between SCORE and
         # SUPERLATIVE per be76817 / Step 4 correction memo).
-        assert result.checks_run == 13
+        assert result.checks_run == 14
         pf = [f for f in result.hard_failures
               if f.category == "PLAYER_FRANCHISE"]
         assert len(pf) == 1, (
@@ -4947,7 +4948,7 @@ class TestFaabClaimVerification:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added per be76817 / Step 4
         # correction memo).
-        assert result.checks_run == 13
+        assert result.checks_run == 14
 
 
 # ── Phase 2 addendum conformance: as-of-week scoping ─────────────────
@@ -6178,3 +6179,96 @@ class TestPlayerAvgClaimVerification:
             text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=5,
         )
         assert failures == []
+
+
+# ── Category 11: Numeric Anchoring Sweep (B4) ────────────────────────
+
+
+class TestNumericUnanchoredVerification:
+    """B4: Aggregate transaction counts flagged as NUMERIC_UNANCHORED (SOFT).
+
+    The system prompt prohibits counting transactions ('made X moves',
+    'N acquisitions'). Counts >= 4 are flagged for commissioner review.
+    Counts <= 3 are small enough to be named individually and thus verifiable
+    from the facts block — they are not flagged.
+    """
+
+    def _wrap(self, text):
+        return "--- SHAREABLE RECAP ---\n" + text + "\n--- END SHAREABLE RECAP ---\n"
+
+    def test_large_acquisition_count_flagged(self):
+        """'8 acquisitions' is above threshold and flagged as SOFT."""
+        text = self._wrap(
+            "Brandon led all managers with 8 acquisitions this season."
+        )
+        failures = verify_numeric_unanchored(text)
+        unanchored = [f for f in failures if f.category == "NUMERIC_UNANCHORED"]
+        assert len(unanchored) == 1, f"expected 1 flag, got {unanchored}"
+        assert unanchored[0].severity == "SOFT"
+
+    def test_move_count_flagged(self):
+        """'5 moves' is flagged."""
+        text = self._wrap("Eddie made 5 moves on the waiver wire this season.")
+        failures = verify_numeric_unanchored(text)
+        unanchored = [f for f in failures if f.category == "NUMERIC_UNANCHORED"]
+        assert len(unanchored) == 1
+        assert unanchored[0].severity == "SOFT"
+
+    def test_small_count_not_flagged(self):
+        """Counts of 3 or fewer are not flagged (could be named in facts)."""
+        text = self._wrap(
+            "Steve made 3 roster moves this season, including picking up Bowers."
+        )
+        failures = verify_numeric_unanchored(text)
+        unanchored = [f for f in failures if f.category == "NUMERIC_UNANCHORED"]
+        assert unanchored == [], f"expected no flag for count<=3, got {unanchored}"
+
+    def test_no_count_no_flag(self):
+        """No transaction count in text produces no flag."""
+        text = self._wrap(
+            "Michele had an active week on the waiver wire, picking up key players."
+        )
+        failures = verify_numeric_unanchored(text)
+        assert failures == []
+
+    def test_dedup_same_count_not_double_flagged(self):
+        """The same count phrase appearing twice is only flagged once."""
+        text = self._wrap(
+            "Brandon made 7 moves. Meanwhile, after 7 acquisitions, Eddie was set."
+        )
+        failures = verify_numeric_unanchored(text)
+        # "7 moves" and "7 acquisitions" are different phrases — both flagged
+        unanchored = [f for f in failures if f.category == "NUMERIC_UNANCHORED"]
+        assert len(unanchored) == 2
+
+    def test_integration_soft_failure_in_full_pipeline(self, tmp_path):
+        """Full pipeline catches NUMERIC_UNANCHORED as soft failure (not hard)."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F1", name="Alpha Team")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F2", name="Beta Team")
+        _insert_matchup(
+            con, league_id=LEAGUE, season=SEASON, week=5,
+            winner_id="F1", loser_id="F2",
+            winner_score=110.0, loser_score=95.0,
+        )
+        con.commit()
+        con.close()
+
+        text = (
+            "--- SHAREABLE RECAP ---\n"
+            "Alpha Team beat Beta Team 110.00 to 95.00. "
+            "Alpha Team made 9 moves this season.\n"
+            "--- END SHAREABLE RECAP ---\n"
+        )
+        result = verify_recap_v1(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=5,
+        )
+        assert result.checks_run == 14
+        # NUMERIC_UNANCHORED is SOFT — should not block
+        assert result.hard_failure_count == 0
+        soft = [f for f in result.soft_failures if f.category == "NUMERIC_UNANCHORED"]
+        assert len(soft) == 1
+        assert result.passed is True  # SOFT failures don't fail the result

@@ -1180,8 +1180,10 @@ def generate_weekly_recap_draft(
     # Tier 2 — no-retry: same context produces same hallucination.
     #   FAAB_CLAIM: fabricated dollar amounts recur because the model
     #   synthesizes from cumulative FAAB totals regardless of feedback.
+    #   NUMERIC_UNANCHORED: aggregate counts not in context recur for
+    #   the same reason — correction feedback doesn't supply the data.
     #   Retry wastes API calls. The fix is A2/A3 context + verifier, not retries.
-    _NO_RETRY_CATEGORIES: frozenset[str] = frozenset({"FAAB_CLAIM"})
+    _NO_RETRY_CATEGORIES: frozenset[str] = frozenset({"FAAB_CLAIM", "NUMERIC_UNANCHORED"})
     _verification_result: VerificationResult | None = None
     _verification_attempts = 0
 

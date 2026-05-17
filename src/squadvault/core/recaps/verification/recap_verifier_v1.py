@@ -22,6 +22,8 @@ Verification Categories (V1):
    SEASON_RECORD_CLAIM — "N-M record" claims vs computed wins/losses
 10. PLAYER_AVG_CLAIM — "averaging X points" claims vs computed season-to-date
     average from WEEKLY_PLAYER_SCORE; >10% deviation = HARD
+11. NUMERIC_UNANCHORED — aggregate transaction counts ("made 8 moves",
+    "9 acquisitions") that cannot be derived from the facts block; SOFT
 
 Categories 1–4, 6–8 are HARD. Category 5 is SOFT. A hard failure means
 the recap contains a provably false factual claim.
@@ -4013,6 +4015,80 @@ def verify_player_avg_claims(
     return failures
 
 
+# ── Category 11: Numeric Anchoring (catch-all, SOFT) ─────────────────
+#
+# Catches aggregate transaction counts that the system prompt explicitly
+# prohibits: "made X moves", "N acquisitions", "X roster changes", etc.
+# These numbers cannot be derived from the facts block (WAIVER events
+# are not counted and passed to the model). Any such count is fabricated.
+#
+# This is a SOFT failure — commissioner-visible but not blocking —
+# because the pattern is broad enough that edge cases exist (e.g. a
+# franchise might genuinely be described as making "three changes" when
+# three are listed by name in the facts block). The commissioner reviews
+# and decides.
+#
+# Tier 2 (no-retry): same as FAAB_CLAIM — same context produces same
+# hallucination. Added to _NO_RETRY_CATEGORIES in the lifecycle.
+
+# Patterns: "X moves", "X acquisitions", "X pickups", "X roster moves"
+_AGGREGATE_COUNT_PATTERN = re.compile(
+    r"\b(\d{1,2})\s+(?:roster\s+)?(?:move|acquisition|pickup|pick-up|transaction)s?\b",
+    re.IGNORECASE,
+)
+
+# Exclude counts ≤ 3 — small enough that they could legitimately be listed
+# by name and counted from the facts block.
+_NUMERIC_UNANCHORED_MIN_COUNT = 4
+
+
+def verify_numeric_unanchored(
+    recap_text: str,
+) -> list[VerificationFailure]:
+    """Flag aggregate transaction counts as NUMERIC_UNANCHORED (SOFT).
+
+    The system prompt instructs the model not to aggregate transactions
+    into counts. Any numeric count of moves/acquisitions/pickups
+    above 3 is flagged for commissioner review.
+
+    SOFT failure: commissioner sees the flag and verifies manually.
+    """
+    failures: list[VerificationFailure] = []
+
+    narrative = _extract_shareable_recap(recap_text)
+    if not narrative:
+        return []
+
+    seen: set[tuple[int, str]] = set()
+    for m in _AGGREGATE_COUNT_PATTERN.finditer(narrative):
+        try:
+            count = int(m.group(1))
+        except ValueError:
+            continue
+        if count < _NUMERIC_UNANCHORED_MIN_COUNT:
+            continue
+
+        phrase = m.group(0).lower()
+        key = (count, phrase)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        failures.append(VerificationFailure(
+            category="NUMERIC_UNANCHORED",
+            severity="SOFT",
+            claim=f"Aggregate count: '{m.group(0)}'",
+            evidence=(
+                "Aggregate transaction counts cannot be derived from the "
+                "facts block. The system prompt prohibits counting "
+                "transactions — this figure may be fabricated. "
+                "Verify against WAIVER_BID_AWARDED before approving."
+            ),
+        ))
+
+    return failures
+
+
 # ── Category 8: FAAB Transaction Verification ───────────────────────
 
 # Dollar amount pattern: $20, $20.00, $15.50
@@ -4390,9 +4466,6 @@ def verify_recap_v1(
     ))
 
     # Category 10: Player scoring average claims (HARD)
-    # Catches "averaging X points" fabrications. Model synthesizes from
-    # context that doesn't include multi-week averages; this catches
-    # claims >10% off from the canonical season-to-date average.
     checks_run += 1
     all_failures.extend(verify_player_avg_claims(
         narrative,
@@ -4401,6 +4474,12 @@ def verify_recap_v1(
         season=season,
         week=week,
     ))
+
+    # Category 11: Numeric anchoring sweep (SOFT)
+    # Catches aggregate transaction counts ("made 8 moves") that cannot
+    # be derived from the facts block. SOFT: commissioner-visible, not blocking.
+    checks_run += 1
+    all_failures.extend(verify_numeric_unanchored(narrative))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")
     soft = tuple(f for f in all_failures if f.severity == "SOFT")
