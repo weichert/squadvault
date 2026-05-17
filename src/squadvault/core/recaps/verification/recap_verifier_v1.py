@@ -4307,9 +4307,13 @@ _FAAB_DOLLAR_PATTERN = re.compile(r"\$(\d+(?:\.\d{1,2})?)")
 # auction draft amount or budget reference). Must appear within
 # _FAAB_KEYWORD_WINDOW chars of the dollar sign.
 _FAAB_KEYWORD_PATTERN = re.compile(
-    r"\b(?:faab|waiver|pickup|pick-up|claim(?:ed)?|acquisition)\b",
+    r"\b(?:faab|waiver|pickup|pick-up|claim(?:ed)?|acquisition|investment|grabbed|snagged|spent|bid)s?\b",
     re.IGNORECASE,
 )
+
+# When "draft" appears near the dollar amount, the claim is likely an
+# auction draft context rather than FAAB. Suppress the FAAB check.
+_DRAFT_CONTEXT_PATTERN = re.compile(r"\bdraft\b", re.IGNORECASE)
 _FAAB_KEYWORD_WINDOW = 30
 
 
@@ -4377,9 +4381,9 @@ def verify_faab_claims(
     check category.
 
     Gate: a dollar amount must appear within _FAAB_KEYWORD_WINDOW chars
-    of a FAAB-related keyword (faab, waiver, pickup, claim, acquisition)
-    to be treated as a FAAB claim. This avoids false positives from
-    auction draft amounts or budget references.
+    of a FAAB-related keyword (faab, waiver, pickup, claim, acquisition,
+    investment, grabbed, snagged, spent, bid) to be treated as a FAAB claim.
+    This avoids false positives from auction draft amounts or budget references.
 
     Matching tolerance: ±1.0 to handle rounding (model writes "$20"
     for a canonical $20.45 bid).
@@ -4425,6 +4429,9 @@ def verify_faab_claims(
         kw_end = min(len(recap_text), dollar_match.end() + _FAAB_KEYWORD_WINDOW)
         kw_context = recap_text[kw_start:kw_end]
         if not _FAAB_KEYWORD_PATTERN.search(kw_context):
+            continue
+        # Suppress: "draft" nearby signals auction draft context, not FAAB
+        if _DRAFT_CONTEXT_PATTERN.search(kw_context):
             continue
 
         # Find nearest player name within 100 chars.

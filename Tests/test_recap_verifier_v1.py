@@ -4929,6 +4929,33 @@ class TestFaabClaimVerification:
             f"expected no failures, got {[(f.claim, f.evidence) for f in failures]}"
         )
 
+    def test_investment_keyword_triggers_check(self, tmp_path):
+        """'investment' keyword triggers FAAB check (W4 2025 regression).
+
+        Regression: W4 2025 model wrote 'his $40 investment in Brock Purdy'
+        which evaded the original keyword list. 'investment' is now included.
+        """
+        db_path = self._build_db(tmp_path)
+        # Watson has a $20.45 FAAB record; claimed $40 via 'investment' phrasing
+        text = "Christian Watson, a $40 investment that has paid off, scored big."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 1, f"expected 1 FAAB_CLAIM for 'investment' keyword, got {faab}"
+
+    def test_draft_investment_suppressed(self, tmp_path):
+        """'draft investment' near dollar amount is suppressed (auction context)."""
+        db_path = self._build_db(tmp_path)
+        text = "Christian Watson, a $45 draft investment, scored big."
+        failures = verify_faab_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON,
+        )
+        assert failures == [], (
+            f"expected no failures for 'draft investment' (auction context), "
+            f"got {[(f.claim, f.evidence) for f in failures]}"
+        )
+
     def test_integration_checks_run_includes_category_8(self, tmp_path):
         """Full pipeline includes FAAB check in checks_run."""
         db_path = self._build_db(tmp_path)
