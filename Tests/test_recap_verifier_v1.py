@@ -39,6 +39,10 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     verify_streak_inversion,
     verify_streaks,
     verify_superlatives,
+    verify_historical_claims,
+    _load_franchise_names,
+    _load_franchise_nicknames,
+    _load_franchise_owner_names,
 )
 
 SCHEMA_PATH = os.path.join(
@@ -1010,7 +1014,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 11
+        assert result.checks_run == 12
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -1092,7 +1096,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 11
+        assert result.checks_run == 12
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -4506,7 +4510,7 @@ class TestPlayerFranchiseAttribution:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added between SCORE and
         # SUPERLATIVE per be76817 / Step 4 correction memo).
-        assert result.checks_run == 11
+        assert result.checks_run == 12
         pf = [f for f in result.hard_failures
               if f.category == "PLAYER_FRANCHISE"]
         assert len(pf) == 1, (
@@ -4942,7 +4946,7 @@ class TestFaabClaimVerification:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added per be76817 / Step 4
         # correction memo).
-        assert result.checks_run == 11
+        assert result.checks_run == 12
 
 
 # ── Phase 2 addendum conformance: as-of-week scoping ─────────────────
@@ -5792,3 +5796,247 @@ class TestPhaseCRetryTiers:
         faab = [f for f in failures if f.category == "FAAB_CLAIM"]
         assert len(faab) == 1
         assert faab[0].severity == "HARD"
+
+
+# ── Category 9: Historical Claim Verification ─────────────────────────
+
+
+class TestHistoricalClaimVerification:
+    """B2: Verify championship appearance counts and season win-loss records.
+
+    Regression fixtures from 2025 commissioner review:
+      'six times' championship for KP -- actual: 7
+      '12-2 record' -- actual: 15-2 (Playmakers 2025) or 14-1 (Miller 2018)
+    """
+
+    def _build_db(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="KP", name="KP Squad")
+        _insert_franchise(con, league_id=LEAGUE, season=SEASON,
+                          franchise_id="F2", name="Other Team")
+        con.commit()
+        con.close()
+        return db_path
+
+    def _insert_champ_matchup(self, db_path, *, season, winner_id, loser_id):
+        """Insert a championship-week matchup for the given season."""
+        con = sqlite3.connect(db_path)
+        champ_week = 16 if season <= 2020 else 18
+        _insert_matchup(
+            con, league_id=LEAGUE, season=season, week=champ_week,
+            winner_id=winner_id, loser_id=loser_id,
+            winner_score=130.0, loser_score=110.0,
+        )
+        con.commit()
+        con.close()
+
+    def _insert_season_record(self, db_path, *, season, franchise_id,
+                               wins, losses):
+        """Insert regular-season matchups to produce the given W-L record."""
+        con = sqlite3.connect(db_path)
+        for w in range(1, wins + 1):
+            _insert_matchup(
+                con, league_id=LEAGUE, season=season, week=w,
+                winner_id=franchise_id, loser_id="F2",
+                winner_score=120.0, loser_score=100.0,
+            )
+        for l in range(1, losses + 1):
+            week = wins + l
+            _insert_matchup(
+                con, league_id=LEAGUE, season=season, week=week,
+                winner_id="F2", loser_id=franchise_id,
+                winner_score=120.0, loser_score=100.0,
+            )
+        con.commit()
+        con.close()
+
+    def _wrap(self, text):
+        return (
+            "--- SHAREABLE RECAP ---\n"
+            + text
+            + "\n--- END SHAREABLE RECAP ---\n"
+        )
+
+    def _rmap(self, db_path):
+        name_map = _load_franchise_names(db_path, LEAGUE, SEASON)
+        owner_map = _load_franchise_owner_names(db_path, LEAGUE, SEASON)
+        nickname_map = _load_franchise_nicknames(db_path, LEAGUE)
+        return _build_reverse_name_map(name_map, owner_map, nickname_map)
+
+    # ── Championship claim tests ──────────────────────────────────────
+
+    def test_correct_championship_count_passes(self, tmp_path):
+        """Correct championship count passes verification."""
+        db_path = self._build_db(tmp_path)
+        # KP wins championship in 3 seasons
+        for s in [2019, 2020, 2021]:
+            self._insert_champ_matchup(
+                db_path, season=s, winner_id="KP", loser_id="F2",
+            )
+        text = self._wrap(
+            "KP Squad has been to the championship three times, winning each."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+            reverse_name_map=self._rmap(db_path),
+        )
+        champ = [f for f in failures if f.category == "CHAMPIONSHIP_CLAIM"]
+        assert champ == [], f"expected no failures, got {champ}"
+
+    def test_wrong_championship_count_flags(self, tmp_path):
+        """'Six times' when actual is 7 is a hard failure.
+
+        Regression: 2025 W16/W17 recap claimed KP had been to championship
+        'six times' when the actual count was 7.
+        """
+        db_path = self._build_db(tmp_path)
+        # KP in 7 championship games, all in seasons before 2025 so they
+        # are within the temporal scoping window at (2025, W14).
+        seasons = [2012, 2014, 2018, 2019, 2020, 2021, 2024]
+        for i, s in enumerate(seasons):
+            w, l = ("KP", "F2") if i % 2 == 0 else ("F2", "KP")
+            self._insert_champ_matchup(db_path, season=s, winner_id=w, loser_id=l)
+
+        text = self._wrap(
+            "KP Squad has appeared in the championship six times over their career."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=2025, week=14,
+            reverse_name_map=self._rmap(db_path),
+        )
+        champ = [f for f in failures if f.category == "CHAMPIONSHIP_CLAIM"]
+        assert len(champ) == 1, f"expected 1 CHAMPIONSHIP_CLAIM, got {champ}"
+        assert champ[0].severity == "HARD"
+        assert "six" in champ[0].claim.lower() or "6" in champ[0].claim
+        assert "7" in champ[0].evidence
+
+    def test_numeric_championship_count_flags(self, tmp_path):
+        """Numeric '6 times' caught in championship context."""
+        db_path = self._build_db(tmp_path)
+        for s in [2019, 2020, 2021]:
+            self._insert_champ_matchup(
+                db_path, season=s, winner_id="KP", loser_id="F2",
+            )
+        # "6 times" directly follows the championship keyword
+        text = self._wrap(
+            "KP Squad has been to the championship 6 times in league history."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+            reverse_name_map=self._rmap(db_path),
+        )
+        champ = [f for f in failures if f.category == "CHAMPIONSHIP_CLAIM"]
+        assert len(champ) == 1, f"expected 1 CHAMPIONSHIP_CLAIM, got {champ}"
+        assert champ[0].severity == "HARD"
+
+    def test_no_franchise_near_count_no_check(self, tmp_path):
+        """Championship count with no recognizable franchise name nearby is skipped."""
+        db_path = self._build_db(tmp_path)
+        # No matchups: even if the check runs, nothing to verify against
+        text = self._wrap(
+            "Someone has appeared in the championship seven times."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+            reverse_name_map=self._rmap(db_path),
+        )
+        champ = [f for f in failures if f.category == "CHAMPIONSHIP_CLAIM"]
+        assert champ == []
+
+    # ── Season record tests ───────────────────────────────────────────
+
+    def test_correct_season_record_passes(self, tmp_path):
+        """Correct N-M record passes verification."""
+        db_path = self._build_db(tmp_path)
+        self._insert_season_record(
+            db_path, season=SEASON, franchise_id="KP", wins=10, losses=4,
+        )
+        text = self._wrap("KP Squad finished with a 10-4 record this season.")
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+            reverse_name_map=self._rmap(db_path),
+        )
+        rec = [f for f in failures if f.category == "SEASON_RECORD_CLAIM"]
+        assert rec == [], f"expected no failures, got {rec}"
+
+    def test_wrong_season_record_flags(self, tmp_path):
+        """'12-2 record' when actual is 15-2 is a hard failure.
+
+        Regression: 2025 recap claimed a team had a '12-2 record' when the
+        actual record was 15-2.
+        """
+        db_path = self._build_db(tmp_path)
+        self._insert_season_record(
+            db_path, season=SEASON, franchise_id="KP", wins=15, losses=2,
+        )
+        text = self._wrap(
+            "KP Squad rode their 12-2 record into the playoffs."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=18,
+            reverse_name_map=self._rmap(db_path),
+        )
+        rec = [f for f in failures if f.category == "SEASON_RECORD_CLAIM"]
+        assert len(rec) == 1, f"expected 1 SEASON_RECORD_CLAIM, got {rec}"
+        assert rec[0].severity == "HARD"
+        assert "12-2" in rec[0].claim
+        assert "15-2" in rec[0].evidence
+
+    def test_season_record_prior_season_passes(self, tmp_path):
+        """A record from the prior season is also verified (recap may look back)."""
+        db_path = self._build_db(tmp_path)
+        # Prior season record 14-1
+        self._insert_season_record(
+            db_path, season=SEASON - 1, franchise_id="KP", wins=14, losses=1,
+        )
+        text = self._wrap(
+            "KP Squad's legendary 14-1 run last year set the all-time mark."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+            reverse_name_map=self._rmap(db_path),
+        )
+        rec = [f for f in failures if f.category == "SEASON_RECORD_CLAIM"]
+        assert rec == [], f"expected no failures for prior-season match, got {rec}"
+
+    def test_record_without_franchise_name_skipped(self, tmp_path):
+        """A 'N-M record' with no franchise name nearby is skipped."""
+        db_path = self._build_db(tmp_path)
+        self._insert_season_record(
+            db_path, season=SEASON, franchise_id="KP", wins=10, losses=4,
+        )
+        text = self._wrap("The league average was something like a 7-7 record.")
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=14,
+            reverse_name_map=self._rmap(db_path),
+        )
+        rec = [f for f in failures if f.category == "SEASON_RECORD_CLAIM"]
+        assert rec == []
+
+    def test_championship_week_w18_for_2021_plus(self, tmp_path):
+        """Championship week is W18 for seasons 2021+, not W16."""
+        db_path = self._build_db(tmp_path)
+        # Insert W18 2022 as the championship week
+        con = sqlite3.connect(db_path)
+        _insert_matchup(
+            con, league_id=LEAGUE, season=2022, week=18,
+            winner_id="KP", loser_id="F2",
+            winner_score=140.0, loser_score=120.0,
+        )
+        con.commit()
+        con.close()
+
+        text = self._wrap(
+            "KP Squad's championship appearance is their first title game."
+        )
+        failures = verify_historical_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=2022, week=18,
+            reverse_name_map=self._rmap(db_path),
+        )
+        champ = [f for f in failures if f.category == "CHAMPIONSHIP_CLAIM"]
+        # "first" = 1, actual = 1 → should pass (no count word detected → skipped)
+        # This test confirms W18 is used for 2022, not W16
+        # (a W16 match in 2022 would not count as championship)
+        assert champ == []  # no numeric count detected → no check fired

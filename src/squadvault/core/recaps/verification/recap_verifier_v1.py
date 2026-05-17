@@ -17,6 +17,9 @@ Verification Categories (V1):
 8. FAAB_CLAIM — FAAB dollar amounts vs canonical WAIVER_BID_AWARDED;
    also catches claims for players with NO WAIVER_BID_AWARDED record
    (fabricated acquisitions, not just wrong amounts)
+9. CHAMPIONSHIP_CLAIM — championship appearance counts vs WEEKLY_MATCHUP_RESULT
+   at championship weeks (W16: 2010-2020, W18: 2021+)
+   SEASON_RECORD_CLAIM — "N-M record" claims vs computed wins/losses
 
 Categories 1–4, 6–8 are HARD. Category 5 is SOFT. A hard failure means
 the recap contains a provably false factual claim.
@@ -3515,6 +3518,321 @@ def verify_player_franchise(
     return failures
 
 
+# ── Category 9: Historical Claim Verification ─────────────────────────
+#
+# Covers two claim types caught during the 2025 commissioner review:
+#
+#   CHAMPIONSHIP_CLAIM — "KP has been to six championship games"
+#     Actual: 7 appearances. Source: WEEKLY_MATCHUP_RESULT at championship
+#     weeks (W16 for 2010-2020, W18 for 2021-2025).
+#
+#   SEASON_RECORD_CLAIM — "his 12-2 record"
+#     Actual: 15-2. Source: WEEKLY_MATCHUP_RESULT regular season weeks.
+#
+# Both are HARD failures. Category is CHAMPIONSHIP_CLAIM or SEASON_RECORD_CLAIM.
+
+# Championship weeks by era (inclusive)
+_CHAMPIONSHIP_WEEK_BY_ERA: list[tuple[range, int]] = [
+    (range(2010, 2021), 16),   # 2010-2020: championship at W16
+    (range(2021, 2030), 18),   # 2021+: championship at W18
+]
+
+# "six times", "seven times", "twice", "once", "three times", ...
+_COUNT_WORDS: dict[str, int] = {
+    "once": 1,
+    "twice": 2,
+    "three times": 3,
+    "four times": 4,
+    "five times": 5,
+    "six times": 6,
+    "seven times": 7,
+    "eight times": 8,
+    "nine times": 9,
+    "ten times": 10,
+}
+
+# Championship claim pattern: "<count> (times)? <championship-word>" or
+# "<championship-word> <count> times"
+# Catches: "six championship", "title six times", "championship game 7 times"
+_CHAMP_KEYWORD = re.compile(
+    r"\b(?:championship|title|finals?|champion)\b",
+    re.IGNORECASE,
+)
+
+# Numeric count near a championship keyword (within 80 chars)
+_COUNT_NUMBER_PATTERN = re.compile(r"\b(\d+)\s+times?\b", re.IGNORECASE)
+
+# Season record pattern: N-M record (e.g. "12-2 record", "a 14-1 season")
+# Requires both wins and losses stated; floats excluded (scores).
+_RECORD_PATTERN = re.compile(
+    r"\b(\d{1,2})-(\d{1,2})\s+(?:record|season|finish|start|run)\b",
+    re.IGNORECASE,
+)
+
+
+def _championship_week_for_season(season: int) -> int:
+    """Return the championship week number for a given season."""
+    for season_range, week in _CHAMPIONSHIP_WEEK_BY_ERA:
+        if season in season_range:
+            return week
+    return 18  # default for future seasons
+
+
+def _compute_championship_appearances(
+    all_matchups: list[_MatchupFact],
+    franchise_id: str,
+) -> int:
+    """Count championship game appearances (finalist, win or loss) for a franchise."""
+    count = 0
+    for m in all_matchups:
+        champ_week = _championship_week_for_season(m.season)
+        if m.week != champ_week:
+            continue
+        if m.winner_id == franchise_id or m.loser_id == franchise_id:
+            count += 1
+    return count
+
+
+def _compute_season_record(
+    all_matchups: list[_MatchupFact],
+    franchise_id: str,
+    season: int,
+    *,
+    regular_season_only: bool = True,
+) -> tuple[int, int] | None:
+    """Compute wins-losses for a franchise in a season.
+
+    regular_season_only: if True, exclude the championship week from the record.
+    Returns (wins, losses) or None if no matchups found.
+    """
+    wins = 0
+    losses = 0
+    champ_week = _championship_week_for_season(season)
+
+    for m in all_matchups:
+        if m.season != season:
+            continue
+        if regular_season_only and m.week == champ_week:
+            continue
+        if m.winner_id == franchise_id:
+            wins += 1
+        elif m.loser_id == franchise_id:
+            losses += 1
+
+    if wins == 0 and losses == 0:
+        return None
+    return (wins, losses)
+
+
+def verify_historical_claims(
+    recap_text: str,
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week: int,
+    reverse_name_map: dict[str, str],
+    all_matchups: list[_MatchupFact] | None = None,
+) -> list[VerificationFailure]:
+    """Verify historical count/record claims against canonical matchup data.
+
+    Two sub-checks:
+    1. CHAMPIONSHIP_CLAIM: numeric count near "championship"/"title"/"finals"
+       attributed to a franchise must match actual championship appearances.
+    2. SEASON_RECORD_CLAIM: "N-M record" attributed to a franchise in a
+       specific season must match actual wins-losses for that season.
+
+    Tolerance: ±0 (counts are integers, no tolerance applied).
+    """
+    failures: list[VerificationFailure] = []
+
+    if all_matchups is None:
+        all_matchups = _load_all_matchups(
+            db_path, league_id, as_of_season=season, as_of_week=week,
+        )
+
+    narrative = _extract_shareable_recap(recap_text)
+    if not narrative:
+        return []
+
+    # ── Sub-check 1: Championship appearance counts ───────────────────
+
+    # Find all championship keywords and the numeric counts near them
+    for kw_match in _CHAMP_KEYWORD.finditer(narrative):
+        kw_pos = kw_match.start()
+        # Search window: 80 chars on either side of the keyword
+        window_start = max(0, kw_pos - 80)
+        window_end = min(len(narrative), kw_pos + 80)
+        window = narrative[window_start:window_end]
+
+        # Look for a numeric count ("N times") in the window
+        count_match = _COUNT_NUMBER_PATTERN.search(window)
+        if not count_match:
+            # Also try word-form counts
+            claimed_count: int | None = None
+            window_lower = window.lower()
+            for phrase, val in sorted(
+                _COUNT_WORDS.items(), key=lambda kv: -len(kv[0])
+            ):
+                if phrase in window_lower:
+                    claimed_count = val
+                    break
+            if claimed_count is None:
+                continue
+        else:
+            try:
+                claimed_count = int(count_match.group(1))
+            except ValueError:
+                continue
+
+        # Find which franchise this claim is about (nearest name in window)
+        best_fid: str | None = None
+        best_dist = len(window) + 1
+        kw_offset = kw_pos - window_start
+
+        for alias, fid in reverse_name_map.items():
+            if len(alias) <= 3:
+                continue
+            alias_lower = alias.lower()
+            idx = window.lower().find(alias_lower)
+            if idx >= 0:
+                dist = abs(idx - kw_offset)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_fid = fid
+
+        if best_fid is None:
+            continue
+
+        # Compute actual appearances
+        actual = _compute_championship_appearances(all_matchups, best_fid)
+        if actual == 0:
+            # No data — can't verify; skip (silence, not false positive)
+            continue
+
+        if claimed_count != actual:
+            # Resolve franchise display name for the error message
+            fid_name = next(
+                (alias for alias, fid in reverse_name_map.items() if fid == best_fid),
+                best_fid,
+            )
+            failures.append(VerificationFailure(
+                category="CHAMPIONSHIP_CLAIM",
+                severity="HARD",
+                claim=(
+                    f"{claimed_count} championship appearance(s) "
+                    f"attributed to franchise {best_fid!r}"
+                ),
+                evidence=(
+                    f"Canonical championship appearances for {fid_name!r}: "
+                    f"{actual}. "
+                    f"Championship weeks: W16 (2010-2020), W18 (2021+)."
+                ),
+            ))
+
+    # ── Sub-check 2: Season win-loss records ──────────────────────────
+
+    for record_match in _RECORD_PATTERN.finditer(narrative):
+        try:
+            claimed_wins = int(record_match.group(1))
+            claimed_losses = int(record_match.group(2))
+        except ValueError:
+            continue
+
+        # Implausible ranges: skip scores masquerading as records
+        if claimed_wins > 17 or claimed_losses > 17:
+            continue
+        if claimed_wins == 0 and claimed_losses == 0:
+            continue
+
+        # Find the nearest franchise name within 120 chars
+        rec_pos = record_match.start()
+        window_start = max(0, rec_pos - 120)
+        window_end = min(len(narrative), rec_pos + 120)
+        window = narrative[window_start:window_end]
+
+        best_fid = None
+        best_dist = len(window) + 1
+        rec_offset = rec_pos - window_start
+
+        for alias, fid in reverse_name_map.items():
+            if len(alias) <= 3:
+                continue
+            idx = window.lower().find(alias.lower())
+            if idx >= 0:
+                dist = abs(idx - rec_offset)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_fid = fid
+
+        if best_fid is None:
+            continue
+
+        # Infer which season the record refers to:
+        # If the record appears near the current season context, use current.
+        # Also check prior season (recap may refer to last year's record).
+        seasons_to_check = [season]
+        if season > 2010:
+            seasons_to_check.append(season - 1)
+
+        matched = False
+        for check_season in seasons_to_check:
+            actual_rec = _compute_season_record(
+                all_matchups, best_fid, check_season,
+            )
+            if actual_rec is None:
+                continue
+            actual_wins, actual_losses = actual_rec
+            if actual_wins == claimed_wins and actual_losses == claimed_losses:
+                matched = True
+                break
+            # Also check including playoffs
+            actual_rec_full = _compute_season_record(
+                all_matchups, best_fid, check_season, regular_season_only=False,
+            )
+            if actual_rec_full and (
+                actual_rec_full[0] == claimed_wins
+                and actual_rec_full[1] == claimed_losses
+            ):
+                matched = True
+                break
+
+        if matched:
+            continue
+
+        # Could not verify against any candidate season
+        # Build evidence string from most recent season with data
+        evidence_parts: list[str] = []
+        for check_season in seasons_to_check:
+            actual_rec = _compute_season_record(all_matchups, best_fid, check_season)
+            if actual_rec:
+                evidence_parts.append(
+                    f"{check_season}: {actual_rec[0]}-{actual_rec[1]}"
+                )
+        evidence_str = (
+            "; ".join(evidence_parts) if evidence_parts
+            else "no matching season record found"
+        )
+
+        fid_name = next(
+            (alias for alias, fid in reverse_name_map.items() if fid == best_fid),
+            best_fid,
+        )
+        failures.append(VerificationFailure(
+            category="SEASON_RECORD_CLAIM",
+            severity="HARD",
+            claim=(
+                f"{claimed_wins}-{claimed_losses} record "
+                f"attributed to franchise {best_fid!r}"
+            ),
+            evidence=(
+                f"Canonical season records for {fid_name!r}: {evidence_str}."
+            ),
+        ))
+
+    return failures
+
+
 # ── Category 8: FAAB Transaction Verification ───────────────────────
 
 # Dollar amount pattern: $20, $20.00, $15.50
@@ -3873,6 +4191,22 @@ def verify_recap_v1(
         db_path=db_path,
         league_id=league_id,
         season=season,
+    ))
+
+    # Category 9: Historical claim verification (HARD)
+    # CHAMPIONSHIP_CLAIM: count of championship appearances vs canonical.
+    # SEASON_RECORD_CLAIM: "N-M record" vs canonical wins/losses.
+    # Regression fixtures from 2025 review: "six times" (actual: 7),
+    # "12-2 record" (actual: 15-2 or 14-1 depending on franchise/season).
+    checks_run += 1
+    all_failures.extend(verify_historical_claims(
+        narrative,
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
+        week=week,
+        reverse_name_map=reverse_name_map,
+        all_matchups=all_matchups,
     ))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")
