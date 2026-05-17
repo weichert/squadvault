@@ -10,6 +10,12 @@ import argparse
 import os
 import sys
 from collections.abc import Sequence
+from dotenv import load_dotenv
+
+# Load env files so ANTHROPIC_API_KEY reaches the creative layer.
+# .env holds non-sensitive defaults; .env.local holds secrets.
+load_dotenv(".env")
+load_dotenv(".env.local", override=True)
 
 from squadvault.chronicle.generate_rivalry_chronicle_v1 import generate_rivalry_chronicle_v1
 from squadvault.chronicle.input_contract_v1 import MissingWeeksPolicy
