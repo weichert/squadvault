@@ -26,6 +26,7 @@ ALLOWED_ROOT_DIRS = {
     "artifacts",
     "docs",
     "fixtures",
+    "logs",
     "outputs",
     "scripts",
     "src",

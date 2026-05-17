@@ -72,3 +72,6 @@ scripts/ci_watch_and_diagnose_run_v*.sh
 
 # Delivery scripts in repo root only (should be archived after use)
 /apply_*.py
+
+# Operational logs (scheduler output)
+logs/*.log
