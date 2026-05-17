@@ -158,8 +158,9 @@ def persist_rivalry_chronicle_v1(
     with DatabaseSession(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
-        # Idempotency: check if any artifact (DRAFT or APPROVED) already
-        # has the same fingerprint for this anchor week
+        # Idempotency: check if any non-superseded artifact (DRAFT or APPROVED)
+        # already has the same fingerprint for this anchor week.
+        # SUPERSEDED rows are excluded so regeneration after supersession works.
         existing = conn.execute(
             """
             SELECT version, state, selection_fingerprint
@@ -169,6 +170,7 @@ def persist_rivalry_chronicle_v1(
               AND week_index = ?
               AND artifact_type = ?
               AND selection_fingerprint = ?
+              AND state != 'SUPERSEDED'
             ORDER BY version DESC
             LIMIT 1
             """,
