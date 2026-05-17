@@ -20,6 +20,8 @@ Verification Categories (V1):
 9. CHAMPIONSHIP_CLAIM — championship appearance counts vs WEEKLY_MATCHUP_RESULT
    at championship weeks (W16: 2010-2020, W18: 2021+)
    SEASON_RECORD_CLAIM — "N-M record" claims vs computed wins/losses
+10. PLAYER_AVG_CLAIM — "averaging X points" claims vs computed season-to-date
+    average from WEEKLY_PLAYER_SCORE; >10% deviation = HARD
 
 Categories 1–4, 6–8 are HARD. Category 5 is SOFT. A hard failure means
 the recap contains a provably false factual claim.
@@ -3833,6 +3835,184 @@ def verify_historical_claims(
     return failures
 
 
+# ── Category 10: Player Scoring Average Claims ────────────────────────
+#
+# Catches "averaging X points" fabrications. The model sees only this
+# week's player scores. If it writes "averaging 18.4 points per game,"
+# it is synthesizing from a figure not in the provided context.
+#
+# Detection: "averaging X" or "X-point average" near a player name.
+# Verification: compute actual season-to-date average from WEEKLY_PLAYER_SCORE.
+# Tolerance: within 10% = PASS (legitimate rounding). >10% = HARD failure.
+
+# "averaging X.X" or "X.X points per game" or "X.X-point average"
+_AVG_CLAIM_PATTERN = re.compile(
+    r"averag(?:ing|e)\s+(\d{1,3}(?:\.\d{1,2})?)\s*(?:points?|pts?)?|"
+    r"(\d{1,3}(?:\.\d{1,2})?)\s*(?:-\s*|\s+)point\s+(?:per\s*game\s+)?average|"
+    r"(\d{1,3}(?:\.\d{1,2})?)\s*(?:points?|pts?)\s+per\s+(?:game|week)",
+    re.IGNORECASE,
+)
+
+
+def _load_player_season_averages(
+    db_path: str,
+    league_id: str,
+    season: int,
+    through_week: int,
+) -> dict[str, float]:
+    """Compute player_id -> season-to-date average score through given week.
+
+    Only counts weeks where the player actually appeared (score > 0).
+    """
+    week_scores: dict[str, list[float]] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT json_extract(payload_json, '$.player_id'),
+                      CAST(json_extract(payload_json, '$.score') AS REAL)
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WEEKLY_PLAYER_SCORE'
+                 AND CAST(json_extract(payload_json, '$.week') AS INTEGER) <= ?
+                 AND CAST(json_extract(payload_json, '$.score') AS REAL) > 0""",
+            (str(league_id), int(season), int(through_week)),
+        ).fetchall()
+
+    for row in rows:
+        pid = str(row[0]).strip() if row[0] else ""
+        if not pid:
+            continue
+        try:
+            score = float(row[1])
+        except (ValueError, TypeError):
+            continue
+        week_scores.setdefault(pid, []).append(score)
+
+    return {
+        pid: round(sum(scores) / len(scores), 2)
+        for pid, scores in week_scores.items()
+        if scores
+    }
+
+
+def verify_player_avg_claims(
+    recap_text: str,
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    week: int,
+) -> list[VerificationFailure]:
+    """Verify player scoring average claims against canonical WEEKLY_PLAYER_SCORE.
+
+    Catches: 'averaging 18.4 points', '24.6-point average', '22 points per game'.
+    Tolerance: ±10% of actual average = PASS (model rounding is legitimate).
+    Beyond ±10%: HARD failure.
+
+    Only fires when a player name is found near the average claim. No player
+    name in window = skip (avoids false positives on league-level averages).
+    """
+    failures: list[VerificationFailure] = []
+
+    narrative = _extract_shareable_recap(recap_text)
+    if not narrative:
+        return []
+
+    player_avgs = _load_player_season_averages(db_path, league_id, season, week)
+    if not player_avgs:
+        return []
+
+    player_name_map = _load_player_name_map_for_verify(db_path, league_id)
+
+    # Build display_name (lowercase) -> player_id for name matching
+    display_to_pid: dict[str, str] = {}
+    for pid, display in player_name_map.items():
+        if not display:
+            continue
+        if ", " in display:
+            parts = display.split(", ", 1)
+            first_last = f"{parts[1]} {parts[0]}".strip().lower()
+            if first_last not in display_to_pid:
+                display_to_pid[first_last] = pid
+        else:
+            key = display.strip().lower()
+            if key not in display_to_pid:
+                display_to_pid[key] = pid
+
+    narrative_lower = narrative.lower()
+    checked: set[tuple[str, float]] = set()
+
+    for avg_match in _AVG_CLAIM_PATTERN.finditer(narrative):
+        # Extract the claimed average from whichever group matched
+        claimed_str = avg_match.group(1) or avg_match.group(2) or avg_match.group(3)
+        if not claimed_str:
+            continue
+        try:
+            claimed = float(claimed_str)
+        except ValueError:
+            continue
+
+        # Sanity bounds: skip clearly impossible player averages
+        if claimed < 0.5 or claimed > 75.0:
+            continue
+
+        # Find nearest player name within 120 chars
+        search_start = max(0, avg_match.start() - 120)
+        search_end = min(len(narrative_lower), avg_match.end() + 120)
+        search_window = narrative_lower[search_start:search_end]
+        avg_offset = avg_match.start() - search_start
+
+        best_name: str | None = None
+        best_dist = len(search_window) + 1
+
+        for display_name in display_to_pid:
+            if len(display_name) <= 5:
+                continue
+            idx = search_window.find(display_name)
+            if idx >= 0:
+                dist = abs(idx - avg_offset)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_name = display_name
+
+        if best_name is None:
+            continue
+
+        pid = display_to_pid[best_name]
+        check_key = (pid, claimed)
+        if check_key in checked:
+            continue
+        checked.add(check_key)
+
+        actual_avg = player_avgs.get(pid)
+        if actual_avg is None:
+            # Player has no scoring data this season — can't verify; skip
+            continue
+
+        # Tolerance: ±10% of actual average
+        tolerance = actual_avg * 0.10
+        if abs(claimed - actual_avg) <= tolerance:
+            continue  # Within tolerance — pass
+
+        failures.append(VerificationFailure(
+            category="PLAYER_AVG_CLAIM",
+            severity="HARD",
+            claim=(
+                f"Average {claimed:.1f} attributed to "
+                f"{best_name.title()} (player {pid})"
+            ),
+            evidence=(
+                f"Canonical season-to-date average for "
+                f"{best_name.title()} through week {week}: "
+                f"{actual_avg:.2f} "
+                f"(claimed {claimed:.1f} deviates "
+                f"{abs(claimed - actual_avg) / actual_avg * 100:.0f}% "
+                f"from actual)."
+            ),
+        ))
+
+    return failures
+
+
 # ── Category 8: FAAB Transaction Verification ───────────────────────
 
 # Dollar amount pattern: $20, $20.00, $15.50
@@ -4207,6 +4387,19 @@ def verify_recap_v1(
         week=week,
         reverse_name_map=reverse_name_map,
         all_matchups=all_matchups,
+    ))
+
+    # Category 10: Player scoring average claims (HARD)
+    # Catches "averaging X points" fabrications. Model synthesizes from
+    # context that doesn't include multi-week averages; this catches
+    # claims >10% off from the canonical season-to-date average.
+    checks_run += 1
+    all_failures.extend(verify_player_avg_claims(
+        narrative,
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
+        week=week,
     ))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")

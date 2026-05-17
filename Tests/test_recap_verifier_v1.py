@@ -40,6 +40,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     verify_streaks,
     verify_superlatives,
     verify_historical_claims,
+    verify_player_avg_claims,
     _load_franchise_names,
     _load_franchise_nicknames,
     _load_franchise_owner_names,
@@ -1014,7 +1015,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 12
+        assert result.checks_run == 13
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -1096,7 +1097,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 12
+        assert result.checks_run == 13
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -4510,7 +4511,7 @@ class TestPlayerFranchiseAttribution:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added between SCORE and
         # SUPERLATIVE per be76817 / Step 4 correction memo).
-        assert result.checks_run == 12
+        assert result.checks_run == 13
         pf = [f for f in result.hard_failures
               if f.category == "PLAYER_FRANCHISE"]
         assert len(pf) == 1, (
@@ -4946,7 +4947,7 @@ class TestFaabClaimVerification:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added per be76817 / Step 4
         # correction memo).
-        assert result.checks_run == 12
+        assert result.checks_run == 13
 
 
 # ── Phase 2 addendum conformance: as-of-week scoping ─────────────────
@@ -6040,3 +6041,140 @@ class TestHistoricalClaimVerification:
         # This test confirms W18 is used for 2022, not W16
         # (a W16 match in 2022 would not count as championship)
         assert champ == []  # no numeric count detected → no check fired
+
+
+# ── Category 10: Player Scoring Average Claims (B3) ──────────────────
+
+
+class TestPlayerAvgClaimVerification:
+    """B3: Verify 'averaging X points' claims against canonical WEEKLY_PLAYER_SCORE.
+
+    Tolerance: ±10% of actual = PASS. >10% deviation = HARD failure.
+    """
+
+    def _build_db(self, tmp_path, *, player_id, player_name, week_scores: list[float]):
+        """Create a DB with a player who scored given amounts in weeks 1..N."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, player_id, player_name, "WR"),
+        )
+
+        for week_num, score in enumerate(week_scores, start=1):
+            payload = json.dumps({
+                "player_id": player_id,
+                "franchise_id": "F1",
+                "week": week_num,
+                "score": score,
+                "is_starter": 1,
+            }, sort_keys=True)
+            ext_id = f"wps_{LEAGUE}_{SEASON}_{player_id}_w{week_num}"
+            con.execute(
+                """INSERT INTO memory_events
+                   (league_id, season, external_source, external_id,
+                    event_type, occurred_at, ingested_at, payload_json)
+                   VALUES (?, ?, 'test', ?, 'WEEKLY_PLAYER_SCORE',
+                           '2024-10-01T12:00:00Z', '2024-10-01T12:00:00Z', ?)""",
+                (LEAGUE, SEASON, ext_id, payload),
+            )
+            me_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+            con.execute(
+                """INSERT INTO canonical_events
+                   (league_id, season, event_type, action_fingerprint,
+                    best_memory_event_id, best_score, updated_at, occurred_at)
+                   VALUES (?, ?, 'WEEKLY_PLAYER_SCORE', ?, ?, 100,
+                           '2024-10-01T12:00:00Z', '2024-10-01T12:00:00Z')""",
+                (LEAGUE, SEASON, f"fp_{ext_id}", me_id),
+            )
+
+        con.commit()
+        con.close()
+        return db_path
+
+    def _wrap(self, text):
+        return "--- SHAREABLE RECAP ---\n" + text + "\n--- END SHAREABLE RECAP ---\n"
+
+    def test_correct_average_within_tolerance_passes(self, tmp_path):
+        """Claimed average within 10% of actual passes."""
+        # Actual avg = (20 + 25 + 18) / 3 = 21.0; 10% tolerance = ±2.1
+        db_path = self._build_db(tmp_path, player_id="P1",
+                                  player_name="Cooper, Amari",
+                                  week_scores=[20.0, 25.0, 18.0])
+        # Claimed 21.5 -- within 2.4% of 21.0
+        text = self._wrap(
+            "Amari Cooper has been averaging 21.5 points this season."
+        )
+        failures = verify_player_avg_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=3,
+        )
+        avg = [f for f in failures if f.category == "PLAYER_AVG_CLAIM"]
+        assert avg == [], f"expected no failures within tolerance, got {avg}"
+
+    def test_fabricated_average_flags(self, tmp_path):
+        """Claimed average >10% off from actual is a hard failure."""
+        # Actual avg = (15 + 12 + 18) / 3 = 15.0
+        db_path = self._build_db(tmp_path, player_id="P1",
+                                  player_name="Cooper, Amari",
+                                  week_scores=[15.0, 12.0, 18.0])
+        # Claimed 22 -- 47% off from 15.0
+        text = self._wrap(
+            "Amari Cooper, averaging 22 points per game, is the top scorer."
+        )
+        failures = verify_player_avg_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=3,
+        )
+        avg = [f for f in failures if f.category == "PLAYER_AVG_CLAIM"]
+        assert len(avg) == 1, f"expected 1 PLAYER_AVG_CLAIM, got {avg}"
+        assert avg[0].severity == "HARD"
+        assert "22" in avg[0].claim
+        assert "15.00" in avg[0].evidence
+
+    def test_no_player_name_nearby_skips(self, tmp_path):
+        """Average claim with no nearby player name is skipped."""
+        db_path = self._build_db(tmp_path, player_id="P1",
+                                  player_name="Cooper, Amari",
+                                  week_scores=[20.0, 25.0])
+        # No player name nearby
+        text = self._wrap("Teams are averaging 22.5 points this week across the league.")
+        failures = verify_player_avg_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=2,
+        )
+        assert failures == []
+
+    def test_point_per_game_phrasing_detected(self, tmp_path):
+        """'X points per game' phrasing also detected."""
+        # Actual avg = (10 + 10) / 2 = 10.0
+        db_path = self._build_db(tmp_path, player_id="P1",
+                                  player_name="Cooper, Amari",
+                                  week_scores=[10.0, 10.0])
+        # Claimed 25 points per game -- 150% off
+        text = self._wrap("Amari Cooper at 25 points per game is historic.")
+        failures = verify_player_avg_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=2,
+        )
+        avg = [f for f in failures if f.category == "PLAYER_AVG_CLAIM"]
+        assert len(avg) == 1
+        assert avg[0].severity == "HARD"
+
+    def test_no_player_data_skips_gracefully(self, tmp_path):
+        """Player with no scoring records is skipped without error."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        con.execute(
+            "INSERT OR REPLACE INTO player_directory "
+            "(league_id, season, player_id, name, position) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (LEAGUE, SEASON, "P_NO_SCORES", "Jefferson, Justin", "WR"),
+        )
+        con.commit()
+        con.close()
+
+        text = self._wrap("Justin Jefferson averaging 18 points per game.")
+        failures = verify_player_avg_claims(
+            text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=5,
+        )
+        assert failures == []
