@@ -1088,11 +1088,49 @@ def verify_score_strings_verbatim(
     if not week_pairs:
         return []
 
+    # Proximity window: both scores must appear within this many characters
+    # of each other to satisfy the relaxed check. Handles natural prose
+    # patterns like "scoring 112.15 to beat Miller 100.95" where the team
+    # name is inserted between the two scores.
+    _SCORE_PROXIMITY_WINDOW = 200
+
     for m in week_pairs:
+        winner_str = f"{m.winner_score:.2f}"
+        loser_str = f"{m.loser_score:.2f}"
         winner_first = format_matchup_score_str(m.winner_score, m.loser_score)
         loser_first = format_matchup_score_str(m.loser_score, m.winner_score)
+
+        # Primary check: exact verbatim substring (both orderings)
         if winner_first in recap_text or loser_first in recap_text:
             continue
+
+        # Relaxed check: both score strings appear within proximity window.
+        # Handles natural prose like "scoring X to beat Team Y" and
+        # "dropped X points... Y for the opponent".
+        def _scores_in_proximity(text: str, s1: str, s2: str, window: int) -> bool:
+            """True if s1 and s2 both appear and are within window chars of each other,
+            but NOT in the old hyphen-joined format 'X.XX-Y.YY' which is a formatting
+            error (canonical format requires 'to' separator).
+            """
+            import re as _re
+            # Reject hyphen-joined format: "107.65-65.40" or "107.65-65.40"
+            # The model should use "to" not "-" as separator.
+            hyphen_pattern = _re.compile(
+                rf"{_re.escape(s1)}-{_re.escape(s2)}|{_re.escape(s2)}-{_re.escape(s1)}"
+            )
+            if hyphen_pattern.search(text):
+                return False
+            idx1 = text.find(s1)
+            if idx1 < 0:
+                return False
+            idx2 = text.find(s2)
+            if idx2 < 0:
+                return False
+            return abs(idx1 - idx2) <= window
+
+        if _scores_in_proximity(recap_text, winner_str, loser_str, _SCORE_PROXIMITY_WINDOW):
+            continue
+
         failures.append(
             VerificationFailure(
                 category="SCORE_VERBATIM",
@@ -1103,9 +1141,10 @@ def verify_score_strings_verbatim(
                 ),
                 evidence=(
                     f"Neither '{winner_first}' nor '{loser_first}' "
-                    f"appears verbatim in recap text. Canonical scores: "
-                    f"{m.winner_score:.2f} (winner) / "
-                    f"{m.loser_score:.2f} (loser)."
+                    f"appears verbatim in recap text, and scores "
+                    f"{m.winner_score:.2f} / {m.loser_score:.2f} "
+                    f"do not appear within {_SCORE_PROXIMITY_WINDOW} chars of each other. "
+                    f"One or both scores may be missing or wrong."
                 ),
             )
         )
@@ -4046,6 +4085,15 @@ _AGGREGATE_COUNT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# High-precision historical ordinal: "the 323rd time", "the 47th instance",
+# "the 12th occurrence" — any ordinal >= 10 with a historical context phrase.
+# These are precision-fabricated claims that cannot be derived from the DB.
+_HISTORICAL_ORDINAL_PATTERN = re.compile(
+    r"\bthe\s+(\d{2,4})(?:st|nd|rd|th)\s+(?:time|instance|occurrence|game|week|season)\b"
+    r"(?:\s+\w+){0,6}\s+(?:in|across|over)\s+(?:league|franchise|team|all-time|history)",
+    re.IGNORECASE,
+)
+
 # Exclude counts ≤ 3 — small enough that they could legitimately be listed
 # by name and counted from the facts block.
 _NUMERIC_UNANCHORED_MIN_COUNT = 4
@@ -4054,11 +4102,17 @@ _NUMERIC_UNANCHORED_MIN_COUNT = 4
 def verify_numeric_unanchored(
     recap_text: str,
 ) -> list[VerificationFailure]:
-    """Flag aggregate transaction counts as NUMERIC_UNANCHORED (SOFT).
+    """Flag aggregate transaction counts and precision historical ordinals as NUMERIC_UNANCHORED (SOFT).
 
-    The system prompt instructs the model not to aggregate transactions
-    into counts. Any numeric count of moves/acquisitions/pickups
-    above 3 is flagged for commissioner review.
+    Two sub-checks:
+
+    1. Aggregate transaction counts ("made 8 moves") — prohibited by
+       system prompt; model cannot count transactions from the facts block.
+
+    2. High-precision historical ordinals ("the 323rd time a starter has
+       been zeroed out in league history") — specific integer ordinals
+       (>= 10) attached to historical frequency claims. No tracking table
+       exists for arbitrary historical event counts; these are fabricated.
 
     SOFT failure: commissioner sees the flag and verifies manually.
     """
@@ -4068,6 +4122,7 @@ def verify_numeric_unanchored(
     if not narrative:
         return []
 
+    # Sub-check 1: aggregate transaction counts
     seen: set[tuple[int, str]] = set()
     for m in _AGGREGATE_COUNT_PATTERN.finditer(narrative):
         try:
@@ -4092,6 +4147,34 @@ def verify_numeric_unanchored(
                 "facts block. The system prompt prohibits counting "
                 "transactions — this figure may be fabricated. "
                 "Verify against WAIVER_BID_AWARDED before approving."
+            ),
+        ))
+
+    # Sub-check 2: precision historical ordinals
+    ord_seen: set[tuple[int, str]] = set()
+    for m in _HISTORICAL_ORDINAL_PATTERN.finditer(narrative):
+        try:
+            ordinal = int(m.group(1))
+        except ValueError:
+            continue
+        if ordinal < 10:
+            continue  # small ordinals can be legitimate ("the 7th time")
+
+        phrase = m.group(0).lower()
+        key = (ordinal, phrase)
+        if key in ord_seen:
+            continue
+        ord_seen.add(key)
+
+        failures.append(VerificationFailure(
+            category="NUMERIC_UNANCHORED",
+            severity="SOFT",
+            claim=f"Precision historical ordinal: '{m.group(0)}'",
+            evidence=(
+                f"Ordinal count {ordinal} for a historical frequency claim "
+                f"cannot be derived from the DB — no tracking table exists "
+                f"for this event type. This figure is likely fabricated. "
+                f"Verify or remove before approving."
             ),
         ))
 

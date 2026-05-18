@@ -308,3 +308,101 @@ def test_narrative_angles_upset_gap_2_branch_uses_to_format() -> None:
     detail = upset_angles[0].detail
     assert "99.50 to 95.25" in detail, f"Expected 'to' format in: {detail}"
     assert "99.50-95.25" not in detail, f"Old hyphen form leaked into: {detail}"
+
+
+# ── SCORE_VERBATIM proximity relaxation (validation regression) ───────
+
+
+class TestScoreVerbatimProximity:
+    """SCORE_VERBATIM checker: relaxed proximity check regression tests.
+
+    Validation pass (2026-05-17) found two natural prose patterns that
+    failed the original exact-substring check:
+
+    W13: "scoring 112.15 to beat Ben 100.95" -- team name between scores
+    W1:  "dropping 123.20 on Ben's Gods in a blowout. Ben scored 86.35"
+         -- both scores present but separated by prose
+
+    The relaxed check passes when both scores appear within 200 chars of
+    each other, regardless of exact separator placement.
+    """
+
+    def _matchup(self, winner_score, loser_score, week=5):
+        from squadvault.core.recaps.verification.recap_verifier_v1 import _MatchupFact
+        return _MatchupFact(
+            season=2025, week=week,
+            winner_id="F1", loser_id="F2",
+            winner_score=winner_score, loser_score=loser_score,
+        )
+
+    def _wrap(self, text):
+        return f"--- SHAREABLE RECAP ---\n{text}\n--- END SHAREABLE RECAP ---"
+
+    def test_exact_verbatim_passes(self):
+        """Exact 'X to Y' format still passes (primary check)."""
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            verify_score_strings_verbatim,
+        )
+        m = self._matchup(112.15, 100.95)
+        text = self._wrap("Miller won 112.15 to 100.95 over Ben.")
+        assert verify_score_strings_verbatim(text, [m], 5) == []
+
+    def test_team_name_between_scores_passes(self):
+        """'scoring X to beat Team Y' passes the proximity check.
+
+        Regression: W13 2025 -- model wrote 'scoring 112.15 to beat Ben 100.95'
+        which failed the exact verbatim check.
+        """
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            verify_score_strings_verbatim,
+        )
+        m = self._matchup(112.15, 100.95)
+        text = self._wrap("Miller bounced back, scoring 112.15 to beat Ben 100.95.")
+        assert verify_score_strings_verbatim(text, [m], 5) == []
+
+    def test_scores_separated_by_prose_passes(self):
+        """Both scores in text but separated by prose passes proximity check.
+
+        Regression: W1 2025 -- model wrote one score per sentence.
+        """
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            verify_score_strings_verbatim,
+        )
+        m = self._matchup(123.20, 86.35)
+        text = self._wrap(
+            "Miller dropped 123.20 on Ben in a blowout. Ben managed 86.35."
+        )
+        assert verify_score_strings_verbatim(text, [m], 5) == []
+
+    def test_only_one_score_fails(self):
+        """Only one score mentioned with no second score nearby still fails."""
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            verify_score_strings_verbatim,
+        )
+        m = self._matchup(112.15, 100.95)
+        text = self._wrap("Miller dropped 112.15 on Ben in a big win.")
+        failures = verify_score_strings_verbatim(text, [m], 5)
+        assert len(failures) == 1
+        assert failures[0].category == "SCORE_VERBATIM"
+
+    def test_no_scores_mentioned_fails(self):
+        """No scores mentioned at all still fails."""
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            verify_score_strings_verbatim,
+        )
+        m = self._matchup(112.15, 100.95)
+        text = self._wrap("Miller won a close game over Ben this week.")
+        failures = verify_score_strings_verbatim(text, [m], 5)
+        assert len(failures) == 1
+        assert failures[0].category == "SCORE_VERBATIM"
+
+    def test_scores_too_far_apart_fails(self):
+        """Scores present but more than 200 chars apart still fails."""
+        from squadvault.core.recaps.verification.recap_verifier_v1 import (
+            verify_score_strings_verbatim,
+        )
+        m = self._matchup(112.15, 100.95)
+        filler = "x" * 250
+        text = self._wrap(f"Miller scored 112.15. {filler} Ben scored 100.95.")
+        failures = verify_score_strings_verbatim(text, [m], 5)
+        assert len(failures) == 1

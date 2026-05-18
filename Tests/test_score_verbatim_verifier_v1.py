@@ -79,19 +79,20 @@ def test_passes_with_multiple_matchups_all_verbatim() -> None:
 # HARD-fail conditions
 # =====================================================================
 
-def test_fails_HARD_on_paraphrase_other() -> None:
-    """Both decimals present but not in verbatim paired form — Policy A rejects."""
+def test_passes_on_paraphrase_with_both_scores_nearby() -> None:
+    """Both decimals present in natural prose within proximity window -- passes.
+
+    Policy relaxed from strict verbatim (Policy A) to proximity check
+    after validation pass (2026-05-17). Natural prose like "put up X...
+    Y was nowhere close" passes when both scores appear within 200 chars.
+    The key invariant: BOTH scores present and near each other.
+    """
     prose = (
         "Paradis' Playmakers put up 107.65 in the week's biggest rout, while "
         "Brandon's 65.40 was nowhere close to enough."
     )
     failures = verify_score_strings_verbatim(prose, [_PAIR], week=13)
-    assert len(failures) == 1
-    assert failures[0].category == "SCORE_VERBATIM"
-    assert failures[0].severity == "HARD"
-    assert "0001" in failures[0].claim
-    assert "0002" in failures[0].claim
-    assert "107.65 to 65.40" in failures[0].evidence
+    assert failures == [], f"Expected no failures for scores in natural prose, got {failures}"
 
 
 def test_fails_HARD_on_rounded_only() -> None:

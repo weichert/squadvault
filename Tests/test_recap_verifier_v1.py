@@ -6333,6 +6333,41 @@ class TestNumericUnanchoredVerification:
         unanchored = [f for f in failures if f.category == "NUMERIC_UNANCHORED"]
         assert len(unanchored) == 2
 
+    def test_precision_historical_ordinal_flagged(self):
+        """High-precision historical ordinal is flagged as SOFT (W5 2025 regression).
+
+        Regression: W5 2025 model wrote 'Only the 323rd time a starter has
+        been zeroed out in league history' -- no tracking table for this event
+        type; the count is fabricated with false precision.
+        """
+        text = self._wrap(
+            "Only the 323rd time a starter has been zeroed out in league history, "
+            "and it came at the worst possible moment."
+        )
+        failures = verify_numeric_unanchored(text)
+        unanchored = [f for f in failures if f.category == "NUMERIC_UNANCHORED"]
+        assert len(unanchored) == 1, f"expected 1 flag for historical ordinal, got {unanchored}"
+        assert unanchored[0].severity == "SOFT"
+        assert "323" in unanchored[0].claim
+
+    def test_small_ordinal_not_flagged(self):
+        """Small ordinals (<10) near history phrases are not flagged (legitimate)."""
+        text = self._wrap(
+            "Only the 7th time a team has swept the final three weeks in league history."
+        )
+        failures = verify_numeric_unanchored(text)
+        unanchored = [f for f in failures if f.category == "NUMERIC_UNANCHORED"]
+        assert unanchored == [], f"small ordinal should not flag, got {unanchored}"
+
+    def test_ordinal_without_history_phrase_not_flagged(self):
+        """Ordinals without 'in league history' context phrase are not flagged."""
+        text = self._wrap(
+            "This was the 50th time Robb has started a kicker in a must-win game."
+        )
+        failures = verify_numeric_unanchored(text)
+        unanchored = [f for f in failures if f.category == "NUMERIC_UNANCHORED"]
+        assert unanchored == [], f"no history phrase should not flag, got {unanchored}"
+
     def test_integration_soft_failure_in_full_pipeline(self, tmp_path):
         """Full pipeline catches NUMERIC_UNANCHORED as soft failure (not hard)."""
         db_path = _fresh_db(tmp_path)
