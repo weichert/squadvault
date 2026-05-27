@@ -88,7 +88,7 @@ def query_latest_angles(conn, league_id, season):
     }
 
 def read_reception(season):
-    files = sorted(glob.glob(str(REPO_ROOT / f"archive/recaps/{season}/*reception.yaml")), reverse=True)
+    files = sorted(glob.glob(str(REPO_ROOT / f"archive/recaps/{season}/*reception.yaml")), reverse=True)  # SV_ALLOW_UNSORTED_FS_ORDER
     obs = []
     for fpath in files:
         text = Path(fpath).read_text()
