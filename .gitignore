@@ -75,3 +75,5 @@ scripts/ci_watch_and_diagnose_run_v*.sh
 
 # Operational logs (scheduler output)
 logs/*.log
+squadvault-demo/
+squadvault/
