@@ -47,6 +47,8 @@ from pathlib import Path
 #   pip install supabase
 from supabase import Client, create_client
 
+from _env_bootstrap import bootstrap_env_local
+
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 DEFAULT_ENGINE_DB = Path(".local_squadvault.sqlite")
@@ -455,6 +457,7 @@ def _build_client() -> Client:
 
 
 def main(argv: list[str] | None = None) -> int:
+    bootstrap_env_local()
     args = _parse_args(argv if argv is not None else sys.argv[1:])
 
     today = datetime.now(timezone.utc).strftime("%Y%m%d")

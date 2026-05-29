@@ -76,6 +76,8 @@ from pathlib import Path
 # Third-party (already in engine repo requirements per M3)
 from supabase import Client, create_client
 
+from _env_bootstrap import bootstrap_env_local
+
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -568,6 +570,7 @@ def _build_client() -> Client:
 
 
 def main(argv: list[str] | None = None) -> int:
+    bootstrap_env_local()
     args = _parse_args(argv if argv is not None else sys.argv[1:])
 
     today = datetime.now(timezone.utc).strftime("%Y%m%d")
