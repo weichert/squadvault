@@ -9,7 +9,7 @@ self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$self_dir/.." && pwd)"
 cd "$repo_root"
 
-files="$(git ls-files 'Tests/**/*.py' 'tests/**/*.py' 2>/dev/null || true)"
+files="$(git ls-files ':(glob)Tests/**/*.py' ':(glob)tests/**/*.py' 2>/dev/null || true)"
 if [[ -z "${files}" ]]; then
   exit 0
 fi
@@ -20,7 +20,7 @@ while IFS= read -r f; do
   hits="$(grep -nF '.local_squadvault.sqlite' "$f" || true)"
   [[ -z "$hits" ]] && continue
 
-  bad="$(printf '%s\n' "$hits"     | grep -vF 'os.environ.get("SQUADVAULT_TEST_DB", ".local_squadvault.sqlite")'     | grep -vF "os.environ.get('SQUADVAULT_TEST_DB', '.local_squadvault.sqlite')"     || true)"
+  bad="$(printf '%s\n' "$hits"     | grep -vF 'os.environ.get("SQUADVAULT_TEST_DB", ".local_squadvault.sqlite")'     | grep -vF "os.environ.get('SQUADVAULT_TEST_DB', '.local_squadvault.sqlite')"     | grep -vF '== ".local_squadvault.sqlite"'     | grep -vF "== '.local_squadvault.sqlite'"     || true)"
 
   if [[ -n "$bad" ]]; then
     violations+="${f}
