@@ -56,17 +56,20 @@ echo "league=$LEAGUE_ID season=$SEASON week=$WEEK_INDEX"
 echo
 
 echo "== Tests =="
-# SV_PATCH: pinned, git-tracked pytest list (avoid broad `pytest -q Tests`)
+# SV_PATCH: pinned, git-tracked pytest list (avoid broad `pytest -q Tests`; :(glob) recurses)
   {
     # Bash-3-safe pinned, git-tracked pytest list.
-    # We explicitly enumerate git-tracked Tests/test_*.py files to prevent accidental surface expansion.
+    # We enumerate git-tracked Tests/**/test_*.py files via :(glob) pathspec magic
+    # so subdirectory tests (e.g. Tests/validation/signals/, Tests/recaps/writing_room/)
+    # are included while untracked/renamed files remain excluded. Plain
+    # 'Tests/test_*.py' as a git pathspec does NOT cross slashes; :(glob) opts in.
     gp_tests=()
     while IFS= read -r p; do
       gp_tests+=("$p")
-    done < <(git ls-files 'Tests/test_*.py' | sort)
+    done < <(git ls-files ':(glob)Tests/**/test_*.py' | sort)
 
     if [ "${#gp_tests[@]}" -eq 0 ]; then
-      echo "ERROR: no git-tracked Tests/test_*.py files found for golden path" >&2
+      echo "ERROR: no git-tracked Tests/**/test_*.py files found for golden path" >&2
       exit 1
     fi
 
