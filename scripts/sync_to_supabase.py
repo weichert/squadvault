@@ -137,6 +137,29 @@ class EngineArtifact:
         return hashlib.sha256(self.rendered_text.encode("utf-8")).hexdigest()
 
 
+def _engine_recaps_ready(db_path: Path) -> bool:
+    """True if the engine DB exists and carries the recap_artifacts table.
+
+    Non-creating: a missing DB file is reported as not-ready without creating
+    it (read-only open). Used as an up-front precondition so an unbuilt or
+    partially-migrated engine DB fails with a clear, actionable message rather
+    than a raw "no such table: recap_artifacts" stack trace from the read path.
+    """
+    if not db_path.exists():
+        return False
+    try:
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        try:
+            row = con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='recap_artifacts'",
+            ).fetchone()
+            return row is not None
+        finally:
+            con.close()
+    except (sqlite3.OperationalError, sqlite3.DatabaseError):
+        return False
+
+
 def _load_engine_artifacts(
     db_path: Path,
     *,
@@ -471,6 +494,14 @@ def main(argv: list[str] | None = None) -> int:
     log.info("sync_to_supabase  dry_run=%s  types=%s  season=%s  db=%s",
              args.dry_run, types, args.season, args.db)
     log.info("engine git HEAD: %s", git_hash or "(unknown)")
+
+    if not _engine_recaps_ready(args.db):
+        log.error(
+            "Engine DB %s is not built/migrated (missing, or has no "
+            "recap_artifacts table). Build or migrate the engine DB before syncing.",
+            args.db,
+        )
+        return 1
 
     client: Client | None = None
     league_uuid = "<dry-run>"
