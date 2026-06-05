@@ -27,6 +27,19 @@ GOVERNANCE PROPERTIES:
   - Idempotent: re-running when the row already matches is a clean no-op (exit 0).
   - --dry-run reports the planned action and writes nothing.
 
+PRECONDITION: the target DB must be a built engine DB that carries the
+league_voice_profiles table. The script prechecks this and fails clearly
+(exit 5) rather than relying on get_voice_profile -- which intentionally
+swallows OperationalError so recap generation degrades to default tone -- so
+a missing table cannot masquerade as "no row yet" in --dry-run.
+
+EXIT CODES:
+  0  installed, replaced, already-current, or dry-run reported
+  2  DB file not found
+  3  existing differing row, refused (use --force)
+  4  post-write verification failed
+  5  DB has no league_voice_profiles table (not built/migrated)
+
 USAGE:
   ./scripts/py scripts/set_pfl_voice.py --dry-run
   ./scripts/py scripts/set_pfl_voice.py
@@ -37,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -51,6 +65,20 @@ logger = logging.getLogger("set_pfl_voice")
 DEFAULT_ENGINE_DB = Path(".local_squadvault.sqlite")
 DEFAULT_LEAGUE_ID = "70985"
 APPROVED_BY = "commissioner"
+VOICE_TABLE = "league_voice_profiles"
+
+
+def _table_exists(db_path: str, table: str) -> bool:
+    """Return True if the named table exists in the SQLite DB."""
+    con = sqlite3.connect(db_path)
+    try:
+        row = con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            (table,),
+        ).fetchone()
+        return row is not None
+    finally:
+        con.close()
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -94,6 +122,16 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("ERROR: engine DB not found: %s", db_path)
         logger.error("       Build or refresh the engine DB first, or pass --db.")
         return 2
+
+    # Precondition: the DB must carry the voice table. get_voice_profile swallows
+    # OperationalError (intentional: recaps degrade to default tone rather than
+    # crash), so without this check a missing table would read as "no row yet"
+    # and --dry-run would falsely report "would INSTALL".
+    if not _table_exists(db_path, VOICE_TABLE):
+        logger.error("ERROR: %s has no %s table.", db_path, VOICE_TABLE)
+        logger.error("       The DB is not built/migrated. Build the engine DB")
+        logger.error("       (ingest) or apply migrations before setting a voice.")
+        return 5
 
     current = get_voice_profile(db_path, league_id)
 

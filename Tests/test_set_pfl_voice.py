@@ -4,8 +4,9 @@ The operator script lives under ``scripts/`` (not on the package path), so it
 is loaded by file location via ``importlib`` to keep the test hermetic -- no
 ``sys.path`` mutation. The script installs the curated PFL Buddies voice as the
 live engine row; these tests pin its governance behaviour: idempotency,
-non-clobber, --force, --dry-run, and the load-bearing approved_by stamp that
-keeps the Supabase bridge's non-clobber/engine-authoritative guards correct.
+non-clobber, --force, --dry-run, the load-bearing approved_by stamp that keeps
+the Supabase bridge's non-clobber/engine-authoritative guards correct, and the
+table-existence precheck that makes --dry-run honest against an unbuilt DB.
 """
 from __future__ import annotations
 
@@ -40,6 +41,15 @@ def _fresh_db(tmp_path, name="engine.sqlite"):
     schema_sql = open(_SCHEMA_PATH, encoding="utf-8").read()
     con = sqlite3.connect(db_path)
     con.executescript(schema_sql)
+    con.close()
+    return db_path
+
+
+def _unbuilt_db(tmp_path, name="unbuilt.sqlite"):
+    """A DB file that exists but has no league_voice_profiles table."""
+    db_path = str(tmp_path / name)
+    con = sqlite3.connect(db_path)
+    con.execute("CREATE TABLE unrelated (x INTEGER)")
     con.close()
     return db_path
 
@@ -134,3 +144,20 @@ class TestSetPflVoiceMissingDb:
         db = str(tmp_path / "does_not_exist.sqlite")
         mod = _load_script()
         assert mod.main(["--db", db, "--league-id", LEAGUE]) == 2
+
+
+class TestSetPflVoicePrecheck:
+    def test_unbuilt_db_exits_5(self, tmp_path):
+        # DB file exists but has no league_voice_profiles table: refuse loudly
+        # rather than letting get_voice_profile's swallowed OperationalError read
+        # as "no row yet".
+        db = _unbuilt_db(tmp_path)
+        mod = _load_script()
+        assert mod.main(["--db", db, "--league-id", LEAGUE]) == 5
+
+    def test_unbuilt_db_dry_run_exits_5(self, tmp_path):
+        # The regression that motivated this precheck: --dry-run must report the
+        # missing table, not "would INSTALL".
+        db = _unbuilt_db(tmp_path)
+        mod = _load_script()
+        assert mod.main(["--db", db, "--league-id", LEAGUE, "--dry-run"]) == 5
