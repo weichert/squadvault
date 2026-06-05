@@ -28,6 +28,11 @@ GOVERNANCE PROPERTIES:
     (ENGINE_AUTHORITATIVE) are refused before any read, unless --force. PFL
     Buddies (70985) is demo-seeded on the frontend as falsely bridge-eligible;
     its real voice is engine-side, so it must not be bridged from the seed.
+  - Built-DB precondition: the bridge refuses up front (EXIT_NOT_BUILT) if the
+    engine DB is not built/migrated (no league_voice_profiles table). Without
+    this, read_engine_voice_row's swallowed OperationalError reads as "no row",
+    --dry-run falsely reports "would write", and a live run crashes mid-write
+    at set_voice_profile, leaving an orphan empty DB file.
   - Skip / MIXED (D6a): a null voice_profile_id is a clean no-op; the engine's
     graceful default tone holds. A MIXED register chosen through the full
     founding flow has prose and bridges normally.
@@ -58,6 +63,7 @@ logger = logging.getLogger("sync_voice_from_supabase")
 
 DEFAULT_ENGINE_DB = Path(".local_squadvault.sqlite")
 BRIDGE_AUTHOR_PREFIX = "founding-session"
+VOICE_TABLE = "league_voice_profiles"
 
 # Leagues whose voice is authored and curated engine-side, not through the
 # frontend founding session. The bridge refuses these before any read (unless
@@ -76,6 +82,7 @@ EXIT_CONFIG = 2  # missing env / bad invocation
 EXIT_NOT_FOUND = 3  # league not found in Supabase
 EXIT_REFUSED = 4  # non-clobber guard tripped without --force
 EXIT_UPSTREAM = 5  # Supabase read error
+EXIT_NOT_BUILT = 6  # engine DB not built/migrated (no league_voice_profiles table)
 
 
 # --- pure decision core (no I/O; unit-testable without Supabase) ------------
@@ -140,6 +147,30 @@ def decide_bridge_action(
 
 
 # --- engine-side read (direct; needs approved_by, which get_voice_profile omits) ---
+
+
+def engine_voice_table_ready(db_path: str) -> bool:
+    """True if the engine DB exists and carries the league_voice_profiles table.
+
+    Non-creating (D8a): a missing DB file is reported as not-ready without
+    creating it. Used as an up-front precondition so an unbuilt/unmigrated
+    engine DB is refused cleanly, rather than letting read_engine_voice_row's
+    swallowed OperationalError read as "no row" and a later set_voice_profile
+    crash mid-write (leaving an orphan empty DB file).
+    """
+    import sqlite3 as _sqlite3
+
+    if not Path(db_path).exists():
+        return False
+    try:
+        with DatabaseSession(db_path) as con:
+            row = con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                (VOICE_TABLE,),
+            ).fetchone()
+            return row is not None
+    except (_sqlite3.OperationalError, _sqlite3.DatabaseError):
+        return False
 
 
 def read_engine_voice_row(db_path: str, league_id: str) -> tuple[str | None, str | None]:
@@ -299,6 +330,20 @@ def main(argv: list[str] | None = None) -> int:
             canonical_id,
         )
         return EXIT_REFUSED
+
+    # Local precondition (fail fast, before any network): the engine DB must be
+    # built/migrated. Placed before the Supabase load so an unbuilt DB is
+    # refused cleanly and --dry-run reports the real blocker rather than a false
+    # "would write".
+    if not engine_voice_table_ready(args.db):
+        logger.error(
+            "[%s] refused: engine DB %s is not built/migrated (no %s table). "
+            "Build or migrate the engine DB before bridging.",
+            canonical_id,
+            args.db,
+            VOICE_TABLE,
+        )
+        return EXIT_NOT_BUILT
 
     try:
         client = _load_supabase_client()
