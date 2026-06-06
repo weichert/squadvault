@@ -43,6 +43,7 @@ from squadvault.core.recaps.verification.recap_verifier_v1 import (
     verify_player_avg_claims,
     verify_numeric_unanchored,
     verify_player_scoring_streaks,
+    verify_draft_auction_dollars,
     _load_franchise_names,
     _load_franchise_nicknames,
     _load_franchise_owner_names,
@@ -1017,7 +1018,7 @@ class TestVerifyRecapV1Pipeline:
                                   season=SEASON, week=5)
         assert result.passed is True
         assert result.hard_failure_count == 0
-        assert result.checks_run == 15
+        assert result.checks_run == 16
 
     def test_wrong_score_fails(self, tmp_path):
         db_path = self._build_db(tmp_path)
@@ -1099,7 +1100,7 @@ class TestVerifyRecapV1Pipeline:
         assert isinstance(result, VerificationResult)
         assert isinstance(result.hard_failures, tuple)
         assert isinstance(result.soft_failures, tuple)
-        assert result.checks_run == 15
+        assert result.checks_run == 16
 
 
 class TestVerifyRecapV1WithPlayerScores:
@@ -4513,7 +4514,7 @@ class TestPlayerFranchiseAttribution:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added between SCORE and
         # SUPERLATIVE per be76817 / Step 4 correction memo).
-        assert result.checks_run == 15
+        assert result.checks_run == 16
         pf = [f for f in result.hard_failures
               if f.category == "PLAYER_FRANCHISE"]
         assert len(pf) == 1, (
@@ -4976,7 +4977,7 @@ class TestFaabClaimVerification:
         # checks_run increments to 9 in the post-Step-5 lifecycle
         # (Category 1b — SCORE_VERBATIM — added per be76817 / Step 4
         # correction memo).
-        assert result.checks_run == 15
+        assert result.checks_run == 16
 
 
 # ── Phase 2 addendum conformance: as-of-week scoping ─────────────────
@@ -6393,7 +6394,7 @@ class TestNumericUnanchoredVerification:
         result = verify_recap_v1(
             text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=5,
         )
-        assert result.checks_run == 15
+        assert result.checks_run == 16
         # NUMERIC_UNANCHORED is SOFT — should not block
         assert result.hard_failure_count == 0
         soft = [f for f in result.soft_failures if f.category == "NUMERIC_UNANCHORED"]
@@ -6541,5 +6542,191 @@ class TestPlayerScoringStreakVerification:
         )
         failures = verify_player_scoring_streaks(
             text, db_path=db_path, league_id=LEAGUE, season=SEASON, week=5,
+        )
+        assert failures == []
+
+
+# ── DRAFT_AUCTION_DOLLAR (Category 13) test helpers ──────────────────
+
+
+def _insert_draft_pick(con, *, league_id, season, franchise_id, player_id,
+                       bid_amount):
+    occurred_at = f"{season}-08-15T12:00:00Z"
+    payload = json.dumps({
+        "franchise_id": franchise_id, "player_id": player_id,
+        "bid_amount": bid_amount,
+    }, sort_keys=True)
+    ext_id = f"dp_{league_id}_{season}_{franchise_id}_{player_id}"
+    con.execute(
+        """INSERT INTO memory_events (league_id, season, external_source,
+           external_id, event_type, occurred_at, ingested_at, payload_json)
+           VALUES (?, ?, 'test', ?, 'DRAFT_PICK', ?, ?, ?)""",
+        (league_id, season, ext_id, occurred_at, occurred_at, payload))
+    me_id = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+    con.execute(
+        """INSERT INTO canonical_events (league_id, season, event_type,
+           action_fingerprint, best_memory_event_id, best_score, updated_at,
+           occurred_at)
+           VALUES (?, ?, 'DRAFT_PICK', ?, ?, 100, ?, ?)""",
+        (league_id, season, f"fp_{ext_id}", me_id, occurred_at, occurred_at))
+
+
+def _insert_player_directory(con, *, league_id, season, player_id, position,
+                             name=""):
+    con.execute(
+        """INSERT OR REPLACE INTO player_directory
+           (league_id, season, player_id, name, position, updated_at)
+           VALUES (?, ?, ?, ?, ?, '2024-01-01T00:00:00Z')""",
+        (league_id, season, player_id, name, position))
+
+
+class TestDraftAuctionDollarVerification:
+    """Category 13: draft/auction dollar anchoring against DRAFT_PICK.
+
+    Mirrors the two real PFL 2024 instances confirmed in
+    OBSERVATIONS_2026_06_06_...REMEDY_DECISION.md:
+      - Italian Cavallini (fid 0009): $70 top pick / $1 cheapest (max/min).
+      - Ben's Gods (fid 0008): $99 positional spend (WR sum membership).
+    """
+
+    LEAGUE = "70985"
+    SEASON = 2024
+
+    def _build_db(self, tmp_path):
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        # fid 0009 "Italian Cavallini": max bid 70, min bid 1.
+        _insert_franchise(con, league_id=self.LEAGUE, season=self.SEASON,
+                          franchise_id="0009", name="Italian Cavallini")
+        cav = [("c_qb", "QB", 70), ("c_rb", "RB", 30), ("c_wr", "WR", 1)]
+        for pid, pos, bid in cav:
+            _insert_player_directory(con, league_id=self.LEAGUE,
+                                     season=self.SEASON, player_id=pid,
+                                     position=pos)
+            _insert_draft_pick(con, league_id=self.LEAGUE, season=self.SEASON,
+                               franchise_id="0009", player_id=pid,
+                               bid_amount=bid)
+        # fid 0008 "Ben's Gods": WR sum 99 (50 + 49), max 58, min 1.
+        _insert_franchise(con, league_id=self.LEAGUE, season=self.SEASON,
+                          franchise_id="0008", name="Ben's Gods")
+        ben = [("b_rb", "RB", 58), ("b_wr1", "WR", 50), ("b_wr2", "WR", 49),
+               ("b_te", "TE", 1)]
+        for pid, pos, bid in ben:
+            _insert_player_directory(con, league_id=self.LEAGUE,
+                                     season=self.SEASON, player_id=pid,
+                                     position=pos)
+            _insert_draft_pick(con, league_id=self.LEAGUE, season=self.SEASON,
+                               franchise_id="0008", player_id=pid,
+                               bid_amount=bid)
+        # fid 0003 "Purple Haze": named but NO draft picks (no-coverage).
+        _insert_franchise(con, league_id=self.LEAGUE, season=self.SEASON,
+                          franchise_id="0003", name="Purple Haze")
+        con.commit()
+        con.close()
+        return db_path
+
+    def _reverse_map(self, db_path):
+        name_map = _load_franchise_names(db_path, self.LEAGUE, self.SEASON)
+        return _build_reverse_name_map(name_map)
+
+    def test_top_pick_and_cheapest_pass(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        rmap = self._reverse_map(db_path)
+        text = ("Italian Cavallini ran a concentrated draft, spending $70 on "
+                "his top pick while his cheapest player went for just $1.")
+        failures = verify_draft_auction_dollars(
+            text, db_path=db_path, league_id=self.LEAGUE, season=self.SEASON,
+            reverse_name_map=rmap,
+        )
+        assert failures == []
+
+    def test_drifted_top_pick_is_hard(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        rmap = self._reverse_map(db_path)
+        text = ("Italian Cavallini splurged $75 on his top pick at the "
+                "auction draft this year.")
+        failures = verify_draft_auction_dollars(
+            text, db_path=db_path, league_id=self.LEAGUE, season=self.SEASON,
+            reverse_name_map=rmap,
+        )
+        dad = [f for f in failures if f.category == "DRAFT_AUCTION_DOLLAR"]
+        assert len(dad) == 1
+        assert dad[0].severity == "HARD"
+        assert "75" in dad[0].claim
+        assert "70" in dad[0].evidence
+
+    def test_positional_membership_pass(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        rmap = self._reverse_map(db_path)
+        # The exact real Ben's Gods voiced shape: $99 (WR sum) passes as a
+        # member of the defensible set; the $200 nominal budget is suppressed.
+        text = ("Ben's Gods poured $99 of his $200 budget into the position "
+                "at the auction draft.")
+        failures = verify_draft_auction_dollars(
+            text, db_path=db_path, league_id=self.LEAGUE, season=self.SEASON,
+            reverse_name_map=rmap,
+        )
+        assert failures == []
+
+    def test_positional_fabrication_is_hard(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        rmap = self._reverse_map(db_path)
+        text = ("Ben's Gods spent $120 at the auction draft loading up on "
+                "the position.")
+        failures = verify_draft_auction_dollars(
+            text, db_path=db_path, league_id=self.LEAGUE, season=self.SEASON,
+            reverse_name_map=rmap,
+        )
+        dad = [f for f in failures if f.category == "DRAFT_AUCTION_DOLLAR"]
+        assert len(dad) == 1
+        assert dad[0].severity == "HARD"
+        assert "120" in dad[0].claim
+
+    def test_no_coverage_is_soft(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        rmap = self._reverse_map(db_path)
+        # Purple Haze has no DRAFT_PICK rows: cannot anchor -> SOFT flag.
+        text = ("Purple Haze landed a $40 top pick at the auction draft "
+                "this season.")
+        failures = verify_draft_auction_dollars(
+            text, db_path=db_path, league_id=self.LEAGUE, season=self.SEASON,
+            reverse_name_map=rmap,
+        )
+        dad = [f for f in failures if f.category == "DRAFT_AUCTION_DOLLAR"]
+        assert len(dad) == 1
+        assert dad[0].severity == "SOFT"
+
+    def test_nominal_budget_suppressed(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        rmap = self._reverse_map(db_path)
+        # "$200 budget" is the league cap, not a derived spend: no HARD.
+        text = ("Ben's Gods had a $200 budget to spend at the auction "
+                "draft and used all of it.")
+        failures = verify_draft_auction_dollars(
+            text, db_path=db_path, league_id=self.LEAGUE, season=self.SEASON,
+            reverse_name_map=rmap,
+        )
+        assert failures == []
+
+    def test_unresolved_name_is_skipped(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        rmap = self._reverse_map(db_path)
+        # Draft-context dollar with no resolvable franchise nearby -> skip
+        # (silence over misattribution), not a fabricated failure.
+        text = ("Somebody splurged $70 on a top pick at the auction draft, "
+                "but the recap never says who.")
+        failures = verify_draft_auction_dollars(
+            text, db_path=db_path, league_id=self.LEAGUE, season=self.SEASON,
+            reverse_name_map=rmap,
+        )
+        assert failures == []
+
+    def test_no_draft_context_returns_early(self, tmp_path):
+        db_path = self._build_db(tmp_path)
+        rmap = self._reverse_map(db_path)
+        text = "Italian Cavallini won 120.5 to 98.2 in a comfortable game."
+        failures = verify_draft_auction_dollars(
+            text, db_path=db_path, league_id=self.LEAGUE, season=self.SEASON,
+            reverse_name_map=rmap,
         )
         assert failures == []

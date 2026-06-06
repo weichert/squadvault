@@ -4592,6 +4592,226 @@ def verify_faab_claims(
     return failures
 
 
+# Draft/auction dollar anchoring (Category 13).
+#
+# Anchors voiced draft/auction dollar figures and positional-spend claims
+# against canonical DRAFT_PICK events. Source: OBSERVATIONS_2026_06_06_
+# VERIFIER_DRAFT_AUCTION_DOLLAR_GAP_REMEDY_DECISION.md (commit a5a2d60),
+# Remedy A. The figures the voice emits are derived deterministically from
+# DRAFT_PICK.bid_amount by auction_draft_angles_v1 detectors 23/24 and reach
+# the prompt as narrative angles, but no verifier category re-derived them to
+# confirm the voice transcribed them faithfully. This category does.
+#
+# Tiering (S4): HARD when a covered (season, franchise) figure contradicts
+# the re-derived ground truth or matches no derivation (fabrication); SOFT
+# when there is no DRAFT_PICK coverage for the scope (a data hole, e.g. the
+# 2021 gap) so silence-over-speculation holds. R2: dollars live in DRAFT_PICK
+# only; TRANSACTION_AUCTION_WON carries no dollar field and is not queried.
+_DRAFT_AUCTION_DOLLAR_PATTERN = re.compile(r"\$(\d+(?:\.\d{1,2})?)")
+
+# A dollar is treated as a draft/auction figure only when a draft/auction
+# context keyword sits within the window. This is the seam verify_faab_claims
+# bows out of (it suppresses on \bdraft\b within its keyword window).
+_DRAFT_AUCTION_CONTEXT_PATTERN = re.compile(
+    r"\b(?:draft(?:ed)?|auction|top\s+pick|cheapest|priciest|splurged|"
+    r"draft\s+capital|draft\s+budget|nominated?)\b",
+    re.IGNORECASE,
+)
+
+# Role keyword: pins a figure to the franchise's MAX bid (top pick).
+_DRAFT_TOP_PICK_PATTERN = re.compile(
+    r"\b(?:top\s+pick|priciest|most\s+expensive|biggest\s+(?:splash|buy|"
+    r"spend)|splurged|highest\s+bid|broke\s+the\s+bank)\b",
+    re.IGNORECASE,
+)
+# Role keyword: pins a figure to the franchise's MIN bid (cheapest).
+_DRAFT_CHEAPEST_PATTERN = re.compile(
+    r"\b(?:cheapest|least\s+expensive|lowest\s+bid|for\s+just|bargain|steal)\b",
+    re.IGNORECASE,
+)
+# Nominal-cap suppression: "$200 budget", "$200 cap", "$200 to spend". The
+# auction budget is a league constant, not a derived spend; a naive sweep
+# would HARD-fail it as a fabrication. Mirrors FAAB's draft-suppression seam.
+# Matched at the dollar's start position so only a figure IMMEDIATELY followed
+# by a cap keyword is suppressed ("$200 budget"), not a derived spend that
+# merely precedes the word ("$99 of his $200 budget").
+_DRAFT_NOMINAL_BUDGET_PATTERN = re.compile(
+    r"\$\d+(?:\.\d{1,2})?\s+(?:budget|cap|salary\s+cap|to\s+spend|"
+    r"allotment|allowance)\b",
+    re.IGNORECASE,
+)
+
+_DRAFT_AUCTION_CONTEXT_WINDOW = 60
+_DRAFT_AUCTION_ROLE_WINDOW = 40
+_DRAFT_AUCTION_NAME_WINDOW = 120
+
+
+def verify_draft_auction_dollars(
+    recap_text: str,
+    *,
+    db_path: str,
+    league_id: str,
+    season: int,
+    reverse_name_map: dict[str, str],
+) -> list[VerificationFailure]:
+    """Verify draft/auction dollar figures against canonical DRAFT_PICK.
+
+    Re-derives, per (season, franchise), the max bid (top pick), the min bid
+    (cheapest), and per-position spend sums from DRAFT_PICK.bid_amount, then
+    validates voiced figures:
+
+      - A figure tagged as a top-pick claim must equal the franchise's max
+        bid; a cheapest claim must equal the min bid (HARD on contradiction).
+      - Any other draft/auction figure attributed to the franchise must be a
+        member of the franchise's defensible-figure set (max, min, and every
+        per-position spend sum). A non-member on a covered scope is HARD
+        (drift/fabrication). This set-membership floor anchors the positional
+        shape without parsing a position word out of prose; the canonical live
+        instance voices it generically ("into the position"). Tightening this
+        to a sharp per-position comparison via explicit position-word
+        resolution, and characterizing the "half his draft capital" ratio
+        clause, are tracked follow-ons.
+      - A figure cited for a (season, franchise) with NO DRAFT_PICK coverage
+        is SOFT (a data hole; silence over speculation).
+
+    Verifier-only (R1): re-derives ground truth itself from canonical events
+    and consumes no NarrativeAngle output. The nominal auction budget
+    ("$200 budget") is suppressed; it is a league constant, not a derived
+    spend.
+    """
+    failures: list[VerificationFailure] = []
+
+    # Lazy-load: only reach into the context package when there is a
+    # draft/auction dollar context to check. Mirrors verify_record_claim_
+    # anchoring's function-local import of league_history_v1.
+    if not _DRAFT_AUCTION_CONTEXT_PATTERN.search(recap_text):
+        return failures
+
+    from squadvault.core.recaps.context.auction_draft_angles_v1 import (
+        load_all_auction_picks,
+    )
+
+    picks = [
+        pk for pk in load_all_auction_picks(db_path, league_id)
+        if pk.season == season
+    ]
+
+    # Re-derive per-franchise ground truth from canonical DRAFT_PICK.
+    max_bid: dict[str, float] = {}
+    min_bid: dict[str, float] = {}
+    pos_sums: dict[str, dict[str, float]] = {}
+    for pk in picks:
+        pick_fid = pk.franchise_id
+        if pick_fid not in max_bid or pk.bid_amount > max_bid[pick_fid]:
+            max_bid[pick_fid] = pk.bid_amount
+        if pick_fid not in min_bid or pk.bid_amount < min_bid[pick_fid]:
+            min_bid[pick_fid] = pk.bid_amount
+        if pk.position:
+            pos_sums.setdefault(pick_fid, {})
+            pos_sums[pick_fid][pk.position] = (
+                pos_sums[pick_fid].get(pk.position, 0.0) + pk.bid_amount
+            )
+    covered = set(max_bid)  # franchises with >= 1 DRAFT_PICK this season
+
+    checked: set[tuple[str, int, str]] = set()
+
+    for dm in _DRAFT_AUCTION_DOLLAR_PATTERN.finditer(recap_text):
+        # Suppress the nominal auction budget figure ("$200 budget").
+        if _DRAFT_NOMINAL_BUDGET_PATTERN.match(recap_text, dm.start()):
+            continue
+        try:
+            claimed = float(dm.group(1))
+        except ValueError:
+            continue
+
+        c0 = max(0, dm.start() - _DRAFT_AUCTION_CONTEXT_WINDOW)
+        c1 = min(len(recap_text), dm.end() + _DRAFT_AUCTION_CONTEXT_WINDOW)
+        if not _DRAFT_AUCTION_CONTEXT_PATTERN.search(recap_text[c0:c1]):
+            continue
+
+        # Resolve franchise from the nearest name (name-before-figure
+        # preference). Reuses the established score/streak resolver.
+        fid = _find_nearby_franchise(
+            recap_text, dm.start(), reverse_name_map,
+            window=_DRAFT_AUCTION_NAME_WINDOW,
+        )
+        if fid is None:
+            continue  # D5: silence over misattribution
+
+        r0 = max(0, dm.start() - _DRAFT_AUCTION_ROLE_WINDOW)
+        r1 = min(len(recap_text), dm.end() + _DRAFT_AUCTION_ROLE_WINDOW)
+        role_ctx = recap_text[r0:r1]
+        is_top = bool(_DRAFT_TOP_PICK_PATTERN.search(role_ctx))
+        is_cheap = bool(_DRAFT_CHEAPEST_PATTERN.search(role_ctx))
+        role = "top" if is_top else ("cheapest" if is_cheap else "generic")
+
+        claimed_int = round(claimed)
+        key = (fid, claimed_int, role)
+        if key in checked:
+            continue
+        checked.add(key)
+
+        name = _resolve_display_name(fid, reverse_name_map)
+
+        if fid not in covered:
+            failures.append(VerificationFailure(
+                category="DRAFT_AUCTION_DOLLAR",
+                severity="SOFT",
+                claim=(
+                    f"${claimed:.0f} draft/auction figure attributed to {name}"
+                ),
+                evidence=(
+                    f"No DRAFT_PICK coverage for {name} in season {season}; "
+                    f"figure cannot be anchored. Flagged for review."
+                ),
+            ))
+            continue
+
+        if role == "top":
+            if claimed_int != round(max_bid[fid]):
+                failures.append(VerificationFailure(
+                    category="DRAFT_AUCTION_DOLLAR",
+                    severity="HARD",
+                    claim=f"${claimed:.0f} top pick attributed to {name}",
+                    evidence=(
+                        f"Canonical top (max) DRAFT_PICK bid for {name} in "
+                        f"{season}: ${max_bid[fid]:.0f}."
+                    ),
+                ))
+        elif role == "cheapest":
+            if claimed_int != round(min_bid[fid]):
+                failures.append(VerificationFailure(
+                    category="DRAFT_AUCTION_DOLLAR",
+                    severity="HARD",
+                    claim=f"${claimed:.0f} cheapest pick attributed to {name}",
+                    evidence=(
+                        f"Canonical cheapest (min) DRAFT_PICK bid for {name} "
+                        f"in {season}: ${min_bid[fid]:.0f}."
+                    ),
+                ))
+        else:
+            defensible: set[int] = {round(max_bid[fid]), round(min_bid[fid])}
+            for psum in pos_sums.get(fid, {}).values():
+                defensible.add(round(psum))
+            if claimed_int not in defensible:
+                ladder = ", ".join(f"${v}" for v in sorted(defensible))
+                failures.append(VerificationFailure(
+                    category="DRAFT_AUCTION_DOLLAR",
+                    severity="HARD",
+                    claim=(
+                        f"${claimed:.0f} draft/auction figure attributed to "
+                        f"{name}"
+                    ),
+                    evidence=(
+                        f"No matching DRAFT_PICK derivation for {name} in "
+                        f"{season}. Defensible figures (max, min, positional "
+                        f"sums): {ladder}."
+                    ),
+                ))
+
+    return failures
+
+
 # ── Orchestrator ─────────────────────────────────────────────────────
 
 
@@ -4795,6 +5015,20 @@ def verify_recap_v1(
         league_id=league_id,
         season=season,
         week=week,
+    ))
+
+    # Category 13: Draft/auction dollar anchoring (HARD/SOFT)
+    # Anchors voiced draft/auction dollar figures and positional-spend
+    # claims against canonical DRAFT_PICK. Source: a5a2d60 (Remedy A).
+    # HARD on contradiction/fabrication for a covered (season, franchise);
+    # SOFT when DRAFT_PICK coverage is absent (silence over speculation).
+    checks_run += 1
+    all_failures.extend(verify_draft_auction_dollars(
+        narrative,
+        db_path=db_path,
+        league_id=league_id,
+        season=season,
+        reverse_name_map=reverse_name_map,
     ))
 
     hard = tuple(f for f in all_failures if f.severity == "HARD")
