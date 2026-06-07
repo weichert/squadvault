@@ -863,3 +863,40 @@ def render_league_history_for_prompt(
             lines.append(f"  Worst season: {name} — {record} in {r.season}")
 
     return "\n".join(lines) + "\n"
+
+def compute_current_streaks(
+    matchups: Sequence[HistoricalMatchup],
+) -> dict[str, tuple[str, int]]:
+    """Current (trailing) streak per franchise from the provided matchups.
+
+    Returns franchise_id -> (kind, length); kind is "win", "loss", or "none".
+    A tie ends any active streak -> ("none", 0). Callers pass matchups already
+    scoped as-of-week (see load_all_matchups); this derives the trailing run
+    only and does no scoping of its own. Mirrors _compute_longest_streaks
+    conventions (chronological log; tie breaks streak).
+    """
+    game_log: dict[str, list[str]] = {}
+    for m in sorted(matchups, key=lambda x: (x.season, x.week)):
+        game_log.setdefault(m.winner_id, [])
+        game_log.setdefault(m.loser_id, [])
+        if m.is_tie:
+            game_log[m.winner_id].append("T")
+            game_log[m.loser_id].append("T")
+        else:
+            game_log[m.winner_id].append("W")
+            game_log[m.loser_id].append("L")
+
+    out: dict[str, tuple[str, int]] = {}
+    for fid, log in game_log.items():
+        last = log[-1] if log else "T"
+        if last == "T":
+            out[fid] = ("none", 0)
+            continue
+        n = 0
+        for r in reversed(log):
+            if r == last:
+                n += 1
+            else:
+                break
+        out[fid] = ("win" if last == "W" else "loss", n)
+    return out
