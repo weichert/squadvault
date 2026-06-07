@@ -64,6 +64,9 @@ from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     render_deterministic_bullets_v1,
 )
+from squadvault.core.recaps.render.render_matchup_anchors_v1 import (
+    render_matchup_anchors_for_prompt,
+)
 from squadvault.core.recaps.render.render_recap_text_v1 import (
     render_recap_text_v1,
 )
@@ -845,6 +848,27 @@ def _derive_prompt_context(
     except Exception as e:
         logger.debug("Load all matchups failed: %s", e)
         _all_matchups = None
+
+    # -- Per-matchup current-state anchors (Option 2, phase 1) --
+    # Surfaces this week's H2H / current streak / season record so the model
+    # cites rather than invents. As-of-week scoped via _all_matchups (same
+    # window as LEAGUE_HISTORY); appended to league_history_text so it flows
+    # through the existing creative-layer channel -- no new param.
+    if _all_matchups:
+        _week_pairs = [
+            (m.winner_id, m.loser_id)
+            for m in _all_matchups
+            if m.season == season and m.week == week_index
+        ]
+        _anchors = render_matchup_anchors_for_prompt(
+            matchups=_all_matchups,
+            week_pairs=_week_pairs,
+            current_season=season,
+            week=week_index,
+            name_map=_name_map,
+        )
+        if _anchors:
+            league_history_text = (league_history_text or "") + "\n" + _anchors
 
     # -- Narrative angle detection (all 6 modules → unified budget) --
     try:
