@@ -121,11 +121,12 @@ def _insert_franchise(con, *, league_id, season, franchise_id, name):
         (league_id, season, franchise_id, name))
 
 
-def _make_matchup(week, winner_id, loser_id, winner_score, loser_score, *, season=2024):
+def _make_matchup(week, winner_id, loser_id, winner_score, loser_score, *, season=2024, is_tie=False):
     return _MatchupFact(
         season=season,
         week=week, winner_id=winner_id, loser_id=loser_id,
         winner_score=winner_score, loser_score=loser_score,
+        is_tie=is_tie,
     )
 
 
@@ -3272,9 +3273,8 @@ class TestRegressionQ5SeriesFalsePositives:
     # ── S1: 3-part W-L-T misread as 2-part W-L ───────────────────────
 
     def _s1_matchups(self):
-        """Build Alpha vs Beta all-time record of 16 wins, 12 losses.
-        Ties are not tracked in h2h_records, so the W-L comparison
-        against a 16-12-1 claim will match on W=16, L=12."""
+        """Build Alpha vs Beta all-time record of 16 wins, 12 losses,
+        no ties (canonical 16-12)."""
         matchups = []
         for w in range(1, 17):
             matchups.append(_make_matchup(w, "F1", "F2", 120.0, 100.0))
@@ -3282,16 +3282,21 @@ class TestRegressionQ5SeriesFalsePositives:
             matchups.append(_make_matchup(w, "F2", "F1", 115.0, 105.0))
         return matchups
 
-    def test_s1_three_part_wlt_not_misread_as_wl_row3(self):
+    def test_s1_three_part_wlt_invented_tie_flags_with_claim_string(self):
         """id=3 (2025 w2 a1): "extending their series lead to 16-12-1
         across 29 all-time meetings".
 
-        Before the fix: greedy [^.]{0,40} backtracked to 11 chars ("lead
-        to 16-"), where "12-1" became a valid W-L match with the tie
-        group unfilled — misreading 16-12-1 as 12-1 and flagging it
-        against a 16-12 actual. The extended lookbehind (?<![\\d-])
-        forbids the match from starting after a hyphen, forcing greedy
-        to find a boundary where the full triple is captured.
+        Parse-correctness (the original S1 concern): greedy [^.]{0,40}
+        once backtracked so 16-12-1 was misread as 12-1; the (?<![\\d-])
+        lookbehind forces the full triple to be captured.
+
+        Tie-awareness (current behavior): the _s1_matchups fixture is a
+        no-tie 16-12. A 16-12-1 claim invents a tie that never happened,
+        so it is a HARD failure - and the failure must still carry the
+        full "16-12-1" claim string (not a mangled "12-1"), proving the
+        parse is correct even on the failing path. The canonical-pass
+        case (a true W-L-T verifying cleanly) is covered by
+        TestVerifySeriesTieAwareRecords::test_canonical_wlt_accepted.
         """
         matchups = self._s1_matchups()
         reverse = self._reverse()
@@ -3301,10 +3306,15 @@ class TestRegressionQ5SeriesFalsePositives:
         )
         failures = verify_series_records(text, matchups, reverse)
         series_failures = [f for f in failures if f.category == "SERIES"]
-        assert series_failures == [], (
-            f"expected no SERIES failures (16-12-1 is the correct 3-part "
-            f"record against a 16-12 actual W-L), "
-            f"got {[(f.claim, f.evidence) for f in series_failures]}"
+        assert len(series_failures) == 1, (
+            f"expected one SERIES failure (16-12-1 invents a tie against "
+            f"the no-tie 16-12 fixture), got "
+            f"{[(f.claim, f.evidence) for f in series_failures]}"
+        )
+        assert "16-12-1" in series_failures[0].claim, (
+            f"expected claim string to carry the full 3-part record "
+            f"16-12-1 (not the S1-mangled 12-1), "
+            f"got claim={series_failures[0].claim!r}"
         )
 
     def test_s1_three_part_wlt_wrong_flags_with_correct_claim_string(self):
@@ -4048,6 +4058,102 @@ class TestRegressionQ5SeriesFalsePositives:
             f"extracted as a series claim against W4's legitimate "
             f"9-12), got "
             f"{[(f.claim, f.evidence) for f in consistency_failures]}"
+        )
+
+
+class TestVerifySeriesTieAwareRecords:
+    """SERIES verifier tie handling.
+
+    The expected H2H record is the canonical W-L-T emitted by
+    compute_head_to_head (the renderer). Ties are counted in a separate
+    bucket so a correct W-L-T citation is accepted and tie
+    misrepresentations are flagged:
+      - exact W-L-T (5-3-1)        -> MATCH
+      - tie folded into a loss (5-4) -> HARD FAIL
+      - tie dropped (5-3)          -> HARD FAIL
+    A genuine no-tie pair still accepts a plain W-L claim.
+    """
+
+    def _reverse(self):
+        return {
+            "Alpha Team": "F1", "alpha team": "F1",
+            "Beta Squad": "F2", "beta squad": "F2",
+        }
+
+    def _tied_matchups(self):
+        """Alpha vs Beta: 5 Alpha wins, 3 Beta wins, 1 tie -> 5-3-1."""
+        matchups = []
+        for w in range(1, 6):
+            matchups.append(_make_matchup(w, "F1", "F2", 120.0, 100.0))
+        for w in range(6, 9):
+            matchups.append(_make_matchup(w, "F2", "F1", 115.0, 105.0))
+        matchups.append(
+            _make_matchup(9, "F1", "F2", 110.0, 110.0, is_tie=True)
+        )
+        return matchups
+
+    def test_canonical_wlt_accepted(self):
+        """The canonical 5-3-1 W-L-T must verify without a failure."""
+        matchups = self._tied_matchups()
+        text = (
+            "Alpha Team leads the all-time series 5-3-1 against Beta Squad."
+        )
+        failures = verify_series_records(text, matchups, self._reverse())
+        series = [f for f in failures if f.category == "SERIES"]
+        assert series == [], (
+            f"expected no SERIES failure for canonical 5-3-1, got "
+            f"{[(f.claim, f.evidence) for f in series]}"
+        )
+
+    def test_tie_folded_into_loss_flags(self):
+        """5-4 (the tie folded into a loss) misstates the record -> FAIL."""
+        matchups = self._tied_matchups()
+        text = (
+            "Alpha Team leads the all-time series 5-4 against Beta Squad."
+        )
+        failures = verify_series_records(text, matchups, self._reverse())
+        series = [f for f in failures if f.category == "SERIES"]
+        assert len(series) == 1, (
+            f"expected one SERIES failure for tie-folded 5-4 vs canonical "
+            f"5-3-1, got {[(f.claim, f.evidence) for f in series]}"
+        )
+
+    def test_tie_dropped_flags(self):
+        """5-3 (the tie dropped) has correct W-L but omits the tie -> FAIL.
+
+        The same 5-3 string is the *correct* record for a genuine no-tie
+        pair, which is why dropping a real tie must fail: otherwise one
+        string would map to two canonical truths and the detector goes
+        blind to dropped ties.
+        """
+        matchups = self._tied_matchups()
+        text = (
+            "Alpha Team leads the all-time series 5-3 against Beta Squad."
+        )
+        failures = verify_series_records(text, matchups, self._reverse())
+        series = [f for f in failures if f.category == "SERIES"]
+        assert len(series) == 1, (
+            f"expected one SERIES failure for tie-dropped 5-3 vs canonical "
+            f"5-3-1, got {[(f.claim, f.evidence) for f in series]}"
+        )
+
+    def test_no_tie_pair_two_part_still_accepted(self):
+        """A genuine no-tie pair: a plain W-L claim must still pass, so
+        the common (tie-free) case does not regress now that ties are
+        tracked."""
+        matchups = []
+        for w in range(1, 6):
+            matchups.append(_make_matchup(w, "F1", "F2", 120.0, 100.0))
+        for w in range(6, 9):
+            matchups.append(_make_matchup(w, "F2", "F1", 115.0, 105.0))
+        text = (
+            "Alpha Team leads the all-time series 5-3 against Beta Squad."
+        )
+        failures = verify_series_records(text, matchups, self._reverse())
+        series = [f for f in failures if f.category == "SERIES"]
+        assert series == [], (
+            f"expected no SERIES failure for correct no-tie 5-3, got "
+            f"{[(f.claim, f.evidence) for f in series]}"
         )
 
 

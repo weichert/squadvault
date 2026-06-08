@@ -81,6 +81,7 @@ class _MatchupFact:
     loser_id: str
     winner_score: float
     loser_score: float
+    is_tie: bool = False
 
 
 def _load_season_matchups(
@@ -119,6 +120,7 @@ def _load_season_matchups(
                 loser_id=str(loser_id).strip(),
                 winner_score=float(p["winner_score"]),
                 loser_score=float(p["loser_score"]),
+                is_tie=bool(p.get("is_tie", False)),
             ))
         except (ValueError, TypeError, KeyError):
             continue
@@ -174,6 +176,7 @@ def _load_all_matchups(
                 loser_id=str(loser_id).strip(),
                 winner_score=float(p["winner_score"]),
                 loser_score=float(p["loser_score"]),
+                is_tie=bool(p.get("is_tie", False)),
             ))
         except (ValueError, TypeError, KeyError):
             continue
@@ -2656,17 +2659,25 @@ def verify_series_records(
     if not all_matchups:
         return []
 
-    # Pre-compute all H2H records: (frozenset({fid_a, fid_b})) -> (a_wins, b_wins, fid_a)
-    h2h_records: dict[frozenset[str], tuple[int, int, str, str]] = {}
+    # Pre-compute all H2H records:
+    #   frozenset({fid_a, fid_b}) -> (a_wins, b_wins, ties, fid_a, fid_b)
+    # Ties are counted in a separate bucket so the expected record matches the
+    # canonical W-L-T emitted by compute_head_to_head (the renderer). Without
+    # this, a tie falls through to the else branch and is miscredited as a
+    # decision, making the verifier expect e.g. 18-9 for a canonical 18-8-1
+    # and false-flagging a correct citation.
+    h2h_records: dict[frozenset[str], tuple[int, int, int, str, str]] = {}
     for m in all_matchups:
         pair_key = frozenset({m.winner_id, m.loser_id})
         if pair_key not in h2h_records:
-            h2h_records[pair_key] = (0, 0, m.winner_id, m.loser_id)
-        w, ls, fa, fb = h2h_records[pair_key]
-        if m.winner_id == fa:
-            h2h_records[pair_key] = (w + 1, ls, fa, fb)
+            h2h_records[pair_key] = (0, 0, 0, m.winner_id, m.loser_id)
+        w, ls, t, fa, fb = h2h_records[pair_key]
+        if m.is_tie:
+            h2h_records[pair_key] = (w, ls, t + 1, fa, fb)
+        elif m.winner_id == fa:
+            h2h_records[pair_key] = (w + 1, ls, t, fa, fb)
         else:
-            h2h_records[pair_key] = (w, ls + 1, fa, fb)
+            h2h_records[pair_key] = (w, ls + 1, t, fa, fb)
 
     for match in _SERIES_RECORD_PATTERN.finditer(recap_text):
         # Extract the W-L(-T) record — groups depend on which branch matched
@@ -2730,10 +2741,17 @@ def verify_series_records(
                 pair_key = frozenset({candidate_a, candidate_b})
                 if pair_key not in h2h_records:
                     continue
-                a_wins, b_wins, _fa, _fb = h2h_records[pair_key]
+                a_wins, b_wins, a_ties, _fa, _fb = h2h_records[pair_key]
+                # W/L stay order-independent; the tie count must match exactly.
+                # A tie-folded claim (18-9) fails the W/L test; a tie-dropped
+                # claim (18-8 for a canonical 18-8-1) passes W/L but fails the
+                # tie test, so both are correctly rejected.
                 if (
-                    (claimed_w == a_wins and claimed_l == b_wins)
-                    or (claimed_w == b_wins and claimed_l == a_wins)
+                    (
+                        (claimed_w == a_wins and claimed_l == b_wins)
+                        or (claimed_w == b_wins and claimed_l == a_wins)
+                    )
+                    and claimed_t == a_ties
                 ):
                     matched = True
                     break
@@ -2753,14 +2771,16 @@ def verify_series_records(
         pair_key = frozenset({fid_a, fid_b})
         if pair_key not in h2h_records:
             continue
-        a_wins, b_wins, fa, fb = h2h_records[pair_key]
-        total = a_wins + b_wins
+        a_wins, b_wins, a_ties, fa, fb = h2h_records[pair_key]
+        total = a_wins + b_wins + a_ties
         if total == 0:
             continue
 
         fname_a = _resolve_display_name(fa, reverse_name_map)
         fname_b = _resolve_display_name(fb, reverse_name_map)
         actual_str = f"{a_wins}-{b_wins}"
+        if a_ties:
+            actual_str += f"-{a_ties}"
         claimed_str = f"{claimed_w}-{claimed_l}"
         if claimed_t:
             claimed_str += f"-{claimed_t}"
