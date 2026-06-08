@@ -123,7 +123,7 @@ CATEGORY_TO_DETECTOR: dict[str, str] = {
     "POINTS_AGAINST_LUCK": "D47",
     "REPEAT_MATCHUP_PATTERN": "D48",
     "SCORING_MOMENTUM_IN_STREAK": "D49",
-    "THE_ALMOST": "D50",
+    "THE_ALMOST": "D50",  # detector unwired 2026-06-08 (unfit for purpose); category still attested
     # Primordial matchup detectors (P1–P7)
     # Emitted by core/recaps/context/narrative_angles_v1.py.
     # These predate the D-numbered Narrative Angles v2 work and operate

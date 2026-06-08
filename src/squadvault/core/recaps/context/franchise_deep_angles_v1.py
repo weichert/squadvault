@@ -1588,7 +1588,10 @@ def detect_franchise_deep_angles_v1(
         # Playoff-dependent detectors (only fire during playoff weeks)
         all_angles.extend(detect_championship_history(all_matchups, season, week, fname=fname))
         all_angles.extend(detect_regular_season_vs_playoff(all_matchups, season, week, fname=fname))
-        all_angles.extend(detect_the_almost(all_matchups, season, week, fname=fname))
+        # Detector 50 (THE_ALMOST) unwired 2026-06-08: unfit for purpose
+        # (hardcoded top-5 playoff cutoff vs league's 8-team round 1; wins-only
+        # ranking is tiebreaker-blind, and the bubble is a points-for tie in
+        # 11/16 seasons). Function retained inert; see _observations memo.
         if score_payloads:
             all_angles.extend(detect_the_bridesmaid(
                 score_payloads, all_matchups, season, week, fname=fname))
