@@ -383,12 +383,13 @@ def compute_cross_season_playoff_records(
     1. Playoff-season appearances — **per-season set semantics** (spec
        §3.8 / §6.3). For each season, the set of franchises appearing
        in any playoff week is computed; each such franchise's count is
-       incremented by exactly 1. This function does NOT consume D39's
-       internal `playoff_appearances` dict, which increments
-       per-matchup and silently over-counts (a franchise in 2 playoff
-       weeks of one season would get +2). The invariant is specified
-       explicitly so a future maintainer "lifting D39's logic" does not
-       inherit the over-counting.
+       incremented by exactly 1. This function uses per-season set
+       semantics rather than a per-matchup count. D39 formerly carried
+       an internal `playoff_appearances` dict that incremented
+       per-matchup and silently over-counted (a franchise in 2 playoff
+       weeks of one season would get +2); that dead dict was removed
+       2026-06-08. The invariant is kept explicit so a future maintainer
+       "lifting D39's logic" does not reintroduce the over-counting.
     2. Championship-matchup appearances — per franchise, the number of
        seasons it appeared in the championship matchup. Derived from
        `compute_championship_roll`'s `champion_id` / `runner_up_id`.

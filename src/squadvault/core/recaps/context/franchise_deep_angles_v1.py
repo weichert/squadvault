@@ -1267,7 +1267,6 @@ def detect_championship_history(
 
     # Count championship appearances per franchise across all completed seasons
     champ_appearances: dict[str, int] = {}
-    playoff_appearances: dict[str, int] = {}
     completed_seasons = {m.season for m in all_matchups if m.season < current_season}
 
     for s in completed_seasons:
@@ -1280,11 +1279,6 @@ def detect_championship_history(
         playoff_weeks = [m for m in season_matchups if len([
             x for x in season_matchups if x.week == m.week
         ]) < s_regular]
-
-        # Track playoff participants
-        for m in playoff_weeks:
-            playoff_appearances[m.winner_id] = playoff_appearances.get(m.winner_id, 0) + 1
-            playoff_appearances[m.loser_id] = playoff_appearances.get(m.loser_id, 0) + 1
 
         # Championship: the week with the fewest matchups (usually 1)
         if playoff_weeks:
