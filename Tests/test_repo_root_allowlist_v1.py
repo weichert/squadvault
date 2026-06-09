@@ -12,6 +12,7 @@ from pathlib import Path
 # Delivery scripts (apply_*.py) should be archived after use.
 ALLOWED_ROOT_FILES = {
     ".gitignore",
+    "CLAUDE.md",
     "Makefile",
     "README.md",
     "pyproject.toml",
