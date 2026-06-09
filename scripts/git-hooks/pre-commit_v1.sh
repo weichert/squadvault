@@ -20,6 +20,7 @@
 #   2. No-xtrace guardrail gate     -- forbids 'set -x' in prove/gate scripts
 #   3. Repo-root allowlist gate     -- no phantom files at repo root
 #   4. docs/ Map registration gate  -- new top-level docs/ files need a Map touch
+#   5. Ruff lint gate               -- ruff check src/squadvault/ must be clean
 #
 # Keep bash3-safe.
 
@@ -46,5 +47,8 @@ bash scripts/gate_repo_root_allowlist_v1.sh
 
 echo "==> pre-commit: docs/ Map registration gate"
 bash scripts/gate_docs_map_registration_v1.sh
+
+echo "==> pre-commit: ruff lint gate"
+bash scripts/gate_ruff_lint_v1.sh
 
 echo "OK: pre-commit checks passed."
