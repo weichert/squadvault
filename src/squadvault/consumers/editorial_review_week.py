@@ -13,7 +13,6 @@ from pathlib import Path
 from squadvault.consumers.editorial_actions import insert_editorial_action
 from squadvault.core.storage.session import DatabaseSession
 
-
 # ── Verification Report (Phase D) ────────────────────────────────────
 
 

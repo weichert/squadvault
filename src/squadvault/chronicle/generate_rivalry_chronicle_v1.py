@@ -266,7 +266,7 @@ def generate_rivalry_chronicle_multi_season_v1(
     team_a_id: str,
     team_b_id: str,
     created_at_utc: str,
-) -> "RivalryChronicleGeneratedV1":
+) -> RivalryChronicleGeneratedV1:
     """Generate a multi-season rivalry chronicle for a team pair.
 
     Covers all head-to-head matchups between team_a and team_b from
@@ -290,7 +290,8 @@ def generate_rivalry_chronicle_multi_season_v1(
     mf_hash = facts_block_hash_v1(matchup_facts)
 
     # Fingerprint uses start/end season instead of week indices
-    import hashlib, json as _json
+    import hashlib
+    import json as _json
     fp_payload = {
         "league_id": int(league_id),
         "start_season": int(start_season),

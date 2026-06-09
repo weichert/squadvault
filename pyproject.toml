@@ -45,6 +45,8 @@ ignore = ["E501"]  # Line length: most violations are SQL strings, error message
 # Files with legitimate late imports (function definitions before standard imports)
 "src/squadvault/consumers/recap_export_narrative_assemblies_approved.py" = ["E402", "E741"]
 "src/squadvault/chronicle/input_contract_v1.py" = ["E402"]
+# load_dotenv() must run before importing modules that read ANTHROPIC_API_KEY at import
+"src/squadvault/consumers/rivalry_chronicle_generate_v1.py" = ["E402"]
 "src/squadvault/core/canonicalize/run_canonicalize.py" = ["E402"]
 "src/squadvault/ingest/_run_ingest_to_store.py" = ["E402"]
 "src/squadvault/ingest/_run_matchup_results.py" = ["E402"]
