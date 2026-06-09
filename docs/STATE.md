@@ -6,8 +6,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- `bf0833e` - E1.1 discharged: ruff errors cleared across chronicle/consumer modules;
-  ruff pinned to 0.15.10. Preceded by charter adoption (`d119e6e`) and STATE.md ledger.
+- requires-python bumped to >=3.11 (matches code's datetime.UTC use); py311 ruff
+  target surfaced UP017 (autofixed to datetime.UTC) and UP042 (deferred, see hazards).
+  Preceded by E1.1 ruff cleanup (`bf0833e`) and charter adoption (`d119e6e`).
 
 ## Open units (Document of Record v2.1, by ID)
 
@@ -41,5 +42,8 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   A future ruff release could surface new lint without a requirements bump.
 - Local `prove_ci` needs Python 3.11+ but default `/usr/local/bin/python3` is
   3.10.4: `prompt_audit_v1.py` uses `from datetime import UTC` (3.11+). Run prove_ci
-  under a 3.11+ `python3` (CI uses 3.12). Latent: `pyproject.toml` declares
-  `requires-python = ">=3.10"` while the code actually requires 3.11+ (unscoped fix).
+  under a 3.11+ `python3` (CI uses 3.12). The `pyproject.toml` floor now declares
+  the true requirement (`requires-python = ">=3.11"`).
+- UP042 (str+Enum -> StrEnum) is ignored in `pyproject.toml`, not fixed: 21 contract-
+  bearing enums where StrEnum changes `str()`/format output. DEFERRED open item - migrate
+  in a dedicated unit with determinism + golden-path validation, then drop the ignore.
