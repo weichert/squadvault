@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "squadvault"
 version = "0.1.0"
 description = "Deterministic recap engine with governed expressive output"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "requests>=2.31",
     "python-dotenv>=1.0",
@@ -39,7 +39,12 @@ exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "UP", "I", "B904"]
-ignore = ["E501"]  # Line length: most violations are SQL strings, error messages, and signatures
+ignore = [
+    "E501",   # Line length: most violations are SQL strings, error messages, and signatures
+    "UP042",  # str+Enum -> StrEnum: behavior-sensitive (str()/format output) on
+              # contract-bearing enums; deferred to a dedicated risk-managed migration
+              # unit with determinism + golden-path validation (surfaced by py311 bump)
+]
 
 [tool.ruff.lint.per-file-ignores]
 # Files with legitimate late imports (function definitions before standard imports)

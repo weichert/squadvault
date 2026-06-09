@@ -23,7 +23,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -329,7 +329,7 @@ def build_restraint_directive_v1(
     if generated_at is None:
         # Deterministic timestamping is not required in Type A tests.
         # Use real UTC time, but tests should pass explicit generated_at.
-        generated_at = datetime.now(timezone.utc).isoformat()
+        generated_at = datetime.now(UTC).isoformat()
 
     rd = derive_restraint_directive(
         window_id=window_id,

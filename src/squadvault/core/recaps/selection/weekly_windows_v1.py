@@ -52,7 +52,7 @@ def _parse_iso_z(s: str) -> dt.datetime:
 def _to_iso_z(t: dt.datetime) -> str:
     """Format a datetime as ISO-8601 UTC string."""
     return (
-        t.astimezone(dt.timezone.utc)
+        t.astimezone(dt.UTC)
         .replace(microsecond=0)
         .isoformat()
         .replace("+00:00", "Z")

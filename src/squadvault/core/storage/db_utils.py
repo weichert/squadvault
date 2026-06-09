@@ -5,7 +5,7 @@ Canonical location for helpers that were previously duplicated across modules.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -36,7 +36,7 @@ def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
 def now_utc_iso() -> str:
     """Return current UTC time as ISO-8601 Z-suffix string."""
     return (
-        datetime.now(timezone.utc)
+        datetime.now(UTC)
         .replace(microsecond=0)
         .isoformat()
         .replace("+00:00", "Z")

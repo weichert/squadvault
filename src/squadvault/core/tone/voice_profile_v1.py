@@ -25,7 +25,7 @@ Integration:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from squadvault.core.storage.session import DatabaseSession
 
@@ -63,7 +63,7 @@ def set_voice_profile(
     The profile_text is the condensed cultural guidance that feeds the
     creative layer system prompt. Commissioner must approve.
     """
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     with DatabaseSession(db_path) as con:
         con.execute(
             """INSERT INTO league_voice_profiles

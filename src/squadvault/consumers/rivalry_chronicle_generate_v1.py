@@ -18,6 +18,8 @@ from dotenv import load_dotenv
 load_dotenv(".env")
 load_dotenv(".env.local", override=True)
 
+from datetime import UTC
+
 from squadvault.chronicle.generate_rivalry_chronicle_v1 import (
     generate_rivalry_chronicle_v1,
 )
@@ -71,8 +73,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Resolve created_at_utc
     created_at_utc = args.created_at_utc or args.requested_at_utc
     if not created_at_utc:
-        from datetime import datetime, timezone
-        created_at_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        from datetime import datetime
+        created_at_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Resolve week selection
     week_range: tuple[int, int] | None = None

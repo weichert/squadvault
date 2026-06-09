@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -98,7 +98,7 @@ def _parse_iso8601_utc(ts: str) -> datetime | None:
         dt = datetime.fromisoformat(s)
         if dt.tzinfo is None:
             return None
-        dt_utc = dt.astimezone(timezone.utc)
+        dt_utc = dt.astimezone(UTC)
         return dt_utc
     except (ValueError, TypeError, OverflowError):
         return None

@@ -18,7 +18,7 @@ Presets:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from squadvault.core.storage.session import DatabaseSession
 
@@ -103,7 +103,7 @@ def set_tone_preset(
             f"Invalid tone preset: {preset!r}. "
             f"Valid presets: {', '.join(sorted(VALID_PRESETS))}"
         )
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     with DatabaseSession(db_path) as con:
         con.execute(
             """INSERT INTO league_tone_profiles

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -66,8 +66,8 @@ def _parse_iso8601_utc(ts: str) -> datetime | None:
         dt = datetime.fromisoformat(s)
         if dt.tzinfo is None:
             return None
-        dt_utc = dt.astimezone(timezone.utc)
-        if dt_utc.utcoffset() != timezone.utc.utcoffset(dt_utc):
+        dt_utc = dt.astimezone(UTC)
+        if dt_utc.utcoffset() != UTC.utcoffset(dt_utc):
             return None
         return dt_utc
     except (ValueError, TypeError, OverflowError):
@@ -238,7 +238,7 @@ def order_versions_deterministically(versions: list[dict[str, Any]]) -> list[dic
         vn = v.get("version_number")
         if not isinstance(vn, int):
             vn = 0
-        dt = _parse_iso8601_utc(v.get("created_at", "")) or datetime(1970, 1, 1, tzinfo=timezone.utc)
+        dt = _parse_iso8601_utc(v.get("created_at", "")) or datetime(1970, 1, 1, tzinfo=UTC)
         vid = v.get("version_id")
         if not isinstance(vid, str):
             vid = ""

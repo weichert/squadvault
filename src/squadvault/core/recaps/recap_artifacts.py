@@ -2,6 +2,7 @@
 """Recap artifact lifecycle: DRAFT -> APPROVED -> SUPERSEDED state machine."""
 
 import sqlite3
+from datetime import UTC
 
 from squadvault.core.storage.session import DatabaseSession
 
@@ -293,8 +294,8 @@ def approve_recap_artifact(
     # If approved_at_utc is provided, persist it. Otherwise preserve existing 'now' behavior.
     effective_approved_at = approved_at_utc
     if effective_approved_at is None:
-        from datetime import datetime, timezone
-        effective_approved_at = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        from datetime import datetime
+        effective_approved_at = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     with DatabaseSession(db_path) as con:
         row = con.execute(
             """

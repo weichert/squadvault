@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 def unix_seconds_to_iso_z(unix_seconds: int | None) -> str | None:
@@ -11,7 +11,7 @@ def unix_seconds_to_iso_z(unix_seconds: int | None) -> str | None:
     if unix_seconds is None:
         return None
     try:
-        dt = datetime.fromtimestamp(int(unix_seconds), tz=timezone.utc)
+        dt = datetime.fromtimestamp(int(unix_seconds), tz=UTC)
         # Notion accepts ISO 8601; use Zulu.
         return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     except Exception as exc:
@@ -21,4 +21,4 @@ def unix_seconds_to_iso_z(unix_seconds: int | None) -> str | None:
 
 def utc_now_iso() -> str:
     """Return current UTC time as ISO-8601 string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")

@@ -6,6 +6,7 @@ import json
 import os
 import sqlite3
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -266,8 +267,8 @@ def write_approved_weekly_recap_export_bundle(
     }
 
     if not deterministic:
-        from datetime import datetime, timezone
-        meta["exported_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        from datetime import datetime
+        meta["exported_at"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         meta["export_host"] = os.uname().nodename if hasattr(os, "uname") else None
 
     metadata_json_path.write_text(
