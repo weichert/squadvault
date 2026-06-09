@@ -24,7 +24,7 @@ cd "$repo_root"
 echo "==> ruff lint gate"
 
 if ! command -v ruff >/dev/null 2>&1; then
-  echo "ERROR: ruff not found on PATH. Install pinned deps: pip install -r requirements.txt" >&2
+  echo "ERROR: ruff not found on PATH. Install the pinned dev dependencies from requirements.txt first." >&2
   exit 1
 fi
 
