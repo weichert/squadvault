@@ -61,6 +61,13 @@ TRUST_BAR_CERTIFIED = "Entered into the Record \u00b7 Source Facts Verified \u00
 ENGINE_ARTIFACT_TYPE_WEEKLY_RECAP = "WEEKLY_RECAP"
 ENGINE_ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1 = "RIVALRY_CHRONICLE_V1"
 
+# Multi-season chronicles store a synthetic week_index (end_season*100 + start_season,
+# always >= 201000) as an immutable dedup key, since real weeks max at ~18. The docket
+# composer drops the W-token at/above this floor so the synthetic key never leaks into a
+# public docket id (see EngineArtifact.docket_id). Single-season chronicles use a real
+# week (below the floor) and keep their W-token.
+_SYNTHETIC_CHRONICLE_WEEK_FLOOR = 100
+
 SYNCABLE_ENGINE_TYPES = (
     ENGINE_ARTIFACT_TYPE_WEEKLY_RECAP,
     ENGINE_ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1,
@@ -120,11 +127,16 @@ class EngineArtifact:
         """Deterministic docket constructed from engine identity.
 
         E1: SV-{SEASON}-W{WEEK:02d}-V{VERSION:02d}            e.g. SV-2025-W07-V27
-        F1: SV-{SEASON}-W{WEEK:02d}-CHRONICLE-V{VERSION:02d}  e.g. SV-2025-W12-CHRONICLE-V03
+        F1 single-season: SV-{SEASON}-W{WEEK:02d}-CHRONICLE-V{VERSION:02d}  e.g. SV-2024-W17-CHRONICLE-V01
+        F1 multi-season:  SV-{SEASON}-CHRONICLE-V{VERSION:02d}  e.g. SV-2025-CHRONICLE-V03
+                          (multi-season week_index is a synthetic dedup key, not a real week;
+                           the W-token is dropped so the key never leaks into the docket)
         """
         if self.artifact_type == ENGINE_ARTIFACT_TYPE_WEEKLY_RECAP:
             return f"SV-{self.season}-W{self.week_index:02d}-V{self.version:02d}"
         if self.artifact_type == ENGINE_ARTIFACT_TYPE_RIVALRY_CHRONICLE_V1:
+            if self.week_index >= _SYNTHETIC_CHRONICLE_WEEK_FLOOR:
+                return f"SV-{self.season}-CHRONICLE-V{self.version:02d}"
             return (
                 f"SV-{self.season}-W{self.week_index:02d}"
                 f"-CHRONICLE-V{self.version:02d}"
