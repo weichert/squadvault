@@ -6,12 +6,12 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- `d119e6e` - charter adoption: CLAUDE.md (Working Process Charter v1.0) registered;
-  repo-root allowlist test updated to admit it.
+- `bf0833e` - E1.1 discharged: ruff errors cleared across chronicle/consumer modules;
+  ruff pinned to 0.15.10. Preceded by charter adoption (`d119e6e`) and STATE.md ledger.
 
 ## Open units (Document of Record v2.1, by ID)
 
-- E-cluster: E1.1, E1.2, E1.3, E1.4, E1.5, E1.6, E1.7
+- E-cluster: E1.2, E1.3, E1.4, E1.5, E1.6, E1.7
 - W-cluster: W.1, W.2, W.3, W.4, W.5, W.6, W.7, W.8
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
@@ -19,6 +19,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- `bf0833e` - E1.1: ruff clean across generate_rivalry_chronicle_v1.py,
+  rivalry_chronicle_generate_v1.py, editorial_review_week.py; E402s granted a
+  per-file-ignore (legitimate load_dotenv-before-import); ruff pinned to 0.15.10.
 - `a5d27dd` - A2 anchor test rename verified closed.
   (Brief labeled this "Cavallini rename"; the Cavallini/Mahomes anchor revocation
   itself is `e5fbb94` memo + `97498fa` purge. Flagged to founder - hash valid, label loose.)
