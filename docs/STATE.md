@@ -39,3 +39,7 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 - CI installs `ruff` unpinned in `.github/workflows/ci.yml` line 29; the
   `requirements.txt` pin (E1.1) only sticks because line 28 installs it first.
   A future ruff release could surface new lint without a requirements bump.
+- Local `prove_ci` needs Python 3.11+ but default `/usr/local/bin/python3` is
+  3.10.4: `prompt_audit_v1.py` uses `from datetime import UTC` (3.11+). Run prove_ci
+  under a 3.11+ `python3` (CI uses 3.12). Latent: `pyproject.toml` declares
+  `requires-python = ">=3.10"` while the code actually requires 3.11+ (unscoped fix).
