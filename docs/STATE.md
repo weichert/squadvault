@@ -6,13 +6,13 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- requires-python bumped to >=3.11 (matches code's datetime.UTC use); py311 ruff
-  target surfaced UP017 (autofixed to datetime.UTC) and UP042 (deferred, see hazards).
-  Preceded by E1.1 ruff cleanup (`bf0833e`) and charter adoption (`d119e6e`).
+- E1.2 discharged: ruff added to the pre-commit chain (`87c400f`); registry parity
+  threaded (Labels TSV, rendered Index block, surface fingerprint, README). Preceded by
+  requires-python >=3.11 bump and E1.1 ruff cleanup (`bf0833e`).
 
 ## Open units (Document of Record v2.1, by ID)
 
-- E-cluster: E1.2, E1.3, E1.4, E1.5, E1.6, E1.7
+- E-cluster: E1.3, E1.4, E1.5, E1.6, E1.7
 - W-cluster: W.1, W.2, W.3, W.4, W.5, W.6, W.7, W.8
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
@@ -20,6 +20,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- `87c400f` - E1.2: pre-commit gate hardening - ruff added to the pre-commit chain
+  + prove_ci, registry parity threaded (Labels TSV / Index / fingerprint / README),
+  gate-wiring test. Closes Roadmap section 7.3 standing item.
 - `bf0833e` - E1.1: ruff clean across generate_rivalry_chronicle_v1.py,
   rivalry_chronicle_generate_v1.py, editorial_review_week.py; E402s granted a
   per-file-ignore (legitimate load_dotenv-before-import); ruff pinned to 0.15.10.
