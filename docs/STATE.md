@@ -18,8 +18,10 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 - W-cluster: W.1, W.2, W.3, W.4, W.5, W.8 (W.6 discharged - ratified 2026-06-10)
 - W.6 downstream (NEW, frontend repo - not engine): (1) frontend doc-note for the
   `founding_sessions.consent` reinterpretation (memo 7.1); (2) `member_consent_events`
-  implementation unit (D-V: table + member ratification surface + commissioner read-only) -
-  predecessor for any consent read, incl. W.1. Standing rule now binding: every future
+  implementation unit (D-V) - BRIEF FILED `session_brief_member_consent_events_frontend.md`
+  (repo-grounded against frontend `4e44bb3`; targets migration 010); predecessor for any
+  consent read, incl. W.1, and for L.3 (pre-August). Open process call in the brief: SAT/
+  four-memo admission (impl-of-W.6 vs new surface). Standing rule now binding: every future
   four-memo chain / SAT contract card declares categories-read / gate / revocation behavior (7.2).
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
@@ -30,10 +32,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 - FAAB residual gate (NEW, from remediation): FAAB fabrication is instruction-resistant
   (copy-only did not move it). Trigger: build a deterministic post-generation gate that
   strips/blocks any FAAB dollar figure not on the canonical per-player allowlist.
-- E1.6 (`promote-version` lifecycle): D-C adjudicated DEFER (2026-06-09). Optional;
-  no DoR brief. Trigger: live season (E2.2) surfacing a real commissioner need to pick
-  among regenerations. Type A scaffolding exists (`version_presentation_navigation_v1.py`);
-  the action/UI layer is deliberately unbuilt until evidence defines it.
+- E1.6 (`promote-version` lifecycle): D-C DEFER (2026-06-09). Trigger: live-season (E2.2)
+  commissioner need to pick among regenerations. Type A scaffolding
+  `version_presentation_navigation_v1.py` exists; action/UI unbuilt until evidence defines it.
 - E1.7 (Surface Admission Test first exercise): condition-gated; satisfied naturally by
   W.1/W.5 four-memo chains. Do not manufacture a candidate.
 
