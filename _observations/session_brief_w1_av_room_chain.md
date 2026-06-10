@@ -81,6 +81,19 @@ OPEN DECISIONS THE CHAIN SHOULD ADJUDICATE (frame as D-x; founder picks - never 
 5. Caption / marginalia model as testimony: how a caption becomes an attributed_quotes fact;
    how the 2d gate is read at capture and publication.
 
+FOUNDER PRE-CHAIN LEANING on decision 1 (stated 2026-06-10; still a formal D-x pick in the
+chain, recorded here so the chain inherits it): ship founder/commissioner ingest + display in
+v1, defer the member-facing testimony half (member captions / self-tagging / marginalia) to
+E2.3. Rationale: (a) the buildable half is the FOUNDATION half - bucket, append-only media
+entries, human-ratified provenance, room-level consent, display - none of it is redesigned
+when members arrive; testimony layers on top. (b) Calendar: W.1 is the first build and L.3's
+August clock runs behind it; waiting on E2.3 puts member-onboarding on a media-archive's
+critical path for no structural gain. (c) Better product: members arriving to a furnished room
+beats an empty one. KEY NUANCE: the chain should still FULLY SPECIFY the governed-testimony
+fact class now (the Manual Fact Import formalization and the 7.2 declaration do not need live
+members); only the member-facing BUILD defers. That yields constitutional completeness (SAT #1
+admits the complete class) without calendar coupling.
+
 BOUNDARIES (non-negotiable): human-ratified provenance, never AI-asserted; no synchronous
 watch-party in v1; member behavior is never measured; no telemetry, no autonomous publication,
 no engagement loops (Track W/L standing law + Part 8). Verified facts and remembered captions
