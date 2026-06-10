@@ -6,9 +6,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- E1.4 execution attempted, BLOCKED pre-run on substrate readiness (no API spend); see
-  finding memo `OBSERVATIONS_2026_06_09_E1_4_SUBSTRATE_READINESS_BLOCKER.md`. Preceded by
-  E1.5b formatting gate (`84284fe`, closes R5) and the E1.4 prereg (`95daa09`).
+- Historical weekly-windowing fixed (`abd5c3c`, D-W1=B): week-field matchup fallback;
+  selection now yields matchups for all 32 E1.4 weeks; 2024-2025 byte-identical. Unblocks
+  E1.4. Preceded by the E1.4 substrate-readiness finding and E1.5b (`84284fe`, closes R5).
 
 ## Open units (Document of Record v2.1, by ID)
 
@@ -20,11 +20,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Deferred (do not pick up until trigger)
 
-- E1.4: prereg filed (`95daa09`, n=32/cap $15) but execution BLOCKED pre-run - historical
-  weekly-windowing does not capture matchup results for the 28 pre-2024 protocol weeks
-  (UNSAFE windows 2010-2016; matchup-empty 2017-2023). Data is present; the windowing is
-  the gap. Trigger: an engineering fix to historical windowing (then re-run unchanged), OR
-  a Fable protocol revision. See `OBSERVATIONS_2026_06_09_E1_4_SUBSTRATE_READINESS_BLOCKER.md`.
+- E1.4: prereg filed (`95daa09`, n=32/cap $15); substrate blocker RESOLVED by the
+  windowing fix (`abd5c3c`) - selection now yields matchups for all 32 weeks. READY TO
+  RE-RUN unchanged; awaits founder go for the paid generation (real API, $15 cap).
 - E1.6 (`promote-version` lifecycle): D-C adjudicated DEFER (2026-06-09). Optional;
   no DoR brief. Trigger: live season (E2.2) surfacing a real commissioner need to pick
   among regenerations. Type A scaffolding exists (`version_presentation_navigation_v1.py`);
@@ -34,6 +32,10 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- `abd5c3c` - Historical weekly-windowing fix (D-W1=B): week-field matchup selection for
+  seasons with un-timestamped matchups; per-season gated so 2024-2025 stay byte-identical
+  (0/288 working slots changed; 230 historical slots gained matchups; all 32 E1.4 weeks
+  select matchups). New engine unit (not DoR); unblocks E1.4.
 - `84284fe` - E1.5b: narrative formatting gate closes R5. Standalone presentation lint
   (L1-L5; L2 facts-block byte-identity is the one HARD rule) at the publication path +
   Office checklist; clean plain_text assembler lifted to render/. E1.5a spec at `b075b8a`.
