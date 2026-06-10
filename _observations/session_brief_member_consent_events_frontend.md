@@ -1,23 +1,32 @@
 # Implementation brief - `member_consent_events` (frontend unit, W.6 D-V)
 
 Authored: 2026-06-10 (Claude Code, Opus), engine HEAD `df09a5e`.
-Target repo: `weichert/squadvault-frontend`, HEAD `4e44bb3` (current `main`; clone at
-`~/projects/squadvault-frontend`).
+Target repo: `weichert/squadvault-frontend`, at `~/squadvault` (current `main`, `4e44bb3`).
+REPO-CONFIRM before the first write: `test -f scripts/recap_artifact_regenerate.py` must
+FAIL here (engine-only marker; BOTH repos prompt as `squadvault %` - this is the exact
+confusion the charter's repo-confirmation check exists for).
 Builds against: the RATIFIED W.6 Consent Governance Memo
 (`docs/SquadVault_W6_Consent_Governance_Memo_v1_2.md`, engine `df09a5e`). All design is
 decided there (D-S..D-X); this brief is the repo-grounded EXECUTE translation, NOT new
 constitutional design. Where this brief and W.6 differ, W.6 governs.
 
-## Routing / process flags (resolve before building)
+## Routing / process (RESOLVED by founder 2026-06-10)
 
-- **DECIDE vs EXECUTE:** this is an implementation brief (EXECUTE), because W.6 already
-  adjudicated the design. If the founder wants it run as a formal Fable spec chain instead,
-  this brief is that chain's input. Specs are Fable's lane per Charter 2.1.
-- **SAT / four-memo admission (founder/Fable call):** is `member_consent_events` + the member
-  consent panel (a) IMPLEMENTATION of W.6 (build directly against this brief, W.6 is its
-  constitutional memo), or (b) a NEW member-facing SURFACE requiring its own four-memo chain /
-  Surface Admission Test? This brief assumes (a). If (b), it becomes the chain's spec memo and
-  a contract card + archive are added. NOT decided here.
+- **EXECUTE, standard Opus build in the frontend repo - no Fable spec chain.** W.6 is ratified
+  (`df09a5e`); the governing frame is settled, so a Fable chain would have nothing to
+  adjudicate. The frontend's lighter local process is fine - the governance weight here lives
+  in the G-series RLS tests and append-only posture this brief specifies, not in prove_ci.
+- **Implementation of W.6, NOT a new surface - build straight against this brief.** The SAT /
+  four-memo chain exists to constitutionally admit new expressive surface area (things that put
+  content before the league); the consent panel is the ratification MACHINERY that W.6 section
+  5 (D-V) already specified in detail. A chain would re-adjudicate questions the memo answered.
+  Precedent: the founding-session consent panel shipped as governance machinery inside the
+  founding arc, not via its own admission. Section 7.2's chain clause targets surfaces that
+  CONSUME consent (W.1, W.4, W.8, the L-units) - this is the substrate they read.
+- **CONDITION (keeps the discipline visible):** the build's close-out still carries a
+  7.2-style declaration - which section-2 categories it touches and at which gates - even
+  though it IS the consent system itself. Costs a paragraph; makes the pattern uniform for
+  every chain that follows.
 
 ## Verified repo facts (read at `4e44bb3`; do not re-derive, but re-confirm if `main` moved)
 
@@ -208,6 +217,8 @@ ORDER BY member_user_id, category, coalesce(rendering_class,''), recorded_at DES
 ---
 
 Author's note (engine session, not part of the build brief): produced as Opus EXECUTE-prep
-because W.6 pre-decided the design; grounded in reads of the cloned frontend repo at `4e44bb3`.
-Genuinely DECIDE-class items (SAT admission; cross-league semantics) are surfaced, not resolved.
-If the founder prefers a Fable spec chain, this is its input.
+because W.6 pre-decided the design; grounded in reads of the frontend repo at `4e44bb3`. The
+SAT-admission and build-routing flags are now RESOLVED by the founder (2026-06-10): build
+straight, Opus, frontend repo - see Routing above. Cross-league consent semantics remains a
+future question (out of scope). Target repo standardized on `~/squadvault` after a duplicate
+clone was removed.
