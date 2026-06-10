@@ -6,11 +6,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- W.1 (A/V Room) Increment 1 FOUNDATION built (frontend `feat/w1-av-room` `c21e858`, LOCAL/
-  unpushed; founder applies+proves+merges). Migration 011 (four append-only classes + RLS) +
-  types + governance G12-G15; `tsc` clean. Chain RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6
-  as recommended; 7.2 declaration on the contract card). NEXT = routes/UI (brief deliverables
-  3-5) after the founder proves the schema. Increment 2 (member testimony) gated on E2.3.
+- W.1 (A/V Room) Increment 1 FOUNDATION built, PR OPEN (frontend `feat/w1-av-room` `c21e858`,
+  squadvault-frontend PR #1 -> `main`; founder proves+merges). Migration 011 (four append-only
+  classes + RLS) + types + governance G12-G15; `tsc` clean. Chain RATIFIED+FILED 2026-06-10
+  (SAT #1; D-W1-1..6 as recommended; 7.2 declaration on the contract card). NEXT = routes/UI
+  (brief deliverables 3-5) after the founder proves the schema. Increment 2 (member) gated E2.3.
 
 ## Open units (Document of Record v2.1, by ID; descriptions in-repo in the DoR)
 
