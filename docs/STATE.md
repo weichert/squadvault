@@ -6,24 +6,24 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- W.6 consent gate CLOSED-THROUGH-BUILD: memo ratified 2026-06-10 (canonical
-  `docs/SquadVault_W6_Consent_Governance_Memo_v1_2.md`; DoR v2.1.1 supersession note) and its
-  `member_consent_events` system of record built + merged to frontend `main` (`6c2ed32`,
-  founder-verified). W.1 (A/V Room) + L.3 (Vault, pre-Aug) consent predecessor satisfied.
+- W.1 (A/V Room) four-memo chain RATIFIED + FILED 2026-06-10 (SAT #1, native admission;
+  D-W1-1..6 as recommended; chain memos in `_observations/`, contract card carries the W.6 7.2
+  declaration). Increment 1 (founder-ingest foundation) is the buildable next; Increment 2
+  (member testimony) gated on E2.3. Prior: W.6 consent gate closed-through-build (memo ratified
+  + `member_consent_events` merged to frontend `6c2ed32`).
 
 ## Open units (Document of Record v2.1, by ID; descriptions in-repo in the DoR)
 
-- E-cluster: E1.6, E1.7. W-cluster: W.1, W.2, W.3, W.4, W.5, W.8 (W.6 discharged).
-  L-cluster: L.1-L.10.
-- W.6 follow-ups: (1) `founding_sessions.consent` reinterpretation doc-note (7.1) FILED
-  (frontend `248895c`); (2) commissioner read-only "at the gates" - DEFERRED to first consumer
-  (W.1/W.4/W.8); (3) auth-session governance tests - follow-up. Binding (7.2): future chains
-  declare categories-read / gate / revocation.
-- W.1 (A/V Room, SAT #1) NEXT: four-memo-chain kickoff filed `session_brief_w1_av_room_chain.md`
-  (greenfield - no Storage/media tables at `248895c`; trips all 3 admission gates). Needs the
-  Fable chain + founder ratification BEFORE Opus build (NOT build-straight; spec must exist).
-- Member-identity onboarding (E2.3) is the standing prerequisite for member-facing testimony
-  across W.1/L.1/L.3/L.4 (commissioner-resolvable identity works now).
+- E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 Increment 1
+  (build; chain ratified), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
+- W.1 NEXT = Increment 1 execution brief + build (frontend `~/squadvault`), per spec sections
+  5-6: `league-media` bucket + `media_entries` + provenance tags + room ratification +
+  commissioner ingest/tagging + `/league/[id]/av-room` display. Increment 2 (member captions/
+  marginalia/self-tagging) specified, build gated on E2.3 (the standing member-identity
+  prerequisite, shared with L.1/L.3/L.4; commissioner identity works now).
+- W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
+  the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
+  follow-up. Binding (7.2): future chains declare categories-read / gate / revocation.
 
 ## Deferred (do not pick up until trigger)
 
@@ -31,10 +31,16 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   post-gen gate stripping any FAAB figure not on the canonical per-player allowlist.
 - E1.6 (`promote-version`): D-C DEFER. Trigger: live-season (E2.2) need to pick among
   regenerations. Type A scaffold `version_presentation_navigation_v1.py` exists; UI unbuilt.
-- E1.7 (SAT first exercise): condition-gated; satisfied by W.1/W.5 chains. Don't manufacture.
 
 ## Discharged items (with hashes)
 
+- W.1 (A/V Room) four-memo chain RATIFIED + FILED 2026-06-10 (SAT #1 native admission;
+  D-W1-1..6 as recommended). Governed-testimony fact class formalized (Manual Fact Import
+  admissibility theory in analogue, per W.6 1.1; frame D1-D6 untouched/OPEN); W.6 7.2
+  declaration on the contract card. E1.7 DISCHARGED-NATIVE (cross-surface SAT promotion still
+  pending). W.1's own BUILD is the open Increment-1 unit. Chain memos
+  `..._W1_AV_ROOM_CONSTITUTIONAL_ADMISSION` / `_SPECIFICATION` / `_ADMISSION_RECORD` +
+  `W1_AV_Room_Contract_Card_v1_0` + `..._SAT_REGISTRY_ADDENDUM_W1`.
 - W.6 consent (Track W, 2026-06-10): memo RATIFIED (D-S..D-X as recommended) + filed canonical;
   `member_consent_events` (D-V) built + MERGED to frontend `main` `6c2ed32` (migration 010
   append-only / member-only RLS, derived view, write API, panel `/league/[id]/consent`; G11 +
