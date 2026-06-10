@@ -42,7 +42,10 @@ from pathlib import Path
 from typing import Final
 
 from squadvault.core.exports.season_html_export_v1 import extract_shareable_parts
+from squadvault.core.recaps.render.plain_text_recap_v1 import render_plain_text_recap_v1
+from squadvault.core.recaps.render.presentation_lint_v1 import lint_presentation
 from squadvault.core.storage.session import DatabaseSession
+from squadvault.recaps.weekly_recap_lifecycle import derive_canonical_facts_block_v1
 
 DEFAULT_LEAGUE_ID: Final[str] = "70985"
 DEFAULT_ARCHIVE_ROOT: Final[str] = "archive/recaps"
@@ -167,16 +170,15 @@ def _format_for_paste_assist(
 ) -> str:
     """Compose the message body the commissioner pastes into the thread.
 
-    Format is intentionally minimal: header, narrative, optional bullets
-    section. No state line, no telemetry, no metadata — those live in the
-    archive, not in what the league reads.
+    Delegates to the shared clean-form assembler (render/plain_text_recap_v1);
+    kept as a thin wrapper so this module's call sites read unchanged.
     """
-    header = f"PFL Buddies — Season {season}, Week {week_index}"
-    parts: list[str] = [header, "=" * len(header), "", narrative]
-    if bullets:
-        parts.extend(["", "---", "", "What happened this week:"])
-        parts.extend(f"- {item}" for item in bullets)
-    return "\n".join(parts).rstrip() + "\n"
+    return render_plain_text_recap_v1(
+        narrative=narrative,
+        bullets=bullets,
+        season=season,
+        week_index=week_index,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -435,6 +437,32 @@ def main(argv: list[str] | None = None) -> int:
         season=artifact.season,
         week_index=artifact.week_index,
     )
+
+    # E1.5b presentation gate (publication path; closes R5). SOFT formatting flags
+    # warn but never block; the one HARD rule — L2 facts-block byte-identity against
+    # the deterministic re-derivation — refuses distribution if the facts diverge.
+    _canonical_block = derive_canonical_facts_block_v1(
+        args.db, args.league_id, artifact.season, artifact.week_index
+    )
+    # group_text_paste_assist renders the plain_text form (spec section 3).
+    _lint = lint_presentation(
+        message,
+        season=artifact.season,
+        week_index=artifact.week_index,
+        channel="plain_text",
+        canonical_facts_block=_canonical_block,
+    )
+    if _lint.hard_failed:
+        sys.stderr.write(
+            "Refusing to distribute: presentation lint HARD failure "
+            "(facts block is not byte-identical to the deterministic ledger).\n"
+        )
+        for _f in _lint.findings:
+            if not _f.ok and _f.severity.value == "HARD":
+                sys.stderr.write(f"  {_f.rule}: {_f.message}\n")
+        return 7
+    for _f in _lint.soft_flags:
+        sys.stderr.write(f"  presentation flag {_f.rule}: {_f.message}\n")
 
     scratchpad = _scratchpad_path(
         season=artifact.season, week_index=artifact.week_index

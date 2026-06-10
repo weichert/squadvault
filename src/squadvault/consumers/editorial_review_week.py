@@ -292,6 +292,65 @@ def extract_fingerprint(payload: dict) -> str | None:
     return None
 
 
+def render_presentation_report(
+    db: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    rendered_text: str | None,
+) -> str:
+    """Render the E1.5b presentation checklist for the review surface.
+
+    Lints the CLEAN distributed form (the same plain_text assembly the publication
+    path emits), not the internal rendered_text. Standalone (D-F): does not touch
+    the verifier. SOFT rules flag for the commissioner; the one HARD rule (L2
+    facts-block byte-identity) is the publication-path block, surfaced here so the
+    commissioner sees it before distribution.
+    """
+    lines: list[str] = ["=== PRESENTATION CHECKLIST (E1.5b) ==="]
+    if not rendered_text or not rendered_text.strip():
+        lines.append("  No artifact text available to lint.")
+        return "\n".join(lines)
+    try:
+        from squadvault.core.exports.season_html_export_v1 import (
+            extract_shareable_parts,
+        )
+        from squadvault.core.recaps.render.plain_text_recap_v1 import (
+            render_plain_text_recap_v1,
+        )
+        from squadvault.core.recaps.render.presentation_lint_v1 import (
+            lint_presentation,
+        )
+        from squadvault.recaps.weekly_recap_lifecycle import (
+            derive_canonical_facts_block_v1,
+        )
+
+        narrative, bullets = extract_shareable_parts(rendered_text)
+        clean = render_plain_text_recap_v1(
+            narrative=narrative, bullets=bullets, season=season, week_index=week_index,
+        )
+        canonical = derive_canonical_facts_block_v1(db, league_id, season, week_index)
+        report = lint_presentation(
+            clean,
+            season=season,
+            week_index=week_index,
+            channel="plain_text",
+            canonical_facts_block=canonical,
+        )
+    except Exception as exc:  # never block the review surface on a lint error
+        lines.append(f"  (Presentation lint unavailable: {exc})")
+        return "\n".join(lines)
+
+    if report.hard_failed:
+        lines.append("  Status: BLOCKS APPROVAL — facts block modified (L2 HARD)")
+    else:
+        lines.append(f"  Status: OK to approve  |  Soft flags: {len(report.soft_flags)}")
+    for f in report.findings:
+        mark = "ok" if f.ok else ("HARD-FAIL" if f.severity.value == "HARD" else "flag")
+        lines.append(f"    {f.rule} [{f.severity.value}] {mark}: {f.message}")
+    return "\n".join(lines)
+
+
 def render_review_packet(
     db: str,
     league_id: str,
@@ -437,6 +496,18 @@ def review_loop(
         print(_verif_report)
     except Exception as _ve:
         print(f"  (Verification report unavailable: {_ve})")
+    print("")
+
+    # E1.5b: presentation checklist (standalone; lints the artifact body, not the
+    # decorated packet). SOFT flags inform; L2 HARD is enforced at approval.
+    try:
+        _pres_report = render_presentation_report(
+            db, league_id, season, week_index,
+            rendered_text=payload.get("rendered_text") if isinstance(payload, dict) else None,
+        )
+        print(_pres_report)
+    except Exception as _pe:
+        print(f"  (Presentation checklist unavailable: {_pe})")
     print("")
 
     print("Decision:")

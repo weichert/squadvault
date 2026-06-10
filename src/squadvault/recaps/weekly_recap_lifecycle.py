@@ -64,6 +64,9 @@ from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     render_deterministic_bullets_v1,
 )
+from squadvault.core.recaps.render.presentation_lint_v1 import (
+    render_transactions_block_v1,
+)
 from squadvault.core.recaps.render.render_recap_text_v1 import (
     render_recap_text_v1,
 )
@@ -525,35 +528,80 @@ def _render_text_from_recap_runs(
 
     summary = render_recap_text_v1(artifact)
 
-    # Load canonical events and render deterministic bullets with name resolution
-    if isinstance(canonical_ids, list) and canonical_ids:
-        event_rows = _load_canonical_event_rows(db_path, canonical_ids)
-
-        if event_rows:
-            player_ids, franchise_ids = _collect_ids_from_payloads(event_rows)
-
-            # Build resolvers (fail-safe: if directories are empty, IDs pass through)
-            player_res = PlayerResolver(db_path, league_id, season)
-            franchise_res = FranchiseResolver(db_path, league_id, season)
-
-            if player_ids:
-                player_res.load_for_ids(player_ids)
-            if franchise_ids:
-                franchise_res.load_for_ids(franchise_ids)
-
-            bullets = render_deterministic_bullets_v1(
-                event_rows,
-                team_resolver=franchise_res.one,
-                player_resolver=player_res.one,
-            )
-
-            if bullets:
-                lines = ["\nWhat happened this week:"]
-                for b in bullets:
-                    lines.append(f"  - {b}")
-                summary += "\n".join(lines) + "\n"
+    # Deterministic event bullets with name resolution (shared derivation).
+    bullets = _derive_canonical_bullets(db_path, league_id, season, week_index)
+    if bullets:
+        # Internal rendered_text uses the two-space bullet form. Shared formatter
+        # (E1.5b); output unchanged from the prior inline form.
+        summary += "\n" + render_transactions_block_v1(
+            bullets, bullet_prefix="  - "
+        ) + "\n"
 
     return summary
+
+
+def _derive_canonical_bullets(
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+) -> list[str]:
+    """Deterministic transaction bullet payloads from recap_runs ground truth.
+
+    The independent source for the E1.5b L2 reference: derived from the canonical
+    event ledger, not from any stored/rendered artifact text. Returns [] when
+    recap_runs lacks data.
+    """
+    with DatabaseSession(db_path) as con:
+        row = con.execute(
+            """SELECT canonical_ids_json FROM recap_runs
+               WHERE league_id=? AND season=? AND week_index=?""",
+            (league_id, season, week_index),
+        ).fetchone()
+    if not row or not row[0]:
+        return []
+    try:
+        canonical_ids = json.loads(row[0])
+    except (ValueError, TypeError):
+        return []
+    if not (isinstance(canonical_ids, list) and canonical_ids):
+        return []
+    event_rows = _load_canonical_event_rows(db_path, canonical_ids)
+    if not event_rows:
+        return []
+    player_ids, franchise_ids = _collect_ids_from_payloads(event_rows)
+    player_res = PlayerResolver(db_path, league_id, season)
+    franchise_res = FranchiseResolver(db_path, league_id, season)
+    if player_ids:
+        player_res.load_for_ids(player_ids)
+    if franchise_ids:
+        franchise_res.load_for_ids(franchise_ids)
+    return render_deterministic_bullets_v1(
+        event_rows,
+        team_resolver=franchise_res.one,
+        player_resolver=player_res.one,
+    )
+
+
+def derive_canonical_facts_block_v1(
+    db_path: str,
+    league_id: str,
+    season: int,
+    week_index: int,
+    *,
+    bullet_prefix: str = "- ",
+) -> str | None:
+    """Re-derive the canonical S5 transactions block from recap_runs ground truth.
+
+    The byte reference for the E1.5b presentation lint's L2 rule, independent of
+    any edit to the stored/rendered artifact. Defaults to the clean distributed
+    form ('- ' bullets). Returns None when recap_runs lacks data (L2 then reports
+    "not evaluated" rather than blocking).
+    """
+    bullets = _derive_canonical_bullets(db_path, league_id, season, week_index)
+    if not bullets:
+        return None
+    return render_transactions_block_v1(bullets, bullet_prefix=bullet_prefix)
 
 
 @dataclass(frozen=True)
