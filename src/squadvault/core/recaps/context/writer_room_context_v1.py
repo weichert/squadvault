@@ -451,10 +451,23 @@ def render_writer_room_context_for_prompt(
             if lines:
                 lines.append("")
             lines.append(
-                "Individual FAAB acquisitions this season "
-                "(ONLY these amounts may be cited in prose — do not invent others):"
+                "FAAB COPY-ONLY: the dollar amounts below are the ONLY FAAB figures "
+                "that exist this season. Cite a player's FAAB amount ONLY by copying "
+                "one of these exact lines. Any player NOT listed here received NO FAAB "
+                "bid — never attach a dollar amount to them. Never invent or estimate a "
+                "FAAB amount."
             )
             lines.extend(acq_lines)
+    elif faab:
+        # Explicit absence (fork b): FAAB spending exists but no per-player
+        # acquisitions to cite -> say so, so the model has a "none" to land on
+        # instead of a void it fills. (Truly-empty input still renders empty.)
+        if lines:
+            lines.append("")
+        lines.append(
+            "No individual FAAB acquisitions on record — do not cite any FAAB "
+            "dollar amount for any player this week."
+        )
 
     # FAAB ROI: post-acquisition points scored per player
     # Gives the model a factual basis for "paid off" or "hasn't delivered" claims.

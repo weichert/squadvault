@@ -962,6 +962,13 @@ def _derive_prompt_context(
                 f"Narrative angles for Week {week_index} (what's interesting):",
                 "IMPORTANT: Each angle is about the NAMED franchise ONLY. "
                 "Never apply an angle about one franchise to a different franchise.",
+                # SERIES COPY-ONLY guardrail (residual-fabrication remediation):
+                "SERIES COPY-ONLY: you may state a series / head-to-head record "
+                "(e.g. 'leads the series 7-3', 'X-Y all-time') ONLY by copying a "
+                "'leads the series' / rivalry line provided below. For ANY pairing "
+                "without such a line - including matchups marked [NO H2H DATA] and "
+                "any pairing not listed - do NOT mention a series record or "
+                "head-to-head history. Never compute or infer one.",
             ]
             for a in budgeted:
                 slabel = {3: "HEADLINE", 2: "NOTABLE", 1: "MINOR"}.get(a.strength, "")

@@ -550,8 +550,8 @@ class TestFaabAcquisitions:
             player_name_map=player_names,
         )
 
-        assert "Individual FAAB acquisitions" in text
-        assert "ONLY these amounts may be cited" in text
+        assert "FAAB COPY-ONLY" in text
+        assert "Any player NOT listed here received NO FAAB" in text
         assert "Brandon: $51 for Brian Thomas" in text
         assert "Eddie: $32 for Ladd McConkey" in text
 

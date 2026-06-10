@@ -809,6 +809,16 @@ def render_league_history_for_prompt(
         lines.append("")
         scoring_label = "All-time scoring records:" if ctx.is_multi_season else "Season scoring records:"
         lines.append(scoring_label)
+        # COPY-ONLY guardrail (residual-fabrication remediation): the model
+        # fabricates "all-time record" framings by applying them to ordinary
+        # in-week scores. The records below are the ONLY values that carry that
+        # framing; everything else is a normal weekly result.
+        lines.append(
+            "  COPY-ONLY: a value may be called an all-time/league record, "
+            "'highest/lowest ever', or 'season high/low' ONLY if it exactly "
+            "matches a figure listed here. NEVER attach a record/all-time framing "
+            "to a weekly score that is not listed above; if unsure, omit the framing."
+        )
         if ctx.all_time_high:
             name = _name(ctx.all_time_high.franchise_id)
             score_label = "Highest score ever" if ctx.is_multi_season else "Season high"
