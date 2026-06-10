@@ -6,11 +6,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- E1.4 fresh-gen fabrication baseline RUN + discharged as a measurement (gen HEAD
-  `28d059f`, ~$0.60 est spend). Verdict YELLOW: scores clean (~0.6%), non-score residual
-  is the headline (FAAB ~8.9%, series 3.8%, superlative 2.5%); remediation queue named,
-  Phase 12 gating noted. Results: `OBSERVATIONS_2026_06_09_E1_4_..._BASELINE_RESULTS.md`.
-  Enabled by the windowing fix (`abd5c3c`).
+- Residual fabrication remediation (verbatim/copy discipline): -51% residual fabrication
+  (2.00 -> 0.98/sample). SERIES strongly fixed (43% -> 9.5%), SUPERLATIVE improved
+  (57% -> 33%); FAAB UNMOVED (instruction-resistant). Followed the E1.4 YELLOW baseline.
 
 ## Open units (Document of Record v2.1, by ID)
 
@@ -22,7 +20,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Deferred (do not pick up until trigger)
 
-  (E1.4 run + discharged as a measurement - see Discharged items and the results memo.)
+- FAAB residual gate (NEW, from remediation): FAAB fabrication is instruction-resistant
+  (copy-only did not move it). Trigger: build a deterministic post-generation gate that
+  strips/blocks any FAAB dollar figure not on the canonical per-player allowlist.
 - E1.6 (`promote-version` lifecycle): D-C adjudicated DEFER (2026-06-09). Optional;
   no DoR brief. Trigger: live season (E2.2) surfacing a real commissioner need to pick
   among regenerations. Type A scaffolding exists (`version_presentation_navigation_v1.py`);
@@ -32,34 +32,21 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
-- E1.4 fresh-gen fabrication baseline (gen HEAD `28d059f`): 32 weeks generated (~$0.60),
-  verifier + automated classification. Verdict YELLOW (not a pass) - scores clean ~0.6%,
-  non-score residual the headline (FAAB hottest); remediation queue named. Disclosed
-  deviations: windowing fix post-dates prereg freeze; paced retry on rate-limited weeks.
-  Results memo `OBSERVATIONS_2026_06_09_E1_4_FRESH_GEN_FABRICATION_BASELINE_RESULTS.md`.
-- `abd5c3c` - Historical weekly-windowing fix (D-W1=B): week-field matchup selection for
-  seasons with un-timestamped matchups; per-season gated so 2024-2025 stay byte-identical
-  (0/288 working slots changed; 230 historical slots gained matchups; all 32 E1.4 weeks
-  select matchups). New engine unit (not DoR); unblocks E1.4.
-- `84284fe` - E1.5b: narrative formatting gate closes R5. Standalone presentation lint
-  (L1-L5; L2 facts-block byte-identity is the one HARD rule) at the publication path +
-  Office checklist; clean plain_text assembler lifted to render/. E1.5a spec at `b075b8a`.
-- `58b498a` - E1.3: Document of Record filed in-repo + Map-registered; charter v1.0.1
-  pointer amendment. Runbook DB-path item was already fixed at `215cb39` (no-op; the
-  Document of Record listed it stale). Frontend doc sweep deferred to its own brief.
-- `87c400f` - E1.2: pre-commit gate hardening - ruff added to the pre-commit chain
-  + prove_ci, registry parity threaded (Labels TSV / Index / fingerprint / README),
-  gate-wiring test. Closes Roadmap section 7.3 standing item.
-- `bf0833e` - E1.1: ruff clean across generate_rivalry_chronicle_v1.py,
-  rivalry_chronicle_generate_v1.py, editorial_review_week.py; E402s granted a
-  per-file-ignore (legitimate load_dotenv-before-import); ruff pinned to 0.15.10.
-- `a5d27dd` - A2 anchor test rename verified closed.
-  (Brief labeled this "Cavallini rename"; the Cavallini/Mahomes anchor revocation
-  itself is `e5fbb94` memo + `97498fa` purge. Flagged to founder - hash valid, label loose.)
-- `c4b4436` - Phase 11 Roadmap seasons-count revision memo.
-- `993e97f` - Phase 11 E2-light: initial archive generation (2 seasons, 35 weeks).
-- `2bb33d0` - chronicle docket grammar: synthetic week_index dropped from
-  multi-season dockets (closed by observation memo at `a9bc451`).
+- Residual fabrication remediation (verbatim/copy guardrails for superlative/series/FAAB):
+  -51% residual fabrication; SERIES fixed, SUPERLATIVE improved, FAAB unmoved (see Deferred).
+  Memo `OBSERVATIONS_2026_06_09_RESIDUAL_REMEDIATION_VERBATIM_RESULTS.md`.
+- E1.4 fresh-gen fabrication baseline (gen HEAD `28d059f`, ~$0.60): YELLOW (not a pass) -
+  scores clean ~0.6%, non-score residual the headline. Deviations: windowing fix post-dates
+  prereg freeze; paced retry. Memo `..._E1_4_FRESH_GEN_FABRICATION_BASELINE_RESULTS.md`.
+- `abd5c3c` - Historical weekly-windowing fix (D-W1=B): week-field matchup selection;
+  per-season gated, 2024-2025 byte-identical; all 32 E1.4 weeks select matchups. Unblocks E1.4.
+- `84284fe` - E1.5b: narrative formatting gate closes R5 (presentation lint L1-L5; L2
+  facts-block byte-identity HARD). E1.5a spec at `b075b8a`.
+- `58b498a` E1.3 (Document of Record in-repo + charter v1.0.1; runbook already fixed
+  `215cb39`) / `87c400f` E1.2 (ruff pre-commit gate + registry parity) / `bf0833e` E1.1
+  (ruff cleanup + pin 0.15.10). See per-unit memos.
+- Pre-charter: `a5d27dd` A2 anchor rename (Cavallini revocation `e5fbb94`/`97498fa`);
+  `c4b4436` seasons-count memo; `993e97f` E2-light archive; `2bb33d0` docket grammar.
 
 ## Known hazards
 
