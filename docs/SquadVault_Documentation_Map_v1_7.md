@@ -124,6 +124,7 @@ Rule; reference-only sections do not.
 - EAL Persistence Clarification Addendum v1.0
 - Editorial Attunement Layer -- Core Engine Addendum v1
 - Weekly Recap Context Temporal Scoping Addendum v1.0
+- Narrative Presentation Spec v1.0
 
 ### Tier 3 -- Technical Authority & Reference Notes
 
