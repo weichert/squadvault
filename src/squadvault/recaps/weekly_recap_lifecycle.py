@@ -64,6 +64,10 @@ from squadvault.core.recaps.render.deterministic_bullets_v1 import (
     CanonicalEventRow,
     render_deterministic_bullets_v1,
 )
+from squadvault.core.recaps.render.faab_gate_v1 import (
+    apply_faab_gate,
+    load_faab_allowlist,
+)
 from squadvault.core.recaps.render.presentation_lint_v1 import (
     render_transactions_block_v1,
 )
@@ -1490,6 +1494,51 @@ def generate_weekly_recap_draft(
                     + "output — silence over fabrication.\n"
                 )
         # SV_VERIFICATION_RETRY_LOOP_END
+
+        # SV_FAAB_GATE_V1 — deterministic post-generation FAAB backstop.
+        # Runs ALONGSIDE the verifier (defense in depth): re-applies the
+        # canonical per-player FAAB allowlist to the shippable narrative
+        # independently of the verifier's tiering/retry plumbing, so it also
+        # covers the verifier-exception path (where an unverified draft is
+        # otherwise kept). FAAB fabrication is instruction-resistant, so this
+        # enforces rather than asks: strip the offending sentence(s) when clean,
+        # else block to facts-only. Operates only on the model-authored
+        # narrative between the SHAREABLE markers; the facts block is untouched.
+        # Fails open on any error — the verifier remains the primary floor and a
+        # backstop fault must not degrade a verifier-approved narrative.
+        _SHAREABLE_BEGIN = "\n\n--- SHAREABLE RECAP ---\n"
+        _SHAREABLE_END = "\n--- END SHAREABLE RECAP ---\n"
+        _pre, _sep, _post = rendered_text.partition(_SHAREABLE_BEGIN)
+        if _sep:
+            _narrative_region = _post.partition(_SHAREABLE_END.rstrip("\n"))[0]
+            try:
+                _faab_allow = load_faab_allowlist(db_path, league_id, season)
+                _gate = apply_faab_gate(_narrative_region, allowlist=_faab_allow)
+                if _gate.action == "stripped":
+                    rendered_text = (
+                        _pre + _SHAREABLE_BEGIN + _gate.text + _SHAREABLE_END
+                    )
+                    logger.warning(
+                        "FAAB gate: stripped out-of-allowlist claim(s) %s "
+                        "(verifier-missed) — league=%s season=%d week=%d",
+                        list(_gate.violations), league_id, season, week_index,
+                    )
+                elif _gate.action == "blocked":
+                    rendered_text = (
+                        _base_rendered_text.rstrip()
+                        + "\n\nNote: Narrative draft contained an "
+                        + "out-of-allowlist FAAB claim "
+                        + f"({', '.join(_gate.violations)}) that could not be "
+                        + "cleanly removed. Falling back to facts-only output "
+                        + "— silence over fabrication.\n"
+                    )
+                    logger.warning(
+                        "FAAB gate: blocked to facts-only (uncleanly removable "
+                        "claim %s) — league=%s season=%d week=%d",
+                        list(_gate.violations), league_id, season, week_index,
+                    )
+            except Exception as e:
+                logger.debug("FAAB gate skipped (error): %s", e)
     # SV_CREATIVE_LAYER_V1_END
 
     prev_approved = latest_approved_version(db_path, league_id, season, week_index)

@@ -6,9 +6,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- Residual fabrication remediation (verbatim/copy discipline): -51% residual fabrication
-  (2.00 -> 0.98/sample). SERIES strongly fixed (43% -> 9.5%), SUPERLATIVE improved
-  (57% -> 33%); FAAB UNMOVED (instruction-resistant). Followed the E1.4 YELLOW baseline.
+- Deterministic post-generation FAAB gate (v1): instruction-resistant FAAB fabrication
+  is now ENFORCED, not asked. Standalone backstop (no verifier import) running after the
+  verification loop; strips the offending sentence(s) when clean, else blocks to
+  facts-only. Closes the verifier-exception hole (unverified draft was kept). Detection
+  mirrors verifier Category 8 verbatim (zero new false positives).
 
 ## Open units (Document of Record v2.1, by ID)
 
@@ -20,9 +22,6 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Deferred (do not pick up until trigger)
 
-- FAAB residual gate (NEW, from remediation): FAAB fabrication is instruction-resistant
-  (copy-only did not move it). Trigger: build a deterministic post-generation gate that
-  strips/blocks any FAAB dollar figure not on the canonical per-player allowlist.
 - E1.6 (`promote-version` lifecycle): D-C adjudicated DEFER (2026-06-09). Optional;
   no DoR brief. Trigger: live season (E2.2) surfacing a real commissioner need to pick
   among regenerations. Type A scaffolding exists (`version_presentation_navigation_v1.py`);
@@ -32,6 +31,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- FAAB residual gate (D-G1=hybrid strip/block, D-G2=standalone backstop): deterministic
+  post-generation gate `faab_gate_v1.py` + lifecycle `SV_FAAB_GATE_V1` pass; 13 gate tests,
+  302 verifier/lint regression green. Memo `OBSERVATIONS_2026_06_10_FAAB_GATE_V1.md`.
 - Residual fabrication remediation (verbatim/copy guardrails for superlative/series/FAAB):
   -51% residual fabrication; SERIES fixed, SUPERLATIVE improved, FAAB unmoved (see Deferred).
   Memo `OBSERVATIONS_2026_06_09_RESIDUAL_REMEDIATION_VERBATIM_RESULTS.md`.
