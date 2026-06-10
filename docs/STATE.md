@@ -6,23 +6,23 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- W.6 Consent Governance Memo RATIFIED (2026-06-10, all six D-S..D-X as recommended) and
-  filed as in-repo canonical doctrine (`docs/SquadVault_W6_Consent_Governance_Memo_v1_2.md`,
-  Map-patch-registered; DoR corrected by v2.1.1 supersession note). Founder was the ratifying
-  authority; Opus recorded (Charter 2.4). Section 0 verified at frontend `4e44bb3` (`5184b9d`).
-  The warmth/lore track's consent gate is now OPEN. Prior HEAD: W.7 drift-flag memo.
+- W.6 consent gate CLOSED-THROUGH-BUILD: memo ratified 2026-06-10 (canonical at
+  `docs/SquadVault_W6_Consent_Governance_Memo_v1_2.md`; DoR v2.1.1 supersession note) AND its
+  `member_consent_events` system of record built + merged to frontend `main` (`6c2ed32`,
+  founder-verified). W.1 (A/V Room) and L.3 (Vault, pre-Aug) consent predecessor now satisfied.
+  Prior HEAD: W.7 drift-flag memo.
 
 ## Open units (Document of Record v2.1, by ID)
 
 - E-cluster: E1.6, E1.7
 - W-cluster: W.1, W.2, W.3, W.4, W.5, W.8 (W.6 discharged - ratified 2026-06-10)
-- W.6 downstream (frontend `~/squadvault`): (1) `founding_sessions.consent` reinterpretation
-  doc-note (7.1) - OPEN. (2) `member_consent_events` (D-V): inc 1+2 BUILT on branch
-  `feat/member-consent-events` (`06cf568`: 010 + RLS + view + G11; write route + member panel +
-  `/league/[id]/consent`; tsc clean) - merge-ready after founder runtime verify
-  (`test:governance` + click-through). Detail + 2 findings (public-admin Member Office;
-  member-identity unbuilt) in memos `..._MEMBER_CONSENT_EVENTS_INCREMENT_1/2.md`. Gates W.1 +
-  L.3 (pre-Aug). Binding rule (7.2): future chains declare categories-read / gate / revocation.
+- W.6 downstream (frontend `~/squadvault`) - remaining OPEN: (1) `founding_sessions.consent`
+  reinterpretation doc-note (7.1). (2) commissioner read-only "at the gates" (5/7.4) - DEFERRED
+  to its first consumer surface (W.1/W.4/W.8; none built). (3) auth-session governance tests
+  (member-vs-member, commissioner-no-proxy) - harness does anon-denial only; follow-up.
+  Member-identity onboarding (E2.3) is the prerequisite for the ten members to use consent
+  (works for commissioner now). Binding rule (7.2): future chains declare
+  categories-read / gate / revocation.
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
 (Descriptions now in-repo: `docs/SquadVault_Product_Document_of_Record_v2_1.md`.)
@@ -40,6 +40,10 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- `member_consent_events` (W.6 D-V) BUILT + MERGED to frontend `main` (`6c2ed32`): migration
+  010 (append-only, member-only RLS + default-deny), derived-current view, write API, member
+  panel at `/league/[id]/consent`. test:governance (G11) + click-through founder-verified.
+  Memos `..._MEMBER_CONSENT_EVENTS_INCREMENT_1/2.md`. W.1 + L.3 consent predecessor satisfied.
 - W.6 (consent governance memo) RATIFIED 2026-06-10 (D-S..D-X as recommended); details in
   Current HEAD above. Memos `OBSERVATIONS_2026_06_10_W6_RATIFICATION.md` +
   `..._W6_RATIFICATION_AFFIRMATION.md` (founder's written attestation, affirms `df09a5e`).
