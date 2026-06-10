@@ -18,6 +18,19 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 (Descriptions now in-repo: `docs/SquadVault_Product_Document_of_Record_v2_1.md`.)
 
+## Deferred (do not pick up until trigger)
+
+- E1.4: gated on a Fable pre-registration protocol + D-B (n/spend cap); skeleton
+  `session_brief_e1_4_execution_SKELETON.md`. Trigger: protocol memo filed.
+- E1.5b: gated on the E1.5a presentation spec (Fable, pre-Week-1); skeleton
+  `session_brief_e1_5b_formatting_gate_SKELETON.md`. Trigger: E1.5a spec in `docs/`.
+- E1.6 (`promote-version` lifecycle): D-C adjudicated DEFER (2026-06-09). Optional;
+  no DoR brief. Trigger: live season (E2.2) surfacing a real commissioner need to pick
+  among regenerations. Type A scaffolding exists (`version_presentation_navigation_v1.py`);
+  the action/UI layer is deliberately unbuilt until evidence defines it.
+- E1.7 (Surface Admission Test first exercise): condition-gated; satisfied naturally by
+  W.1/W.5 four-memo chains. Do not manufacture a candidate.
+
 ## Discharged items (with hashes)
 
 - `58b498a` - E1.3: Document of Record filed in-repo + Map-registered; charter v1.0.1
