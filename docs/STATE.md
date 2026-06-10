@@ -6,9 +6,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- E1.5b discharged: narrative formatting gate (`84284fe`) closes R5; presentation lint
-  L1-L5 at the publication path + Office checklist. E1.5a spec landed at `b075b8a`.
-  Preceded by E1.3 (Document of Record in-repo, `58b498a`).
+- E1.4 execution attempted, BLOCKED pre-run on substrate readiness (no API spend); see
+  finding memo `OBSERVATIONS_2026_06_09_E1_4_SUBSTRATE_READINESS_BLOCKER.md`. Preceded by
+  E1.5b formatting gate (`84284fe`, closes R5) and the E1.4 prereg (`95daa09`).
 
 ## Open units (Document of Record v2.1, by ID)
 
@@ -20,8 +20,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Deferred (do not pick up until trigger)
 
-- E1.4: gated on a Fable pre-registration protocol + D-B (n/spend cap); skeleton
-  `session_brief_e1_4_execution_SKELETON.md`. Trigger: protocol memo filed.
+- E1.4: prereg filed (`95daa09`, n=32/cap $15) but execution BLOCKED pre-run - historical
+  weekly-windowing does not capture matchup results for the 28 pre-2024 protocol weeks
+  (UNSAFE windows 2010-2016; matchup-empty 2017-2023). Data is present; the windowing is
+  the gap. Trigger: an engineering fix to historical windowing (then re-run unchanged), OR
+  a Fable protocol revision. See `OBSERVATIONS_2026_06_09_E1_4_SUBSTRATE_READINESS_BLOCKER.md`.
 - E1.6 (`promote-version` lifecycle): D-C adjudicated DEFER (2026-06-09). Optional;
   no DoR brief. Trigger: live season (E2.2) surfacing a real commissioner need to pick
   among regenerations. Type A scaffolding exists (`version_presentation_navigation_v1.py`);
