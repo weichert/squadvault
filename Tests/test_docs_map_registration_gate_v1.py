@@ -35,8 +35,11 @@ _GRANDFATHERED_TOP_LEVEL_DOCS = {
     "map_patch_2026_05_14_template_registration.md",
     "map_patch_2026_05_16_f1_sat_provisional.md",
     "map_patch_2026_06_09_state_ledger.md",
+    "map_patch_2026_06_09_document_of_record.md",
     # Operational read-model (Charter v1.0 section 4; registered via the patch above)
     "STATE.md",
+    # Product plan of record (Charter-named; registered via the patch above) - E1.3
+    "SquadVault_Product_Document_of_Record_v2_1.md",
     # Legacy binding addendum (pre-dates gate; registered in Map v1.6+)
     "SquadVault_IRP_Playbook_Authority_Clarification_Addendum.docx",
 }

@@ -11,7 +11,7 @@ Tier 0-4 canonical document, the canonical document governs. Architecture is fro
 Facts are immutable and append-only. AI assists; humans approve publication. Silence
 over speculation. No analytics, optimization, engagement loops, or prediction - ever.
 
-**Product plan of record:** `SquadVault_Product_Document_of_Record_v2_0.md` (v2.1).
+**Product plan of record:** `docs/SquadVault_Product_Document_of_Record_v2_1.md` (v2.1, in-repo).
 **Amendments to this charter:** append-only, dated, founder-approved, logged in section 9.
 
 ---
@@ -144,3 +144,6 @@ work precedes W.6; or any framing drifts toward engagement/optimization language
 ## 9. Amendment log
 
 - v1.0 - 2026-06-09 - Initial charter. Ratified by founder: ____ (date) ____.
+- v1.0.1 - 2026-06-09 - Product-plan-of-record pointer updated to the in-repo path
+  `docs/SquadVault_Product_Document_of_Record_v2_1.md` (filed and Map-registered in E1.3).
+  Founder-approved.
