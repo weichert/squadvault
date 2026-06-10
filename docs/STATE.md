@@ -41,7 +41,8 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 ## Discharged items (with hashes)
 
 - W.6 (consent governance memo) RATIFIED 2026-06-10 (D-S..D-X as recommended); details in
-  Current HEAD above. Memo `OBSERVATIONS_2026_06_10_W6_RATIFICATION.md`.
+  Current HEAD above. Memos `OBSERVATIONS_2026_06_10_W6_RATIFICATION.md` +
+  `..._W6_RATIFICATION_AFFIRMATION.md` (founder's written attestation, affirms `df09a5e`).
 - W.7 (framing drift-flag memo, FIRST on Track W): records the three 2026-06-09 vision-session
   engagement framings, each caught+reframed before any build (worthy-of-visits / corkboard /
   words-become-facts-behavior-never-measured). cert-5 primary exhibit. Doc-only, no tier.
