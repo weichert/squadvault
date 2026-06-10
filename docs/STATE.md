@@ -6,13 +6,13 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- E1.3 discharged: Document of Record filed in-repo (`58b498a`) + charter v1.0.1 pointer
-  amendment; runbook DB-path verified already fixed (`215cb39`). Preceded by E1.2 ruff
-  pre-commit gate (`87c400f`) and the requires-python >=3.11 bump.
+- E1.5b discharged: narrative formatting gate (`84284fe`) closes R5; presentation lint
+  L1-L5 at the publication path + Office checklist. E1.5a spec landed at `b075b8a`.
+  Preceded by E1.3 (Document of Record in-repo, `58b498a`).
 
 ## Open units (Document of Record v2.1, by ID)
 
-- E-cluster: E1.4, E1.5, E1.6, E1.7
+- E-cluster: E1.4, E1.6, E1.7
 - W-cluster: W.1, W.2, W.3, W.4, W.5, W.6, W.7, W.8
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
@@ -22,8 +22,6 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - E1.4: gated on a Fable pre-registration protocol + D-B (n/spend cap); skeleton
   `session_brief_e1_4_execution_SKELETON.md`. Trigger: protocol memo filed.
-- E1.5b: gated on the E1.5a presentation spec (Fable, pre-Week-1); skeleton
-  `session_brief_e1_5b_formatting_gate_SKELETON.md`. Trigger: E1.5a spec in `docs/`.
 - E1.6 (`promote-version` lifecycle): D-C adjudicated DEFER (2026-06-09). Optional;
   no DoR brief. Trigger: live season (E2.2) surfacing a real commissioner need to pick
   among regenerations. Type A scaffolding exists (`version_presentation_navigation_v1.py`);
@@ -33,6 +31,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- `84284fe` - E1.5b: narrative formatting gate closes R5. Standalone presentation lint
+  (L1-L5; L2 facts-block byte-identity is the one HARD rule) at the publication path +
+  Office checklist; clean plain_text assembler lifted to render/. E1.5a spec at `b075b8a`.
 - `58b498a` - E1.3: Document of Record filed in-repo + Map-registered; charter v1.0.1
   pointer amendment. Runbook DB-path item was already fixed at `215cb39` (no-op; the
   Document of Record listed it stale). Frontend doc sweep deferred to its own brief.
