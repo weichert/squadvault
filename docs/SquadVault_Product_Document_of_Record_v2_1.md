@@ -1,4 +1,4 @@
-# SquadVault — Product Completion Document of Record — v2.0
+# SquadVault — Product Completion Document of Record — v2.1
 
 **Date:** 2026-06-09
 **Supersedes:** Completion Plan v1.0 and v1.1 (same date; retained unmodified per append-only discipline). v2.0 is self-contained — the consolidated document of record for product completion.

@@ -101,6 +101,7 @@ Rule; reference-only sections do not.
 - What We Are Not (Platform Guardrails)
 - Data Ethics & Trust Positioning Memo
 - Operational Plan v1.1
+- Product Completion Document of Record v2.1 *(plan of record)*
 - Platform & Writer's Room Compact v1.0
 - Tier 5 Live Observation Cadence Doctrine v1.0 *(provisional)*
 
