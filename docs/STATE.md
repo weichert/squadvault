@@ -15,11 +15,15 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - E-cluster: E1.6, E1.7. W-cluster: W.1, W.2, W.3, W.4, W.5, W.8 (W.6 discharged).
   L-cluster: L.1-L.10.
-- W.6 follow-ups (frontend `~/squadvault`), minor/OPEN: (1) `founding_sessions.consent`
-  reinterpretation doc-note (7.1); (2) commissioner read-only "at the gates" - DEFERRED to its
-  first consumer (W.1/W.4/W.8); (3) auth-session governance tests (member-vs-member, no-proxy).
-  Member-identity onboarding (E2.3) gates the ten members' use (commissioner works now).
-  Binding (7.2): future chains declare categories-read / gate / revocation.
+- W.6 follow-ups: (1) `founding_sessions.consent` reinterpretation doc-note (7.1) FILED
+  (frontend `248895c`); (2) commissioner read-only "at the gates" - DEFERRED to first consumer
+  (W.1/W.4/W.8); (3) auth-session governance tests - follow-up. Binding (7.2): future chains
+  declare categories-read / gate / revocation.
+- W.1 (A/V Room, SAT #1) NEXT: four-memo-chain kickoff filed `session_brief_w1_av_room_chain.md`
+  (greenfield - no Storage/media tables at `248895c`; trips all 3 admission gates). Needs the
+  Fable chain + founder ratification BEFORE Opus build (NOT build-straight; spec must exist).
+- Member-identity onboarding (E2.3) is the standing prerequisite for member-facing testimony
+  across W.1/L.1/L.3/L.4 (commissioner-resolvable identity works now).
 
 ## Deferred (do not pick up until trigger)
 
