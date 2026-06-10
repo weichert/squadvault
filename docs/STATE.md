@@ -6,13 +6,15 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- Historical weekly-windowing fixed (`abd5c3c`, D-W1=B): week-field matchup fallback;
-  selection now yields matchups for all 32 E1.4 weeks; 2024-2025 byte-identical. Unblocks
-  E1.4. Preceded by the E1.4 substrate-readiness finding and E1.5b (`84284fe`, closes R5).
+- E1.4 fresh-gen fabrication baseline RUN + discharged as a measurement (gen HEAD
+  `28d059f`, ~$0.60 est spend). Verdict YELLOW: scores clean (~0.6%), non-score residual
+  is the headline (FAAB ~8.9%, series 3.8%, superlative 2.5%); remediation queue named,
+  Phase 12 gating noted. Results: `OBSERVATIONS_2026_06_09_E1_4_..._BASELINE_RESULTS.md`.
+  Enabled by the windowing fix (`abd5c3c`).
 
 ## Open units (Document of Record v2.1, by ID)
 
-- E-cluster: E1.4, E1.6, E1.7
+- E-cluster: E1.6, E1.7
 - W-cluster: W.1, W.2, W.3, W.4, W.5, W.6, W.7, W.8
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
@@ -20,9 +22,7 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Deferred (do not pick up until trigger)
 
-- E1.4: prereg filed (`95daa09`, n=32/cap $15); substrate blocker RESOLVED by the
-  windowing fix (`abd5c3c`) - selection now yields matchups for all 32 weeks. READY TO
-  RE-RUN unchanged; awaits founder go for the paid generation (real API, $15 cap).
+  (E1.4 run + discharged as a measurement - see Discharged items and the results memo.)
 - E1.6 (`promote-version` lifecycle): D-C adjudicated DEFER (2026-06-09). Optional;
   no DoR brief. Trigger: live season (E2.2) surfacing a real commissioner need to pick
   among regenerations. Type A scaffolding exists (`version_presentation_navigation_v1.py`);
@@ -32,6 +32,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- E1.4 fresh-gen fabrication baseline (gen HEAD `28d059f`): 32 weeks generated (~$0.60),
+  verifier + automated classification. Verdict YELLOW (not a pass) - scores clean ~0.6%,
+  non-score residual the headline (FAAB hottest); remediation queue named. Disclosed
+  deviations: windowing fix post-dates prereg freeze; paced retry on rate-limited weeks.
+  Results memo `OBSERVATIONS_2026_06_09_E1_4_FRESH_GEN_FABRICATION_BASELINE_RESULTS.md`.
 - `abd5c3c` - Historical weekly-windowing fix (D-W1=B): week-field matchup selection for
   seasons with un-timestamped matchups; per-season gated so 2024-2025 stay byte-identical
   (0/288 working slots changed; 230 historical slots gained matchups; all 32 E1.4 weeks
