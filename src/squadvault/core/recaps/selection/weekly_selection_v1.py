@@ -71,6 +71,14 @@ class SelectionResult:
 # Must stay in sync with recap_week_gating_check.SAFE_WINDOW_MODES.
 _SAFE_WINDOW_MODES = {"LOCK_TO_LOCK", "LOCK_TO_SEASON_END", "LOCK_PLUS_7D_CAP"}
 
+# Week-keyed event types (D-W1 Option B): these carry an explicit, reliable
+# payload_json.week. For historical seasons their occurred_at is NULL, so the
+# lock-derived timestamp window cannot reach them. They are selected by week
+# field instead — but ONLY when occurred_at IS NULL, so any event the timestamp
+# window already captures (e.g. all 2024-2025 matchups) is untouched and selection
+# stays byte-identical for currently-working weeks.
+WEEK_KEYED_EVENT_TYPES = frozenset({"WEEKLY_MATCHUP_RESULT"})
+
 
 def _fingerprint_from_ids(ids: list[str]) -> str:
     # sha256 of comma-joined canonical ids
@@ -105,79 +113,103 @@ def select_weekly_recap_events_v1(
         season_end=season_end,
     )
 
-    # Conservative: refuse to select if we can't compute a safe window.
-    if window.mode not in _SAFE_WINDOW_MODES or not window.window_start or not window.window_end:
-        return SelectionResult(
-            week_index=week_index,
-            window=window,
-            canonical_ids=[],
-            counts_by_type={},
-            fingerprint=_fingerprint_from_ids([]),
-        )
-
-    # Degenerate lock-to-lock (start == end) is treated as unsafe upstream; but double-guard anyway.
-    if window.window_start == window.window_end:
-        return SelectionResult(
-            week_index=week_index,
-            window=window,
-            canonical_ids=[],
-            counts_by_type={},
-            fingerprint=_fingerprint_from_ids([]),
-        )
-
     allow = allowlist_event_types if allowlist_event_types is not None else _load_allowlist_event_types()
     allow = [str(x) for x in allow if x]
+    if not allow:
+        return SelectionResult(
+            week_index=week_index, window=window, canonical_ids=[],
+            counts_by_type={}, fingerprint=_fingerprint_from_ids([]),
+        )
 
+    window_safe = (
+        window.mode in _SAFE_WINDOW_MODES
+        and window.window_start
+        and window.window_end
+        and window.window_start != window.window_end
+    )
+
+    rows: list[dict] = []
     with DatabaseSession(db_path) as conn:
         cur = conn.cursor()
 
-        # Allowlist filter (parameterized IN)
-        # If allowlist is empty, return empty selection (most conservative)
-        if not allow:
-            return SelectionResult(
-                week_index=week_index,
-                window=window,
-                canonical_ids=[],
-                counts_by_type={},
-                fingerprint=_fingerprint_from_ids([]),
+        # Path 1 - timestamp window (unchanged behavior). Only when a safe,
+        # non-degenerate window exists; otherwise this path contributes nothing.
+        if window_safe:
+            placeholders = ",".join(["?"] * len(allow))
+            cur.execute(
+                f"""
+                SELECT action_fingerprint AS canonical_id, occurred_at, event_type
+                FROM canonical_events
+                WHERE league_id = ?
+                  AND season = ?
+                  AND occurred_at IS NOT NULL
+                  AND occurred_at >= ?
+                  AND occurred_at <  ?
+                  AND event_type IN ({placeholders})
+                """,
+                [str(league_id), int(season), window.window_start, window.window_end, *allow],
             )
+            rows.extend(_row_to_dict(r) for r in cur.fetchall())
 
-        placeholders = ",".join(["?"] * len(allow))
+        # Path 2 - week-field selection (D-W1 Option B), a FALLBACK for historical
+        # seasons whose week-keyed events are entirely un-timestamped (occurred_at
+        # NULL), which the lock-derived window cannot reach. It is gated per season:
+        # applied ONLY to a week-keyed type that has ZERO timestamped events in this
+        # season. Any season the timestamp window already handles (e.g. 2024-2025,
+        # whose matchups are timestamped) is left untouched, so its selections stay
+        # byte-identical. (A lone un-timestamped event inside an otherwise-timestamped
+        # season is therefore left as-is - a pre-existing data quirk, out of scope.)
+        for t in (x for x in allow if x in WEEK_KEYED_EVENT_TYPES):
+            has_ts = cur.execute(
+                """
+                SELECT 1 FROM canonical_events
+                WHERE league_id = ? AND season = ? AND event_type = ?
+                  AND occurred_at IS NOT NULL
+                LIMIT 1
+                """,
+                [str(league_id), int(season), t],
+            ).fetchone()
+            if has_ts:
+                continue  # timestamp window handles this type for this season
+            cur.execute(
+                """
+                SELECT ce.action_fingerprint AS canonical_id, ce.occurred_at, ce.event_type
+                FROM canonical_events ce
+                JOIN memory_events me ON ce.best_memory_event_id = me.id
+                WHERE ce.league_id = ?
+                  AND ce.season = ?
+                  AND ce.occurred_at IS NULL
+                  AND ce.event_type = ?
+                  AND CAST(json_extract(me.payload_json, '$.week') AS INTEGER) = ?
+                """,
+                [str(league_id), int(season), t, int(week_index)],
+            )
+            rows.extend(_row_to_dict(r) for r in cur.fetchall())
 
-        cur.execute(
-            f"""
-            SELECT
-                action_fingerprint AS canonical_id,
-                occurred_at,
-                event_type
-            FROM canonical_events
-            WHERE league_id = ?
-              AND season = ?
-              AND occurred_at IS NOT NULL
-              AND occurred_at >= ?
-              AND occurred_at <  ?
-              AND event_type IN ({placeholders})
-            ORDER BY occurred_at ASC, event_type ASC, action_fingerprint ASC
-            """,
-            [str(league_id), int(season), window.window_start, window.window_end, *allow],
-        )
-
-        rows = [_row_to_dict(r) for r in cur.fetchall()]
-
-    canonical_ids: list[str] = [str(r["canonical_id"]) for r in rows]
-    counts: dict[str, int] = {}
+    # Dedup by canonical_id; deterministic order matching the prior SQL ordering
+    # (occurred_at, event_type, action_fingerprint). NULL occurred_at -> "" sorts
+    # first, ahead of any ISO-8601 timestamp.
+    seen: dict[str, dict] = {}
     for r in rows:
+        cid = str(r["canonical_id"])
+        seen.setdefault(cid, r)
+    ordered = sorted(
+        seen.values(),
+        key=lambda r: (str(r.get("occurred_at") or ""), str(r.get("event_type") or ""), str(r["canonical_id"])),
+    )
+
+    canonical_ids: list[str] = [str(r["canonical_id"]) for r in ordered]
+    counts: dict[str, int] = {}
+    for r in ordered:
         et = str(r.get("event_type") or "")
         counts[et] = counts.get(et, 0) + 1
-
-    fp = _fingerprint_from_ids(canonical_ids)
 
     return SelectionResult(
         week_index=week_index,
         window=window,
         canonical_ids=canonical_ids,
         counts_by_type=counts,
-        fingerprint=fp,
+        fingerprint=_fingerprint_from_ids(canonical_ids),
     )
 
 
