@@ -6,10 +6,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- W.7 framing drift-flag memo (FIRST on Track W): records the three 2026-06-09 vision-session
-  engagement framings, each caught+reframed before any build. cert-5 primary exhibit, doc-only.
-  Track W is now entered. Prior HEAD: residual fabrication remediation (-51% residual; SERIES
-  fixed, SUPERLATIVE improved, FAAB unmoved - see Deferred).
+- W.6 chain prep: detailed Fable brief filed (`c441c75`) and the resulting v1.2 DRAFT's
+  Section 0 substrate finding INDEPENDENTLY VERIFIED at frontend `4e44bb3` (all 8 Appendix A
+  claims confirmed; one non-load-bearing A8 table-count imprecision noted). W.6 itself is a
+  chat/Fable constitutional artifact, NOT yet in-repo and NOT yet ratified - awaiting founder
+  ratification + D-S..D-X picks. Prior HEAD: W.7 framing drift-flag memo (Track W entered).
 
 ## Open units (Document of Record v2.1, by ID)
 
@@ -57,6 +58,10 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - Stale-brief hazard (7+ recurrences): brief claims without commit hashes are
   UNVERIFIED. If a brief conflicts with git, git wins; flag before executing.
+- Divergent clones: `~/projects/squadvault` is a stale ENGINE clone (`a5a2d60`) separate
+  from the working repo (`squadvault-ingest-fresh`); `~/projects/squadvault-frontend` is the
+  frontend clone (left detached at `4e44bb3` after W.6 verification). Confirm repo identity
+  before acting (`test -f scripts/recap_artifact_regenerate.py` = engine working repo).
 - "Data correct on prod is not the same as the code path being guarded in the repo"
   (2026-06-09): verify a claim at the layer the claim is about.
 - CI installs `ruff` unpinned in `.github/workflows/ci.yml` line 29; the
