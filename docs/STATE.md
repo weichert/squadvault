@@ -6,21 +6,22 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- W.1 (A/V Room) four-memo chain RATIFIED + FILED 2026-06-10 (SAT #1, native admission;
-  D-W1-1..6 as recommended; chain memos in `_observations/`, contract card carries the W.6 7.2
-  declaration). Increment 1 (founder-ingest foundation) is the buildable next; Increment 2
-  (member testimony) gated on E2.3. Prior: W.6 consent gate closed-through-build (memo ratified
-  + `member_consent_events` merged to frontend `6c2ed32`).
+- W.1 (A/V Room) Increment 1 FOUNDATION built (frontend `feat/w1-av-room` `c21e858`, LOCAL/
+  unpushed; founder applies+proves+merges). Migration 011 (four append-only classes + RLS) +
+  types + governance G12-G15; `tsc` clean. Chain RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6
+  as recommended; 7.2 declaration on the contract card). NEXT = routes/UI (brief deliverables
+  3-5) after the founder proves the schema. Increment 2 (member testimony) gated on E2.3.
 
 ## Open units (Document of Record v2.1, by ID; descriptions in-repo in the DoR)
 
 - E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 Increment 1
   (build; chain ratified), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
-- W.1 NEXT = Increment 1 execution brief + build (frontend `~/squadvault`), per spec sections
-  5-6: `league-media` bucket + `media_entries` + provenance tags + room ratification +
-  commissioner ingest/tagging + `/league/[id]/av-room` display. Increment 2 (member captions/
-  marginalia/self-tagging) specified, build gated on E2.3 (the standing member-identity
-  prerequisite, shared with L.1/L.3/L.4; commissioner identity works now).
+- W.1 NEXT = Increment 1 routes/UI (frontend, brief deliverables 3-5): server routes
+  (`src/app/api/av-room/...`), commissioner ingest surface (photo-first), `/league/[id]/av-room`
+  display (fail-closed; provenance panels w/ honest gaps). Rides the proven schema (foundation
+  `c21e858`) AFTER founder applies 011 + creates `league-media` bucket + `test:governance` green
+  + `next build`. Increment 2 (member captions/marginalia/self-tagging) gated on E2.3 (standing
+  member-identity prereq, shared with L.1/L.3/L.4; commissioner identity works now).
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
   the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
   follow-up. Binding (7.2): future chains declare categories-read / gate / revocation.
