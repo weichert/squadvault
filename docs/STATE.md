@@ -6,20 +6,23 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- E1.2 discharged: ruff added to the pre-commit chain (`87c400f`); registry parity
-  threaded (Labels TSV, rendered Index block, surface fingerprint, README). Preceded by
-  requires-python >=3.11 bump and E1.1 ruff cleanup (`bf0833e`).
+- E1.3 discharged: Document of Record filed in-repo (`58b498a`) + charter v1.0.1 pointer
+  amendment; runbook DB-path verified already fixed (`215cb39`). Preceded by E1.2 ruff
+  pre-commit gate (`87c400f`) and the requires-python >=3.11 bump.
 
 ## Open units (Document of Record v2.1, by ID)
 
-- E-cluster: E1.3, E1.4, E1.5, E1.6, E1.7
+- E-cluster: E1.4, E1.5, E1.6, E1.7
 - W-cluster: W.1, W.2, W.3, W.4, W.5, W.6, W.7, W.8
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
-(Descriptions live in the Document of Record / chat project knowledge, not duplicated here.)
+(Descriptions now in-repo: `docs/SquadVault_Product_Document_of_Record_v2_1.md`.)
 
 ## Discharged items (with hashes)
 
+- `58b498a` - E1.3: Document of Record filed in-repo + Map-registered; charter v1.0.1
+  pointer amendment. Runbook DB-path item was already fixed at `215cb39` (no-op; the
+  Document of Record listed it stale). Frontend doc sweep deferred to its own brief.
 - `87c400f` - E1.2: pre-commit gate hardening - ruff added to the pre-commit chain
   + prove_ci, registry parity threaded (Labels TSV / Index / fingerprint / README),
   gate-wiring test. Closes Roadmap section 7.3 standing item.
