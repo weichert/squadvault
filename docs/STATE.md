@@ -58,10 +58,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - Stale-brief hazard (7+ recurrences): brief claims without commit hashes are
   UNVERIFIED. If a brief conflicts with git, git wins; flag before executing.
-- Divergent clones: `~/projects/squadvault` is a stale ENGINE clone (`a5a2d60`) separate
-  from the working repo (`squadvault-ingest-fresh`); `~/projects/squadvault-frontend` is the
-  frontend clone (left detached at `4e44bb3` after W.6 verification). Confirm repo identity
-  before acting (`test -f scripts/recap_artifact_regenerate.py` = engine working repo).
+- Local repos: working engine repo is `squadvault-ingest-fresh`; `~/projects/squadvault-frontend`
+  is the frontend clone (on `main`, added 2026-06-10 for W.6 verification). The stale
+  `~/projects/squadvault` engine clone (`a5a2d60`, fully redundant with origin) was deleted
+  2026-06-10. Confirm repo identity before acting (`test -f scripts/recap_artifact_regenerate.py`
+  = engine working repo).
 - "Data correct on prod is not the same as the code path being guarded in the repo"
   (2026-06-09): verify a claim at the layer the claim is about.
 - CI installs `ruff` unpinned in `.github/workflows/ci.yml` line 29; the
