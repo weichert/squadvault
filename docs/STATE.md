@@ -6,16 +6,21 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- W.6 chain prep: detailed Fable brief filed (`c441c75`) and the resulting v1.2 DRAFT's
-  Section 0 substrate finding INDEPENDENTLY VERIFIED at frontend `4e44bb3` (all 8 Appendix A
-  claims confirmed; one non-load-bearing A8 table-count imprecision noted). W.6 itself is a
-  chat/Fable constitutional artifact, NOT yet in-repo and NOT yet ratified - awaiting founder
-  ratification + D-S..D-X picks. Prior HEAD: W.7 framing drift-flag memo (Track W entered).
+- W.6 Consent Governance Memo RATIFIED (2026-06-10, all six D-S..D-X as recommended) and
+  filed as in-repo canonical doctrine (`docs/SquadVault_W6_Consent_Governance_Memo_v1_2.md`,
+  Map-patch-registered; DoR corrected by v2.1.1 supersession note). Founder was the ratifying
+  authority; Opus recorded (Charter 2.4). Section 0 verified at frontend `4e44bb3` (`5184b9d`).
+  The warmth/lore track's consent gate is now OPEN. Prior HEAD: W.7 drift-flag memo.
 
 ## Open units (Document of Record v2.1, by ID)
 
 - E-cluster: E1.6, E1.7
-- W-cluster: W.1, W.2, W.3, W.4, W.5, W.6, W.8
+- W-cluster: W.1, W.2, W.3, W.4, W.5, W.8 (W.6 discharged - ratified 2026-06-10)
+- W.6 downstream (NEW, frontend repo - not engine): (1) frontend doc-note for the
+  `founding_sessions.consent` reinterpretation (memo 7.1); (2) `member_consent_events`
+  implementation unit (D-V: table + member ratification surface + commissioner read-only) -
+  predecessor for any consent read, incl. W.1. Standing rule now binding: every future
+  four-memo chain / SAT contract card declares categories-read / gate / revocation behavior (7.2).
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
 (Descriptions now in-repo: `docs/SquadVault_Product_Document_of_Record_v2_1.md`.)
@@ -34,6 +39,8 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- W.6 (consent governance memo) RATIFIED 2026-06-10 (D-S..D-X as recommended); details in
+  Current HEAD above. Memo `OBSERVATIONS_2026_06_10_W6_RATIFICATION.md`.
 - W.7 (framing drift-flag memo, FIRST on Track W): records the three 2026-06-09 vision-session
   engagement framings, each caught+reframed before any build (worthy-of-visits / corkboard /
   words-become-facts-behavior-never-measured). cert-5 primary exhibit. Doc-only, no tier.

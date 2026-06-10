@@ -9,6 +9,8 @@
 
 **v2.1 (2026-06-09):** Added Unit W.8 (the Memorabilia Pipeline — testimony-derived set dressing for the clubhouse scene), decisions D-Q/D-R, and master-sequence integration. v2.0 content otherwise unchanged.
 
+**v2.1.1 supersession note (2026-06-10):** Part 3 Unit W.6 says the consent model "extends `founding_sessions.consent`." That claim is **superseded** by the ratified W.6 Consent Governance Memo, Section 0 (`docs/SquadVault_W6_Consent_Governance_Memo_v1_2.md`), which verified at frontend `4e44bb3` that the field is mutable, league-level, and a three-boolean bundle — so per-member/append-only/revocable-forward consent is established as a **new** `member_consent_events` system of record, and `founding_sessions.consent` is reinterpreted as the league-defaults layer (D-X). The W.6 unit is otherwise discharged by that memo (decisions D-S through D-X ratified 2026-06-10). DoR body text below is retained unmodified per append-only discipline; the memo governs where they differ on the substrate.
+
 ---
 
 # PART 0 — WHAT "COMPLETE" MEANS
