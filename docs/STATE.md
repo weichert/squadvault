@@ -6,14 +6,15 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- Residual fabrication remediation (verbatim/copy discipline): -51% residual fabrication
-  (2.00 -> 0.98/sample). SERIES strongly fixed (43% -> 9.5%), SUPERLATIVE improved
-  (57% -> 33%); FAAB UNMOVED (instruction-resistant). Followed the E1.4 YELLOW baseline.
+- W.7 framing drift-flag memo (FIRST on Track W): records the three 2026-06-09 vision-session
+  engagement framings, each caught+reframed before any build. cert-5 primary exhibit, doc-only.
+  Track W is now entered. Prior HEAD: residual fabrication remediation (-51% residual; SERIES
+  fixed, SUPERLATIVE improved, FAAB unmoved - see Deferred).
 
 ## Open units (Document of Record v2.1, by ID)
 
 - E-cluster: E1.6, E1.7
-- W-cluster: W.1, W.2, W.3, W.4, W.5, W.6, W.7, W.8
+- W-cluster: W.1, W.2, W.3, W.4, W.5, W.6, W.8
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
 (Descriptions now in-repo: `docs/SquadVault_Product_Document_of_Record_v2_1.md`.)
@@ -32,6 +33,10 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Discharged items (with hashes)
 
+- W.7 (framing drift-flag memo, FIRST on Track W): records the three 2026-06-09 vision-session
+  engagement framings, each caught+reframed before any build (worthy-of-visits / corkboard /
+  words-become-facts-behavior-never-measured). cert-5 primary exhibit. Doc-only, no tier.
+  Memo `OBSERVATIONS_2026_06_10_W7_FRAMING_DRIFT_FLAG.md`.
 - Residual fabrication remediation (verbatim/copy guardrails for superlative/series/FAAB):
   -51% residual fabrication; SERIES fixed, SUPERLATIVE improved, FAAB unmoved (see Deferred).
   Memo `OBSERVATIONS_2026_06_09_RESIDUAL_REMEDIATION_VERBATIM_RESULTS.md`.
