@@ -38,11 +38,15 @@ REVOCABLE-FORWARD (revocation stops future use and NEVER rewrites the past recor
 
 SUBSTRATE VERIFICATION (a brief claim that needs checking before you design on top of it):
 - The DoR states W.6 "extends founding_sessions.consent." That table/field is NOT present
-  in the engine repo storage layer (schema.sql / migrations show nothing). It may live in
-  the frontend (Supabase) repo, or may not be built yet. Establish where consent state
-  actually lives TODAY before specifying an extension - do not assume the field exists.
-  (Charter hazard: "data correct on prod is not the same as the code path being guarded in
-  the repo - verify at the layer the claim is about.")
+  in the ENGINE repo storage layer (schema.sql / migrations show nothing at 07e65c3). The
+  DoR locates it elsewhere: Part 1.2 lists "full founding session" as a SHIPPED FRONTEND
+  route (with G-series governance tests + RLS), and L.1 says the Historian Interviews
+  "reuse founding-session machinery (exchanges jsonb, consent, topic coverage)." So consent
+  state lives in the founding-session machinery in the FRONTEND/Supabase repo
+  (weichert/squadvault-frontend), not the engine. Verify its current shape THERE before
+  specifying the extension - do not design against the engine schema or assume the field's
+  form. (Charter hazard: "data correct on prod is not the same as the code path being
+  guarded in the repo - verify at the layer the claim is about.")
 
 CONSTITUTIONAL CONSTRAINTS THE MEMO MUST HONOR (non-negotiable):
 - Standing law, Tracks W & L (DoR Part 3): "member words can become facts (attributed,
@@ -84,10 +88,11 @@ ratification, plus a clear list of any D-x decisions you surfaced for the founde
 ---
 
 Author's note (Claude Code, for the founder, not part of the paste block):
-- The DoR's "extends founding_sessions.consent" claim is UNVERIFIED at the engine-repo
-  layer (no such table/field in schema.sql or migrations as of 07e65c3). The prompt directs
-  Fable to locate where consent state actually lives before designing - flagged per the
-  stale-claim hazard, not asserted.
+- The DoR's "extends founding_sessions.consent" claim has no engine-repo backing (no such
+  table/field in schema.sql or migrations as of 07e65c3). DoR 1.2 + L.1 locate consent in
+  the shipped founding-session machinery in the FRONTEND repo; the prompt now points Fable
+  there to verify its shape before designing. The home is inferred from the DoR's own
+  cross-references, not asserted - the stale-claim hazard still applies until Fable confirms.
 - "Cavallini revocation" in STATE.md is ANCHOR revocation (a falsified narrative anchor
   purge), unrelated to consent revocation - deliberately not cited here.
 - Design choices are framed as open questions for Fable + the founder to adjudicate, not
