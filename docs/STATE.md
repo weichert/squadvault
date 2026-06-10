@@ -16,13 +16,14 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - E-cluster: E1.6, E1.7
 - W-cluster: W.1, W.2, W.3, W.4, W.5, W.8 (W.6 discharged - ratified 2026-06-10)
-- W.6 downstream (NEW, frontend repo - not engine): (1) frontend doc-note for the
-  `founding_sessions.consent` reinterpretation (memo 7.1); (2) `member_consent_events`
-  implementation unit (D-V) - BRIEF FILED `session_brief_member_consent_events_frontend.md`
-  (repo-grounded against frontend `4e44bb3`; targets migration 010); predecessor for any
-  consent read, incl. W.1, and for L.3 (pre-August). Open process call in the brief: SAT/
-  four-memo admission (impl-of-W.6 vs new surface). Standing rule now binding: every future
-  four-memo chain / SAT contract card declares categories-read / gate / revocation behavior (7.2).
+- W.6 downstream (frontend repo `~/squadvault`): (1) `founding_sessions.consent`
+  reinterpretation doc-note (memo 7.1) - OPEN. (2) `member_consent_events` (D-V) - brief
+  `session_brief_member_consent_events_frontend.md`; SAT call RESOLVED (impl-of-W.6, build
+  straight). INCREMENT 1 built on branch `feat/member-consent-events` (frontend `d58191b`:
+  migration 010 + types + G11 governance test; `tsc --noEmit` clean) - AWAITS founder apply +
+  `test:governance` (no DB/lint in the build session). Increment 2 (API routes + Member Office
+  UI) pends inc-1 DB proof. Gates W.1 + L.3 (pre-August). Binding rule (7.2): future chains
+  declare categories-read / gate / revocation behavior.
 - L-cluster: L.1, L.2, L.3, L.4, L.5, L.6, L.7, L.8, L.9, L.10
 
 (Descriptions now in-repo: `docs/SquadVault_Product_Document_of_Record_v2_1.md`.)
