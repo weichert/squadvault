@@ -21,10 +21,10 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   Discharged); large-file ingest UNBLOCKED - **D-W1-V1 RULED REMEDY B** 2026-06-10 (founder, Fable):
   client-direct upload under server-minted grant; A ELIMINATED (real ceiling = Vercel's unconfigurable
   4.5 MB function body limit, not the Supabase cap - now 1 GB Pro). **Spec 5.1 Amendment 1** ratified
-  (transport not authority; insert-after-upload, 6.9 unchanged). EXECUTE brief FILED (frontend ruling
-  memo + `..._remedy_b_build.md`; prod photo >4.5 MB bug B-fixed too). PLAYBACK = Fable-spec-first.
-  (b) Increment 2 (member captions/marginalia/self-tagging) gated E2.3 - also the first live
-  exercise of 2a-silence (no linked member_user_id yet; spec 8.1 anchors). Commissioner identity works.
+  (transport not authority; insert-after-upload, 6.9 unchanged). BUILT (D-B1..D-B5: grant-mint +
+  client direct upload + finalize/orphan-reap + G16 + 1 GB) - frontend PR #10, gates green 112/0,
+  PENDING founder click-through + merge; prod photo >4.5 MB bug B-fixed too. PLAYBACK = Fable-spec-first.
+  (b) Inc 2 (member captions/marginalia/self-tag) gated E2.3 - first live 2a-silence (no linked member_user_id; spec 8.1; commish id works).
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
   the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
   follow-up. Binding (7.2): future chains declare categories-read / gate / revocation.
