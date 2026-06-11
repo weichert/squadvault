@@ -17,13 +17,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 (Inc 1 DISCHARGED;
   open = video increment + Inc 2), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
-- W.1 open work (on the proven Inc 1 foundation): (a) VIDEO hardening D1/D2/D3 MERGED (Discharged);
-  large-file ingest **D-W1-V1 RULED REMEDY B** + **Spec 5.1 Amendment 1** 2026-06-10 (client-direct
-  under server-minted grant; A eliminated by Vercel's 4.5 MB body limit, cap now 1 GB Pro). Remedy-B
-  build MERGED (frontend `5c1550b`, D-B1..D-B5, gov 112/0; photo >4.5 MB proven transitively, 68.7 MB
-  on prod). INGEST ERGONOMICS D0-D6 (poster set+de-silence, drag-drop queue, batch-tag, compact rows,
-  newest-first, reinstate=mig 012+G17, HEIC) BUILT in PR; founder: apply 012, set 2 stills,
-  click-through. **D-W1-V1 DISCHARGE HELD on D0 (posters on prod).** PLAYBACK = Fable-spec-first.
+- W.1 open work (on the proven Inc 1 foundation): (a) hardening + large-file ingest (D-W1-V1=remedy B)
+  + ingest ergonomics (D0-D6) BUILT + MERGED + **DISCHARGED 2026-06-11** (see Discharged). PLAYBACK +
+  voice-attestation class = Fable-spec-first (the next DECIDE). Ingest ergonomics ROUND 2 in PR.
   (b) Inc 2 (member captions/marginalia/self-tag) gated E2.3 - first live 2a-silence (no linked member_user_id; spec 8.1; commish id works).
   (c) Two ingest-extension candidates REGISTERED + PARKED (Google Photos Picker import; EXIF date-proposal, build gated on a recorded-metadata decision note) - trigger = first real shoebox session; `..._W1_INGEST_EXTENSION_CANDIDATES.md`.
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
@@ -48,6 +44,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   + `..._AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`; chain/contract/SAT-addendum memos filed 2026-06-10.
   Video-ingest HARDENING D1/D2/D3 `7601f8c`/`b97b19c`/`99dafc0`, PR #6 `2367479` (made the cap honest,
   not raised; `..._AV_ROOM_VIDEO_INGEST_HARDENING.md`) - superseded by the remedy-B 1 GB build.
+- W.1 large-file ingest (**D-W1-V1 = remedy B**, Spec 5.1 Amendment 1) + ingest ergonomics (D0-D6)
+  DISCHARGED 2026-06-11: client-direct upload under server-minted grant; cap 1 GB Pro; migration 012
+  applied (G17 live, gov 113/0); posters confirmed on prod; >4.5 MB photo PROVEN TRANSITIVELY (68.7 MB
+  carried the grant). Frontend `5c1550b` (remedy B, PR #10) + `c82bd5f` (ergonomics, PR #11);
+  `..._DW1V1_RULING_REMEDY_B.md` / `..._REMEDY_B_LARGE_FILE_INGEST.md` / `..._INGEST_ERGONOMICS.md`.
 - W.6 consent (2026-06-10): memo RATIFIED (D-S..D-X) + filed; `member_consent_events` (D-V) built +
   MERGED frontend `6c2ed32` (migration 010 append-only/member-only RLS, derived view, write API,
   panel `/league/[id]/consent`; G11 + click-through). Memos `..._W6_RATIFICATION`/`_AFFIRMATION`.
