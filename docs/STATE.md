@@ -1,6 +1,6 @@
 # STATE.md - SquadVault Engine State Ledger
 
-Read-model summary per Charter v1.0 section 4. Git is the read-model; this file is
+Read-model summary per Charter section 4 (amended v1.1, 2026-06-10). Git is the read-model; this file is
 a derived index, kept under ~80 lines. Updated in every session's commit series.
 No session treats a prior chat message or brief as authoritative over `git log` + this file.
 
@@ -58,6 +58,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   residual the headline. `..._E1_4_FRESH_GEN_FABRICATION_BASELINE_RESULTS.md`.
 - `abd5c3c` historical weekly-windowing fix (D-W1=B; 2024-25 byte-identical; unblocked E1.4).
 - `84284fe` E1.5b formatting gate (closes R5; L2 facts-block byte-identity HARD); E1.5a `b075b8a`.
+- Charter v1.1 (2026-06-10, founder-instructed): section 4 records the per-repo ledger realization
+  - engine `docs/STATE.md` (this file), frontend `ROADMAP.md` at root. Engine `11bdd8e` (PR #2);
+  mirrored + v1.0.1-reconciled + charter-first-tracked frontend `3006834` (PR #4).
 - `58b498a` E1.3 (DoR in-repo + charter v1.0.1) / `87c400f` E1.2 (ruff pre-commit gate) /
   `bf0833e` E1.1 (ruff cleanup + pin). Pre-charter: `a5d27dd` A2 anchor rename (Cavallini
   revocation `e5fbb94`/`97498fa`); `c4b4436` seasons-count; `993e97f` E2-light; `2bb33d0` docket.
