@@ -6,25 +6,25 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- W.1 (A/V Room) Increment 1 FOUNDATION MERGED + PROVEN (frontend `main` `2cd9f17`, PR #1;
-  founder-proven on live Supabase - tables+RLS via pg_policies, `league-media` private,
-  storage policy live). Routes/UI (deliverables 3-5) BUILT on `feat/w1-av-room-routes` (LOCAL,
-  unpushed): five `/api/av-room/*` routes + `av-room` ingest + display + shared read-model;
-  governance G12-G15 tightened to assert RLS 42501 (note 1). `tsc` + `next build` both clean.
-  Video playback DEFERRED (founder 2026-06-10: no structured voice attestation on merged schema
-  -> next increment). NEXT = founder `test:governance` + click-through, then PR/merge. Chain
-  RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6; 7.2 on contract card). Inc 2 (member) gated E2.3.
+- W.1 (A/V Room) Increment 1 MERGED + PROVEN + DISCHARGED (frontend `65da2e6`, PR #2; foundation
+  `2cd9f17`, PR #1, live on Supabase - tables+RLS, `league-media` private, storage policy). Routes/UI
+  = five `/api/av-room/*` routes + ingest + display + shared read-model; G12-G15 assert RLS 42501.
+  Founder click-through proved: fail-closed room, upload, five-kind tagging, vacuous-tag rejection,
+  correction-by-supersession (real fix 3/26->8/26/2023), ratification, withdrawal, honest gaps.
+  Video present-but-not-playable - DEFERRED to next increment (attestation is its OWN structured
+  class + 2b playback gate, NOT a soft provenance tag; option-3 rejected 2026-06-10). Chain
+  RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6; 7.2 on card). Inc 2 (member) gated E2.3.
 
 ## Open units (Document of Record v2.1, by ID; descriptions in-repo in the DoR)
 
-- E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 Increment 1
-  (routes/UI built, founder prove+merge pending), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
-- W.1 NEXT = founder proves routes/UI (`feat/w1-av-room-routes`): `test:governance` green +
-  commissioner click-through (upload photo/video, tag 5 kinds, ratify room, withdraw; display
-  fail-closed + honest gaps), then PR + merge. Then W.1 Inc 1 DISCHARGES. Deferred within Inc 1:
-  video playback + commissioner voice attestation (next increment; founder-chosen 2026-06-10).
-  Increment 2 (member captions/marginalia/self-tagging) gated on E2.3 (standing member-identity
-  prereq, shared with L.1/L.3/L.4; commissioner identity works now).
+- E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 (Inc 1 DISCHARGED;
+  open = video increment + Inc 2), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
+- W.1 open work (on the proven Inc 1 foundation): (a) VIDEO INCREMENT - playback gated on a NEW
+  structured attestation class + 2b consent read; click-through carry-forwards: large-file ingest
+  (Supabase 50 MB cap rejected a real `.MOV`, 400 after ~40s), surface upload-failure reasons,
+  client-side size pre-check, poster-frame as a derived rendition (6.9, image-only, no 2b read).
+  (b) Increment 2 (member captions/marginalia/self-tagging) gated E2.3 - also the first live
+  exercise of 2a-silence (no linked member_user_id yet; spec 8.1 anchors). Commissioner identity works.
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
   the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
   follow-up. Binding (7.2): future chains declare categories-read / gate / revocation.
@@ -42,7 +42,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   D-W1-1..6 as recommended). Governed-testimony fact class formalized (Manual Fact Import
   admissibility theory in analogue, per W.6 1.1; frame D1-D6 untouched/OPEN); W.6 7.2
   declaration on the contract card. E1.7 DISCHARGED-NATIVE (cross-surface SAT promotion still
-  pending). W.1's own BUILD is the open Increment-1 unit. Chain memos
+  pending). W.1 Increment 1 BUILD DISCHARGED 2026-06-10: frontend `c21e858`->`df79a4f`->`c284053`
+  ->`7eee29d`->`65da2e6` (PR #2), founder click-through proven; frontend ledger ROADMAP.md W.1 row
+  + `OBSERVATIONS_2026_06_10_AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`. Chain memos
   `..._W1_AV_ROOM_CONSTITUTIONAL_ADMISSION` / `_SPECIFICATION` / `_ADMISSION_RECORD` +
   `W1_AV_Room_Contract_Card_v1_0` + `..._SAT_REGISTRY_ADDENDUM_W1`.
 - W.6 consent (Track W, 2026-06-10): memo RATIFIED (D-S..D-X as recommended) + filed canonical;
