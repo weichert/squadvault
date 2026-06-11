@@ -25,6 +25,7 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   newest-first, reinstate=mig 012+G17, HEIC) BUILT in PR; founder: apply 012, set 2 stills,
   click-through. **D-W1-V1 DISCHARGE HELD on D0 (posters on prod).** PLAYBACK = Fable-spec-first.
   (b) Inc 2 (member captions/marginalia/self-tag) gated E2.3 - first live 2a-silence (no linked member_user_id; spec 8.1; commish id works).
+  (c) Two ingest-extension candidates REGISTERED + PARKED (Google Photos Picker import; EXIF date-proposal, build gated on a recorded-metadata decision note) - trigger = first real shoebox session; `..._W1_INGEST_EXTENSION_CANDIDATES.md`.
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
   the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
   follow-up. Binding (7.2): future chains declare categories-read / gate / revocation.
