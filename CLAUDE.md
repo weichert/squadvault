@@ -100,6 +100,14 @@ Vision Register without founder instruction.
   allowlist stays at its enforced count). It contains exactly: current HEAD + meaning,
   open units (from the Document of Record), discharged items with hashes, and known
   hazards. It is a READ-MODEL summary, not a narrative - keep it under ~80 lines.
+  - **Per-repo realization (amendment v1.1, 2026-06-10).** The ENGINE repo carries
+    `docs/STATE.md` as above. The FRONTEND repo discharges the state-ledger role with
+    `ROADMAP.md` at repo root (the ordered milestone read-model per
+    `_observations/README.md`); it has no `docs/STATE.md`, no docs Map, and no root
+    allowlist - that gate apparatus is engine-repo law. Every charter reference to
+    "STATE.md" therefore means `docs/STATE.md` engine-side and `ROADMAP.md` frontend-side.
+    A brief that says "update STATE.md" against the frontend is satisfied by `ROADMAP.md`;
+    do not stand up a frontend `docs/STATE.md` without a further amendment.
 - STATE.md is updated as part of every session's commit series (section 3.11). A
   session that completes work without updating STATE.md has not completed the work.
 - Git is the read-model; chat artifacts are write-only. No session treats a prior chat
@@ -147,3 +155,6 @@ work precedes W.6; or any framing drifts toward engagement/optimization language
 - v1.0.1 - 2026-06-09 - Product-plan-of-record pointer updated to the in-repo path
   `docs/SquadVault_Product_Document_of_Record_v2_1.md` (filed and Map-registered in E1.3).
   Founder-approved.
+- v1.1 - 2026-06-10 - Section 4 STATE.md note: record the per-repo realization of the
+  state ledger (engine `docs/STATE.md`; frontend `ROADMAP.md` at root, no `docs/STATE.md`).
+  Founder-instructed. Surfaced by the W.1 Increment 1 ledger session (frontend `ee22e56`).
