@@ -6,22 +6,25 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Current HEAD
 
-- W.1 (A/V Room) Increment 1 FOUNDATION built, PR OPEN (frontend `feat/w1-av-room` `c21e858`,
-  squadvault-frontend PR #1 -> `main`; founder proves+merges). Migration 011 (four append-only
-  classes + RLS) + types + governance G12-G15; `tsc` clean. Chain RATIFIED+FILED 2026-06-10
-  (SAT #1; D-W1-1..6 as recommended; 7.2 declaration on the contract card). NEXT = routes/UI
-  (brief deliverables 3-5) after the founder proves the schema. Increment 2 (member) gated E2.3.
+- W.1 (A/V Room) Increment 1 FOUNDATION MERGED + PROVEN (frontend `main` `2cd9f17`, PR #1;
+  founder-proven on live Supabase - tables+RLS via pg_policies, `league-media` private,
+  storage policy live). Routes/UI (deliverables 3-5) BUILT on `feat/w1-av-room-routes` (LOCAL,
+  unpushed): five `/api/av-room/*` routes + `av-room` ingest + display + shared read-model;
+  governance G12-G15 tightened to assert RLS 42501 (note 1). `tsc` + `next build` both clean.
+  Video playback DEFERRED (founder 2026-06-10: no structured voice attestation on merged schema
+  -> next increment). NEXT = founder `test:governance` + click-through, then PR/merge. Chain
+  RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6; 7.2 on contract card). Inc 2 (member) gated E2.3.
 
 ## Open units (Document of Record v2.1, by ID; descriptions in-repo in the DoR)
 
 - E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 Increment 1
-  (build; chain ratified), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
-- W.1 NEXT = Increment 1 routes/UI (frontend, brief deliverables 3-5): server routes
-  (`src/app/api/av-room/...`), commissioner ingest surface (photo-first), `/league/[id]/av-room`
-  display (fail-closed; provenance panels w/ honest gaps). Rides the proven schema (foundation
-  `c21e858`) AFTER founder applies 011 + creates `league-media` bucket + `test:governance` green
-  + `next build`. Increment 2 (member captions/marginalia/self-tagging) gated on E2.3 (standing
-  member-identity prereq, shared with L.1/L.3/L.4; commissioner identity works now).
+  (routes/UI built, founder prove+merge pending), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
+- W.1 NEXT = founder proves routes/UI (`feat/w1-av-room-routes`): `test:governance` green +
+  commissioner click-through (upload photo/video, tag 5 kinds, ratify room, withdraw; display
+  fail-closed + honest gaps), then PR + merge. Then W.1 Inc 1 DISCHARGES. Deferred within Inc 1:
+  video playback + commissioner voice attestation (next increment; founder-chosen 2026-06-10).
+  Increment 2 (member captions/marginalia/self-tagging) gated on E2.3 (standing member-identity
+  prereq, shared with L.1/L.3/L.4; commissioner identity works now).
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
   the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
   follow-up. Binding (7.2): future chains declare categories-read / gate / revocation.
