@@ -18,10 +18,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 - E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 (Inc 1 DISCHARGED;
   open = video increment + Inc 2), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
 - W.1 open work (on the proven Inc 1 foundation): (a) VIDEO hardening (D1/D2/D3) BUILT + MERGED (see
-  Discharged); large-file ingest still BLOCKED on D-W1-V1 - DECISION-READINESS BRIEF FILED (frontend
-  `65f30db`, PR #7, `_observations/session_brief_2026_06_10_dw1v1_large_file_ingest_decision.md`):
-  founder/Fable rules remedy A (raise Supabase 50 MB cap, keeps spec 5.1) vs B (client-direct,
-  deviates 5.1 + amendment). PLAYBACK + attestation class = Fable-spec-first (option-3 rejected).
+  Discharged); large-file ingest UNBLOCKED - **D-W1-V1 RULED REMEDY B** 2026-06-10 (founder, Fable):
+  client-direct upload under server-minted grant; A ELIMINATED (real ceiling = Vercel's unconfigurable
+  4.5 MB function body limit, not the Supabase cap - now 1 GB Pro). **Spec 5.1 Amendment 1** ratified
+  (transport not authority; insert-after-upload, 6.9 unchanged). EXECUTE brief FILED (frontend ruling
+  memo + `..._remedy_b_build.md`; prod photo >4.5 MB bug B-fixed too). PLAYBACK = Fable-spec-first.
   (b) Increment 2 (member captions/marginalia/self-tagging) gated E2.3 - also the first live
   exercise of 2a-silence (no linked member_user_id yet; spec 8.1 anchors). Commissioner identity works.
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
@@ -44,10 +45,9 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   pending). W.1 Increment 1 BUILD DISCHARGED 2026-06-10: frontend `c21e858`->`df79a4f`->`c284053`
   ->`7eee29d`->`65da2e6` (PR #2), founder click-through proven; frontend ledger ROADMAP.md W.1 row
   + `..._AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`; chain/contract/SAT-addendum memos filed 2026-06-10.
-  Video-ingest HARDENING (no playback) `7601f8c`(D1 size pre-check)->`b97b19c`(D2 failure reasons)
-  ->`99dafc0`(D3 poster, 6.9 byte-unchanged, image-only no 2b)->`0392455`(ledger+memo), PR #6
-  `2367479`: cap made HONEST (`MAX_UPLOAD_BYTES`=50 MB single-source), NOT raised; governance 110/0
-  G12-15 unchanged; `..._AV_ROOM_VIDEO_INGEST_HARDENING.md`. D-W1-V1 decision brief filed (`65f30db`).
+  Video-ingest HARDENING (no playback) `7601f8c`(D1)->`b97b19c`(D2)->`99dafc0`(D3 poster 6.9/image-only)
+  ->`0392455`->PR #6 `2367479`: cap made HONEST (`MAX_UPLOAD_BYTES` 50 MB single-source), NOT raised;
+  gov 110/0 G12-15 unchanged; `..._AV_ROOM_VIDEO_INGEST_HARDENING.md`.
 - W.6 consent (2026-06-10): memo RATIFIED (D-S..D-X) + filed; `member_consent_events` (D-V) built +
   MERGED frontend `6c2ed32` (migration 010 append-only/member-only RLS, derived view, write API,
   panel `/league/[id]/consent`; G11 + click-through). Memos `..._W6_RATIFICATION`/`_AFFIRMATION`.
