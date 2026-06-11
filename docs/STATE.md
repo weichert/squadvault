@@ -45,20 +45,14 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   declaration on the contract card. E1.7 DISCHARGED-NATIVE (cross-surface SAT promotion still
   pending). W.1 Increment 1 BUILD DISCHARGED 2026-06-10: frontend `c21e858`->`df79a4f`->`c284053`
   ->`7eee29d`->`65da2e6` (PR #2), founder click-through proven; frontend ledger ROADMAP.md W.1 row
-  + `OBSERVATIONS_2026_06_10_AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`. Chain memos
-  `..._W1_AV_ROOM_CONSTITUTIONAL_ADMISSION` / `_SPECIFICATION` / `_ADMISSION_RECORD` +
-  `W1_AV_Room_Contract_Card_v1_0` + `..._SAT_REGISTRY_ADDENDUM_W1`.
-- W.6 consent (Track W, 2026-06-10): memo RATIFIED (D-S..D-X as recommended) + filed canonical;
-  `member_consent_events` (D-V) built + MERGED to frontend `main` `6c2ed32` (migration 010
-  append-only / member-only RLS, derived view, write API, panel `/league/[id]/consent`; G11 +
-  click-through verified). Memos `..._W6_RATIFICATION`(+`_AFFIRMATION`),
-  `..._MEMBER_CONSENT_EVENTS_INCREMENT_1/2`.
+  + `..._AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`; chain/contract/SAT-addendum memos filed 2026-06-10.
+- W.6 consent (2026-06-10): memo RATIFIED (D-S..D-X) + filed; `member_consent_events` (D-V) built +
+  MERGED frontend `6c2ed32` (migration 010 append-only/member-only RLS, derived view, write API,
+  panel `/league/[id]/consent`; G11 + click-through). Memos `..._W6_RATIFICATION`/`_AFFIRMATION`.
 - W.7 framing drift-flag memo (cert-5 exhibit, doc-only): three 2026-06-09 engagement framings
   caught+reframed pre-build. `OBSERVATIONS_2026_06_10_W7_FRAMING_DRIFT_FLAG.md`.
-- Residual fabrication remediation (verbatim/copy guardrails): -51% residual; SERIES fixed,
-  SUPERLATIVE improved, FAAB unmoved (see Deferred). `..._RESIDUAL_REMEDIATION_VERBATIM_RESULTS.md`.
-- E1.4 fresh-gen fabrication baseline (gen `28d059f`): YELLOW - scores clean ~0.6%, non-score
-  residual the headline. `..._E1_4_FRESH_GEN_FABRICATION_BASELINE_RESULTS.md`.
+- Residual fabrication remediation (verbatim guardrails): -51%; SERIES fixed, SUPERLATIVE up, FAAB unmoved (Deferred). `..._RESIDUAL_REMEDIATION_VERBATIM_RESULTS.md`.
+- E1.4 fresh-gen fabrication baseline (gen `28d059f`): YELLOW - scores ~0.6%, non-score residual the headline. `..._E1_4_FRESH_GEN_FABRICATION_BASELINE_RESULTS.md`.
 - `abd5c3c` historical weekly-windowing fix (D-W1=B; 2024-25 byte-identical; unblocked E1.4).
 - `84284fe` E1.5b formatting gate (closes R5; L2 facts-block byte-identity HARD); E1.5a `b075b8a`.
 - Charter v1.1 (2026-06-10, founder-instructed): section 4 records the per-repo ledger realization
