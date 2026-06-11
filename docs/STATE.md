@@ -17,13 +17,13 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 (Inc 1 DISCHARGED;
   open = video increment + Inc 2), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
-- W.1 open work (on the proven Inc 1 foundation): (a) VIDEO hardening (D1/D2/D3) BUILT + MERGED (see
-  Discharged); large-file ingest UNBLOCKED - **D-W1-V1 RULED REMEDY B** 2026-06-10 (founder, Fable):
-  client-direct upload under server-minted grant; A ELIMINATED (real ceiling = Vercel's unconfigurable
-  4.5 MB function body limit, not the Supabase cap - now 1 GB Pro). **Spec 5.1 Amendment 1** ratified
-  (transport not authority; insert-after-upload, 6.9 unchanged). BUILT (D-B1..D-B5: grant-mint +
-  client direct upload + finalize/orphan-reap + G16 + 1 GB) - frontend PR #10, gates green 112/0,
-  PENDING founder click-through + merge; prod photo >4.5 MB bug B-fixed too. PLAYBACK = Fable-spec-first.
+- W.1 open work (on the proven Inc 1 foundation): (a) VIDEO hardening D1/D2/D3 MERGED (Discharged);
+  large-file ingest **D-W1-V1 RULED REMEDY B** + **Spec 5.1 Amendment 1** 2026-06-10 (client-direct
+  under server-minted grant; A eliminated by Vercel's 4.5 MB body limit, cap now 1 GB Pro). Remedy-B
+  build MERGED (frontend `5c1550b`, D-B1..D-B5, gov 112/0; photo >4.5 MB proven transitively, 68.7 MB
+  on prod). INGEST ERGONOMICS D0-D6 (poster set+de-silence, drag-drop queue, batch-tag, compact rows,
+  newest-first, reinstate=mig 012+G17, HEIC) BUILT in PR; founder: apply 012, set 2 stills,
+  click-through. **D-W1-V1 DISCHARGE HELD on D0 (posters on prod).** PLAYBACK = Fable-spec-first.
   (b) Inc 2 (member captions/marginalia/self-tag) gated E2.3 - first live 2a-silence (no linked member_user_id; spec 8.1; commish id works).
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
   the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
@@ -45,9 +45,8 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   pending). W.1 Increment 1 BUILD DISCHARGED 2026-06-10: frontend `c21e858`->`df79a4f`->`c284053`
   ->`7eee29d`->`65da2e6` (PR #2), founder click-through proven; frontend ledger ROADMAP.md W.1 row
   + `..._AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`; chain/contract/SAT-addendum memos filed 2026-06-10.
-  Video-ingest HARDENING (no playback) `7601f8c`(D1)->`b97b19c`(D2)->`99dafc0`(D3 poster 6.9/image-only)
-  ->`0392455`->PR #6 `2367479`: cap made HONEST (`MAX_UPLOAD_BYTES` 50 MB single-source), NOT raised;
-  gov 110/0 G12-15 unchanged; `..._AV_ROOM_VIDEO_INGEST_HARDENING.md`.
+  Video-ingest HARDENING D1/D2/D3 `7601f8c`/`b97b19c`/`99dafc0`, PR #6 `2367479` (made the cap honest,
+  not raised; `..._AV_ROOM_VIDEO_INGEST_HARDENING.md`) - superseded by the remedy-B 1 GB build.
 - W.6 consent (2026-06-10): memo RATIFIED (D-S..D-X) + filed; `member_consent_events` (D-V) built +
   MERGED frontend `6c2ed32` (migration 010 append-only/member-only RLS, derived view, write API,
   panel `/league/[id]/consent`; G11 + click-through). Memos `..._W6_RATIFICATION`/`_AFFIRMATION`.
