@@ -32,18 +32,16 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 - FAAB residual gate (fabrication instruction-resistant): trigger = a deterministic post-gen gate stripping any FAAB figure not on the canonical per-player allowlist.
 - E1.6 (`promote-version`): D-C DEFER; trigger = live-season (E2.2) pick among regenerations; Type A scaffold `version_presentation_navigation_v1.py` exists, UI unbuilt.
 - Draft Weekend protocol (parked RUNBOOK, not software): live hour permanently OUT OF SCOPE (commodity Zoom; live-stream infra anti-thesis); SquadVault owes everything around it - same-weekend ingest (PR #11/#10), marginalia=Inc 2 (E2.3), L.3 letters (Aug clock), consent machinery already shaped. Deliverable = one-page runbook. Trigger ~4 weeks before the 2026 draft. `..._DRAFT_WEEKEND_PROTOCOL.md`.
+- Media EXPUNGEMENT class (DECIDE candidate, PARKED - do not build): deaccession pattern - append-only expungement event (commissioner-ratified, reason required) deletes the object + tombstones the entry; the log keeps when/who/why, content gone. Collides with spec 5.2 -> own DECIDE/amendment; post-E2.3 likeness dimension (W.6-adjacent). Trigger = founder call / first mistaken-upload / E2.3 bundle. `..._MEDIA_EXPUNGEMENT_CANDIDATE.md`.
 
 ## Discharged items (with hashes)
 
-- W.1 (A/V Room) four-memo chain RATIFIED + FILED 2026-06-10 (SAT #1 native admission;
-  D-W1-1..6 as recommended). Governed-testimony fact class formalized (Manual Fact Import
-  admissibility theory in analogue, per W.6 1.1; frame D1-D6 untouched/OPEN); W.6 7.2
-  declaration on the contract card. E1.7 DISCHARGED-NATIVE (cross-surface SAT promotion still
-  pending). W.1 Increment 1 BUILD DISCHARGED 2026-06-10: frontend `c21e858`->`df79a4f`->`c284053`
-  ->`7eee29d`->`65da2e6` (PR #2), founder click-through proven; frontend ledger ROADMAP.md W.1 row
-  + `..._AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`; chain/contract/SAT-addendum memos filed 2026-06-10.
-  Video-ingest HARDENING D1/D2/D3 `7601f8c`/`b97b19c`/`99dafc0`, PR #6 `2367479` (made the cap honest,
-  not raised; `..._AV_ROOM_VIDEO_INGEST_HARDENING.md`) - superseded by the remedy-B 1 GB build.
+- W.1 (A/V Room) four-memo chain RATIFIED + FILED 2026-06-10 (SAT #1 native; D-W1-1..6 as recommended;
+  governed-testimony fact class formalized per W.6 1.1, frame D1-D6 OPEN; W.6 7.2 on the contract card).
+  E1.7 DISCHARGED-NATIVE (cross-surface SAT promotion pending). Inc 1 BUILD DISCHARGED: frontend
+  `c21e858`->`df79a4f`->`c284053`->`7eee29d`->`65da2e6` (PR #2), click-through proven;
+  `..._AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`. Video HARDENING D1/D2/D3 `7601f8c`/`b97b19c`/`99dafc0`
+  (PR #6 `2367479`) - superseded by the remedy-B 1 GB build.
 - W.1 large-file ingest (**D-W1-V1 = remedy B**, Spec 5.1 Amendment 1) + ingest ergonomics (D0-D6)
   DISCHARGED 2026-06-11: client-direct upload under server-minted grant; cap 1 GB Pro; migration 012
   applied (G17 live, gov 113/0); posters confirmed on prod; >4.5 MB photo PROVEN TRANSITIVELY (68.7 MB
