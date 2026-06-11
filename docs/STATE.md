@@ -29,13 +29,13 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
   the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
   follow-up. Binding (7.2): future chains declare categories-read / gate / revocation.
+- SEQUENCING FLAG (next planning session, no action now): "E2.3 before Tahoe" - draft weekend is the forcing function for member onboarding (marginalia-by-Monday, first 2a-silence test, 2b draft-video grants, L.3 reveal); evaluate sequencing E2.3 + the voice-attestation DECIDE against the draft date, not backlog order. `..._DRAFT_WEEKEND_PROTOCOL.md`.
 
 ## Deferred (do not pick up until trigger)
 
-- FAAB residual gate: FAAB fabrication instruction-resistant; trigger = a deterministic
-  post-gen gate stripping any FAAB figure not on the canonical per-player allowlist.
-- E1.6 (`promote-version`): D-C DEFER. Trigger: live-season (E2.2) need to pick among
-  regenerations. Type A scaffold `version_presentation_navigation_v1.py` exists; UI unbuilt.
+- FAAB residual gate (fabrication instruction-resistant): trigger = a deterministic post-gen gate stripping any FAAB figure not on the canonical per-player allowlist.
+- E1.6 (`promote-version`): D-C DEFER; trigger = live-season (E2.2) pick among regenerations; Type A scaffold `version_presentation_navigation_v1.py` exists, UI unbuilt.
+- Draft Weekend protocol (parked RUNBOOK, not software): live hour permanently OUT OF SCOPE (commodity Zoom; live-stream infra anti-thesis); SquadVault owes everything around it - same-weekend ingest (PR #11/#10), marginalia=Inc 2 (E2.3), L.3 letters (Aug clock), consent machinery already shaped. Deliverable = one-page runbook. Trigger ~4 weeks before the 2026 draft. `..._DRAFT_WEEKEND_PROTOCOL.md`.
 
 ## Discharged items (with hashes)
 
