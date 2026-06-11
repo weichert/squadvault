@@ -7,23 +7,21 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 ## Current HEAD
 
 - W.1 (A/V Room) Increment 1 MERGED + PROVEN + DISCHARGED (frontend `65da2e6`, PR #2; foundation
-  `2cd9f17`, PR #1, live on Supabase - tables+RLS, `league-media` private, storage policy). Routes/UI
-  = five `/api/av-room/*` routes + ingest + display + shared read-model; G12-G15 assert RLS 42501.
-  Founder click-through proved: fail-closed room, upload, five-kind tagging, vacuous-tag rejection,
-  correction-by-supersession (real fix 3/26->8/26/2023), ratification, withdrawal, honest gaps.
-  Video present-but-not-playable - DEFERRED to next increment (attestation is its OWN structured
-  class + 2b playback gate, NOT a soft provenance tag; option-3 rejected 2026-06-10). Chain
-  RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6; 7.2 on card). Inc 2 (member) gated E2.3.
+  `2cd9f17`, PR #1, live on Supabase - tables+RLS, `league-media` private, storage policy; five
+  `/api/av-room/*` routes + ingest/display; G12-15 assert RLS 42501; click-through proven end-to-end).
+  Video-ingest hardening D1/D2/D3 MERGED (frontend PR #6 `2367479`, see Discharged) - poster shows;
+  PLAYBACK still DEFERRED (attestation is its OWN class + 2b gate, NOT a soft tag; option-3 rejected
+  2026-06-10). Chain RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6; 7.2 on card). Inc 2 (member) gated E2.3.
 
 ## Open units (Document of Record v2.1, by ID; descriptions in-repo in the DoR)
 
 - E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 (Inc 1 DISCHARGED;
   open = video increment + Inc 2), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
-- W.1 open work (on the proven Inc 1 foundation): (a) VIDEO INCREMENT - BUILD BRIEF FILED (frontend
-  `3695c01`, `_observations/session_brief_2026_06_10_w1_video_ingest_hardening.md`): D1 size
-  pre-check + D2 upload-failure reasons + D3 poster-frame (6.9, image-only, no 2b) are Opus-ready;
-  large-file ingest BLOCKED on D-W1-V1 (raise Supabase 50 MB cap vs spec-5.1-deviating client-direct
-  upload - founder/Fable call). PLAYBACK + attestation class = Fable-spec-first (option-3 rejected).
+- W.1 open work (on the proven Inc 1 foundation): (a) VIDEO hardening (D1/D2/D3) BUILT + MERGED (see
+  Discharged); large-file ingest still BLOCKED on D-W1-V1 - DECISION-READINESS BRIEF FILED (frontend
+  `65f30db`, PR #7, `_observations/session_brief_2026_06_10_dw1v1_large_file_ingest_decision.md`):
+  founder/Fable rules remedy A (raise Supabase 50 MB cap, keeps spec 5.1) vs B (client-direct,
+  deviates 5.1 + amendment). PLAYBACK + attestation class = Fable-spec-first (option-3 rejected).
   (b) Increment 2 (member captions/marginalia/self-tagging) gated E2.3 - also the first live
   exercise of 2a-silence (no linked member_user_id yet; spec 8.1 anchors). Commissioner identity works.
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
@@ -46,6 +44,10 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   pending). W.1 Increment 1 BUILD DISCHARGED 2026-06-10: frontend `c21e858`->`df79a4f`->`c284053`
   ->`7eee29d`->`65da2e6` (PR #2), founder click-through proven; frontend ledger ROADMAP.md W.1 row
   + `..._AV_ROOM_INCREMENT_1_CLICKTHROUGH.md`; chain/contract/SAT-addendum memos filed 2026-06-10.
+  Video-ingest HARDENING (no playback) `7601f8c`(D1 size pre-check)->`b97b19c`(D2 failure reasons)
+  ->`99dafc0`(D3 poster, 6.9 byte-unchanged, image-only no 2b)->`0392455`(ledger+memo), PR #6
+  `2367479`: cap made HONEST (`MAX_UPLOAD_BYTES`=50 MB single-source), NOT raised; governance 110/0
+  G12-15 unchanged; `..._AV_ROOM_VIDEO_INGEST_HARDENING.md`. D-W1-V1 decision brief filed (`65f30db`).
 - W.6 consent (2026-06-10): memo RATIFIED (D-S..D-X) + filed; `member_consent_events` (D-V) built +
   MERGED frontend `6c2ed32` (migration 010 append-only/member-only RLS, derived view, write API,
   panel `/league/[id]/consent`; G11 + click-through). Memos `..._W6_RATIFICATION`/`_AFFIRMATION`.
