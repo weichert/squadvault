@@ -19,10 +19,11 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 (Inc 1 DISCHARGED;
   open = video increment + Inc 2), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
-- W.1 open work (on the proven Inc 1 foundation): (a) VIDEO INCREMENT - playback gated on a NEW
-  structured attestation class + 2b consent read; click-through carry-forwards: large-file ingest
-  (Supabase 50 MB cap rejected a real `.MOV`, 400 after ~40s), surface upload-failure reasons,
-  client-side size pre-check, poster-frame as a derived rendition (6.9, image-only, no 2b read).
+- W.1 open work (on the proven Inc 1 foundation): (a) VIDEO INCREMENT - BUILD BRIEF FILED (frontend
+  `3695c01`, `_observations/session_brief_2026_06_10_w1_video_ingest_hardening.md`): D1 size
+  pre-check + D2 upload-failure reasons + D3 poster-frame (6.9, image-only, no 2b) are Opus-ready;
+  large-file ingest BLOCKED on D-W1-V1 (raise Supabase 50 MB cap vs spec-5.1-deviating client-direct
+  upload - founder/Fable call). PLAYBACK + attestation class = Fable-spec-first (option-3 rejected).
   (b) Increment 2 (member captions/marginalia/self-tagging) gated E2.3 - also the first live
   exercise of 2a-silence (no linked member_user_id yet; spec 8.1 anchors). Commissioner identity works.
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
