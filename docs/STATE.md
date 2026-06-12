@@ -19,7 +19,7 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   open = video increment + Inc 2), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
 - W.1 open work (on the proven Inc 1 foundation): (a) hardening + large-file ingest (D-W1-V1=remedy B)
   + ingest ergonomics (D0-D6) BUILT + MERGED + **DISCHARGED 2026-06-11** (see Discharged). PLAYBACK +
-  voice-attestation class = Fable-spec-first (the next DECIDE). Ingest ergonomics ROUND 2 in PR.
+  voice-attestation class = Fable-spec-first (D-W1-A, in session 2026-06-11). Ingest rounds 2-4 COMPLETE + DISCHARGED (PRs #13-#20; #14 auto-closed, #17/#20 docs; frontend main `b2884d7`; migrations 011-014 live; gov 115/0; curator's-bench feature ledger in frontend ROADMAP).
   (b) Inc 2 (member captions/marginalia/self-tag) gated E2.3 - first live 2a-silence (no linked member_user_id; spec 8.1; commish id works).
   (c) Two ingest-extension candidates REGISTERED + PARKED (Google Photos Picker import; EXIF date-proposal, build gated on a recorded-metadata decision note) - trigger = first real shoebox session; `..._W1_INGEST_EXTENSION_CANDIDATES.md`.
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
@@ -65,6 +65,7 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Known hazards
 
+- Browser PR merge-clicks silently failed 3x (2026-06-11): button reported merged, remote unchanged. Merges are now performed by Claude Code via `gh pr merge` after CI verification; founder clicks remain for click-throughs only.
 - Stale-brief hazard (7+ recurrences): brief claims without hashes are UNVERIFIED; if a brief
   conflicts with git, git wins - flag first. Corollary (2026-06-09): "data correct on prod is
   not the same as the code path guarded in the repo" - verify at the layer the claim is about.
