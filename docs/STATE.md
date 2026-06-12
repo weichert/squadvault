@@ -32,10 +32,10 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 - FAAB residual gate (fabrication instruction-resistant): trigger = a deterministic post-gen gate stripping any FAAB figure not on the canonical per-player allowlist.
 - E1.6 (`promote-version`): D-C DEFER; trigger = live-season (E2.2) pick among regenerations; Type A scaffold `version_presentation_navigation_v1.py` exists, UI unbuilt.
 - Draft Weekend protocol (parked RUNBOOK, not software): live hour permanently OUT OF SCOPE (commodity Zoom; live-stream infra anti-thesis); SquadVault owes everything around it - same-weekend ingest (PR #11/#10), marginalia=Inc 2 (E2.3), L.3 letters (Aug clock), consent machinery already shaped. Deliverable = one-page runbook. Trigger ~4 weeks before the 2026 draft. `..._DRAFT_WEEKEND_PROTOCOL.md`.
-- Media EXPUNGEMENT class (DECIDE candidate, PARKED - do not build): deaccession pattern - append-only expungement event (commissioner-ratified, reason required) deletes the object + tombstones the entry; the log keeps when/who/why, content gone. Collides with spec 5.2 -> own DECIDE/amendment; post-E2.3 likeness dimension (W.6-adjacent). Trigger = founder call / first mistaken-upload / E2.3 bundle. `..._MEDIA_EXPUNGEMENT_CANDIDATE.md`.
 
 ## Discharged items (with hashes)
 
+- Media EXPUNGEMENT ADMITTED + DISCHARGED (D-W1-E1 = Spec 5.2 Amendment 1, ratified 2026-06-11; ruling memo frontend `ff1b74b`): append-only expungement event is the RULED byte-deletion exception - tombstone + permanent when/who/why log, reason required, terminal (no reinstatement). Built PR #19 `7119651`; migration 014 live; G19 active. `..._MEDIA_EXPUNGEMENT_CANDIDATE.md` (flipped).
 - W.1 (A/V Room) four-memo chain RATIFIED + FILED 2026-06-10 (SAT #1 native; D-W1-1..6 as recommended;
   governed-testimony fact class formalized per W.6 1.1, frame D1-D6 OPEN; W.6 7.2 on the contract card).
   E1.7 DISCHARGED-NATIVE (cross-surface SAT promotion pending). Inc 1 BUILD DISCHARGED: frontend

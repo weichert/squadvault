@@ -1,4 +1,12 @@
-# Media expungement class - REGISTERED (DECIDE candidate, PARKED)
+# Media expungement class - ADMITTED + DISCHARGED (D-W1-E1)
+
+## STATUS UPDATE 2026-06-11 - PARKED -> ADMITTED -> DISCHARGED
+
+D-W1-E1 ruled (a) 2026-06-11; Spec 5.2 Amendment 1 RATIFIED. Ruling memo of record =
+frontend `ff1b74b`. Built + merged in frontend PR #19 (`7119651`); migration 014
+(`media_expungement_events`) applied and live on prod; G19 active (probe-skip pattern).
+The registration record below is retained verbatim as the historical record; its
+"Do not build" instruction is SUPERSEDED by the ruling above.
 
 Dated 2026-06-11. Type: registration record for a DECIDE candidate. **Do not build.**
 A build requires its own DECIDE session (spec amendment). Verified at authoring: engine
