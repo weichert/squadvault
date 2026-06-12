@@ -10,16 +10,16 @@ No session treats a prior chat message or brief as authoritative over `git log` 
   `2cd9f17`, PR #1, live on Supabase - tables+RLS, `league-media` private, storage policy; five
   `/api/av-room/*` routes + ingest/display; G12-15 assert RLS 42501; click-through proven end-to-end).
   Video-ingest hardening D1/D2/D3 MERGED (frontend PR #6 `2367479`, see Discharged) - poster shows;
-  PLAYBACK still DEFERRED (attestation is its OWN class + 2b gate, NOT a soft tag; option-3 rejected
-  2026-06-10). Chain RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6; 7.2 on card). Inc 2 (member) gated E2.3.
+  PLAYBACK SHIPPED via D-W1-A voice-attestation class (DISCHARGED 2026-06-12, see Discharged).
+  Chain RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6; 7.2 on card). Inc 2 (member) gated E2.3.
 
 ## Open units (Document of Record v2.1, by ID; descriptions in-repo in the DoR)
 
 - E-cluster: E1.6 (E1.7 DISCHARGED-NATIVE via the W.1 chain). W-cluster: W.1 (Inc 1 DISCHARGED;
   open = video increment + Inc 2), W.2, W.3, W.4, W.5, W.8. L-cluster: L.1-L.10.
 - W.1 open work (on the proven Inc 1 foundation): (a) hardening + large-file ingest (D-W1-V1=remedy B)
-  + ingest ergonomics (D0-D6) BUILT + MERGED + **DISCHARGED 2026-06-11** (see Discharged). PLAYBACK +
-  voice-attestation class = Fable-spec-first (D-W1-A, in session 2026-06-11). Ingest rounds 2-4 COMPLETE + DISCHARGED (PRs #13-#20; #14 auto-closed, #17/#20 docs; frontend main `b2884d7`; migrations 011-014 live; gov 115/0; curator's-bench feature ledger in frontend ROADMAP).
+  + ingest ergonomics (D0-D6) BUILT + MERGED + **DISCHARGED 2026-06-11** (see Discharged). D-W1-A
+  voice-attestation class + gated playback DISCHARGED 2026-06-12 (see Discharged); D-W1-A6 playback rendition = next DECIDE (registered in Deferred, pending ratification). Ingest rounds 2-4 COMPLETE + DISCHARGED (PRs #13-#20; #14 auto-closed, #17/#20 docs; frontend main `b2884d7`; migrations 011-014 live; gov 115/0; curator's-bench feature ledger in frontend ROADMAP).
   (b) Inc 2 (member captions/marginalia/self-tag) gated E2.3 - first live 2a-silence (no linked member_user_id; spec 8.1; commish id works).
   (c) Two ingest-extension candidates REGISTERED + PARKED (Google Photos Picker import; EXIF date-proposal, build gated on a recorded-metadata decision note) - trigger = first real shoebox session; `..._W1_INGEST_EXTENSION_CANDIDATES.md`.
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
@@ -29,12 +29,14 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 ## Deferred (do not pick up until trigger)
 
+- D-W1-A6 playback RENDITION (DECIDE candidate, PENDING RATIFICATION - frame presented 2026-06-11): corpus videos are iPhone HEVC/AAC .mov (QuickTime inspector OBSERVED); Chrome cannot decode HEVC. Frame: derived regenerable playback.mp4 (H.264/AAC) beside poster.jpg per invariant 6.9; playback variant signs rendition-when-present-else-original (progressive, no regression); production commissioner-side via ffmpeg apply-script + commissioner-only upload route (remedy-B grant pattern, Set-Poster rhythm); backfill 2 corpus videos; upload routes set contentType henceforth (Safari hard-refuses octet-stream; header check folded into the unit). Trigger = founder ratification.
 - FAAB residual gate (fabrication instruction-resistant): trigger = a deterministic post-gen gate stripping any FAAB figure not on the canonical per-player allowlist.
 - E1.6 (`promote-version`): D-C DEFER; trigger = live-season (E2.2) pick among regenerations; Type A scaffold `version_presentation_navigation_v1.py` exists, UI unbuilt.
 - Draft Weekend protocol (parked RUNBOOK, not software): live hour permanently OUT OF SCOPE (commodity Zoom; live-stream infra anti-thesis); SquadVault owes everything around it - same-weekend ingest (PR #11/#10), marginalia=Inc 2 (E2.3), L.3 letters (Aug clock), consent machinery already shaped. Deliverable = one-page runbook. Trigger ~4 weeks before the 2026 draft. `..._DRAFT_WEEKEND_PROTOCOL.md`.
 
 ## Discharged items (with hashes)
 
+- D-W1-A voice-attestation class + gated video playback DISCHARGED 2026-06-12: ruling memo of record frontend `b78070f` (mechanism-specification under spec 5.7, no amendment consumed); built PRs into #21, click-through fixes `da3ef95`, merged frontend main `cb3ba97`. Migration 015 `media_voice_attestations` live; G20 active; gov 116/0. OBSERVED in click-through: gate-pass mint, gate-fail neutral refusal, supersession gates forward, no autoplay, TTL 600s on-token, expired-URL rejection verbatim, full 69 MB original via fresh URL. Decode+seek blocked by HEVC in Chrome -> D-W1-A6 (Deferred). Memos: `..._DW1A_VOICE_ATTESTATION_RULING.md` + `..._DW1A_VOICE_PLAYBACK_BUILD.md` (frontend _observations/).
 - Media EXPUNGEMENT ADMITTED + DISCHARGED (D-W1-E1 = Spec 5.2 Amendment 1, ratified 2026-06-11; ruling memo frontend `ff1b74b`): append-only expungement event is the RULED byte-deletion exception - tombstone + permanent when/who/why log, reason required, terminal (no reinstatement). Built PR #19 `7119651`; migration 014 live; G19 active. `..._MEDIA_EXPUNGEMENT_CANDIDATE.md` (flipped).
 - W.1 (A/V Room) four-memo chain RATIFIED + FILED 2026-06-10 (SAT #1 native; D-W1-1..6 as recommended;
   governed-testimony fact class formalized per W.6 1.1, frame D1-D6 OPEN; W.6 7.2 on the contract card).
