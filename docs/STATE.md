@@ -25,7 +25,7 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 - W.6 follow-ups: (1) 7.1 doc-note FILED (frontend `248895c`); (2) commissioner read-only "at
   the gates" DEFERRED to first consumer (W.1/W.4/W.8); (3) auth-session governance tests -
   follow-up. Binding (7.2): future chains declare categories-read / gate / revocation.
-- SEQUENCING FLAG (next planning session, no action now): "E2.3 before Tahoe" - draft weekend is the forcing function for member onboarding (marginalia-by-Monday, first 2a-silence test, 2b draft-video grants, L.3 reveal); evaluate sequencing E2.3 + the voice-attestation DECIDE against the draft date, not backlog order. `..._DRAFT_WEEKEND_PROTOCOL.md`.
+- D-SEQ TAHOE SEQUENCING RULED 2026-06-12 (Fable DECIDE; `..._DSEQ_TAHOE_SEQUENCING_RULING.md`): draft weekend end-of-Aug 2026 (exact date pending), ~11 wk runway, draft inside Phase 11 closure horizon. DOCKET in order: E2.3-minimal (magic-link + member_user_id->canonical_franchise + first 2a-silence) -> L.3 The Vault (D-O anchor) -> L.1 first wave (Aug sweep, D-N) -> W.1 Inc 2. Overflow only: W.2/W.3/W.5-tax. Runbook trigger ~Aug 1 provisional (pins on date). L.3 clock opens at E2.3-min (~mid-July), reveal at draft table. D-H aesthetic session admissible (screening-room A/V -> Design Brief v2 Addendum). D-SEQ-6 registered to W.4 (corpus-in-artifact = section-candidate; consent-scope ruling required: in-room vs republication). Carry-forwards (backfill v2, byte-twin, HDR recipe v2, sign-route) stay Deferred.
 
 ## Deferred (do not pick up until trigger)
 
