@@ -11,6 +11,19 @@
 
 **v2.1.1 supersession note (2026-06-10):** Part 3 Unit W.6 says the consent model "extends `founding_sessions.consent`." That claim is **superseded** by the ratified W.6 Consent Governance Memo, Section 0 (`docs/SquadVault_W6_Consent_Governance_Memo_v1_2.md`), which verified at frontend `4e44bb3` that the field is mutable, league-level, and a three-boolean bundle — so per-member/append-only/revocable-forward consent is established as a **new** `member_consent_events` system of record, and `founding_sessions.consent` is reinterpreted as the league-defaults layer (D-X). The W.6 unit is otherwise discharged by that memo (decisions D-S through D-X ratified 2026-06-10). DoR body text below is retained unmodified per append-only discipline; the memo governs where they differ on the substrate.
 
+**v2.1.2 supersession note (2026-06-21):** Part 3 Unit W.5 names the trophy custody surface "the
+Mantel," and its Display-layer bullet calls the display "the Mantel in the clubhouse scene."
+Founder ruling 2026-06-21 (governing memo
+`_observations/OBSERVATIONS_2026_06_21_TROPHY_ROOM_NAMING_RULING.md`) **supersedes** that naming.
+The trophy-display surface behind the clubhouse trophy-case portal is **"the Trophy Room"** -
+already the W.2 nav name at line 113 ("trophy case -> Trophy Room"). The name **"the Mantel"** is
+reassigned to the literal mantelpiece fixture holding framed photos, which is the navigation portal
+into Mr. Herlth's A/V Room (Unit W.1, "framed photos -> A/V Room door" at line 113). Unit W.5's
+identity, fact layer (`trophy_custody_events`), boundary, and four-memo chain are unchanged; only
+the display-surface name changes from "the Mantel" to "the Trophy Room." DoR body text below (lines
+~119, ~121, ~230, ~238) is retained unmodified per append-only discipline; where it says "the
+Mantel"/"the mantel" in reference to the trophy display, read "the Trophy Room" per this note.
+
 ---
 
 # PART 0 — WHAT "COMPLETE" MEANS
