@@ -5,7 +5,7 @@ a derived index, kept under ~80 lines. No session treats a prior chat message or
 over `git log` + this file. Verbose per-unit detail lives in the `_observations/` close-out memos; this
 index carries date + key hash + memo pointer.
 
-## Current state (2026-06-21)
+## Current state (2026-06-22)
 
 - **Pre-Tahoe docket COMPLETE** - E2.3-min -> L.3 (capture) -> L.1 (capture) -> W.1 Inc 2 all DISCHARGED (see Discharged). Draft weekend PINNED 2026-08-15; D-SEQ-3 runbook trigger PINS 2026-07-18 (PARKED until trigger). L.3 reveal + L.1 display successors DEFER to season-end (~Jan 2027; L.3 reveal pairs with L.5).
 - **W.5 (Trophy Room) - Championship Package (increment 1) BUILT + DISCHARGED 2026-06-22** (frontend PR #27 `008ce16`; prod live, custody_integrity_probe all-true, gov 154/0 G25 green; see Discharged). Four-memo chain landed; taxonomy v1.2 registered (`e36aa1d`); naming ruled (DoR v2.1.2) + C7 closed (PFL = Phony Football League, attested). Open W.5 work = increments 2 (Live Records) + 3 (grants/accumulations/fixed), DEFERRED; commissioner ratify UI = thin follow-on (route ships).
