@@ -43,6 +43,8 @@ No session treats a prior chat message or brief as authoritative over `git log` 
 
 - W.5 NAMING RULED + C7 CLOSED 2026-06-21 (DECIDE; founder-attested): W.5 trophy surface = "the Trophy Room" (behind the trophy-case portal). DoR v2.1.2 note renames W.5 display from "the Mantel"; "the Mantel" reassigned to the framed-photo fixture = clubhouse portal into Mr. Herlth's A/V Room (W.1). C7 CLOSED: PFL = Phony Football League (founder-attested). Memos: `..._TROPHY_ROOM_NAMING_RULING` / `..._TROPHY_ROOM_vs_MANTEL_DELINEATION_AND_SEQUENCING` / `..._AV_ROOM_NAME_ATTESTATION_HERLTH` / `..._PFL_EXPANSION_ATTESTATION_C7_CLOSURE`. W.5 stays overflow (taxonomy v1.2 ratified); selection-prep is memo 1, gated on this set.
 
+- W.5 TROPHY ROOM CHAIN COMPLETE 2026-06-21 (DECIDE): Unit W.5 (Trophy Room) four-memo chain complete (selection-prep / decision-readiness [D1-D5 ratified] / specification inc1 / registration). Specified: shared architecture + Championship Package (inc1); increments 2 (Live Records) and 3 (grants/accumulations/fixed) framed. Build-ready; taxonomy v1.2 registered (`e36aa1d`). Championship Package first per D3. Was overflow ("W.5-tax").
+
 ## Deferred (do not pick up until trigger)
 
 - FAAB residual gate (fabrication instruction-resistant): trigger = a deterministic post-gen gate stripping any FAAB figure not on the canonical per-player allowlist. TRIAGE 2026-06-12: prior unratified Opus build preserved at tag `archive/faab-gate-unratified-064a2c0` (built 2026-06-10, no brief; memo-recorded D-G1/D-G2 lack DECIDE provenance) - reference material only, NOT a merge candidate (38 behind); re-adjudicate D-G decisions at trigger. Remote branch `claude/faab-gate-j5ck4m` deleted.
