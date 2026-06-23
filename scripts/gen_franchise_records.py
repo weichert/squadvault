@@ -13,15 +13,26 @@ The production scheme must be verified before a seed can join correctly.
 Facts are exact and derived only from ingested matchup results:
   - W-L-T, points-for   (compute_all_season_records)
   - champion, runner-up (compute_championship_roll)
+  - points_against (REGULAR SEASON ONLY) + blowout_wins_60 (ALL DECIDED GAMES)
+    (compute_extras; W.5 Inc 2 Wave 2 - Iron Curtain + Executioner)
 No final rank / granular playoff finish: never ingested, not exactly derivable,
 omitted per silence-over-speculation (this session's D4-1 decision).
 
-READ-ONLY on the engine DB. Keep in ~/sv-apply/; run from outside the repo.
+W.5 Inc 2 Wave 2 (2026-06-22): two per-(franchise, season) facts off the same
+HistoricalMatchup stream. points_against is REGULAR-SEASON-ONLY (weeks before the
+championship week - W16 for 2010-2020, W18 for 2021+) for The Iron Curtain (best
+all-time points-allowed average). blowout_wins_60 counts wins by 60+ over ALL decided
+games (consistent with the probe that calibrated the 60 threshold) for The Executioner.
+The regular-season GAME COUNT for the average is derived frontend-side from existing
+columns (wins+losses+ties minus a championship appearance, result in CHAMPION/RUNNER_UP),
+since exactly the two finalists play at week >= the championship week.
+
+READ-ONLY on the engine DB. Tracked under scripts/ (was ~/sv-apply/, untracked).
 
 USAGE (engine repo, $DB set, ./scripts/py shim provides PYTHONPATH=src):
   cd ~/projects/squadvault-ingest-fresh
-  ./scripts/py ~/sv-apply/gen_franchise_records.py --db "$DB" --league 70985 \
-      --out ~/sv-apply/franchise_records_70985.json
+  ./scripts/py scripts/gen_franchise_records.py --db "$DB" --league 70985 \
+      --out scripts/franchise_records_70985.json
 """
 from __future__ import annotations
 
@@ -38,6 +49,31 @@ from squadvault.core.recaps.context.hall_of_fame_aggregations_v1 import (
 )
 
 
+def _champ_week(season: int) -> int:
+    """The single championship-game week; weeks before it are the regular season."""
+    return 16 if season <= 2020 else 18
+
+
+def compute_extras(
+    matchups: list[Any],
+) -> tuple[dict[tuple[str, int], float], dict[tuple[str, int], int]]:
+    """Per-(franchise, season): regular-season points-against + all-games blowout-60 wins.
+
+    points_against is REGULAR SEASON ONLY (week < the championship week): for each such
+    matchup, each participant is charged its opponent's score (ties included - both still
+    allowed points). blowout_wins_60 is over ALL DECIDED games: a win by margin >= 60.
+    """
+    pa: dict[tuple[str, int], float] = defaultdict(float)
+    bw: dict[tuple[str, int], int] = defaultdict(int)
+    for m in matchups:
+        if m.week < _champ_week(m.season):
+            pa[(m.winner_id, m.season)] += m.loser_score
+            pa[(m.loser_id, m.season)] += m.winner_score
+        if not m.is_tie and m.margin >= 60:
+            bw[(m.winner_id, m.season)] += 1
+    return pa, bw
+
+
 def build_records(db_path: str, league_id: str) -> list[dict[str, Any]]:
     matchups = load_all_matchups(db_path, league_id)
     if not matchups:
@@ -46,6 +82,7 @@ def build_records(db_path: str, league_id: str) -> list[dict[str, Any]]:
     roll = compute_championship_roll(matchups)
     champ_by_season = {r.season: r.champion_id for r in roll}
     runner_by_season = {r.season: r.runner_up_id for r in roll}
+    pa, bw = compute_extras(matchups)
 
     out: list[dict[str, Any]] = []
     for r in records:
@@ -63,6 +100,8 @@ def build_records(db_path: str, league_id: str) -> list[dict[str, Any]]:
                 "losses": r.losses,
                 "ties": r.ties,
                 "points_for": r.points_for,
+                "points_against": round(pa.get((r.franchise_id, r.season), 0.0), 2),
+                "blowout_wins_60": bw.get((r.franchise_id, r.season), 0),
                 "result": result,
             }
         )
