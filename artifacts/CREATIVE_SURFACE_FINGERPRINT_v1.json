@@ -12,6 +12,7 @@
     "scripts/gen_creative_sharepack_v1.py",
     "scripts/gen_creative_surface_fingerprint_v1.py",
     "scripts/gen_franchise_records.py",
+    "scripts/gen_season_award_winners.py",
     "scripts/gen_supabase_rebuild.py"
   ],
   "roots": [
