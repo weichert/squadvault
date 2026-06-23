@@ -1,0 +1,1442 @@
+[
+  {
+    "franchise_id": "0001",
+    "season": 2010,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1474.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2011,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1711.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2012,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1718.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2013,
+    "wins": 5,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1232.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2014,
+    "wins": 9,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1643.0,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2015,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1343.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2016,
+    "wins": 5,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1336.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2017,
+    "wins": 9,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1654.3,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2018,
+    "wins": 10,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1887.0,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2019,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1486.8,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2020,
+    "wins": 9,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1782.25,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2021,
+    "wins": 12,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1955.6,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2022,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1743.65,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2023,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1631.7,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2024,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1736.8,
+    "result": ""
+  },
+  {
+    "franchise_id": "0001",
+    "season": 2025,
+    "wins": 7,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1810.6,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2010,
+    "wins": 9,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1682.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2011,
+    "wins": 3,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1310.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2012,
+    "wins": 11,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1856.0,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2013,
+    "wins": 5,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1229.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2014,
+    "wins": 6,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1532.5,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2015,
+    "wins": 5,
+    "losses": 8,
+    "ties": 1,
+    "points_for": 1426.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2016,
+    "wins": 7,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1585.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2017,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1404.75,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2018,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1405.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2019,
+    "wins": 11,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1603.1,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2020,
+    "wins": 10,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1872.8,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2021,
+    "wins": 8,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1992.85,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2022,
+    "wins": 10,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1847.65,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2023,
+    "wins": 8,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1911.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2024,
+    "wins": 10,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 2401.2,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0002",
+    "season": 2025,
+    "wins": 16,
+    "losses": 2,
+    "ties": 0,
+    "points_for": 2482.3,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2010,
+    "wins": 6,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1589.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2011,
+    "wins": 8,
+    "losses": 7,
+    "ties": 1,
+    "points_for": 1667.0,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2012,
+    "wins": 3,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1274.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2013,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1380.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2014,
+    "wins": 5,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1486.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2015,
+    "wins": 4,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1188.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2016,
+    "wins": 4,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1104.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2017,
+    "wins": 11,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1526.85,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2018,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1533.6,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2019,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1374.7,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2020,
+    "wins": 3,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1161.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2021,
+    "wins": 8,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1722.1,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2022,
+    "wins": 9,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1784.65,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2023,
+    "wins": 9,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1700.65,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2024,
+    "wins": 8,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1879.55,
+    "result": ""
+  },
+  {
+    "franchise_id": "0003",
+    "season": 2025,
+    "wins": 10,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1770.95,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2010,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1525.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2011,
+    "wins": 9,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1628.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2012,
+    "wins": 6,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1342.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2013,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1422.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2014,
+    "wins": 9,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1438.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2015,
+    "wins": 13,
+    "losses": 3,
+    "ties": 0,
+    "points_for": 1708.5,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2016,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1312.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2017,
+    "wins": 9,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1639.6,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2018,
+    "wins": 4,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1403.9,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2019,
+    "wins": 3,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1398.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2020,
+    "wins": 4,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1274.2,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2021,
+    "wins": 10,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1650.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2022,
+    "wins": 3,
+    "losses": 11,
+    "ties": 0,
+    "points_for": 1312.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2023,
+    "wins": 8,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1964.4,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2024,
+    "wins": 6,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1581.8,
+    "result": ""
+  },
+  {
+    "franchise_id": "0004",
+    "season": 2025,
+    "wins": 6,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1638.65,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2010,
+    "wins": 9,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1643.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2011,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1595.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2012,
+    "wins": 8,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1534.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2013,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1281.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2014,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1400.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2015,
+    "wins": 10,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1640.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2016,
+    "wins": 9,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1601.0,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2017,
+    "wins": 10,
+    "losses": 4,
+    "ties": 0,
+    "points_for": 1503.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2018,
+    "wins": 7,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1667.9,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2019,
+    "wins": 10,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1751.0,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2020,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1534.55,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2021,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1437.1,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2022,
+    "wins": 9,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1858.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2023,
+    "wins": 4,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1372.35,
+    "result": ""
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2024,
+    "wins": 12,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 2214.9,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0005",
+    "season": 2025,
+    "wins": 11,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 2107.35,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2010,
+    "wins": 9,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1755.0,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2011,
+    "wins": 7,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1722.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2012,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1604.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2013,
+    "wins": 5,
+    "losses": 8,
+    "ties": 1,
+    "points_for": 1240.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2014,
+    "wins": 3,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1071.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2015,
+    "wins": 4,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1130.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2016,
+    "wins": 11,
+    "losses": 4,
+    "ties": 0,
+    "points_for": 1521.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2017,
+    "wins": 2,
+    "losses": 11,
+    "ties": 0,
+    "points_for": 1170.25,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2018,
+    "wins": 14,
+    "losses": 2,
+    "ties": 0,
+    "points_for": 2055.15,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2019,
+    "wins": 3,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1147.35,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2020,
+    "wins": 8,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1551.45,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2021,
+    "wins": 7,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1494.4,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2022,
+    "wins": 9,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 2093.65,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2023,
+    "wins": 10,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1924.85,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2024,
+    "wins": 1,
+    "losses": 13,
+    "ties": 0,
+    "points_for": 1392.75,
+    "result": ""
+  },
+  {
+    "franchise_id": "0006",
+    "season": 2025,
+    "wins": 10,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1730.75,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2010,
+    "wins": 9,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1700.0,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2011,
+    "wins": 7,
+    "losses": 6,
+    "ties": 1,
+    "points_for": 1572.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2012,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1587.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2013,
+    "wins": 9,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1681.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2014,
+    "wins": 5,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1316.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2015,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1187.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2016,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1316.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2017,
+    "wins": 5,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1217.9,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2018,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1454.6,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2019,
+    "wins": 8,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1470.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2020,
+    "wins": 13,
+    "losses": 3,
+    "ties": 0,
+    "points_for": 1840.8,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2021,
+    "wins": 7,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1624.65,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2022,
+    "wins": 7,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1721.85,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2023,
+    "wins": 4,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1545.95,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2024,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1519.4,
+    "result": ""
+  },
+  {
+    "franchise_id": "0007",
+    "season": 2025,
+    "wins": 5,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1514.95,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2010,
+    "wins": 3,
+    "losses": 9,
+    "ties": 1,
+    "points_for": 1315.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2011,
+    "wins": 2,
+    "losses": 11,
+    "ties": 0,
+    "points_for": 1278.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2012,
+    "wins": 9,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1880.5,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2013,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1622.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2014,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1529.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2015,
+    "wins": 8,
+    "losses": 7,
+    "ties": 1,
+    "points_for": 1585.5,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2016,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1303.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2017,
+    "wins": 8,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1349.85,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2018,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1614.9,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2019,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1315.6,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2020,
+    "wins": 4,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1239.55,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2021,
+    "wins": 10,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1733.35,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2022,
+    "wins": 9,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1922.7,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2023,
+    "wins": 10,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1701.2,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2024,
+    "wins": 10,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1949.3,
+    "result": ""
+  },
+  {
+    "franchise_id": "0008",
+    "season": 2025,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1614.75,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2010,
+    "wins": 9,
+    "losses": 4,
+    "ties": 1,
+    "points_for": 1675.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2011,
+    "wins": 13,
+    "losses": 3,
+    "ties": 0,
+    "points_for": 2117.5,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2012,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1598.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2013,
+    "wins": 10,
+    "losses": 5,
+    "ties": 1,
+    "points_for": 1665.0,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2014,
+    "wins": 10,
+    "losses": 4,
+    "ties": 0,
+    "points_for": 1423.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2015,
+    "wins": 11,
+    "losses": 3,
+    "ties": 1,
+    "points_for": 1691.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2016,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1179.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2017,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1358.15,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2018,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1627.4,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2019,
+    "wins": 9,
+    "losses": 6,
+    "ties": 0,
+    "points_for": 1719.1,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2020,
+    "wins": 10,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1770.65,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2021,
+    "wins": 3,
+    "losses": 11,
+    "ties": 0,
+    "points_for": 1325.85,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2022,
+    "wins": 6,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1711.8,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2023,
+    "wins": 11,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 2117.2,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2024,
+    "wins": 10,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1606.55,
+    "result": ""
+  },
+  {
+    "franchise_id": "0009",
+    "season": 2025,
+    "wins": 8,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1874.4,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2010,
+    "wins": 5,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1270.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2011,
+    "wins": 7,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1697.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2012,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1621.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2013,
+    "wins": 11,
+    "losses": 5,
+    "ties": 0,
+    "points_for": 1835.0,
+    "result": "RUNNER_UP"
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2014,
+    "wins": 10,
+    "losses": 4,
+    "ties": 0,
+    "points_for": 1420.0,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2015,
+    "wins": 5,
+    "losses": 8,
+    "ties": 1,
+    "points_for": 1371.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2016,
+    "wins": 12,
+    "losses": 4,
+    "ties": 0,
+    "points_for": 1596.5,
+    "result": "CHAMPION"
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2017,
+    "wins": 5,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1258.3,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2018,
+    "wins": 5,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1256.75,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2019,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1715.35,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2020,
+    "wins": 5,
+    "losses": 9,
+    "ties": 0,
+    "points_for": 1480.75,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2021,
+    "wins": 7,
+    "losses": 8,
+    "ties": 0,
+    "points_for": 1661.5,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2022,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1633.15,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2023,
+    "wins": 6,
+    "losses": 10,
+    "ties": 0,
+    "points_for": 1566.15,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2024,
+    "wins": 8,
+    "losses": 7,
+    "ties": 0,
+    "points_for": 1733.35,
+    "result": ""
+  },
+  {
+    "franchise_id": "0010",
+    "season": 2025,
+    "wins": 0,
+    "losses": 14,
+    "ties": 0,
+    "points_for": 1290.8,
+    "result": ""
+  }
+]
