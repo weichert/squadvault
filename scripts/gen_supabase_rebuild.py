@@ -66,16 +66,60 @@ def q(s: str) -> str:
     return "'" + s.replace("'", "''") + "'"
 
 
+def emit_backfill(rows: list[dict[str, Any]], league: str) -> str:
+    """W.5 Inc 2 Wave 2 - a TARGETED UPDATE backfill of the two new columns
+    (points_against, blowout_wins_60), NOT a destructive rebuild. Touches only those
+    columns on existing rows, matched by (league, canonical_franchise_id, season).
+    Paste-safe for the Supabase SQL editor: no semicolons inside comments."""
+    out: list[str] = []
+    w = out.append
+    w("-- W.5 Inc 2 Wave 2 backfill - points_against (regular season) + blowout_wins_60 (all games).")
+    w("-- TARGETED UPDATE, not a rebuild: only the two new columns on existing rows are written.")
+    w("-- Prerequisite: migration 027 added the columns. Generated - do not hand-edit.")
+    w("BEGIN;")
+    w("UPDATE franchise_season_records AS fsr")
+    w("SET points_against = v.pa, blowout_wins_60 = v.bw")
+    w("FROM (VALUES")
+    vals = []
+    for r in sorted(rows, key=lambda d: (d["franchise_id"], int(d["season"]))):
+        vals.append(
+            f"  ({q(r['franchise_id'])}, {int(r['season'])}, "
+            f"{float(r['points_against'])}, {int(r['blowout_wins_60'])})"
+        )
+    w(",\n".join(vals))
+    w(") AS v(fid, season, pa, bw)")
+    w(f"JOIN leagues l ON l.canonical_id = {q(league)}")
+    w("JOIN franchises f ON f.league_id = l.id AND f.canonical_franchise_id = v.fid")
+    w("WHERE fsr.league_id = l.id AND fsr.franchise_id = f.id AND fsr.season = v.season;")
+    w("COMMIT;")
+    w("")
+    return "\n".join(out)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Emit PFL real-data seed (era-correct).")
     ap.add_argument("--records", required=True, help="franchise_records_*.json")
-    ap.add_argument("--season-names", required=True, help="season_names_*.json")
+    ap.add_argument("--season-names", help="season_names_*.json (rebuild only)")
     ap.add_argument("--out", required=True, help="output .sql path")
     ap.add_argument("--league", default="70985", help="league canonical_id")
+    ap.add_argument("--backfill", action="store_true",
+                    help="emit a TARGETED UPDATE backfill of points_against + blowout_wins_60 "
+                         "(W.5 Inc 2 Wave 2), instead of the full rebuild")
     args = ap.parse_args(argv)
 
     with open(args.records) as f:
         rows: list[dict[str, Any]] = json.load(f)
+
+    if args.backfill:
+        sql = emit_backfill(rows, args.league)
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(sql)
+        print(f"Wrote backfill {args.out}: {len(rows)} rows "
+              "(points_against + blowout_wins_60, targeted UPDATE).")
+        return 0
+
+    if not args.season_names:
+        raise SystemExit("--season-names is required for the full rebuild (omit only with --backfill)")
     with open(args.season_names) as f:
         name_rows: list[dict[str, Any]] = json.load(f)
 
@@ -162,19 +206,21 @@ def main(argv: list[str] | None = None) -> int:
     w("")
     w("-- 4. Per-franchise per-season records (full 2010-2025 history).")
     w("INSERT INTO franchise_season_records")
-    w("  (league_id, franchise_id, season, wins, losses, ties, points_for, result, provenance)")
-    w("SELECT l.id, f.id, v.season, v.wins, v.losses, v.ties, v.pf, v.result,")
-    w("       'engine:matchup-derived'")
+    w("  (league_id, franchise_id, season, wins, losses, ties, points_for,")
+    w("   points_against, blowout_wins_60, result, provenance)")
+    w("SELECT l.id, f.id, v.season, v.wins, v.losses, v.ties, v.pf,")
+    w("       v.pa, v.bw, v.result, 'engine:matchup-derived'")
     w("FROM (VALUES")
     rec_vals = []
     for r in sorted(rows, key=lambda d: (d["franchise_id"], int(d["season"]))):
         rec_vals.append(
             f"  ({q(r['franchise_id'])}, {int(r['season'])}, {int(r['wins'])}, "
             f"{int(r['losses'])}, {int(r['ties'])}, {float(r['points_for'])}, "
+            f"{float(r.get('points_against', 0.0))}, {int(r.get('blowout_wins_60', 0))}, "
             f"{q(r['result'])})"
         )
     w(",\n".join(rec_vals))
-    w(") AS v(fid, season, wins, losses, ties, pf, result)")
+    w(") AS v(fid, season, wins, losses, ties, pf, pa, bw, result)")
     w(f"JOIN leagues l ON l.canonical_id = {q(args.league)}")
     w("JOIN franchises f ON f.league_id = l.id AND f.canonical_franchise_id = v.fid;")
     w("")
