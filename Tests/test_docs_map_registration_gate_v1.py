@@ -36,6 +36,11 @@ _GRANDFATHERED_TOP_LEVEL_DOCS = {
     "map_patch_2026_05_16_f1_sat_provisional.md",
     "map_patch_2026_06_09_state_ledger.md",
     "map_patch_2026_06_09_document_of_record.md",
+    "map_patch_2026_06_10_w6_consent_governance.md",
+    "map_patch_2026_06_22_w5_trophy_taxonomy.md",
+    # Binding docs registered via the patch addenda above
+    "SquadVault_W6_Consent_Governance_Memo_v1_2.md",
+    "SquadVault_W5_Trophy_Taxonomy_DJ_Input_v1_2_2026_06_21.md",
     # Operational read-model (Charter v1.0 section 4; registered via the patch above)
     "STATE.md",
     # Product plan of record (Charter-named; registered via the patch above) - E1.3
