@@ -1,0 +1,342 @@
+[
+  {
+    "award_id": "12",
+    "season": 2010,
+    "franchise_id": "0006",
+    "value": 142.0,
+    "detail": {
+      "week": 10,
+      "opponent": "0008"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2011,
+    "franchise_id": "0010",
+    "value": 149.5,
+    "detail": {
+      "week": 2,
+      "opponent": "0004"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2012,
+    "franchise_id": "0006",
+    "value": 137.5,
+    "detail": {
+      "week": 8,
+      "opponent": "0009"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2013,
+    "franchise_id": "0003",
+    "value": 127.0,
+    "detail": {
+      "week": 1,
+      "opponent": "0010"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2014,
+    "franchise_id": "0007",
+    "value": 136.5,
+    "detail": {
+      "week": 10,
+      "opponent": "0009"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2015,
+    "franchise_id": "0006",
+    "value": 121.5,
+    "detail": {
+      "week": 3,
+      "opponent": "0004"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2016,
+    "franchise_id": "0005",
+    "value": 125.0,
+    "detail": {
+      "week": 9,
+      "opponent": "0004"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2017,
+    "franchise_id": "0006",
+    "value": 134.4,
+    "detail": {
+      "week": 7,
+      "opponent": "0001"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2018,
+    "franchise_id": "0009",
+    "value": 135.95,
+    "detail": {
+      "week": 1,
+      "opponent": "0008"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2019,
+    "franchise_id": "0009",
+    "value": 174.5,
+    "detail": {
+      "week": 5,
+      "opponent": "0010"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2020,
+    "franchise_id": "0005",
+    "value": 135.95,
+    "detail": {
+      "week": 12,
+      "opponent": "0001"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2021,
+    "franchise_id": "0003",
+    "value": 144.1,
+    "detail": {
+      "week": 5,
+      "opponent": "0002"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2022,
+    "franchise_id": "0005",
+    "value": 141.7,
+    "detail": {
+      "week": 8,
+      "opponent": "0003"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2023,
+    "franchise_id": "0006",
+    "value": 150.55,
+    "detail": {
+      "week": 10,
+      "opponent": "0004"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2024,
+    "franchise_id": "0003",
+    "value": 163.5,
+    "detail": {
+      "week": 14,
+      "opponent": "0002"
+    }
+  },
+  {
+    "award_id": "12",
+    "season": 2025,
+    "franchise_id": "0009",
+    "value": 147.3,
+    "detail": {
+      "week": 4,
+      "opponent": "0008"
+    }
+  },
+  {
+    "award_id": "33",
+    "season": 2013,
+    "franchise_id": "0009",
+    "value": 1.0,
+    "detail": {
+      "runner_up": "0010",
+      "week": 16
+    }
+  },
+  {
+    "award_id": "33",
+    "season": 2019,
+    "franchise_id": "0002",
+    "value": 1.45,
+    "detail": {
+      "runner_up": "0005",
+      "week": 16
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2010,
+    "franchise_id": "0009",
+    "value": 170.0,
+    "detail": {
+      "week": 1,
+      "opponent": "0008"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2011,
+    "franchise_id": "0010",
+    "value": 169.0,
+    "detail": {
+      "week": 4,
+      "opponent": "0001"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2012,
+    "franchise_id": "0001",
+    "value": 183.5,
+    "detail": {
+      "week": 9,
+      "opponent": "0008"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2013,
+    "franchise_id": "0010",
+    "value": 166.5,
+    "detail": {
+      "week": 15,
+      "opponent": "0007"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2014,
+    "franchise_id": "0001",
+    "value": 187.5,
+    "detail": {
+      "week": 8,
+      "opponent": "0007"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2015,
+    "franchise_id": "0009",
+    "value": 159.0,
+    "detail": {
+      "week": 1,
+      "opponent": "0010"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2016,
+    "franchise_id": "0001",
+    "value": 168.0,
+    "detail": {
+      "week": 3,
+      "opponent": "0007"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2017,
+    "franchise_id": "0005",
+    "value": 156.6,
+    "detail": {
+      "week": 11,
+      "opponent": "0010"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2018,
+    "franchise_id": "0003",
+    "value": 162.65,
+    "detail": {
+      "week": 11,
+      "opponent": "0004"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2019,
+    "franchise_id": "0010",
+    "value": 177.75,
+    "detail": {
+      "week": 8,
+      "opponent": "0008"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2020,
+    "franchise_id": "0006",
+    "value": 177.7,
+    "detail": {
+      "week": 4,
+      "opponent": "0008"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2021,
+    "franchise_id": "0004",
+    "value": 162.15,
+    "detail": {
+      "week": 13,
+      "opponent": "0003"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2022,
+    "franchise_id": "0006",
+    "value": 187.3,
+    "detail": {
+      "week": 9,
+      "opponent": "0010"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2023,
+    "franchise_id": "0006",
+    "value": 185.05,
+    "detail": {
+      "week": 4,
+      "opponent": "0004"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2024,
+    "franchise_id": "0002",
+    "value": 198.8,
+    "detail": {
+      "week": 14,
+      "opponent": "0003"
+    }
+  },
+  {
+    "award_id": "4",
+    "season": 2025,
+    "franchise_id": "0002",
+    "value": 192.15,
+    "detail": {
+      "week": 7,
+      "opponent": "0005"
+    }
+  }
+]
