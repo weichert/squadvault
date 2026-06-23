@@ -126,6 +126,10 @@ Rule; reference-only sections do not.
 - Editorial Attunement Layer -- Core Engine Addendum v1
 - Weekly Recap Context Temporal Scoping Addendum v1.0
 - Narrative Presentation Spec v1.0
+- Manual Source Adapter Contract - Addendum v1.0
+  *(RATIFIED 2026-06-23; subordinate to Platform Adapter Contract Card v1.0 and the Event Payload
+  Schema; file at `docs/contracts/manual_source_adapter_contract_v1.md`. Adapter build + 2021
+  calibration pending as separate EXECUTE units.)*
 
 ### Tier 3 -- Technical Authority & Reference Notes
 
