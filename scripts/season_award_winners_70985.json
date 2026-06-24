@@ -160,6 +160,6623 @@
     }
   },
   {
+    "award_id": "13",
+    "season": 2010,
+    "franchise_id": "0007",
+    "value": 565.5,
+    "detail": {
+      "player_id": "4925",
+      "position": "QB",
+      "started_points": 565.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 29.0
+        },
+        {
+          "week": 2,
+          "score": 37.5
+        },
+        {
+          "week": 3,
+          "score": 48.0
+        },
+        {
+          "week": 4,
+          "score": 33.0
+        },
+        {
+          "week": 5,
+          "score": 30.0
+        },
+        {
+          "week": 6,
+          "score": 41.0
+        },
+        {
+          "week": 7,
+          "score": 35.0
+        },
+        {
+          "week": 8,
+          "score": 39.0
+        },
+        {
+          "week": 9,
+          "score": 34.0
+        },
+        {
+          "week": 11,
+          "score": 56.0
+        },
+        {
+          "week": 12,
+          "score": 38.0
+        },
+        {
+          "week": 13,
+          "score": 40.0
+        },
+        {
+          "week": 14,
+          "score": 34.0
+        },
+        {
+          "week": 15,
+          "score": 41.0
+        },
+        {
+          "week": 16,
+          "score": 30.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2011,
+    "franchise_id": "0009",
+    "value": 724.0,
+    "detail": {
+      "player_id": "4925",
+      "position": "QB",
+      "started_points": 724.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 59.0
+        },
+        {
+          "week": 2,
+          "score": 45.0
+        },
+        {
+          "week": 3,
+          "score": 53.0
+        },
+        {
+          "week": 4,
+          "score": 36.0
+        },
+        {
+          "week": 5,
+          "score": 44.0
+        },
+        {
+          "week": 6,
+          "score": 37.0
+        },
+        {
+          "week": 7,
+          "score": 62.0
+        },
+        {
+          "week": 8,
+          "score": 26.0
+        },
+        {
+          "week": 9,
+          "score": 36.0
+        },
+        {
+          "week": 10,
+          "score": 44.0
+        },
+        {
+          "week": 12,
+          "score": 66.0
+        },
+        {
+          "week": 13,
+          "score": 52.0
+        },
+        {
+          "week": 14,
+          "score": 45.0
+        },
+        {
+          "week": 15,
+          "score": 71.0
+        },
+        {
+          "week": 16,
+          "score": 48.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2012,
+    "franchise_id": "0008",
+    "value": 640.0,
+    "detail": {
+      "player_id": "5848",
+      "position": "QB",
+      "started_points": 640.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 35.0
+        },
+        {
+          "week": 2,
+          "score": 34.0
+        },
+        {
+          "week": 3,
+          "score": 39.0
+        },
+        {
+          "week": 4,
+          "score": 58.0
+        },
+        {
+          "week": 5,
+          "score": 34.0
+        },
+        {
+          "week": 6,
+          "score": 45.0
+        },
+        {
+          "week": 7,
+          "score": 37.0
+        },
+        {
+          "week": 8,
+          "score": 54.0
+        },
+        {
+          "week": 10,
+          "score": 35.0
+        },
+        {
+          "week": 11,
+          "score": 51.0
+        },
+        {
+          "week": 12,
+          "score": 56.0
+        },
+        {
+          "week": 13,
+          "score": 26.0
+        },
+        {
+          "week": 14,
+          "score": 53.0
+        },
+        {
+          "week": 15,
+          "score": 51.0
+        },
+        {
+          "week": 16,
+          "score": 32.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2013,
+    "franchise_id": "0007",
+    "value": 486.0,
+    "detail": {
+      "player_id": "3291",
+      "position": "QB",
+      "started_points": 486.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 65.0
+        },
+        {
+          "week": 2,
+          "score": 27.0
+        },
+        {
+          "week": 3,
+          "score": 35.0
+        },
+        {
+          "week": 4,
+          "score": 40.0
+        },
+        {
+          "week": 5,
+          "score": 47.0
+        },
+        {
+          "week": 6,
+          "score": 21.0
+        },
+        {
+          "week": 7,
+          "score": 34.0
+        },
+        {
+          "week": 8,
+          "score": 31.0
+        },
+        {
+          "week": 10,
+          "score": 39.0
+        },
+        {
+          "week": 11,
+          "score": 21.0
+        },
+        {
+          "week": 12,
+          "score": 16.0
+        },
+        {
+          "week": 13,
+          "score": 44.0
+        },
+        {
+          "week": 14,
+          "score": 43.0
+        },
+        {
+          "week": 15,
+          "score": 23.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2014,
+    "franchise_id": "0002",
+    "value": 434.0,
+    "detail": {
+      "player_id": "10695",
+      "position": "QB",
+      "started_points": 434.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 31.0
+        },
+        {
+          "week": 2,
+          "score": 25.0
+        },
+        {
+          "week": 3,
+          "score": 43.0
+        },
+        {
+          "week": 4,
+          "score": 40.0
+        },
+        {
+          "week": 5,
+          "score": 22.0
+        },
+        {
+          "week": 6,
+          "score": 33.0
+        },
+        {
+          "week": 7,
+          "score": 28.0
+        },
+        {
+          "week": 8,
+          "score": 34.0
+        },
+        {
+          "week": 9,
+          "score": 41.0
+        },
+        {
+          "week": 11,
+          "score": 25.0
+        },
+        {
+          "week": 12,
+          "score": 20.0
+        },
+        {
+          "week": 13,
+          "score": 46.0
+        },
+        {
+          "week": 14,
+          "score": 28.0
+        },
+        {
+          "week": 15,
+          "score": 19.0
+        },
+        {
+          "week": 16,
+          "score": -1.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2015,
+    "franchise_id": "0009",
+    "value": 351.5,
+    "detail": {
+      "player_id": "5848",
+      "position": "QB",
+      "started_points": 351.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 38.0
+        },
+        {
+          "week": 3,
+          "score": 29.0
+        },
+        {
+          "week": 5,
+          "score": 31.0
+        },
+        {
+          "week": 6,
+          "score": 27.0
+        },
+        {
+          "week": 7,
+          "score": 36.0
+        },
+        {
+          "week": 8,
+          "score": 41.0
+        },
+        {
+          "week": 9,
+          "score": 24.0
+        },
+        {
+          "week": 10,
+          "score": 24.0
+        },
+        {
+          "week": 11,
+          "score": 17.0
+        },
+        {
+          "week": 13,
+          "score": 35.5
+        },
+        {
+          "week": 14,
+          "score": 24.0
+        },
+        {
+          "week": 15,
+          "score": 25.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2016,
+    "franchise_id": "0010",
+    "value": 367.0,
+    "detail": {
+      "player_id": "4925",
+      "position": "QB",
+      "started_points": 367.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 43.0
+        },
+        {
+          "week": 2,
+          "score": 19.0
+        },
+        {
+          "week": 3,
+          "score": 30.0
+        },
+        {
+          "week": 6,
+          "score": 45.0
+        },
+        {
+          "week": 8,
+          "score": 25.0
+        },
+        {
+          "week": 9,
+          "score": 34.0
+        },
+        {
+          "week": 10,
+          "score": 29.0
+        },
+        {
+          "week": 11,
+          "score": 22.0
+        },
+        {
+          "week": 12,
+          "score": 43.0
+        },
+        {
+          "week": 13,
+          "score": 10.0
+        },
+        {
+          "week": 14,
+          "score": 6.0
+        },
+        {
+          "week": 15,
+          "score": 41.0
+        },
+        {
+          "week": 16,
+          "score": 20.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2017,
+    "franchise_id": "0005",
+    "value": 333.65,
+    "detail": {
+      "player_id": "5848",
+      "position": "QB",
+      "started_points": 333.65,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 13.35
+        },
+        {
+          "week": 2,
+          "score": 41.25
+        },
+        {
+          "week": 3,
+          "score": 45.5
+        },
+        {
+          "week": 4,
+          "score": 27.55
+        },
+        {
+          "week": 5,
+          "score": 17.65
+        },
+        {
+          "week": 6,
+          "score": 22.75
+        },
+        {
+          "week": 7,
+          "score": 24.95
+        },
+        {
+          "week": 8,
+          "score": 22.85
+        },
+        {
+          "week": 10,
+          "score": 31.3
+        },
+        {
+          "week": 11,
+          "score": 35.0
+        },
+        {
+          "week": 12,
+          "score": 26.95
+        },
+        {
+          "week": 13,
+          "score": 10.9
+        },
+        {
+          "week": 14,
+          "score": 13.65
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2018,
+    "franchise_id": "0006",
+    "value": 535.9,
+    "detail": {
+      "player_id": "13116",
+      "position": "QB",
+      "started_points": 535.9,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 38.9
+        },
+        {
+          "week": 2,
+          "score": 54.1
+        },
+        {
+          "week": 3,
+          "score": 34.4
+        },
+        {
+          "week": 4,
+          "score": 27.9
+        },
+        {
+          "week": 5,
+          "score": 18.95
+        },
+        {
+          "week": 6,
+          "score": 38.5
+        },
+        {
+          "week": 7,
+          "score": 44.4
+        },
+        {
+          "week": 8,
+          "score": 37.05
+        },
+        {
+          "week": 9,
+          "score": 36.55
+        },
+        {
+          "week": 10,
+          "score": 26.55
+        },
+        {
+          "week": 11,
+          "score": 44.7
+        },
+        {
+          "week": 13,
+          "score": 43.95
+        },
+        {
+          "week": 14,
+          "score": 28.55
+        },
+        {
+          "week": 15,
+          "score": 24.45
+        },
+        {
+          "week": 16,
+          "score": 36.95
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2019,
+    "franchise_id": "0010",
+    "value": 386.9,
+    "detail": {
+      "player_id": "13113",
+      "position": "QB",
+      "started_points": 386.9,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 39.4
+        },
+        {
+          "week": 2,
+          "score": 14.45
+        },
+        {
+          "week": 3,
+          "score": 35.35
+        },
+        {
+          "week": 5,
+          "score": 56.0
+        },
+        {
+          "week": 6,
+          "score": 34.2
+        },
+        {
+          "week": 7,
+          "score": 20.6
+        },
+        {
+          "week": 8,
+          "score": 36.55
+        },
+        {
+          "week": 9,
+          "score": 25.75
+        },
+        {
+          "week": 11,
+          "score": 5.65
+        },
+        {
+          "week": 12,
+          "score": 25.9
+        },
+        {
+          "week": 13,
+          "score": 36.7
+        },
+        {
+          "week": 14,
+          "score": 33.0
+        },
+        {
+          "week": 15,
+          "score": 23.35
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2020,
+    "franchise_id": "0001",
+    "value": 471.8,
+    "detail": {
+      "player_id": "13116",
+      "position": "QB",
+      "started_points": 471.8,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 28.55
+        },
+        {
+          "week": 2,
+          "score": 34.5
+        },
+        {
+          "week": 3,
+          "score": 51.85
+        },
+        {
+          "week": 4,
+          "score": 26.6
+        },
+        {
+          "week": 5,
+          "score": 37.1
+        },
+        {
+          "week": 6,
+          "score": 26.85
+        },
+        {
+          "week": 7,
+          "score": 16.0
+        },
+        {
+          "week": 8,
+          "score": 50.8
+        },
+        {
+          "week": 9,
+          "score": 43.2
+        },
+        {
+          "week": 11,
+          "score": 29.0
+        },
+        {
+          "week": 12,
+          "score": 41.9
+        },
+        {
+          "week": 13,
+          "score": 24.5
+        },
+        {
+          "week": 14,
+          "score": 26.55
+        },
+        {
+          "week": 15,
+          "score": 34.4
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2021,
+    "franchise_id": "0008",
+    "value": 433.6,
+    "detail": {
+      "player_id": "14779",
+      "position": "QB",
+      "started_points": 433.6,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 18.75
+        },
+        {
+          "week": 2,
+          "score": 20.1
+        },
+        {
+          "week": 3,
+          "score": 41.65
+        },
+        {
+          "week": 4,
+          "score": 29.5
+        },
+        {
+          "week": 5,
+          "score": 54.8
+        },
+        {
+          "week": 6,
+          "score": 14.95
+        },
+        {
+          "week": 8,
+          "score": 16.05
+        },
+        {
+          "week": 9,
+          "score": 39.2
+        },
+        {
+          "week": 10,
+          "score": 15.95
+        },
+        {
+          "week": 11,
+          "score": 44.1
+        },
+        {
+          "week": 12,
+          "score": 22.75
+        },
+        {
+          "week": 13,
+          "score": 34.45
+        },
+        {
+          "week": 14,
+          "score": 33.65
+        },
+        {
+          "week": 15,
+          "score": 29.4
+        },
+        {
+          "week": 16,
+          "score": 18.3
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2022,
+    "franchise_id": "0006",
+    "value": 532.4,
+    "detail": {
+      "player_id": "13116",
+      "position": "QB",
+      "started_points": 532.4,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 48.5
+        },
+        {
+          "week": 2,
+          "score": 23.65
+        },
+        {
+          "week": 3,
+          "score": 21.7
+        },
+        {
+          "week": 4,
+          "score": 31.85
+        },
+        {
+          "week": 5,
+          "score": 41.4
+        },
+        {
+          "week": 6,
+          "score": 27.0
+        },
+        {
+          "week": 7,
+          "score": 37.15
+        },
+        {
+          "week": 9,
+          "score": 40.6
+        },
+        {
+          "week": 10,
+          "score": 42.45
+        },
+        {
+          "week": 11,
+          "score": 36.75
+        },
+        {
+          "week": 12,
+          "score": 23.6
+        },
+        {
+          "week": 13,
+          "score": 24.05
+        },
+        {
+          "week": 14,
+          "score": 29.3
+        },
+        {
+          "week": 15,
+          "score": 40.1
+        },
+        {
+          "week": 16,
+          "score": 30.0
+        },
+        {
+          "week": 17,
+          "score": 34.3
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2023,
+    "franchise_id": "0002",
+    "value": 409.25,
+    "detail": {
+      "player_id": "13589",
+      "position": "QB",
+      "started_points": 409.25,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 13.4
+        },
+        {
+          "week": 2,
+          "score": 32.4
+        },
+        {
+          "week": 3,
+          "score": 25.5
+        },
+        {
+          "week": 4,
+          "score": 47.7
+        },
+        {
+          "week": 5,
+          "score": 35.35
+        },
+        {
+          "week": 6,
+          "score": 19.55
+        },
+        {
+          "week": 8,
+          "score": 36.3
+        },
+        {
+          "week": 9,
+          "score": 29.3
+        },
+        {
+          "week": 10,
+          "score": 18.15
+        },
+        {
+          "week": 11,
+          "score": 31.25
+        },
+        {
+          "week": 12,
+          "score": 47.05
+        },
+        {
+          "week": 14,
+          "score": 24.85
+        },
+        {
+          "week": 15,
+          "score": 19.1
+        },
+        {
+          "week": 16,
+          "score": 29.35
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2024,
+    "franchise_id": "0005",
+    "value": 495.1,
+    "detail": {
+      "player_id": "13593",
+      "position": "QB",
+      "started_points": 495.1,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 20.85
+        },
+        {
+          "week": 3,
+          "score": 29.8
+        },
+        {
+          "week": 4,
+          "score": 29.2
+        },
+        {
+          "week": 5,
+          "score": 44.9
+        },
+        {
+          "week": 6,
+          "score": 24.15
+        },
+        {
+          "week": 7,
+          "score": 47.25
+        },
+        {
+          "week": 8,
+          "score": 31.05
+        },
+        {
+          "week": 9,
+          "score": 32.4
+        },
+        {
+          "week": 10,
+          "score": 43.8
+        },
+        {
+          "week": 11,
+          "score": 18.95
+        },
+        {
+          "week": 12,
+          "score": 28.35
+        },
+        {
+          "week": 13,
+          "score": 31.75
+        },
+        {
+          "week": 15,
+          "score": 49.0
+        },
+        {
+          "week": 16,
+          "score": 28.55
+        },
+        {
+          "week": 17,
+          "score": 35.1
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "13",
+    "season": 2025,
+    "franchise_id": "0006",
+    "value": 417.3,
+    "detail": {
+      "player_id": "13589",
+      "position": "QB",
+      "started_points": 417.3,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 46.7
+        },
+        {
+          "week": 2,
+          "score": 13.3
+        },
+        {
+          "week": 3,
+          "score": 31.15
+        },
+        {
+          "week": 4,
+          "score": 30.95
+        },
+        {
+          "week": 5,
+          "score": 25.95
+        },
+        {
+          "week": 6,
+          "score": 21.2
+        },
+        {
+          "week": 8,
+          "score": 26.85
+        },
+        {
+          "week": 9,
+          "score": 33.55
+        },
+        {
+          "week": 10,
+          "score": 26.4
+        },
+        {
+          "week": 11,
+          "score": 51.85
+        },
+        {
+          "week": 12,
+          "score": 10.65
+        },
+        {
+          "week": 13,
+          "score": 19.95
+        },
+        {
+          "week": 14,
+          "score": 46.35
+        },
+        {
+          "week": 15,
+          "score": 32.45
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2010,
+    "franchise_id": "0009",
+    "value": 275.0,
+    "detail": {
+      "player_id": "9690",
+      "position": "RB",
+      "started_points": 275.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 41.5
+        },
+        {
+          "week": 2,
+          "score": 13.5
+        },
+        {
+          "week": 4,
+          "score": 31.5
+        },
+        {
+          "week": 5,
+          "score": 3.0
+        },
+        {
+          "week": 6,
+          "score": 24.0
+        },
+        {
+          "week": 8,
+          "score": 26.5
+        },
+        {
+          "week": 9,
+          "score": 33.0
+        },
+        {
+          "week": 10,
+          "score": 11.5
+        },
+        {
+          "week": 11,
+          "score": 28.0
+        },
+        {
+          "week": 12,
+          "score": 25.5
+        },
+        {
+          "week": 13,
+          "score": 23.0
+        },
+        {
+          "week": 14,
+          "score": 14.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2011,
+    "franchise_id": "0004",
+    "value": 262.5,
+    "detail": {
+      "player_id": "9448",
+      "position": "RB",
+      "started_points": 262.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 26.0
+        },
+        {
+          "week": 2,
+          "score": 25.0
+        },
+        {
+          "week": 3,
+          "score": 20.5
+        },
+        {
+          "week": 4,
+          "score": 13.0
+        },
+        {
+          "week": 5,
+          "score": 18.0
+        },
+        {
+          "week": 6,
+          "score": 20.0
+        },
+        {
+          "week": 8,
+          "score": 32.0
+        },
+        {
+          "week": 9,
+          "score": 19.5
+        },
+        {
+          "week": 10,
+          "score": 16.5
+        },
+        {
+          "week": 11,
+          "score": 12.5
+        },
+        {
+          "week": 12,
+          "score": 14.0
+        },
+        {
+          "week": 13,
+          "score": 26.0
+        },
+        {
+          "week": 14,
+          "score": 19.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2012,
+    "franchise_id": "0001",
+    "value": 249.5,
+    "detail": {
+      "player_id": "8658",
+      "position": "RB",
+      "started_points": 249.5,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 9.5
+        },
+        {
+          "week": 4,
+          "score": 14.0
+        },
+        {
+          "week": 5,
+          "score": 10.5
+        },
+        {
+          "week": 6,
+          "score": 15.5
+        },
+        {
+          "week": 7,
+          "score": 22.0
+        },
+        {
+          "week": 8,
+          "score": 18.5
+        },
+        {
+          "week": 9,
+          "score": 32.5
+        },
+        {
+          "week": 10,
+          "score": 26.5
+        },
+        {
+          "week": 12,
+          "score": 16.0
+        },
+        {
+          "week": 13,
+          "score": 28.5
+        },
+        {
+          "week": 14,
+          "score": 29.0
+        },
+        {
+          "week": 15,
+          "score": 27.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2013,
+    "franchise_id": "0010",
+    "value": 332.0,
+    "detail": {
+      "player_id": "9054",
+      "position": "RB",
+      "started_points": 332.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 16.5
+        },
+        {
+          "week": 2,
+          "score": 19.0
+        },
+        {
+          "week": 3,
+          "score": 26.5
+        },
+        {
+          "week": 4,
+          "score": 20.5
+        },
+        {
+          "week": 5,
+          "score": 20.5
+        },
+        {
+          "week": 6,
+          "score": 26.5
+        },
+        {
+          "week": 7,
+          "score": 17.5
+        },
+        {
+          "week": 8,
+          "score": 13.5
+        },
+        {
+          "week": 9,
+          "score": 12.0
+        },
+        {
+          "week": 11,
+          "score": 8.0
+        },
+        {
+          "week": 12,
+          "score": 29.0
+        },
+        {
+          "week": 13,
+          "score": 18.0
+        },
+        {
+          "week": 14,
+          "score": 28.0
+        },
+        {
+          "week": 15,
+          "score": 55.0
+        },
+        {
+          "week": 16,
+          "score": 21.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2014,
+    "franchise_id": "0001",
+    "value": 276.5,
+    "detail": {
+      "player_id": "10302",
+      "position": "RB",
+      "started_points": 276.5,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 21.5
+        },
+        {
+          "week": 3,
+          "score": 20.0
+        },
+        {
+          "week": 4,
+          "score": 26.5
+        },
+        {
+          "week": 5,
+          "score": 20.0
+        },
+        {
+          "week": 6,
+          "score": 23.0
+        },
+        {
+          "week": 7,
+          "score": 18.5
+        },
+        {
+          "week": 8,
+          "score": 23.0
+        },
+        {
+          "week": 9,
+          "score": 10.0
+        },
+        {
+          "week": 10,
+          "score": 16.0
+        },
+        {
+          "week": 12,
+          "score": 15.0
+        },
+        {
+          "week": 13,
+          "score": 20.0
+        },
+        {
+          "week": 14,
+          "score": 31.5
+        },
+        {
+          "week": 15,
+          "score": 20.5
+        },
+        {
+          "week": 16,
+          "score": 11.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2015,
+    "franchise_id": "0004",
+    "value": 202.0,
+    "detail": {
+      "player_id": "8658",
+      "position": "RB",
+      "started_points": 202.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 6.5
+        },
+        {
+          "week": 2,
+          "score": 17.0
+        },
+        {
+          "week": 3,
+          "score": 24.0
+        },
+        {
+          "week": 4,
+          "score": 17.0
+        },
+        {
+          "week": 6,
+          "score": 6.5
+        },
+        {
+          "week": 7,
+          "score": 11.5
+        },
+        {
+          "week": 8,
+          "score": 11.0
+        },
+        {
+          "week": 9,
+          "score": 20.0
+        },
+        {
+          "week": 10,
+          "score": 28.0
+        },
+        {
+          "week": 11,
+          "score": 10.0
+        },
+        {
+          "week": 12,
+          "score": 30.0
+        },
+        {
+          "week": 13,
+          "score": 3.0
+        },
+        {
+          "week": 14,
+          "score": 11.5
+        },
+        {
+          "week": 15,
+          "score": 6.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2016,
+    "franchise_id": "0002",
+    "value": 317.5,
+    "detail": {
+      "player_id": "12171",
+      "position": "RB",
+      "started_points": 317.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 20.0
+        },
+        {
+          "week": 2,
+          "score": 14.5
+        },
+        {
+          "week": 3,
+          "score": 23.5
+        },
+        {
+          "week": 4,
+          "score": 12.0
+        },
+        {
+          "week": 5,
+          "score": 30.5
+        },
+        {
+          "week": 6,
+          "score": 32.5
+        },
+        {
+          "week": 7,
+          "score": 20.0
+        },
+        {
+          "week": 8,
+          "score": 13.5
+        },
+        {
+          "week": 10,
+          "score": 23.5
+        },
+        {
+          "week": 11,
+          "score": 30.5
+        },
+        {
+          "week": 12,
+          "score": 25.0
+        },
+        {
+          "week": 13,
+          "score": 33.5
+        },
+        {
+          "week": 14,
+          "score": 14.5
+        },
+        {
+          "week": 15,
+          "score": 24.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2017,
+    "franchise_id": "0001",
+    "value": 306.7,
+    "detail": {
+      "player_id": "12150",
+      "position": "RB",
+      "started_points": 306.7,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 18.1
+        },
+        {
+          "week": 2,
+          "score": 25.1
+        },
+        {
+          "week": 3,
+          "score": 35.4
+        },
+        {
+          "week": 4,
+          "score": 31.0
+        },
+        {
+          "week": 5,
+          "score": 4.0
+        },
+        {
+          "week": 6,
+          "score": 12.5
+        },
+        {
+          "week": 7,
+          "score": 23.4
+        },
+        {
+          "week": 9,
+          "score": 23.4
+        },
+        {
+          "week": 10,
+          "score": 16.6
+        },
+        {
+          "week": 11,
+          "score": 13.1
+        },
+        {
+          "week": 12,
+          "score": 14.8
+        },
+        {
+          "week": 13,
+          "score": 18.8
+        },
+        {
+          "week": 14,
+          "score": 27.0
+        },
+        {
+          "week": 15,
+          "score": 43.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2018,
+    "franchise_id": "0005",
+    "value": 342.6,
+    "detail": {
+      "player_id": "12150",
+      "position": "RB",
+      "started_points": 342.6,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 22.2
+        },
+        {
+          "week": 2,
+          "score": 30.8
+        },
+        {
+          "week": 3,
+          "score": 22.1
+        },
+        {
+          "week": 4,
+          "score": 23.6
+        },
+        {
+          "week": 5,
+          "score": 31.3
+        },
+        {
+          "week": 6,
+          "score": 35.5
+        },
+        {
+          "week": 7,
+          "score": 28.6
+        },
+        {
+          "week": 8,
+          "score": 30.5
+        },
+        {
+          "week": 9,
+          "score": 16.9
+        },
+        {
+          "week": 10,
+          "score": 23.5
+        },
+        {
+          "week": 11,
+          "score": 10.9
+        },
+        {
+          "week": 13,
+          "score": 30.0
+        },
+        {
+          "week": 14,
+          "score": 7.3
+        },
+        {
+          "week": 15,
+          "score": 29.4
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2019,
+    "franchise_id": "0009",
+    "value": 369.1,
+    "detail": {
+      "player_id": "13130",
+      "position": "RB",
+      "started_points": 369.1,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 37.9
+        },
+        {
+          "week": 2,
+          "score": 6.3
+        },
+        {
+          "week": 3,
+          "score": 26.3
+        },
+        {
+          "week": 4,
+          "score": 28.9
+        },
+        {
+          "week": 5,
+          "score": 44.7
+        },
+        {
+          "week": 6,
+          "score": 19.7
+        },
+        {
+          "week": 8,
+          "score": 25.5
+        },
+        {
+          "week": 9,
+          "score": 36.1
+        },
+        {
+          "week": 10,
+          "score": 23.1
+        },
+        {
+          "week": 11,
+          "score": 24.6
+        },
+        {
+          "week": 12,
+          "score": 29.8
+        },
+        {
+          "week": 13,
+          "score": 13.7
+        },
+        {
+          "week": 14,
+          "score": 19.0
+        },
+        {
+          "week": 15,
+          "score": 33.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2020,
+    "franchise_id": "0009",
+    "value": 281.6,
+    "detail": {
+      "player_id": "13132",
+      "position": "RB",
+      "started_points": 281.6,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 21.2
+        },
+        {
+          "week": 2,
+          "score": 33.9
+        },
+        {
+          "week": 3,
+          "score": 38.2
+        },
+        {
+          "week": 4,
+          "score": 19.4
+        },
+        {
+          "week": 5,
+          "score": 15.9
+        },
+        {
+          "week": 7,
+          "score": 18.8
+        },
+        {
+          "week": 8,
+          "score": 20.8
+        },
+        {
+          "week": 9,
+          "score": 13.4
+        },
+        {
+          "week": 10,
+          "score": 31.3
+        },
+        {
+          "week": 11,
+          "score": 10.5
+        },
+        {
+          "week": 12,
+          "score": 5.7
+        },
+        {
+          "week": 13,
+          "score": 16.7
+        },
+        {
+          "week": 14,
+          "score": 18.9
+        },
+        {
+          "week": 15,
+          "score": 16.9
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2021,
+    "franchise_id": "0002",
+    "value": 342.1,
+    "detail": {
+      "player_id": "14802",
+      "position": "RB",
+      "started_points": 342.1,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 14.6
+        },
+        {
+          "week": 2,
+          "score": 5.8
+        },
+        {
+          "week": 3,
+          "score": 7.7
+        },
+        {
+          "week": 4,
+          "score": 18.9
+        },
+        {
+          "week": 5,
+          "score": 30.4
+        },
+        {
+          "week": 6,
+          "score": 28.3
+        },
+        {
+          "week": 7,
+          "score": 16.5
+        },
+        {
+          "week": 8,
+          "score": 19.7
+        },
+        {
+          "week": 9,
+          "score": 33.0
+        },
+        {
+          "week": 10,
+          "score": 21.6
+        },
+        {
+          "week": 11,
+          "score": 51.9
+        },
+        {
+          "week": 12,
+          "score": 17.7
+        },
+        {
+          "week": 13,
+          "score": 24.3
+        },
+        {
+          "week": 15,
+          "score": 23.0
+        },
+        {
+          "week": 16,
+          "score": 10.8
+        },
+        {
+          "week": 17,
+          "score": 17.9
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2022,
+    "franchise_id": "0002",
+    "value": 278.3,
+    "detail": {
+      "player_id": "14073",
+      "position": "RB",
+      "started_points": 278.3,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 7.8
+        },
+        {
+          "week": 2,
+          "score": 8.6
+        },
+        {
+          "week": 3,
+          "score": 12.2
+        },
+        {
+          "week": 4,
+          "score": 32.0
+        },
+        {
+          "week": 5,
+          "score": 27.8
+        },
+        {
+          "week": 7,
+          "score": 35.0
+        },
+        {
+          "week": 8,
+          "score": 6.4
+        },
+        {
+          "week": 9,
+          "score": 10.2
+        },
+        {
+          "week": 10,
+          "score": 19.6
+        },
+        {
+          "week": 11,
+          "score": 17.5
+        },
+        {
+          "week": 12,
+          "score": 45.3
+        },
+        {
+          "week": 13,
+          "score": 20.0
+        },
+        {
+          "week": 14,
+          "score": 18.4
+        },
+        {
+          "week": 15,
+          "score": 12.0
+        },
+        {
+          "week": 16,
+          "score": 5.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2023,
+    "franchise_id": "0006",
+    "value": 324.6,
+    "detail": {
+      "player_id": "13130",
+      "position": "RB",
+      "started_points": 324.6,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 24.4
+        },
+        {
+          "week": 2,
+          "score": 21.0
+        },
+        {
+          "week": 3,
+          "score": 20.4
+        },
+        {
+          "week": 4,
+          "score": 45.2
+        },
+        {
+          "week": 5,
+          "score": 12.8
+        },
+        {
+          "week": 6,
+          "score": 12.7
+        },
+        {
+          "week": 7,
+          "score": 21.1
+        },
+        {
+          "week": 8,
+          "score": 26.8
+        },
+        {
+          "week": 10,
+          "score": 17.2
+        },
+        {
+          "week": 11,
+          "score": 18.8
+        },
+        {
+          "week": 12,
+          "score": 28.4
+        },
+        {
+          "week": 13,
+          "score": 20.8
+        },
+        {
+          "week": 14,
+          "score": 15.8
+        },
+        {
+          "week": 15,
+          "score": 39.2
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2024,
+    "franchise_id": "0002",
+    "value": 334.8,
+    "detail": {
+      "player_id": "13604",
+      "position": "RB",
+      "started_points": 334.8,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 32.2
+        },
+        {
+          "week": 2,
+          "score": 15.6
+        },
+        {
+          "week": 3,
+          "score": 31.6
+        },
+        {
+          "week": 4,
+          "score": 12.6
+        },
+        {
+          "week": 6,
+          "score": 6.4
+        },
+        {
+          "week": 7,
+          "score": 25.7
+        },
+        {
+          "week": 8,
+          "score": 11.6
+        },
+        {
+          "week": 9,
+          "score": 27.4
+        },
+        {
+          "week": 10,
+          "score": 8.3
+        },
+        {
+          "week": 11,
+          "score": 32.8
+        },
+        {
+          "week": 12,
+          "score": 44.2
+        },
+        {
+          "week": 13,
+          "score": 18.7
+        },
+        {
+          "week": 14,
+          "score": 14.4
+        },
+        {
+          "week": 15,
+          "score": 8.4
+        },
+        {
+          "week": 16,
+          "score": 27.0
+        },
+        {
+          "week": 17,
+          "score": 17.9
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "14",
+    "season": 2025,
+    "franchise_id": "0002",
+    "value": 336.3,
+    "detail": {
+      "player_id": "13130",
+      "position": "RB",
+      "started_points": 336.3,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 18.7
+        },
+        {
+          "week": 2,
+          "score": 19.7
+        },
+        {
+          "week": 3,
+          "score": 19.0
+        },
+        {
+          "week": 4,
+          "score": 23.1
+        },
+        {
+          "week": 5,
+          "score": 23.9
+        },
+        {
+          "week": 7,
+          "score": 35.6
+        },
+        {
+          "week": 8,
+          "score": 8.3
+        },
+        {
+          "week": 9,
+          "score": 31.8
+        },
+        {
+          "week": 10,
+          "score": 13.6
+        },
+        {
+          "week": 11,
+          "score": 32.6
+        },
+        {
+          "week": 12,
+          "score": 23.7
+        },
+        {
+          "week": 13,
+          "score": 15.4
+        },
+        {
+          "week": 15,
+          "score": 15.2
+        },
+        {
+          "week": 16,
+          "score": 29.6
+        },
+        {
+          "week": 17,
+          "score": 26.1
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2010,
+    "franchise_id": "0001",
+    "value": 210.5,
+    "detail": {
+      "player_id": "7839",
+      "position": "WR",
+      "started_points": 210.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 17.5
+        },
+        {
+          "week": 2,
+          "score": 16.5
+        },
+        {
+          "week": 3,
+          "score": 14.5
+        },
+        {
+          "week": 4,
+          "score": 13.5
+        },
+        {
+          "week": 5,
+          "score": 18.5
+        },
+        {
+          "week": 6,
+          "score": 11.0
+        },
+        {
+          "week": 7,
+          "score": 39.5
+        },
+        {
+          "week": 9,
+          "score": 6.0
+        },
+        {
+          "week": 10,
+          "score": 31.0
+        },
+        {
+          "week": 11,
+          "score": 14.5
+        },
+        {
+          "week": 12,
+          "score": 6.5
+        },
+        {
+          "week": 13,
+          "score": 10.5
+        },
+        {
+          "week": 14,
+          "score": 11.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2011,
+    "franchise_id": "0003",
+    "value": 268.5,
+    "detail": {
+      "player_id": "8657",
+      "position": "WR",
+      "started_points": 268.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 23.0
+        },
+        {
+          "week": 2,
+          "score": 15.5
+        },
+        {
+          "week": 3,
+          "score": 25.5
+        },
+        {
+          "week": 4,
+          "score": 25.0
+        },
+        {
+          "week": 5,
+          "score": 21.5
+        },
+        {
+          "week": 6,
+          "score": 14.5
+        },
+        {
+          "week": 7,
+          "score": 19.5
+        },
+        {
+          "week": 8,
+          "score": 21.0
+        },
+        {
+          "week": 10,
+          "score": 11.5
+        },
+        {
+          "week": 11,
+          "score": 10.5
+        },
+        {
+          "week": 12,
+          "score": 12.0
+        },
+        {
+          "week": 13,
+          "score": 9.0
+        },
+        {
+          "week": 14,
+          "score": 4.5
+        },
+        {
+          "week": 15,
+          "score": 37.5
+        },
+        {
+          "week": 16,
+          "score": 18.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2012,
+    "franchise_id": "0008",
+    "value": 262.5,
+    "detail": {
+      "player_id": "8360",
+      "position": "WR",
+      "started_points": 262.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 21.5
+        },
+        {
+          "week": 2,
+          "score": 3.0
+        },
+        {
+          "week": 3,
+          "score": 9.5
+        },
+        {
+          "week": 4,
+          "score": 22.5
+        },
+        {
+          "week": 5,
+          "score": 26.0
+        },
+        {
+          "week": 7,
+          "score": 17.0
+        },
+        {
+          "week": 8,
+          "score": 13.5
+        },
+        {
+          "week": 9,
+          "score": 34.5
+        },
+        {
+          "week": 10,
+          "score": 14.0
+        },
+        {
+          "week": 11,
+          "score": 9.0
+        },
+        {
+          "week": 12,
+          "score": 15.0
+        },
+        {
+          "week": 13,
+          "score": 21.0
+        },
+        {
+          "week": 14,
+          "score": 27.0
+        },
+        {
+          "week": 15,
+          "score": 14.0
+        },
+        {
+          "week": 16,
+          "score": 15.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2013,
+    "franchise_id": "0009",
+    "value": 250.5,
+    "detail": {
+      "player_id": "8657",
+      "position": "WR",
+      "started_points": 250.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 5.0
+        },
+        {
+          "week": 2,
+          "score": 26.0
+        },
+        {
+          "week": 3,
+          "score": 20.5
+        },
+        {
+          "week": 4,
+          "score": 12.0
+        },
+        {
+          "week": 7,
+          "score": 31.5
+        },
+        {
+          "week": 8,
+          "score": 44.0
+        },
+        {
+          "week": 10,
+          "score": 23.0
+        },
+        {
+          "week": 11,
+          "score": 32.0
+        },
+        {
+          "week": 12,
+          "score": 14.5
+        },
+        {
+          "week": 13,
+          "score": 19.0
+        },
+        {
+          "week": 14,
+          "score": 5.5
+        },
+        {
+          "week": 15,
+          "score": 12.0
+        },
+        {
+          "week": 16,
+          "score": 5.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2014,
+    "franchise_id": "0008",
+    "value": 275.5,
+    "detail": {
+      "player_id": "9988",
+      "position": "WR",
+      "started_points": 275.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 19.5
+        },
+        {
+          "week": 2,
+          "score": 13.5
+        },
+        {
+          "week": 3,
+          "score": 26.0
+        },
+        {
+          "week": 4,
+          "score": 28.5
+        },
+        {
+          "week": 5,
+          "score": 10.5
+        },
+        {
+          "week": 6,
+          "score": 14.5
+        },
+        {
+          "week": 7,
+          "score": 19.5
+        },
+        {
+          "week": 8,
+          "score": 30.0
+        },
+        {
+          "week": 9,
+          "score": 25.5
+        },
+        {
+          "week": 10,
+          "score": 9.0
+        },
+        {
+          "week": 11,
+          "score": 19.5
+        },
+        {
+          "week": 13,
+          "score": 27.0
+        },
+        {
+          "week": 14,
+          "score": 15.5
+        },
+        {
+          "week": 15,
+          "score": 17.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2015,
+    "franchise_id": "0005",
+    "value": 256.5,
+    "detail": {
+      "player_id": "11679",
+      "position": "WR",
+      "started_points": 256.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 6.5
+        },
+        {
+          "week": 2,
+          "score": 23.5
+        },
+        {
+          "week": 3,
+          "score": 16.5
+        },
+        {
+          "week": 4,
+          "score": 5.5
+        },
+        {
+          "week": 5,
+          "score": 21.5
+        },
+        {
+          "week": 6,
+          "score": 15.5
+        },
+        {
+          "week": 7,
+          "score": 5.0
+        },
+        {
+          "week": 8,
+          "score": 35.0
+        },
+        {
+          "week": 9,
+          "score": 14.5
+        },
+        {
+          "week": 10,
+          "score": 18.0
+        },
+        {
+          "week": 12,
+          "score": 24.5
+        },
+        {
+          "week": 13,
+          "score": 23.0
+        },
+        {
+          "week": 14,
+          "score": 31.5
+        },
+        {
+          "week": 15,
+          "score": 16.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2016,
+    "franchise_id": "0005",
+    "value": 239.5,
+    "detail": {
+      "player_id": "9118",
+      "position": "WR",
+      "started_points": 239.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 12.0
+        },
+        {
+          "week": 2,
+          "score": 15.5
+        },
+        {
+          "week": 3,
+          "score": 25.0
+        },
+        {
+          "week": 5,
+          "score": 11.0
+        },
+        {
+          "week": 6,
+          "score": 6.5
+        },
+        {
+          "week": 7,
+          "score": 0.5
+        },
+        {
+          "week": 8,
+          "score": 17.0
+        },
+        {
+          "week": 9,
+          "score": 18.5
+        },
+        {
+          "week": 10,
+          "score": 24.0
+        },
+        {
+          "week": 11,
+          "score": 9.5
+        },
+        {
+          "week": 12,
+          "score": 13.0
+        },
+        {
+          "week": 13,
+          "score": 21.0
+        },
+        {
+          "week": 14,
+          "score": 19.0
+        },
+        {
+          "week": 15,
+          "score": 15.5
+        },
+        {
+          "week": 16,
+          "score": 31.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2017,
+    "franchise_id": "0003",
+    "value": 259.8,
+    "detail": {
+      "player_id": "9988",
+      "position": "WR",
+      "started_points": 259.8,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 23.7
+        },
+        {
+          "week": 2,
+          "score": 8.7
+        },
+        {
+          "week": 3,
+          "score": 22.0
+        },
+        {
+          "week": 4,
+          "score": 5.4
+        },
+        {
+          "week": 5,
+          "score": 20.7
+        },
+        {
+          "week": 6,
+          "score": 25.5
+        },
+        {
+          "week": 7,
+          "score": 14.5
+        },
+        {
+          "week": 8,
+          "score": 9.5
+        },
+        {
+          "week": 10,
+          "score": 6.2
+        },
+        {
+          "week": 11,
+          "score": 37.4
+        },
+        {
+          "week": 12,
+          "score": 35.9
+        },
+        {
+          "week": 13,
+          "score": 20.1
+        },
+        {
+          "week": 14,
+          "score": 26.8
+        },
+        {
+          "week": 15,
+          "score": 3.4
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2018,
+    "franchise_id": "0001",
+    "value": 247.6,
+    "detail": {
+      "player_id": "12652",
+      "position": "WR",
+      "started_points": 247.6,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 30.0
+        },
+        {
+          "week": 2,
+          "score": 24.9
+        },
+        {
+          "week": 3,
+          "score": 17.9
+        },
+        {
+          "week": 4,
+          "score": 6.7
+        },
+        {
+          "week": 5,
+          "score": 9.4
+        },
+        {
+          "week": 7,
+          "score": 16.4
+        },
+        {
+          "week": 8,
+          "score": 10.6
+        },
+        {
+          "week": 9,
+          "score": 33.1
+        },
+        {
+          "week": 10,
+          "score": 23.0
+        },
+        {
+          "week": 11,
+          "score": 17.2
+        },
+        {
+          "week": 12,
+          "score": 5.8
+        },
+        {
+          "week": 13,
+          "score": 6.5
+        },
+        {
+          "week": 14,
+          "score": 15.3
+        },
+        {
+          "week": 15,
+          "score": 8.4
+        },
+        {
+          "week": 16,
+          "score": 22.4
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2019,
+    "franchise_id": "0010",
+    "value": 268.8,
+    "detail": {
+      "player_id": "12652",
+      "position": "WR",
+      "started_points": 268.8,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 17.3
+        },
+        {
+          "week": 2,
+          "score": 13.9
+        },
+        {
+          "week": 3,
+          "score": 13.9
+        },
+        {
+          "week": 4,
+          "score": 14.0
+        },
+        {
+          "week": 5,
+          "score": 35.7
+        },
+        {
+          "week": 6,
+          "score": 12.9
+        },
+        {
+          "week": 7,
+          "score": 17.6
+        },
+        {
+          "week": 8,
+          "score": 21.8
+        },
+        {
+          "week": 10,
+          "score": 21.7
+        },
+        {
+          "week": 11,
+          "score": 21.4
+        },
+        {
+          "week": 12,
+          "score": 21.1
+        },
+        {
+          "week": 13,
+          "score": 7.8
+        },
+        {
+          "week": 14,
+          "score": 24.9
+        },
+        {
+          "week": 15,
+          "score": 24.8
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2020,
+    "franchise_id": "0001",
+    "value": 276.9,
+    "detail": {
+      "player_id": "12801",
+      "position": "WR",
+      "started_points": 276.9,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 13.1
+        },
+        {
+          "week": 2,
+          "score": 19.3
+        },
+        {
+          "week": 3,
+          "score": 18.7
+        },
+        {
+          "week": 4,
+          "score": 14.4
+        },
+        {
+          "week": 5,
+          "score": 16.8
+        },
+        {
+          "week": 6,
+          "score": 4.0
+        },
+        {
+          "week": 7,
+          "score": 14.5
+        },
+        {
+          "week": 8,
+          "score": 23.8
+        },
+        {
+          "week": 9,
+          "score": 28.6
+        },
+        {
+          "week": 11,
+          "score": 21.5
+        },
+        {
+          "week": 12,
+          "score": 51.4
+        },
+        {
+          "week": 13,
+          "score": 11.8
+        },
+        {
+          "week": 14,
+          "score": 24.6
+        },
+        {
+          "week": 15,
+          "score": 14.4
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2021,
+    "franchise_id": "0007",
+    "value": 309.1,
+    "detail": {
+      "player_id": "13164",
+      "position": "WR",
+      "started_points": 309.1,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 20.3
+        },
+        {
+          "week": 2,
+          "score": 32.3
+        },
+        {
+          "week": 3,
+          "score": 26.1
+        },
+        {
+          "week": 4,
+          "score": 8.9
+        },
+        {
+          "week": 5,
+          "score": 12.7
+        },
+        {
+          "week": 6,
+          "score": 29.5
+        },
+        {
+          "week": 7,
+          "score": 32.6
+        },
+        {
+          "week": 8,
+          "score": 21.0
+        },
+        {
+          "week": 9,
+          "score": 15.0
+        },
+        {
+          "week": 10,
+          "score": 17.7
+        },
+        {
+          "week": 12,
+          "score": 15.1
+        },
+        {
+          "week": 13,
+          "score": 22.9
+        },
+        {
+          "week": 14,
+          "score": 24.8
+        },
+        {
+          "week": 15,
+          "score": 30.2
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2022,
+    "franchise_id": "0003",
+    "value": 271.9,
+    "detail": {
+      "player_id": "14836",
+      "position": "WR",
+      "started_points": 271.9,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 34.9
+        },
+        {
+          "week": 2,
+          "score": 7.8
+        },
+        {
+          "week": 3,
+          "score": 2.9
+        },
+        {
+          "week": 4,
+          "score": 26.0
+        },
+        {
+          "week": 5,
+          "score": 24.55
+        },
+        {
+          "week": 6,
+          "score": 13.7
+        },
+        {
+          "week": 8,
+          "score": 12.8
+        },
+        {
+          "week": 9,
+          "score": 22.0
+        },
+        {
+          "week": 10,
+          "score": 30.3
+        },
+        {
+          "week": 11,
+          "score": 4.8
+        },
+        {
+          "week": 12,
+          "score": 24.95
+        },
+        {
+          "week": 13,
+          "score": 15.1
+        },
+        {
+          "week": 14,
+          "score": 27.8
+        },
+        {
+          "week": 15,
+          "score": 24.3
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2023,
+    "franchise_id": "0003",
+    "value": 270.2,
+    "detail": {
+      "player_id": "12801",
+      "position": "WR",
+      "started_points": 270.2,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 39.0
+        },
+        {
+          "week": 2,
+          "score": 12.5
+        },
+        {
+          "week": 3,
+          "score": 26.2
+        },
+        {
+          "week": 4,
+          "score": 8.7
+        },
+        {
+          "week": 5,
+          "score": 28.1
+        },
+        {
+          "week": 6,
+          "score": 25.3
+        },
+        {
+          "week": 7,
+          "score": 20.3
+        },
+        {
+          "week": 8,
+          "score": 21.2
+        },
+        {
+          "week": 9,
+          "score": 4.5
+        },
+        {
+          "week": 11,
+          "score": 25.6
+        },
+        {
+          "week": 12,
+          "score": 20.9
+        },
+        {
+          "week": 13,
+          "score": 29.8
+        },
+        {
+          "week": 14,
+          "score": 8.1
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2024,
+    "franchise_id": "0003",
+    "value": 304.2,
+    "detail": {
+      "player_id": "15281",
+      "position": "WR",
+      "started_points": 304.2,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 9.2
+        },
+        {
+          "week": 2,
+          "score": 5.5
+        },
+        {
+          "week": 3,
+          "score": 26.8
+        },
+        {
+          "week": 4,
+          "score": 16.0
+        },
+        {
+          "week": 5,
+          "score": 36.3
+        },
+        {
+          "week": 6,
+          "score": 9.7
+        },
+        {
+          "week": 7,
+          "score": 15.1
+        },
+        {
+          "week": 8,
+          "score": 15.9
+        },
+        {
+          "week": 9,
+          "score": 7.8
+        },
+        {
+          "week": 10,
+          "score": 49.9
+        },
+        {
+          "week": 11,
+          "score": 23.0
+        },
+        {
+          "week": 13,
+          "score": 17.6
+        },
+        {
+          "week": 14,
+          "score": 38.1
+        },
+        {
+          "week": 15,
+          "score": 13.9
+        },
+        {
+          "week": 16,
+          "score": 19.4
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "15",
+    "season": 2025,
+    "franchise_id": "0002",
+    "value": 289.5,
+    "detail": {
+      "player_id": "16211",
+      "position": "WR",
+      "started_points": 289.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 18.1
+        },
+        {
+          "week": 2,
+          "score": 23.6
+        },
+        {
+          "week": 3,
+          "score": 17.3
+        },
+        {
+          "week": 4,
+          "score": 29.5
+        },
+        {
+          "week": 5,
+          "score": 19.5
+        },
+        {
+          "week": 6,
+          "score": 3.8
+        },
+        {
+          "week": 9,
+          "score": 19.3
+        },
+        {
+          "week": 10,
+          "score": 14.9
+        },
+        {
+          "week": 11,
+          "score": 10.8
+        },
+        {
+          "week": 12,
+          "score": 13.2
+        },
+        {
+          "week": 13,
+          "score": 10.2
+        },
+        {
+          "week": 14,
+          "score": 32.2
+        },
+        {
+          "week": 15,
+          "score": 23.4
+        },
+        {
+          "week": 16,
+          "score": 40.5
+        },
+        {
+          "week": 17,
+          "score": 13.2
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2010,
+    "franchise_id": "0010",
+    "value": 137.0,
+    "detail": {
+      "player_id": "7236",
+      "position": "TE",
+      "started_points": 137.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 15.5
+        },
+        {
+          "week": 2,
+          "score": 19.5
+        },
+        {
+          "week": 3,
+          "score": 19.5
+        },
+        {
+          "week": 4,
+          "score": 29.5
+        },
+        {
+          "week": 5,
+          "score": 17.5
+        },
+        {
+          "week": 6,
+          "score": 2.0
+        },
+        {
+          "week": 7,
+          "score": 13.0
+        },
+        {
+          "week": 8,
+          "score": 20.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2011,
+    "franchise_id": "0007",
+    "value": 217.5,
+    "detail": {
+      "player_id": "9902",
+      "position": "TE",
+      "started_points": 217.5,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 22.0
+        },
+        {
+          "week": 3,
+          "score": 25.5
+        },
+        {
+          "week": 4,
+          "score": 1.5
+        },
+        {
+          "week": 5,
+          "score": 5.0
+        },
+        {
+          "week": 6,
+          "score": 10.5
+        },
+        {
+          "week": 8,
+          "score": 12.5
+        },
+        {
+          "week": 9,
+          "score": 20.0
+        },
+        {
+          "week": 10,
+          "score": 27.0
+        },
+        {
+          "week": 11,
+          "score": 23.0
+        },
+        {
+          "week": 12,
+          "score": 13.0
+        },
+        {
+          "week": 13,
+          "score": 26.5
+        },
+        {
+          "week": 14,
+          "score": 31.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2012,
+    "franchise_id": "0006",
+    "value": 157.5,
+    "detail": {
+      "player_id": "9902",
+      "position": "TE",
+      "started_points": 157.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 15.0
+        },
+        {
+          "week": 2,
+          "score": 16.0
+        },
+        {
+          "week": 3,
+          "score": 3.0
+        },
+        {
+          "week": 4,
+          "score": 18.5
+        },
+        {
+          "week": 5,
+          "score": 5.0
+        },
+        {
+          "week": 6,
+          "score": 9.0
+        },
+        {
+          "week": 7,
+          "score": 22.0
+        },
+        {
+          "week": 8,
+          "score": 30.0
+        },
+        {
+          "week": 10,
+          "score": 10.5
+        },
+        {
+          "week": 11,
+          "score": 28.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2013,
+    "franchise_id": "0005",
+    "value": 220.0,
+    "detail": {
+      "player_id": "9925",
+      "position": "TE",
+      "started_points": 220.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 12.0
+        },
+        {
+          "week": 2,
+          "score": 28.0
+        },
+        {
+          "week": 3,
+          "score": 29.5
+        },
+        {
+          "week": 4,
+          "score": 24.0
+        },
+        {
+          "week": 5,
+          "score": 18.0
+        },
+        {
+          "week": 6,
+          "score": 0.0
+        },
+        {
+          "week": 8,
+          "score": 16.5
+        },
+        {
+          "week": 9,
+          "score": 27.5
+        },
+        {
+          "week": 10,
+          "score": 7.5
+        },
+        {
+          "week": 11,
+          "score": 7.0
+        },
+        {
+          "week": 12,
+          "score": 18.5
+        },
+        {
+          "week": 13,
+          "score": 11.5
+        },
+        {
+          "week": 14,
+          "score": 20.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2014,
+    "franchise_id": "0008",
+    "value": 207.0,
+    "detail": {
+      "player_id": "9902",
+      "position": "TE",
+      "started_points": 207.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 12.0
+        },
+        {
+          "week": 2,
+          "score": 5.0
+        },
+        {
+          "week": 3,
+          "score": 11.5
+        },
+        {
+          "week": 4,
+          "score": 10.0
+        },
+        {
+          "week": 5,
+          "score": 19.0
+        },
+        {
+          "week": 6,
+          "score": 12.5
+        },
+        {
+          "week": 7,
+          "score": 8.5
+        },
+        {
+          "week": 8,
+          "score": 36.5
+        },
+        {
+          "week": 9,
+          "score": 20.5
+        },
+        {
+          "week": 11,
+          "score": 15.0
+        },
+        {
+          "week": 12,
+          "score": 9.5
+        },
+        {
+          "week": 13,
+          "score": 12.5
+        },
+        {
+          "week": 14,
+          "score": 18.0
+        },
+        {
+          "week": 15,
+          "score": 16.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2015,
+    "franchise_id": "0005",
+    "value": 200.0,
+    "detail": {
+      "player_id": "9902",
+      "position": "TE",
+      "started_points": 200.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 29.5
+        },
+        {
+          "week": 2,
+          "score": 20.5
+        },
+        {
+          "week": 3,
+          "score": 12.0
+        },
+        {
+          "week": 5,
+          "score": 8.0
+        },
+        {
+          "week": 6,
+          "score": 12.5
+        },
+        {
+          "week": 7,
+          "score": 21.5
+        },
+        {
+          "week": 8,
+          "score": 20.0
+        },
+        {
+          "week": 9,
+          "score": 6.0
+        },
+        {
+          "week": 10,
+          "score": 19.5
+        },
+        {
+          "week": 11,
+          "score": 4.0
+        },
+        {
+          "week": 12,
+          "score": 17.0
+        },
+        {
+          "week": 14,
+          "score": 16.0
+        },
+        {
+          "week": 15,
+          "score": 13.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2016,
+    "franchise_id": "0010",
+    "value": 157.5,
+    "detail": {
+      "player_id": "8687",
+      "position": "TE",
+      "started_points": 157.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 10.5
+        },
+        {
+          "week": 2,
+          "score": 20.5
+        },
+        {
+          "week": 3,
+          "score": 9.0
+        },
+        {
+          "week": 4,
+          "score": 18.0
+        },
+        {
+          "week": 5,
+          "score": 22.5
+        },
+        {
+          "week": 6,
+          "score": 12.0
+        },
+        {
+          "week": 8,
+          "score": 1.5
+        },
+        {
+          "week": 9,
+          "score": 13.5
+        },
+        {
+          "week": 10,
+          "score": 5.5
+        },
+        {
+          "week": 11,
+          "score": 5.0
+        },
+        {
+          "week": 12,
+          "score": 6.0
+        },
+        {
+          "week": 13,
+          "score": 4.5
+        },
+        {
+          "week": 14,
+          "score": 10.0
+        },
+        {
+          "week": 15,
+          "score": 11.0
+        },
+        {
+          "week": 16,
+          "score": 8.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2017,
+    "franchise_id": "0004",
+    "value": 188.6,
+    "detail": {
+      "player_id": "9902",
+      "position": "TE",
+      "started_points": 188.6,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 20.6
+        },
+        {
+          "week": 3,
+          "score": 18.9
+        },
+        {
+          "week": 4,
+          "score": 10.0
+        },
+        {
+          "week": 6,
+          "score": 23.3
+        },
+        {
+          "week": 7,
+          "score": 6.6
+        },
+        {
+          "week": 8,
+          "score": 14.2
+        },
+        {
+          "week": 10,
+          "score": 9.4
+        },
+        {
+          "week": 11,
+          "score": 5.2
+        },
+        {
+          "week": 12,
+          "score": 22.7
+        },
+        {
+          "week": 13,
+          "score": 19.2
+        },
+        {
+          "week": 15,
+          "score": 23.3
+        },
+        {
+          "week": 16,
+          "score": 15.2
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2018,
+    "franchise_id": "0006",
+    "value": 234.4,
+    "detail": {
+      "player_id": "11244",
+      "position": "TE",
+      "started_points": 234.4,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 1.1
+        },
+        {
+          "week": 2,
+          "score": 26.4
+        },
+        {
+          "week": 3,
+          "score": 15.4
+        },
+        {
+          "week": 4,
+          "score": 17.3
+        },
+        {
+          "week": 5,
+          "score": 12.5
+        },
+        {
+          "week": 6,
+          "score": 8.6
+        },
+        {
+          "week": 7,
+          "score": 12.0
+        },
+        {
+          "week": 8,
+          "score": 16.9
+        },
+        {
+          "week": 9,
+          "score": 25.4
+        },
+        {
+          "week": 10,
+          "score": 7.6
+        },
+        {
+          "week": 11,
+          "score": 23.7
+        },
+        {
+          "week": 13,
+          "score": 32.8
+        },
+        {
+          "week": 14,
+          "score": 17.2
+        },
+        {
+          "week": 15,
+          "score": 9.6
+        },
+        {
+          "week": 16,
+          "score": 7.9
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2019,
+    "franchise_id": "0009",
+    "value": 184.5,
+    "detail": {
+      "player_id": "11244",
+      "position": "TE",
+      "started_points": 184.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 10.3
+        },
+        {
+          "week": 2,
+          "score": 20.2
+        },
+        {
+          "week": 3,
+          "score": 12.4
+        },
+        {
+          "week": 4,
+          "score": 12.0
+        },
+        {
+          "week": 5,
+          "score": 9.0
+        },
+        {
+          "week": 6,
+          "score": 7.8
+        },
+        {
+          "week": 7,
+          "score": 7.4
+        },
+        {
+          "week": 8,
+          "score": 14.3
+        },
+        {
+          "week": 9,
+          "score": 9.7
+        },
+        {
+          "week": 10,
+          "score": 17.0
+        },
+        {
+          "week": 11,
+          "score": 18.7
+        },
+        {
+          "week": 13,
+          "score": 11.5
+        },
+        {
+          "week": 14,
+          "score": 14.5
+        },
+        {
+          "week": 15,
+          "score": 19.7
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2020,
+    "franchise_id": "0002",
+    "value": 260.3,
+    "detail": {
+      "player_id": "11244",
+      "position": "TE",
+      "started_points": 260.3,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 14.0
+        },
+        {
+          "week": 2,
+          "score": 19.5
+        },
+        {
+          "week": 3,
+          "score": 11.7
+        },
+        {
+          "week": 4,
+          "score": 8.5
+        },
+        {
+          "week": 5,
+          "score": 20.8
+        },
+        {
+          "week": 6,
+          "score": 19.0
+        },
+        {
+          "week": 7,
+          "score": 4.6
+        },
+        {
+          "week": 8,
+          "score": 20.9
+        },
+        {
+          "week": 9,
+          "score": 20.9
+        },
+        {
+          "week": 11,
+          "score": 22.9
+        },
+        {
+          "week": 12,
+          "score": 12.2
+        },
+        {
+          "week": 13,
+          "score": 23.6
+        },
+        {
+          "week": 14,
+          "score": 23.6
+        },
+        {
+          "week": 15,
+          "score": 18.8
+        },
+        {
+          "week": 16,
+          "score": 19.3
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2021,
+    "franchise_id": "0002",
+    "value": 215.4,
+    "detail": {
+      "player_id": "13671",
+      "position": "TE",
+      "started_points": 215.4,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 3.5
+        },
+        {
+          "week": 2,
+          "score": 8.2
+        },
+        {
+          "week": 4,
+          "score": 9.2
+        },
+        {
+          "week": 5,
+          "score": 36.2
+        },
+        {
+          "week": 6,
+          "score": 15.3
+        },
+        {
+          "week": 9,
+          "score": 6.9
+        },
+        {
+          "week": 10,
+          "score": 15.3
+        },
+        {
+          "week": 11,
+          "score": 11.3
+        },
+        {
+          "week": 12,
+          "score": 14.5
+        },
+        {
+          "week": 13,
+          "score": 7.0
+        },
+        {
+          "week": 14,
+          "score": 23.0
+        },
+        {
+          "week": 15,
+          "score": 30.6
+        },
+        {
+          "week": 16,
+          "score": 22.5
+        },
+        {
+          "week": 17,
+          "score": 11.9
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2022,
+    "franchise_id": "0009",
+    "value": 216.9,
+    "detail": {
+      "player_id": "11244",
+      "position": "TE",
+      "started_points": 216.9,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 22.1
+        },
+        {
+          "week": 2,
+          "score": 7.6
+        },
+        {
+          "week": 3,
+          "score": 15.9
+        },
+        {
+          "week": 4,
+          "score": 19.7
+        },
+        {
+          "week": 5,
+          "score": 30.0
+        },
+        {
+          "week": 6,
+          "score": 15.2
+        },
+        {
+          "week": 7,
+          "score": 12.8
+        },
+        {
+          "week": 9,
+          "score": 15.6
+        },
+        {
+          "week": 10,
+          "score": 17.1
+        },
+        {
+          "week": 11,
+          "score": 32.5
+        },
+        {
+          "week": 12,
+          "score": 13.7
+        },
+        {
+          "week": 13,
+          "score": 5.6
+        },
+        {
+          "week": 14,
+          "score": 9.1
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2023,
+    "franchise_id": "0006",
+    "value": 162.9,
+    "detail": {
+      "player_id": "11244",
+      "position": "TE",
+      "started_points": 162.9,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 10.6
+        },
+        {
+          "week": 3,
+          "score": 16.4
+        },
+        {
+          "week": 4,
+          "score": 9.0
+        },
+        {
+          "week": 5,
+          "score": 17.7
+        },
+        {
+          "week": 6,
+          "score": 16.9
+        },
+        {
+          "week": 7,
+          "score": 29.9
+        },
+        {
+          "week": 8,
+          "score": 8.8
+        },
+        {
+          "week": 9,
+          "score": 2.9
+        },
+        {
+          "week": 11,
+          "score": 11.9
+        },
+        {
+          "week": 12,
+          "score": 12.1
+        },
+        {
+          "week": 13,
+          "score": 10.1
+        },
+        {
+          "week": 14,
+          "score": 11.3
+        },
+        {
+          "week": 15,
+          "score": 5.3
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2024,
+    "franchise_id": "0002",
+    "value": 193.7,
+    "detail": {
+      "player_id": "16641",
+      "position": "TE",
+      "started_points": 193.7,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 8.8
+        },
+        {
+          "week": 2,
+          "score": 14.3
+        },
+        {
+          "week": 3,
+          "score": 5.6
+        },
+        {
+          "week": 4,
+          "score": 4.1
+        },
+        {
+          "week": 5,
+          "score": 19.7
+        },
+        {
+          "week": 6,
+          "score": 11.6
+        },
+        {
+          "week": 7,
+          "score": 14.3
+        },
+        {
+          "week": 8,
+          "score": 8.3
+        },
+        {
+          "week": 9,
+          "score": 13.0
+        },
+        {
+          "week": 11,
+          "score": 24.8
+        },
+        {
+          "week": 12,
+          "score": 5.8
+        },
+        {
+          "week": 13,
+          "score": 25.2
+        },
+        {
+          "week": 14,
+          "score": 6.7
+        },
+        {
+          "week": 15,
+          "score": 5.0
+        },
+        {
+          "week": 16,
+          "score": 15.4
+        },
+        {
+          "week": 17,
+          "score": 11.1
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "16",
+    "season": 2025,
+    "franchise_id": "0008",
+    "value": 188.2,
+    "detail": {
+      "player_id": "15794",
+      "position": "TE",
+      "started_points": 188.2,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 9.1
+        },
+        {
+          "week": 2,
+          "score": 10.8
+        },
+        {
+          "week": 3,
+          "score": 12.8
+        },
+        {
+          "week": 4,
+          "score": 8.7
+        },
+        {
+          "week": 5,
+          "score": 6.6
+        },
+        {
+          "week": 6,
+          "score": 17.2
+        },
+        {
+          "week": 7,
+          "score": 24.4
+        },
+        {
+          "week": 9,
+          "score": 14.0
+        },
+        {
+          "week": 10,
+          "score": 23.2
+        },
+        {
+          "week": 11,
+          "score": 22.5
+        },
+        {
+          "week": 12,
+          "score": 12.4
+        },
+        {
+          "week": 13,
+          "score": 18.2
+        },
+        {
+          "week": 14,
+          "score": 8.3
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2010,
+    "franchise_id": "0003",
+    "value": 104.0,
+    "detail": {
+      "player_id": "3579",
+      "position": "PK",
+      "started_points": 104.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 9.0
+        },
+        {
+          "week": 2,
+          "score": 5.0
+        },
+        {
+          "week": 3,
+          "score": 4.0
+        },
+        {
+          "week": 4,
+          "score": 7.0
+        },
+        {
+          "week": 6,
+          "score": 7.0
+        },
+        {
+          "week": 10,
+          "score": 12.0
+        },
+        {
+          "week": 11,
+          "score": 13.0
+        },
+        {
+          "week": 12,
+          "score": 15.0
+        },
+        {
+          "week": 13,
+          "score": 10.0
+        },
+        {
+          "week": 14,
+          "score": 14.0
+        },
+        {
+          "week": 15,
+          "score": 8.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2011,
+    "franchise_id": "0004",
+    "value": 131.0,
+    "detail": {
+      "player_id": "1383",
+      "position": "PK",
+      "started_points": 131.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 10.0
+        },
+        {
+          "week": 2,
+          "score": 14.0
+        },
+        {
+          "week": 3,
+          "score": 6.0
+        },
+        {
+          "week": 4,
+          "score": 11.0
+        },
+        {
+          "week": 5,
+          "score": 13.0
+        },
+        {
+          "week": 6,
+          "score": 8.0
+        },
+        {
+          "week": 7,
+          "score": 15.0
+        },
+        {
+          "week": 8,
+          "score": 3.0
+        },
+        {
+          "week": 9,
+          "score": 9.0
+        },
+        {
+          "week": 10,
+          "score": 18.0
+        },
+        {
+          "week": 12,
+          "score": 7.0
+        },
+        {
+          "week": 13,
+          "score": 7.0
+        },
+        {
+          "week": 14,
+          "score": 10.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2011,
+    "franchise_id": "0005",
+    "value": 131.0,
+    "detail": {
+      "player_id": "8742",
+      "position": "PK",
+      "started_points": 131.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 6.0
+        },
+        {
+          "week": 2,
+          "score": 12.0
+        },
+        {
+          "week": 3,
+          "score": 9.0
+        },
+        {
+          "week": 4,
+          "score": 7.0
+        },
+        {
+          "week": 5,
+          "score": 15.0
+        },
+        {
+          "week": 6,
+          "score": 6.0
+        },
+        {
+          "week": 7,
+          "score": 18.0
+        },
+        {
+          "week": 9,
+          "score": 10.0
+        },
+        {
+          "week": 10,
+          "score": 9.0
+        },
+        {
+          "week": 11,
+          "score": 5.0
+        },
+        {
+          "week": 12,
+          "score": 9.0
+        },
+        {
+          "week": 13,
+          "score": 8.0
+        },
+        {
+          "week": 14,
+          "score": 17.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2012,
+    "franchise_id": "0003",
+    "value": 133.0,
+    "detail": {
+      "player_id": "8359",
+      "position": "PK",
+      "started_points": 133.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 10.0
+        },
+        {
+          "week": 2,
+          "score": 17.0
+        },
+        {
+          "week": 3,
+          "score": 13.0
+        },
+        {
+          "week": 4,
+          "score": 10.0
+        },
+        {
+          "week": 5,
+          "score": 7.0
+        },
+        {
+          "week": 6,
+          "score": 11.0
+        },
+        {
+          "week": 7,
+          "score": 11.0
+        },
+        {
+          "week": 8,
+          "score": 9.0
+        },
+        {
+          "week": 10,
+          "score": 15.0
+        },
+        {
+          "week": 11,
+          "score": 11.0
+        },
+        {
+          "week": 12,
+          "score": 7.0
+        },
+        {
+          "week": 13,
+          "score": 12.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2013,
+    "franchise_id": "0010",
+    "value": 164.0,
+    "detail": {
+      "player_id": "8359",
+      "position": "PK",
+      "started_points": 164.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 12.0
+        },
+        {
+          "week": 2,
+          "score": 7.0
+        },
+        {
+          "week": 3,
+          "score": 14.0
+        },
+        {
+          "week": 4,
+          "score": 14.0
+        },
+        {
+          "week": 5,
+          "score": 7.0
+        },
+        {
+          "week": 6,
+          "score": 14.0
+        },
+        {
+          "week": 7,
+          "score": 10.0
+        },
+        {
+          "week": 8,
+          "score": 10.0
+        },
+        {
+          "week": 9,
+          "score": 13.0
+        },
+        {
+          "week": 11,
+          "score": 9.0
+        },
+        {
+          "week": 12,
+          "score": 10.0
+        },
+        {
+          "week": 13,
+          "score": 14.0
+        },
+        {
+          "week": 14,
+          "score": 9.0
+        },
+        {
+          "week": 15,
+          "score": 8.0
+        },
+        {
+          "week": 16,
+          "score": 13.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2014,
+    "franchise_id": "0010",
+    "value": 144.0,
+    "detail": {
+      "player_id": "8359",
+      "position": "PK",
+      "started_points": 144.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 10.0
+        },
+        {
+          "week": 2,
+          "score": 14.0
+        },
+        {
+          "week": 3,
+          "score": 10.0
+        },
+        {
+          "week": 4,
+          "score": 2.0
+        },
+        {
+          "week": 5,
+          "score": 21.0
+        },
+        {
+          "week": 6,
+          "score": 17.0
+        },
+        {
+          "week": 7,
+          "score": 9.0
+        },
+        {
+          "week": 8,
+          "score": 15.0
+        },
+        {
+          "week": 9,
+          "score": 15.0
+        },
+        {
+          "week": 11,
+          "score": 6.0
+        },
+        {
+          "week": 12,
+          "score": 11.0
+        },
+        {
+          "week": 13,
+          "score": 3.0
+        },
+        {
+          "week": 14,
+          "score": 11.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2015,
+    "franchise_id": "0010",
+    "value": 141.0,
+    "detail": {
+      "player_id": "8359",
+      "position": "PK",
+      "started_points": 141.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 4.0
+        },
+        {
+          "week": 2,
+          "score": 19.0
+        },
+        {
+          "week": 3,
+          "score": 17.0
+        },
+        {
+          "week": 5,
+          "score": 15.0
+        },
+        {
+          "week": 6,
+          "score": 11.0
+        },
+        {
+          "week": 7,
+          "score": 13.0
+        },
+        {
+          "week": 8,
+          "score": 12.0
+        },
+        {
+          "week": 9,
+          "score": 9.0
+        },
+        {
+          "week": 10,
+          "score": 11.0
+        },
+        {
+          "week": 11,
+          "score": 8.0
+        },
+        {
+          "week": 12,
+          "score": 7.0
+        },
+        {
+          "week": 13,
+          "score": 4.0
+        },
+        {
+          "week": 14,
+          "score": 11.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2016,
+    "franchise_id": "0002",
+    "value": 136.0,
+    "detail": {
+      "player_id": "2842",
+      "position": "PK",
+      "started_points": 136.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 12.0
+        },
+        {
+          "week": 2,
+          "score": 11.0
+        },
+        {
+          "week": 3,
+          "score": 8.0
+        },
+        {
+          "week": 4,
+          "score": 12.0
+        },
+        {
+          "week": 5,
+          "score": 23.0
+        },
+        {
+          "week": 6,
+          "score": 12.0
+        },
+        {
+          "week": 7,
+          "score": 10.0
+        },
+        {
+          "week": 8,
+          "score": 2.0
+        },
+        {
+          "week": 9,
+          "score": 7.0
+        },
+        {
+          "week": 11,
+          "score": 7.0
+        },
+        {
+          "week": 12,
+          "score": 1.0
+        },
+        {
+          "week": 13,
+          "score": 13.0
+        },
+        {
+          "week": 14,
+          "score": 5.0
+        },
+        {
+          "week": 15,
+          "score": 13.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2017,
+    "franchise_id": "0004",
+    "value": 153.0,
+    "detail": {
+      "player_id": "11936",
+      "position": "PK",
+      "started_points": 153.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 3.0
+        },
+        {
+          "week": 2,
+          "score": 16.0
+        },
+        {
+          "week": 3,
+          "score": 5.0
+        },
+        {
+          "week": 4,
+          "score": 9.0
+        },
+        {
+          "week": 5,
+          "score": 9.0
+        },
+        {
+          "week": 6,
+          "score": 5.0
+        },
+        {
+          "week": 7,
+          "score": 19.0
+        },
+        {
+          "week": 8,
+          "score": 8.0
+        },
+        {
+          "week": 10,
+          "score": 6.0
+        },
+        {
+          "week": 11,
+          "score": 19.0
+        },
+        {
+          "week": 12,
+          "score": 6.0
+        },
+        {
+          "week": 13,
+          "score": 11.0
+        },
+        {
+          "week": 14,
+          "score": 19.0
+        },
+        {
+          "week": 15,
+          "score": 8.0
+        },
+        {
+          "week": 16,
+          "score": 10.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2018,
+    "franchise_id": "0006",
+    "value": 143.0,
+    "detail": {
+      "player_id": "8742",
+      "position": "PK",
+      "started_points": 143.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 7.0
+        },
+        {
+          "week": 2,
+          "score": 19.0
+        },
+        {
+          "week": 3,
+          "score": 6.0
+        },
+        {
+          "week": 4,
+          "score": 13.0
+        },
+        {
+          "week": 5,
+          "score": 3.0
+        },
+        {
+          "week": 6,
+          "score": 17.0
+        },
+        {
+          "week": 8,
+          "score": 12.0
+        },
+        {
+          "week": 9,
+          "score": 5.0
+        },
+        {
+          "week": 10,
+          "score": 7.0
+        },
+        {
+          "week": 11,
+          "score": 6.0
+        },
+        {
+          "week": 12,
+          "score": 5.0
+        },
+        {
+          "week": 13,
+          "score": 5.0
+        },
+        {
+          "week": 14,
+          "score": 13.0
+        },
+        {
+          "week": 15,
+          "score": 12.0
+        },
+        {
+          "week": 16,
+          "score": 13.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2019,
+    "franchise_id": "0009",
+    "value": 146.0,
+    "detail": {
+      "player_id": "13354",
+      "position": "PK",
+      "started_points": 146.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 17.0
+        },
+        {
+          "week": 2,
+          "score": 4.0
+        },
+        {
+          "week": 3,
+          "score": 9.0
+        },
+        {
+          "week": 4,
+          "score": 11.0
+        },
+        {
+          "week": 5,
+          "score": 7.0
+        },
+        {
+          "week": 6,
+          "score": 7.0
+        },
+        {
+          "week": 7,
+          "score": 12.0
+        },
+        {
+          "week": 8,
+          "score": 6.0
+        },
+        {
+          "week": 9,
+          "score": 18.0
+        },
+        {
+          "week": 10,
+          "score": 15.0
+        },
+        {
+          "week": 11,
+          "score": 7.0
+        },
+        {
+          "week": 13,
+          "score": 10.0
+        },
+        {
+          "week": 14,
+          "score": 13.0
+        },
+        {
+          "week": 15,
+          "score": 10.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2020,
+    "franchise_id": "0001",
+    "value": 135.4,
+    "detail": {
+      "player_id": "10976",
+      "position": "PK",
+      "started_points": 135.4,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 9.1
+        },
+        {
+          "week": 2,
+          "score": 17.8
+        },
+        {
+          "week": 3,
+          "score": 9.2
+        },
+        {
+          "week": 4,
+          "score": 8.6
+        },
+        {
+          "week": 5,
+          "score": 11.5
+        },
+        {
+          "week": 6,
+          "score": 17.7
+        },
+        {
+          "week": 8,
+          "score": 8.1
+        },
+        {
+          "week": 9,
+          "score": 7.8
+        },
+        {
+          "week": 10,
+          "score": 5.0
+        },
+        {
+          "week": 11,
+          "score": 10.0
+        },
+        {
+          "week": 12,
+          "score": 2.0
+        },
+        {
+          "week": 13,
+          "score": 10.5
+        },
+        {
+          "week": 14,
+          "score": 8.5
+        },
+        {
+          "week": 15,
+          "score": 9.6
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2021,
+    "franchise_id": "0008",
+    "value": 160.2,
+    "detail": {
+      "player_id": "14244",
+      "position": "PK",
+      "started_points": 160.2,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 12.3
+        },
+        {
+          "week": 2,
+          "score": 10.2
+        },
+        {
+          "week": 3,
+          "score": 11.8
+        },
+        {
+          "week": 4,
+          "score": 9.2
+        },
+        {
+          "week": 5,
+          "score": 8.8
+        },
+        {
+          "week": 6,
+          "score": 8.2
+        },
+        {
+          "week": 7,
+          "score": 10.0
+        },
+        {
+          "week": 8,
+          "score": 8.0
+        },
+        {
+          "week": 9,
+          "score": 12.8
+        },
+        {
+          "week": 10,
+          "score": 4.7
+        },
+        {
+          "week": 12,
+          "score": 9.5
+        },
+        {
+          "week": 13,
+          "score": 16.1
+        },
+        {
+          "week": 14,
+          "score": 15.3
+        },
+        {
+          "week": 15,
+          "score": 11.0
+        },
+        {
+          "week": 16,
+          "score": 12.3
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2022,
+    "franchise_id": "0007",
+    "value": 144.2,
+    "detail": {
+      "player_id": "13718",
+      "position": "PK",
+      "started_points": 144.2,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 9.5
+        },
+        {
+          "week": 2,
+          "score": 13.7
+        },
+        {
+          "week": 3,
+          "score": 10.7
+        },
+        {
+          "week": 4,
+          "score": 13.9
+        },
+        {
+          "week": 5,
+          "score": 17.0
+        },
+        {
+          "week": 7,
+          "score": 10.0
+        },
+        {
+          "week": 8,
+          "score": 0.0
+        },
+        {
+          "week": 9,
+          "score": 9.6
+        },
+        {
+          "week": 10,
+          "score": 2.0
+        },
+        {
+          "week": 11,
+          "score": 14.9
+        },
+        {
+          "week": 12,
+          "score": 10.6
+        },
+        {
+          "week": 13,
+          "score": 11.5
+        },
+        {
+          "week": 14,
+          "score": 12.9
+        },
+        {
+          "week": 15,
+          "score": 7.9
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2023,
+    "franchise_id": "0004",
+    "value": 149.1,
+    "detail": {
+      "player_id": "16414",
+      "position": "PK",
+      "started_points": 149.1,
+      "weeks": [
+        {
+          "week": 3,
+          "score": 11.9
+        },
+        {
+          "week": 4,
+          "score": 12.3
+        },
+        {
+          "week": 5,
+          "score": 6.0
+        },
+        {
+          "week": 6,
+          "score": 9.1
+        },
+        {
+          "week": 8,
+          "score": 13.8
+        },
+        {
+          "week": 9,
+          "score": 7.1
+        },
+        {
+          "week": 10,
+          "score": 7.0
+        },
+        {
+          "week": 11,
+          "score": 8.0
+        },
+        {
+          "week": 12,
+          "score": 8.2
+        },
+        {
+          "week": 13,
+          "score": 16.1
+        },
+        {
+          "week": 14,
+          "score": 24.4
+        },
+        {
+          "week": 15,
+          "score": 4.2
+        },
+        {
+          "week": 16,
+          "score": 9.6
+        },
+        {
+          "week": 17,
+          "score": 11.4
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2024,
+    "franchise_id": "0002",
+    "value": 194.1,
+    "detail": {
+      "player_id": "16414",
+      "position": "PK",
+      "started_points": 194.1,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 22.3
+        },
+        {
+          "week": 2,
+          "score": 18.8
+        },
+        {
+          "week": 3,
+          "score": 12.6
+        },
+        {
+          "week": 4,
+          "score": 12.0
+        },
+        {
+          "week": 5,
+          "score": 10.8
+        },
+        {
+          "week": 6,
+          "score": 13.1
+        },
+        {
+          "week": 8,
+          "score": 6.0
+        },
+        {
+          "week": 9,
+          "score": 10.1
+        },
+        {
+          "week": 10,
+          "score": 7.6
+        },
+        {
+          "week": 11,
+          "score": 6.3
+        },
+        {
+          "week": 12,
+          "score": 13.4
+        },
+        {
+          "week": 13,
+          "score": 9.3
+        },
+        {
+          "week": 14,
+          "score": 10.2
+        },
+        {
+          "week": 15,
+          "score": 16.8
+        },
+        {
+          "week": 16,
+          "score": 23.8
+        },
+        {
+          "week": 17,
+          "score": 1.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "17",
+    "season": 2025,
+    "franchise_id": "0002",
+    "value": 193.5,
+    "detail": {
+      "player_id": "16414",
+      "position": "PK",
+      "started_points": 193.5,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 11.4
+        },
+        {
+          "week": 2,
+          "score": 24.5
+        },
+        {
+          "week": 3,
+          "score": 8.6
+        },
+        {
+          "week": 4,
+          "score": 8.0
+        },
+        {
+          "week": 5,
+          "score": 6.5
+        },
+        {
+          "week": 6,
+          "score": 9.0
+        },
+        {
+          "week": 7,
+          "score": 18.8
+        },
+        {
+          "week": 8,
+          "score": 6.0
+        },
+        {
+          "week": 9,
+          "score": 5.0
+        },
+        {
+          "week": 11,
+          "score": 9.0
+        },
+        {
+          "week": 12,
+          "score": 7.2
+        },
+        {
+          "week": 13,
+          "score": 13.5
+        },
+        {
+          "week": 14,
+          "score": 25.7
+        },
+        {
+          "week": 15,
+          "score": 17.5
+        },
+        {
+          "week": 16,
+          "score": 5.3
+        },
+        {
+          "week": 17,
+          "score": 17.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2010,
+    "franchise_id": "0007",
+    "value": 118.0,
+    "detail": {
+      "player_id": "0510",
+      "position": "Def",
+      "started_points": 118.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 6.0
+        },
+        {
+          "week": 2,
+          "score": 14.0
+        },
+        {
+          "week": 3,
+          "score": 15.0
+        },
+        {
+          "week": 4,
+          "score": 3.0
+        },
+        {
+          "week": 6,
+          "score": 11.0
+        },
+        {
+          "week": 7,
+          "score": 1.0
+        },
+        {
+          "week": 8,
+          "score": 4.0
+        },
+        {
+          "week": 9,
+          "score": 5.0
+        },
+        {
+          "week": 10,
+          "score": -3.0
+        },
+        {
+          "week": 11,
+          "score": 16.0
+        },
+        {
+          "week": 12,
+          "score": 4.0
+        },
+        {
+          "week": 13,
+          "score": 8.0
+        },
+        {
+          "week": 14,
+          "score": 21.0
+        },
+        {
+          "week": 15,
+          "score": 0.0
+        },
+        {
+          "week": 16,
+          "score": 13.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2011,
+    "franchise_id": "0007",
+    "value": 114.0,
+    "detail": {
+      "player_id": "0531",
+      "position": "Def",
+      "started_points": 114.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 14.0
+        },
+        {
+          "week": 2,
+          "score": 0.0
+        },
+        {
+          "week": 3,
+          "score": 16.0
+        },
+        {
+          "week": 4,
+          "score": 24.0
+        },
+        {
+          "week": 6,
+          "score": 7.0
+        },
+        {
+          "week": 7,
+          "score": 8.0
+        },
+        {
+          "week": 8,
+          "score": 6.0
+        },
+        {
+          "week": 9,
+          "score": 3.0
+        },
+        {
+          "week": 10,
+          "score": 0.0
+        },
+        {
+          "week": 11,
+          "score": 4.0
+        },
+        {
+          "week": 12,
+          "score": 17.0
+        },
+        {
+          "week": 13,
+          "score": 7.0
+        },
+        {
+          "week": 14,
+          "score": 8.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2012,
+    "franchise_id": "0001",
+    "value": 131.0,
+    "detail": {
+      "player_id": "0521",
+      "position": "Def",
+      "started_points": 131.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 7.0
+        },
+        {
+          "week": 2,
+          "score": 6.0
+        },
+        {
+          "week": 3,
+          "score": 21.0
+        },
+        {
+          "week": 4,
+          "score": 18.0
+        },
+        {
+          "week": 5,
+          "score": 25.0
+        },
+        {
+          "week": 7,
+          "score": 10.0
+        },
+        {
+          "week": 8,
+          "score": 9.0
+        },
+        {
+          "week": 9,
+          "score": 19.0
+        },
+        {
+          "week": 10,
+          "score": 6.0
+        },
+        {
+          "week": 11,
+          "score": -1.0
+        },
+        {
+          "week": 12,
+          "score": 8.0
+        },
+        {
+          "week": 13,
+          "score": 2.0
+        },
+        {
+          "week": 14,
+          "score": 1.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2013,
+    "franchise_id": "0004",
+    "value": 110.0,
+    "detail": {
+      "player_id": "0515",
+      "position": "Def",
+      "started_points": 110.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 6.0
+        },
+        {
+          "week": 2,
+          "score": 20.0
+        },
+        {
+          "week": 3,
+          "score": 7.0
+        },
+        {
+          "week": 4,
+          "score": 13.0
+        },
+        {
+          "week": 5,
+          "score": 6.0
+        },
+        {
+          "week": 6,
+          "score": 8.0
+        },
+        {
+          "week": 7,
+          "score": 8.0
+        },
+        {
+          "week": 8,
+          "score": 8.0
+        },
+        {
+          "week": 9,
+          "score": 2.0
+        },
+        {
+          "week": 10,
+          "score": 6.0
+        },
+        {
+          "week": 11,
+          "score": 12.0
+        },
+        {
+          "week": 13,
+          "score": 11.0
+        },
+        {
+          "week": 14,
+          "score": 3.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2014,
+    "franchise_id": "0007",
+    "value": 90.0,
+    "detail": {
+      "player_id": "0519",
+      "position": "Def",
+      "started_points": 90.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 1.0
+        },
+        {
+          "week": 2,
+          "score": 15.0
+        },
+        {
+          "week": 3,
+          "score": 4.0
+        },
+        {
+          "week": 5,
+          "score": 0.0
+        },
+        {
+          "week": 6,
+          "score": 12.0
+        },
+        {
+          "week": 7,
+          "score": 4.0
+        },
+        {
+          "week": 8,
+          "score": 3.0
+        },
+        {
+          "week": 9,
+          "score": 3.0
+        },
+        {
+          "week": 10,
+          "score": 24.0
+        },
+        {
+          "week": 11,
+          "score": 12.0
+        },
+        {
+          "week": 12,
+          "score": 7.0
+        },
+        {
+          "week": 13,
+          "score": 5.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2015,
+    "franchise_id": "0004",
+    "value": 110.0,
+    "detail": {
+      "player_id": "0515",
+      "position": "Def",
+      "started_points": 110.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 14.0
+        },
+        {
+          "week": 2,
+          "score": 2.0
+        },
+        {
+          "week": 3,
+          "score": 18.0
+        },
+        {
+          "week": 4,
+          "score": 3.0
+        },
+        {
+          "week": 5,
+          "score": 11.0
+        },
+        {
+          "week": 6,
+          "score": 4.0
+        },
+        {
+          "week": 7,
+          "score": 13.0
+        },
+        {
+          "week": 8,
+          "score": 4.0
+        },
+        {
+          "week": 10,
+          "score": 9.0
+        },
+        {
+          "week": 11,
+          "score": 5.0
+        },
+        {
+          "week": 12,
+          "score": 3.0
+        },
+        {
+          "week": 13,
+          "score": 8.0
+        },
+        {
+          "week": 14,
+          "score": 10.0
+        },
+        {
+          "week": 15,
+          "score": 7.0
+        },
+        {
+          "week": 16,
+          "score": -1.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2016,
+    "franchise_id": "0001",
+    "value": 102.0,
+    "detail": {
+      "player_id": "0524",
+      "position": "Def",
+      "started_points": 102.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 17.0
+        },
+        {
+          "week": 2,
+          "score": 11.0
+        },
+        {
+          "week": 3,
+          "score": 25.0
+        },
+        {
+          "week": 4,
+          "score": 5.0
+        },
+        {
+          "week": 5,
+          "score": 14.0
+        },
+        {
+          "week": 7,
+          "score": 3.0
+        },
+        {
+          "week": 8,
+          "score": 1.0
+        },
+        {
+          "week": 9,
+          "score": 1.0
+        },
+        {
+          "week": 10,
+          "score": 1.0
+        },
+        {
+          "week": 11,
+          "score": 17.0
+        },
+        {
+          "week": 12,
+          "score": 2.0
+        },
+        {
+          "week": 13,
+          "score": 5.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2017,
+    "franchise_id": "0004",
+    "value": 137.0,
+    "detail": {
+      "player_id": "0509",
+      "position": "Def",
+      "started_points": 137.0,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 0.0
+        },
+        {
+          "week": 3,
+          "score": 9.0
+        },
+        {
+          "week": 4,
+          "score": 13.0
+        },
+        {
+          "week": 5,
+          "score": 23.0
+        },
+        {
+          "week": 6,
+          "score": 4.0
+        },
+        {
+          "week": 7,
+          "score": 20.0
+        },
+        {
+          "week": 9,
+          "score": 12.0
+        },
+        {
+          "week": 10,
+          "score": 3.0
+        },
+        {
+          "week": 11,
+          "score": 20.0
+        },
+        {
+          "week": 12,
+          "score": 9.0
+        },
+        {
+          "week": 13,
+          "score": 10.0
+        },
+        {
+          "week": 14,
+          "score": 5.0
+        },
+        {
+          "week": 15,
+          "score": 9.0
+        },
+        {
+          "week": 16,
+          "score": 0.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2018,
+    "franchise_id": "0006",
+    "value": 114.0,
+    "detail": {
+      "player_id": "0532",
+      "position": "Def",
+      "started_points": 114.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 5.0
+        },
+        {
+          "week": 2,
+          "score": 5.0
+        },
+        {
+          "week": 3,
+          "score": 4.0
+        },
+        {
+          "week": 4,
+          "score": 9.0
+        },
+        {
+          "week": 5,
+          "score": 8.0
+        },
+        {
+          "week": 6,
+          "score": 19.0
+        },
+        {
+          "week": 7,
+          "score": 12.0
+        },
+        {
+          "week": 8,
+          "score": 3.0
+        },
+        {
+          "week": 9,
+          "score": 6.0
+        },
+        {
+          "week": 11,
+          "score": 15.0
+        },
+        {
+          "week": 12,
+          "score": 9.0
+        },
+        {
+          "week": 13,
+          "score": 12.0
+        },
+        {
+          "week": 14,
+          "score": 2.0
+        },
+        {
+          "week": 15,
+          "score": 5.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2019,
+    "franchise_id": "0004",
+    "value": 171.0,
+    "detail": {
+      "player_id": "0504",
+      "position": "Def",
+      "started_points": 171.0,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 35.0
+        },
+        {
+          "week": 3,
+          "score": 13.0
+        },
+        {
+          "week": 4,
+          "score": 20.0
+        },
+        {
+          "week": 5,
+          "score": 14.0
+        },
+        {
+          "week": 6,
+          "score": 24.0
+        },
+        {
+          "week": 7,
+          "score": 24.0
+        },
+        {
+          "week": 8,
+          "score": 18.0
+        },
+        {
+          "week": 9,
+          "score": 1.0
+        },
+        {
+          "week": 11,
+          "score": 11.0
+        },
+        {
+          "week": 12,
+          "score": 7.0
+        },
+        {
+          "week": 13,
+          "score": 4.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2020,
+    "franchise_id": "0004",
+    "value": 126.0,
+    "detail": {
+      "player_id": "0510",
+      "position": "Def",
+      "started_points": 126.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 9.0
+        },
+        {
+          "week": 2,
+          "score": 15.0
+        },
+        {
+          "week": 3,
+          "score": 8.0
+        },
+        {
+          "week": 5,
+          "score": 7.0
+        },
+        {
+          "week": 6,
+          "score": 18.0
+        },
+        {
+          "week": 7,
+          "score": 4.0
+        },
+        {
+          "week": 8,
+          "score": 12.0
+        },
+        {
+          "week": 9,
+          "score": 6.0
+        },
+        {
+          "week": 10,
+          "score": 10.0
+        },
+        {
+          "week": 11,
+          "score": 13.0
+        },
+        {
+          "week": 12,
+          "score": 16.0
+        },
+        {
+          "week": 13,
+          "score": 4.0
+        },
+        {
+          "week": 14,
+          "score": 4.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2021,
+    "franchise_id": "0006",
+    "value": 113.0,
+    "detail": {
+      "player_id": "0516",
+      "position": "Def",
+      "started_points": 113.0,
+      "weeks": [
+        {
+          "week": 3,
+          "score": 10.0
+        },
+        {
+          "week": 4,
+          "score": 6.0
+        },
+        {
+          "week": 5,
+          "score": 10.0
+        },
+        {
+          "week": 6,
+          "score": 12.0
+        },
+        {
+          "week": 8,
+          "score": 5.0
+        },
+        {
+          "week": 9,
+          "score": 2.0
+        },
+        {
+          "week": 10,
+          "score": 20.0
+        },
+        {
+          "week": 12,
+          "score": 5.0
+        },
+        {
+          "week": 13,
+          "score": 13.0
+        },
+        {
+          "week": 14,
+          "score": 20.0
+        },
+        {
+          "week": 15,
+          "score": 10.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2022,
+    "franchise_id": "0007",
+    "value": 149.0,
+    "detail": {
+      "player_id": "0504",
+      "position": "Def",
+      "started_points": 149.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 6.0
+        },
+        {
+          "week": 2,
+          "score": 10.0
+        },
+        {
+          "week": 3,
+          "score": 4.0
+        },
+        {
+          "week": 4,
+          "score": 8.0
+        },
+        {
+          "week": 5,
+          "score": 21.0
+        },
+        {
+          "week": 6,
+          "score": 11.0
+        },
+        {
+          "week": 7,
+          "score": 4.0
+        },
+        {
+          "week": 8,
+          "score": 7.0
+        },
+        {
+          "week": 9,
+          "score": 27.0
+        },
+        {
+          "week": 11,
+          "score": 19.0
+        },
+        {
+          "week": 12,
+          "score": 1.0
+        },
+        {
+          "week": 13,
+          "score": 3.0
+        },
+        {
+          "week": 14,
+          "score": 18.0
+        },
+        {
+          "week": 15,
+          "score": 10.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2023,
+    "franchise_id": "0009",
+    "value": 143.0,
+    "detail": {
+      "player_id": "0516",
+      "position": "Def",
+      "started_points": 143.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 38.0
+        },
+        {
+          "week": 2,
+          "score": 13.0
+        },
+        {
+          "week": 3,
+          "score": 0.0
+        },
+        {
+          "week": 4,
+          "score": 23.0
+        },
+        {
+          "week": 5,
+          "score": -1.0
+        },
+        {
+          "week": 6,
+          "score": 6.0
+        },
+        {
+          "week": 9,
+          "score": 4.0
+        },
+        {
+          "week": 10,
+          "score": 12.0
+        },
+        {
+          "week": 11,
+          "score": 22.0
+        },
+        {
+          "week": 12,
+          "score": 14.0
+        },
+        {
+          "week": 13,
+          "score": -1.0
+        },
+        {
+          "week": 14,
+          "score": 8.0
+        },
+        {
+          "week": 15,
+          "score": 0.0
+        },
+        {
+          "week": 16,
+          "score": 1.0
+        },
+        {
+          "week": 17,
+          "score": 4.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2024,
+    "franchise_id": "0010",
+    "value": 94.0,
+    "detail": {
+      "player_id": "0510",
+      "position": "Def",
+      "started_points": 94.0,
+      "weeks": [
+        {
+          "week": 2,
+          "score": 10.0
+        },
+        {
+          "week": 3,
+          "score": 12.0
+        },
+        {
+          "week": 4,
+          "score": 2.0
+        },
+        {
+          "week": 5,
+          "score": 8.0
+        },
+        {
+          "week": 6,
+          "score": 11.0
+        },
+        {
+          "week": 7,
+          "score": 8.0
+        },
+        {
+          "week": 8,
+          "score": 14.0
+        },
+        {
+          "week": 12,
+          "score": 5.0
+        },
+        {
+          "week": 13,
+          "score": 11.0
+        },
+        {
+          "week": 14,
+          "score": 9.0
+        },
+        {
+          "week": 15,
+          "score": 4.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "18",
+    "season": 2025,
+    "franchise_id": "0003",
+    "value": 154.0,
+    "detail": {
+      "player_id": "0532",
+      "position": "Def",
+      "started_points": 154.0,
+      "weeks": [
+        {
+          "week": 1,
+          "score": 8.0
+        },
+        {
+          "week": 2,
+          "score": 8.0
+        },
+        {
+          "week": 3,
+          "score": 7.0
+        },
+        {
+          "week": 4,
+          "score": 17.0
+        },
+        {
+          "week": 5,
+          "score": 10.0
+        },
+        {
+          "week": 7,
+          "score": 15.0
+        },
+        {
+          "week": 8,
+          "score": 8.0
+        },
+        {
+          "week": 9,
+          "score": 9.0
+        },
+        {
+          "week": 10,
+          "score": 15.0
+        },
+        {
+          "week": 11,
+          "score": 10.0
+        },
+        {
+          "week": 12,
+          "score": 14.0
+        },
+        {
+          "week": 13,
+          "score": 5.0
+        },
+        {
+          "week": 14,
+          "score": 10.0
+        },
+        {
+          "week": 15,
+          "score": 7.0
+        },
+        {
+          "week": 16,
+          "score": 11.0
+        }
+      ]
+    }
+  },
+  {
     "award_id": "3",
     "season": 2010,
     "franchise_id": "0002",

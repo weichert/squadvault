@@ -45,7 +45,21 @@ from squadvault.core.recaps.context.league_history_v1 import load_all_matchups
 from squadvault.core.storage.session import DatabaseSession
 
 # Wave B1: 4/12/33 (matchup-derived). Wave B2 sub-wave 1: 3 (margin) + 6/7/9 (optimal-lineup).
-AWARDS = ("4", "12", "33", "3", "6", "7", "9")
+# Wave B2 Group C: 13-18 (per-season positional, started-points season total via player_directory).
+AWARDS = ("4", "12", "33", "3", "6", "7", "9", "13", "14", "15", "16", "17", "18")
+
+# Group C position -> award. MFL-native position strings (no normalization layer; stored verbatim).
+# PROBE-CONFIRMED 2026-06-24 against player_directory started rows: the league starts team-defense
+# "Def" (NOT IDP) and kickers "PK"; the six keys are exactly the positions ever started. QB/RB/WR/TE
+# stable. (Census: started positions = {QB,RB,WR,TE,PK,Def}, 0 unresolved, no IDP era.)
+POSITION_AWARDS = {
+    "QB": "13",   # The Signal Caller
+    "RB": "14",   # The Workhorse
+    "WR": "15",   # The Deep Threat
+    "TE": "16",   # The Tight Window
+    "PK": "17",   # The Boot
+    "Def": "18",  # The Wall
+}
 
 
 def _champ_week(season: int) -> int:
@@ -125,6 +139,27 @@ def _load_season_lineups(
             "opt": raw_ss == "1", "raw_ok": raw_ok,
         })
     return recs
+
+
+def _load_season_positions(db_path: str, league_id: str, season: int) -> dict[str, str]:
+    """player_id -> MFL-native position for a season (Group C #13-18 join source).
+
+    The score stream carries no position; player_directory is the required source (the proven
+    read pattern in franchise_deep_angles_v1). Verbatim strings - no normalization.
+    """
+    out: dict[str, str] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            "SELECT player_id, position FROM player_directory WHERE league_id=? AND season=?",
+            (str(league_id), int(season)),
+        ).fetchall()
+    for pid, pos in rows:
+        if pid is None or pos is None:
+            continue
+        p = str(pos).strip()
+        if p:
+            out[str(pid).strip()] = p
+    return out
 
 
 def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
@@ -326,6 +361,54 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
                         "value": top_h, "detail": detail,
                     })
 
+        # ---- Wave B2 Group C: per-season positional awards #13-18 (Option B) ----
+        # The single best STARTED player at each position (season total of started-week scores),
+        # granted to that player's franchise. Reads ONLY is_starter + score + the player_directory
+        # position join (NOT opt/raw_ok - those are Group A). Trades fall out via the (franchise,
+        # player) key: each franchise is credited only for the weeks it started the player.
+        pos_map = _load_season_positions(db_path, league_id, s)
+        fp_total: dict[tuple[str, str], float] = defaultdict(float)
+        fp_weeks: dict[tuple[str, str], list[tuple[int, float]]] = defaultdict(list)
+        for r in recs:
+            if not r["is_starter"]:
+                continue
+            pos = pos_map.get(r["player_id"])
+            if pos not in POSITION_AWARDS:  # unmapped/unresolved position -> excluded (silence)
+                continue
+            fpkey = (r["franchise_id"], r["player_id"])
+            fp_total[fpkey] += r["score"]
+            fp_weeks[fpkey].append((r["week"], r["score"]))
+        by_pos: dict[str, list[tuple[str, str, float]]] = defaultdict(list)
+        for (fid, pid), tot in fp_total.items():
+            by_pos[pos_map[pid]].append((fid, pid, round(tot, 2)))
+        for pos, award_id in POSITION_AWARDS.items():
+            entries = by_pos.get(pos, [])
+            if not entries:
+                continue  # coverage silence: no started rows at this position this season
+            top_pos = max(t for _, _, t in entries)
+            if top_pos <= 0:
+                continue  # no degenerate zero-point holder
+            pos_holders = sorted((fid, pid) for fid, pid, t in entries if t == top_pos)
+            pos_by_fr: dict[str, list[str]] = defaultdict(list)
+            for fid, pid in pos_holders:
+                pos_by_fr[fid].append(pid)
+            for fid in sorted(pos_by_fr):  # one row per franchise (unique key safe)
+                pids = sorted(pos_by_fr[fid])
+                primary = pids[0]
+                pos_detail: dict[str, Any] = {
+                    "player_id": primary,
+                    "position": pos,
+                    "started_points": top_pos,
+                    "weeks": [{"week": w, "score": round(sc, 2)}
+                              for w, sc in sorted(fp_weeks[(fid, primary)])],
+                }
+                if len(pids) > 1:  # same-franchise co-holders fold into detail
+                    pos_detail["co_player_ids"] = pids[1:]
+                out.append({
+                    "award_id": award_id, "season": s, "franchise_id": fid,
+                    "value": top_pos, "detail": pos_detail,
+                })
+
     out.sort(key=lambda d: (d["award_id"], d["season"], d["franchise_id"]))
     return out
 
@@ -358,6 +441,8 @@ def emit_seed(rows: list[dict[str, Any]], league: str) -> str:
     lines.append("  CASE")
     lines.append("    WHEN v.award_id IN ('4', '12', '33') THEN 'engine:matchup-derived'")
     lines.append("    WHEN v.award_id = '3' THEN 'engine:matchup-lineup-derived'")
+    lines.append("    WHEN v.award_id IN ('13', '14', '15', '16', '17', '18') "
+                 "THEN 'engine:lineup-position-derived'")
     lines.append("    ELSE 'engine:lineup-derived'")
     lines.append("  END")
     lines.append("FROM (VALUES")
