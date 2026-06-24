@@ -160,6 +160,1270 @@
     }
   },
   {
+    "award_id": "3",
+    "season": 2010,
+    "franchise_id": "0002",
+    "value": 8,
+    "detail": {
+      "player_id": "3291",
+      "decisive_weeks": 8,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 61.0,
+          "margin": 7.0,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 3,
+          "player_score": 50.0,
+          "margin": 16.0,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 6,
+          "player_score": 42.0,
+          "margin": 17.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 8,
+          "player_score": 38.0,
+          "margin": 23.0,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 9,
+          "player_score": 29.0,
+          "margin": 7.5,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 10,
+          "player_score": 18.0,
+          "margin": 14.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 12,
+          "player_score": 28.0,
+          "margin": 24.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 14,
+          "player_score": 43.0,
+          "margin": 20.0,
+          "opponent_franchise_id": "0004"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2011,
+    "franchise_id": "0009",
+    "value": 10,
+    "detail": {
+      "player_id": "4925",
+      "decisive_weeks": 10,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 59.0,
+          "margin": 34.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 2,
+          "player_score": 45.0,
+          "margin": 29.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 3,
+          "player_score": 53.0,
+          "margin": 41.0,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 9,
+          "player_score": 36.0,
+          "margin": 22.0,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 10,
+          "player_score": 44.0,
+          "margin": 20.5,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 12,
+          "player_score": 66.0,
+          "margin": 57.0,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 13,
+          "player_score": 52.0,
+          "margin": 25.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 14,
+          "player_score": 45.0,
+          "margin": 21.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 15,
+          "player_score": 71.0,
+          "margin": 48.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 16,
+          "player_score": 48.0,
+          "margin": 45.0,
+          "opponent_franchise_id": "0003"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2012,
+    "franchise_id": "0002",
+    "value": 9,
+    "detail": {
+      "player_id": "9099",
+      "decisive_weeks": 9,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 55.0,
+          "margin": 34.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 2,
+          "player_score": 34.0,
+          "margin": 3.0,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 4,
+          "player_score": 51.0,
+          "margin": 12.5,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 5,
+          "player_score": 43.0,
+          "margin": 18.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 8,
+          "player_score": 45.0,
+          "margin": 7.0,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 9,
+          "player_score": 34.0,
+          "margin": 20.0,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 10,
+          "player_score": 56.0,
+          "margin": 2.0,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 15,
+          "player_score": 45.0,
+          "margin": 3.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 16,
+          "player_score": 53.0,
+          "margin": 36.5,
+          "opponent_franchise_id": "0008"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2013,
+    "franchise_id": "0004",
+    "value": 5,
+    "detail": {
+      "player_id": "9431",
+      "decisive_weeks": 5,
+      "weeks": [
+        {
+          "week": 2,
+          "player_score": 24.0,
+          "margin": 16.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 7,
+          "player_score": 35.0,
+          "margin": 22.0,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 8,
+          "player_score": 31.0,
+          "margin": 28.5,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 11,
+          "player_score": 29.0,
+          "margin": 3.5,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 13,
+          "player_score": 27.0,
+          "margin": 16.5,
+          "opponent_franchise_id": "0002"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2013,
+    "franchise_id": "0005",
+    "value": 5,
+    "detail": {
+      "player_id": "10696",
+      "decisive_weeks": 5,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 24.0,
+          "margin": 10.5,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 2,
+          "player_score": 31.0,
+          "margin": 24.5,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 3,
+          "player_score": 15.0,
+          "margin": 6.5,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 9,
+          "player_score": 12.0,
+          "margin": 8.0,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 10,
+          "player_score": 36.0,
+          "margin": 10.5,
+          "opponent_franchise_id": "0001"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2013,
+    "franchise_id": "0006",
+    "value": 5,
+    "detail": {
+      "player_id": "8360",
+      "decisive_weeks": 5,
+      "weeks": [
+        {
+          "week": 2,
+          "player_score": 20.5,
+          "margin": 18.0,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 4,
+          "player_score": 12.5,
+          "margin": 7.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 5,
+          "player_score": 11.0,
+          "margin": 2.0,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 6,
+          "player_score": 24.5,
+          "margin": 1.0,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 13,
+          "player_score": 6.0,
+          "margin": 4.5,
+          "opponent_franchise_id": "0001"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2013,
+    "franchise_id": "0009",
+    "value": 5,
+    "detail": {
+      "player_id": "8657",
+      "decisive_weeks": 5,
+      "weeks": [
+        {
+          "week": 8,
+          "player_score": 44.0,
+          "margin": 21.0,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 10,
+          "player_score": 23.0,
+          "margin": 15.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 11,
+          "player_score": 32.0,
+          "margin": 8.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 13,
+          "player_score": 19.0,
+          "margin": 9.0,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 16,
+          "player_score": 5.5,
+          "margin": 1.0,
+          "opponent_franchise_id": "0010"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2014,
+    "franchise_id": "0010",
+    "value": 7,
+    "detail": {
+      "player_id": "7836",
+      "decisive_weeks": 7,
+      "weeks": [
+        {
+          "week": 2,
+          "player_score": 38.0,
+          "margin": 8.0,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 4,
+          "player_score": 39.0,
+          "margin": 14.0,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 5,
+          "player_score": 25.0,
+          "margin": 9.0,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 7,
+          "player_score": 32.0,
+          "margin": 1.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 10,
+          "player_score": 51.0,
+          "margin": 11.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 11,
+          "player_score": 38.0,
+          "margin": 27.5,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 12,
+          "player_score": 25.0,
+          "margin": 6.5,
+          "opponent_franchise_id": "0007"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2015,
+    "franchise_id": "0004",
+    "value": 6,
+    "detail": {
+      "player_id": "6929",
+      "decisive_weeks": 6,
+      "weeks": [
+        {
+          "week": 3,
+          "player_score": 25.0,
+          "margin": 3.0,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 7,
+          "player_score": 25.0,
+          "margin": 14.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 8,
+          "player_score": 40.0,
+          "margin": 33.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 11,
+          "player_score": 35.0,
+          "margin": 12.5,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 14,
+          "player_score": 27.0,
+          "margin": 8.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 15,
+          "player_score": 19.0,
+          "margin": 15.0,
+          "opponent_franchise_id": "0009"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2016,
+    "franchise_id": "0010",
+    "value": 7,
+    "detail": {
+      "player_id": "4925",
+      "decisive_weeks": 7,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 43.0,
+          "margin": 30.5,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 6,
+          "player_score": 45.0,
+          "margin": 8.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 9,
+          "player_score": 34.0,
+          "margin": 27.0,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 10,
+          "player_score": 29.0,
+          "margin": 3.5,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 11,
+          "player_score": 22.0,
+          "margin": 8.5,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 12,
+          "player_score": 43.0,
+          "margin": 19.5,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 16,
+          "player_score": 20.0,
+          "margin": 7.0,
+          "opponent_franchise_id": "0005"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2017,
+    "franchise_id": "0003",
+    "value": 8,
+    "detail": {
+      "player_id": "4925",
+      "decisive_weeks": 8,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 20.55,
+          "margin": 4.75,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 2,
+          "player_score": 29.8,
+          "margin": 5.95,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 6,
+          "player_score": 13.4,
+          "margin": 8.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 9,
+          "player_score": 25.35,
+          "margin": 14.3,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 12,
+          "player_score": 18.8,
+          "margin": 16.95,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 14,
+          "player_score": 23.75,
+          "margin": 10.8,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 15,
+          "player_score": 23.95,
+          "margin": 4.35,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 16,
+          "player_score": 15.55,
+          "margin": 9.6,
+          "opponent_franchise_id": "0004"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2018,
+    "franchise_id": "0005",
+    "value": 7,
+    "detail": {
+      "player_id": "10273",
+      "decisive_weeks": 7,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 19.85,
+          "margin": 13.05,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 5,
+          "player_score": 22.75,
+          "margin": 17.55,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 6,
+          "player_score": 30.05,
+          "margin": 21.4,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 8,
+          "player_score": 34.15,
+          "margin": 25.65,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 9,
+          "player_score": 27.65,
+          "margin": 18.75,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 13,
+          "player_score": 22.3,
+          "margin": 17.95,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 14,
+          "player_score": 13.55,
+          "margin": 5.6,
+          "opponent_franchise_id": "0007"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2018,
+    "franchise_id": "0006",
+    "value": 7,
+    "detail": {
+      "player_id": "13130",
+      "decisive_weeks": 7,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 10.5,
+          "margin": 2.7,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 3,
+          "player_score": 20.4,
+          "margin": 13.55,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 6,
+          "player_score": 10.1,
+          "margin": 1.35,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 9,
+          "player_score": 30.2,
+          "margin": 27.1,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 10,
+          "player_score": 34.3,
+          "margin": 29.3,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 12,
+          "player_score": 41.2,
+          "margin": 26.4,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 15,
+          "player_score": 24.5,
+          "margin": 1.3,
+          "opponent_franchise_id": "0005"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2019,
+    "franchise_id": "0002",
+    "value": 8,
+    "detail": {
+      "player_id": "13604",
+      "decisive_weeks": 8,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 15.9,
+          "margin": 2.15,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 2,
+          "player_score": 21.0,
+          "margin": 20.9,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 7,
+          "player_score": 15.5,
+          "margin": 8.15,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 8,
+          "player_score": 24.3,
+          "margin": 22.85,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 10,
+          "player_score": 5.6,
+          "margin": 4.05,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 13,
+          "player_score": 13.0,
+          "margin": 11.9,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 15,
+          "player_score": 28.3,
+          "margin": 8.15,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 16,
+          "player_score": 41.9,
+          "margin": 1.45,
+          "opponent_franchise_id": "0005"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2020,
+    "franchise_id": "0009",
+    "value": 7,
+    "detail": {
+      "player_id": "13132",
+      "decisive_weeks": 7,
+      "weeks": [
+        {
+          "week": 2,
+          "player_score": 33.9,
+          "margin": 9.05,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 4,
+          "player_score": 19.4,
+          "margin": 14.35,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 5,
+          "player_score": 15.9,
+          "margin": 10.25,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 10,
+          "player_score": 31.3,
+          "margin": 18.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 11,
+          "player_score": 10.5,
+          "margin": 1.55,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 12,
+          "player_score": 5.7,
+          "margin": 4.45,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 14,
+          "player_score": 18.9,
+          "margin": 1.4,
+          "opponent_franchise_id": "0010"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2021,
+    "franchise_id": "0004",
+    "value": 8,
+    "detail": {
+      "player_id": "12625",
+      "decisive_weeks": 8,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 4.9,
+          "margin": 1.05,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 2,
+          "player_score": 16.7,
+          "margin": 16.25,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 3,
+          "player_score": 25.1,
+          "margin": 10.8,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 8,
+          "player_score": 9.3,
+          "margin": 1.25,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 9,
+          "player_score": 11.1,
+          "margin": 0.8,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 10,
+          "player_score": 19.3,
+          "margin": 11.45,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 11,
+          "player_score": 9.8,
+          "margin": 7.95,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 12,
+          "player_score": 13.9,
+          "margin": 2.25,
+          "opponent_franchise_id": "0002"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2022,
+    "franchise_id": "0005",
+    "value": 6,
+    "detail": {
+      "player_id": "13589",
+      "decisive_weeks": 6,
+      "weeks": [
+        {
+          "week": 2,
+          "player_score": 40.85,
+          "margin": 24.15,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 5,
+          "player_score": 47.4,
+          "margin": 33.5,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 6,
+          "player_score": 35.65,
+          "margin": 24.6,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 11,
+          "player_score": 16.55,
+          "margin": 10.8,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 13,
+          "player_score": 23.15,
+          "margin": 5.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 14,
+          "player_score": 24.05,
+          "margin": 14.5,
+          "opponent_franchise_id": "0007"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2023,
+    "franchise_id": "0003",
+    "value": 5,
+    "detail": {
+      "player_id": "14783",
+      "decisive_weeks": 5,
+      "weeks": [
+        {
+          "week": 6,
+          "player_score": 24.7,
+          "margin": 0.05,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 9,
+          "player_score": 31.95,
+          "margin": 31.75,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 11,
+          "player_score": 20.4,
+          "margin": 3.45,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 12,
+          "player_score": 42.5,
+          "margin": 24.65,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 13,
+          "player_score": 28.9,
+          "margin": 1.7,
+          "opponent_franchise_id": "0010"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2023,
+    "franchise_id": "0004",
+    "value": 5,
+    "detail": {
+      "player_id": "15698",
+      "decisive_weeks": 5,
+      "weeks": [
+        {
+          "week": 8,
+          "player_score": 23.95,
+          "margin": 7.8,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 10,
+          "player_score": 32.8,
+          "margin": 16.55,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 11,
+          "player_score": 36.05,
+          "margin": 20.4,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 13,
+          "player_score": 40.6,
+          "margin": 20.9,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 15,
+          "player_score": 36.1,
+          "margin": 11.1,
+          "opponent_franchise_id": "0006"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2024,
+    "franchise_id": "0005",
+    "value": 8,
+    "detail": {
+      "player_id": "13593",
+      "decisive_weeks": 8,
+      "weeks": [
+        {
+          "week": 3,
+          "player_score": 29.8,
+          "margin": 20.4,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 7,
+          "player_score": 47.25,
+          "margin": 24.85,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 9,
+          "player_score": 32.4,
+          "margin": 24.7,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 10,
+          "player_score": 43.8,
+          "margin": 19.4,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 11,
+          "player_score": 18.95,
+          "margin": 13.2,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 15,
+          "player_score": 49.0,
+          "margin": 17.1,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 16,
+          "player_score": 28.55,
+          "margin": 12.35,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 18,
+          "player_score": 35.1,
+          "margin": 13.1,
+          "opponent_franchise_id": "0002"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2024,
+    "franchise_id": "0009",
+    "value": 8,
+    "detail": {
+      "player_id": "14777",
+      "decisive_weeks": 8,
+      "weeks": [
+        {
+          "week": 3,
+          "player_score": 34.6,
+          "margin": 8.35,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 4,
+          "player_score": 22.6,
+          "margin": 0.15,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 5,
+          "player_score": 47.7,
+          "margin": 26.65,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 6,
+          "player_score": 21.9,
+          "margin": 0.65,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 9,
+          "player_score": 37.65,
+          "margin": 0.75,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 10,
+          "player_score": 46.0,
+          "margin": 12.8,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 13,
+          "player_score": 24.35,
+          "margin": 24.3,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 14,
+          "player_score": 34.25,
+          "margin": 27.4,
+          "opponent_franchise_id": "0006"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2025,
+    "franchise_id": "0003",
+    "value": 6,
+    "detail": {
+      "player_id": "13593",
+      "decisive_weeks": 6,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 35.45,
+          "margin": 21.4,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 2,
+          "player_score": 36.55,
+          "margin": 28.7,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 3,
+          "player_score": 35.9,
+          "margin": 13.35,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 4,
+          "player_score": 14.15,
+          "margin": 5.2,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 9,
+          "player_score": 35.6,
+          "margin": 17.05,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 15,
+          "player_score": 20.1,
+          "margin": 5.05,
+          "opponent_franchise_id": "0001"
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2025,
+    "franchise_id": "0005",
+    "value": 6,
+    "detail": {
+      "player_id": "12626",
+      "decisive_weeks": 6,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 28.7,
+          "margin": 15.6,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 6,
+          "player_score": 13.5,
+          "margin": 8.25,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 9,
+          "player_score": 12.6,
+          "margin": 9.65,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 13,
+          "player_score": 16.9,
+          "margin": 2.35,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 15,
+          "player_score": 10.0,
+          "margin": 1.4,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 16,
+          "player_score": 22.8,
+          "margin": 4.55,
+          "opponent_franchise_id": "0003"
+        }
+      ],
+      "co_player_ids": [
+        "14779",
+        "15284"
+      ]
+    }
+  },
+  {
+    "award_id": "3",
+    "season": 2025,
+    "franchise_id": "0006",
+    "value": 6,
+    "detail": {
+      "player_id": "13589",
+      "decisive_weeks": 6,
+      "weeks": [
+        {
+          "week": 1,
+          "player_score": 46.7,
+          "margin": 36.85,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 4,
+          "player_score": 30.95,
+          "margin": 17.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 5,
+          "player_score": 25.95,
+          "margin": 23.65,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 10,
+          "player_score": 26.4,
+          "margin": 3.85,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 11,
+          "player_score": 51.85,
+          "margin": 39.6,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 13,
+          "player_score": 19.95,
+          "margin": 11.2,
+          "opponent_franchise_id": "0008"
+        }
+      ]
+    }
+  },
+  {
     "award_id": "33",
     "season": 2013,
     "franchise_id": "0009",
@@ -337,6 +1601,1990 @@
     "detail": {
       "week": 7,
       "opponent": "0005"
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2010,
+    "franchise_id": "0007",
+    "value": 578.0,
+    "detail": {
+      "bench_points": 578.0,
+      "weeks": 16,
+      "top_left_on_bench": [
+        {
+          "week": 2,
+          "player_id": "3866",
+          "score": 48.0
+        },
+        {
+          "week": 7,
+          "player_id": "9467",
+          "score": 43.5
+        },
+        {
+          "week": 5,
+          "player_id": "3866",
+          "score": 39.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2011,
+    "franchise_id": "0001",
+    "value": 616.0,
+    "detail": {
+      "bench_points": 616.0,
+      "weeks": 15,
+      "top_left_on_bench": [
+        {
+          "week": 5,
+          "player_id": "7401",
+          "score": 49.0
+        },
+        {
+          "week": 8,
+          "player_id": "7401",
+          "score": 45.0
+        },
+        {
+          "week": 3,
+          "player_id": "7401",
+          "score": 40.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2012,
+    "franchise_id": "0001",
+    "value": 923.0,
+    "detail": {
+      "bench_points": 923.0,
+      "weeks": 15,
+      "top_left_on_bench": [
+        {
+          "week": 12,
+          "player_id": "10273",
+          "score": 59.0
+        },
+        {
+          "week": 14,
+          "player_id": "10273",
+          "score": 57.0
+        },
+        {
+          "week": 11,
+          "player_id": "10696",
+          "score": 52.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2013,
+    "franchise_id": "0009",
+    "value": 644.0,
+    "detail": {
+      "bench_points": 644.0,
+      "weeks": 16,
+      "top_left_on_bench": [
+        {
+          "week": 16,
+          "player_id": "10313",
+          "score": 43.0
+        },
+        {
+          "week": 14,
+          "player_id": "10313",
+          "score": 38.0
+        },
+        {
+          "week": 12,
+          "player_id": "7394",
+          "score": 37.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2014,
+    "franchise_id": "0008",
+    "value": 655.5,
+    "detail": {
+      "bench_points": 655.5,
+      "weeks": 15,
+      "top_left_on_bench": [
+        {
+          "week": 6,
+          "player_id": "10273",
+          "score": 39.0
+        },
+        {
+          "week": 6,
+          "player_id": "10729",
+          "score": 32.5
+        },
+        {
+          "week": 12,
+          "player_id": "9278",
+          "score": 31.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2015,
+    "franchise_id": "0004",
+    "value": 696.0,
+    "detail": {
+      "bench_points": 696.0,
+      "weeks": 16,
+      "top_left_on_bench": [
+        {
+          "week": 8,
+          "player_id": "7391",
+          "score": 53.0
+        },
+        {
+          "week": 5,
+          "player_id": "7391",
+          "score": 39.0
+        },
+        {
+          "week": 14,
+          "player_id": "7391",
+          "score": 38.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2016,
+    "franchise_id": "0005",
+    "value": 671.5,
+    "detail": {
+      "bench_points": 671.5,
+      "weeks": 16,
+      "top_left_on_bench": [
+        {
+          "week": 16,
+          "player_id": "7836",
+          "score": 48.0
+        },
+        {
+          "week": 8,
+          "player_id": "7836",
+          "score": 44.0
+        },
+        {
+          "week": 5,
+          "player_id": "5848",
+          "score": 39.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2017,
+    "franchise_id": "0009",
+    "value": 562.0,
+    "detail": {
+      "bench_points": 562.0,
+      "weeks": 14,
+      "top_left_on_bench": [
+        {
+          "week": 1,
+          "player_id": "9431",
+          "score": 34.0
+        },
+        {
+          "week": 3,
+          "player_id": "12634",
+          "score": 29.1
+        },
+        {
+          "week": 14,
+          "player_id": "12634",
+          "score": 28.0
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2018,
+    "franchise_id": "0001",
+    "value": 627.2,
+    "detail": {
+      "bench_points": 627.2,
+      "weeks": 16,
+      "top_left_on_bench": [
+        {
+          "week": 3,
+          "player_id": "9099",
+          "score": 53.9
+        },
+        {
+          "week": 16,
+          "player_id": "7836",
+          "score": 51.3
+        },
+        {
+          "week": 9,
+          "player_id": "9099",
+          "score": 39.5
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2019,
+    "franchise_id": "0002",
+    "value": 755.2,
+    "detail": {
+      "bench_points": 755.2,
+      "weeks": 16,
+      "top_left_on_bench": [
+        {
+          "week": 14,
+          "player_id": "11760",
+          "score": 39.55
+        },
+        {
+          "week": 15,
+          "player_id": "12630",
+          "score": 39.1
+        },
+        {
+          "week": 12,
+          "player_id": "13590",
+          "score": 32.85
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2020,
+    "franchise_id": "0009",
+    "value": 704.3,
+    "detail": {
+      "bench_points": 704.3,
+      "weeks": 15,
+      "top_left_on_bench": [
+        {
+          "week": 7,
+          "player_id": "5848",
+          "score": 48.55
+        },
+        {
+          "week": 4,
+          "player_id": "5848",
+          "score": 42.15
+        },
+        {
+          "week": 11,
+          "player_id": "13113",
+          "score": 38.8
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2021,
+    "franchise_id": "0002",
+    "value": 671.95,
+    "detail": {
+      "bench_points": 671.95,
+      "weeks": 17,
+      "top_left_on_bench": [
+        {
+          "week": 1,
+          "player_id": "14783",
+          "score": 37.4
+        },
+        {
+          "week": 4,
+          "player_id": "14783",
+          "score": 36.05
+        },
+        {
+          "week": 7,
+          "player_id": "14783",
+          "score": 29.9
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2022,
+    "franchise_id": "0002",
+    "value": 569.3,
+    "detail": {
+      "bench_points": 569.3,
+      "weeks": 16,
+      "top_left_on_bench": [
+        {
+          "week": 14,
+          "player_id": "15237",
+          "score": 43.1
+        },
+        {
+          "week": 12,
+          "player_id": "15237",
+          "score": 34.15
+        },
+        {
+          "week": 3,
+          "player_id": "15237",
+          "score": 33.8
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2023,
+    "franchise_id": "0007",
+    "value": 698.0,
+    "detail": {
+      "bench_points": 698.0,
+      "weeks": 14,
+      "top_left_on_bench": [
+        {
+          "week": 3,
+          "player_id": "12447",
+          "score": 41.7
+        },
+        {
+          "week": 11,
+          "player_id": "15237",
+          "score": 38.8
+        },
+        {
+          "week": 13,
+          "player_id": "15237",
+          "score": 31.7
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2024,
+    "franchise_id": "0010",
+    "value": 713.15,
+    "detail": {
+      "bench_points": 713.15,
+      "weeks": 15,
+      "top_left_on_bench": [
+        {
+          "week": 15,
+          "player_id": "13590",
+          "score": 38.9
+        },
+        {
+          "week": 6,
+          "player_id": "13590",
+          "score": 37.15
+        },
+        {
+          "week": 7,
+          "player_id": "13590",
+          "score": 36.7
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "6",
+    "season": 2025,
+    "franchise_id": "0005",
+    "value": 736.3,
+    "detail": {
+      "bench_points": 736.3,
+      "weeks": 17,
+      "top_left_on_bench": [
+        {
+          "week": 2,
+          "player_id": "12611",
+          "score": 47.3
+        },
+        {
+          "week": 16,
+          "player_id": "15698",
+          "score": 43.85
+        },
+        {
+          "week": 7,
+          "player_id": "14779",
+          "score": 38.1
+        }
+      ]
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2010,
+    "franchise_id": "0001",
+    "value": 0.8214,
+    "detail": {
+      "optimal_starts": 92,
+      "total_starts": 112,
+      "weeks": 14
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2011,
+    "franchise_id": "0009",
+    "value": 0.8359,
+    "detail": {
+      "optimal_starts": 107,
+      "total_starts": 128,
+      "weeks": 16
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2012,
+    "franchise_id": "0004",
+    "value": 0.8462,
+    "detail": {
+      "optimal_starts": 88,
+      "total_starts": 104,
+      "weeks": 13
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2013,
+    "franchise_id": "0003",
+    "value": 0.8125,
+    "detail": {
+      "optimal_starts": 91,
+      "total_starts": 112,
+      "weeks": 14
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2013,
+    "franchise_id": "0010",
+    "value": 0.8125,
+    "detail": {
+      "optimal_starts": 104,
+      "total_starts": 128,
+      "weeks": 16
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2014,
+    "franchise_id": "0010",
+    "value": 0.8125,
+    "detail": {
+      "optimal_starts": 91,
+      "total_starts": 112,
+      "weeks": 14
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2015,
+    "franchise_id": "0002",
+    "value": 0.8125,
+    "detail": {
+      "optimal_starts": 91,
+      "total_starts": 112,
+      "weeks": 14
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2016,
+    "franchise_id": "0004",
+    "value": 0.8198,
+    "detail": {
+      "optimal_starts": 91,
+      "total_starts": 111,
+      "weeks": 14
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2017,
+    "franchise_id": "0008",
+    "value": 0.8482,
+    "detail": {
+      "optimal_starts": 95,
+      "total_starts": 112,
+      "weeks": 14
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2018,
+    "franchise_id": "0002",
+    "value": 0.8125,
+    "detail": {
+      "optimal_starts": 91,
+      "total_starts": 112,
+      "weeks": 14
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2019,
+    "franchise_id": "0005",
+    "value": 0.7969,
+    "detail": {
+      "optimal_starts": 102,
+      "total_starts": 128,
+      "weeks": 16
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2020,
+    "franchise_id": "0008",
+    "value": 0.7961,
+    "detail": {
+      "optimal_starts": 82,
+      "total_starts": 103,
+      "weeks": 13
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2021,
+    "franchise_id": "0008",
+    "value": 0.8031,
+    "detail": {
+      "optimal_starts": 102,
+      "total_starts": 127,
+      "weeks": 16
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2022,
+    "franchise_id": "0008",
+    "value": 0.7895,
+    "detail": {
+      "optimal_starts": 120,
+      "total_starts": 152,
+      "weeks": 17
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2023,
+    "franchise_id": "0004",
+    "value": 0.7961,
+    "detail": {
+      "optimal_starts": 121,
+      "total_starts": 152,
+      "weeks": 17
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2024,
+    "franchise_id": "0009",
+    "value": 0.791,
+    "detail": {
+      "optimal_starts": 106,
+      "total_starts": 134,
+      "weeks": 15
+    }
+  },
+  {
+    "award_id": "7",
+    "season": 2025,
+    "franchise_id": "0002",
+    "value": 0.8105,
+    "detail": {
+      "optimal_starts": 124,
+      "total_starts": 153,
+      "weeks": 17
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2010,
+    "franchise_id": "0001",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 5,
+          "actual_score": 76.5,
+          "optimal_score": 113.5,
+          "opponent_score": 100.0,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 6,
+          "actual_score": 93.5,
+          "optimal_score": 119.0,
+          "opponent_score": 103.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 12,
+          "actual_score": 102.5,
+          "optimal_score": 114.0,
+          "opponent_score": 108.5,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 13,
+          "actual_score": 111.5,
+          "optimal_score": 134.0,
+          "opponent_score": 112.5,
+          "opponent_franchise_id": "0006"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2010,
+    "franchise_id": "0002",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 96.5,
+          "optimal_score": 142.5,
+          "opponent_score": 134.0,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 5,
+          "actual_score": 83.0,
+          "optimal_score": 98.0,
+          "opponent_score": 89.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 11,
+          "actual_score": 128.0,
+          "optimal_score": 142.5,
+          "opponent_score": 129.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 15,
+          "actual_score": 96.0,
+          "optimal_score": 144.0,
+          "opponent_score": 110.5,
+          "opponent_franchise_id": "0007"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2010,
+    "franchise_id": "0007",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 5,
+          "actual_score": 88.0,
+          "optimal_score": 126.0,
+          "opponent_score": 100.5,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 7,
+          "actual_score": 100.5,
+          "optimal_score": 145.5,
+          "opponent_score": 113.5,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 9,
+          "actual_score": 101.5,
+          "optimal_score": 111.5,
+          "opponent_score": 109.0,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 13,
+          "actual_score": 92.0,
+          "optimal_score": 99.5,
+          "opponent_score": 92.5,
+          "opponent_franchise_id": "0004"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2011,
+    "franchise_id": "0008",
+    "value": 9,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 105.5,
+          "optimal_score": 132.0,
+          "opponent_score": 108.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 2,
+          "actual_score": 94.0,
+          "optimal_score": 123.5,
+          "opponent_score": 96.5,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 3,
+          "actual_score": 100.0,
+          "optimal_score": 110.0,
+          "opponent_score": 105.0,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 6,
+          "actual_score": 98.0,
+          "optimal_score": 110.5,
+          "opponent_score": 101.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 7,
+          "actual_score": 84.5,
+          "optimal_score": 105.5,
+          "opponent_score": 92.5,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 10,
+          "actual_score": 114.5,
+          "optimal_score": 150.5,
+          "opponent_score": 135.0,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 11,
+          "actual_score": 116.0,
+          "optimal_score": 119.5,
+          "opponent_score": 117.0,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 12,
+          "actual_score": 102.5,
+          "optimal_score": 109.5,
+          "opponent_score": 105.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 13,
+          "actual_score": 85.5,
+          "optimal_score": 137.5,
+          "opponent_score": 116.5,
+          "opponent_franchise_id": "0001"
+        }
+      ],
+      "count": 9
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2012,
+    "franchise_id": "0001",
+    "value": 6,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 81.5,
+          "optimal_score": 126.5,
+          "opponent_score": 118.0,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 5,
+          "actual_score": 79.5,
+          "optimal_score": 102.5,
+          "opponent_score": 93.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 6,
+          "actual_score": 125.5,
+          "optimal_score": 146.5,
+          "opponent_score": 134.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 10,
+          "actual_score": 106.0,
+          "optimal_score": 136.5,
+          "opponent_score": 107.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 12,
+          "actual_score": 120.0,
+          "optimal_score": 145.0,
+          "opponent_score": 142.0,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 15,
+          "actual_score": 106.5,
+          "optimal_score": 138.0,
+          "opponent_score": 112.0,
+          "opponent_franchise_id": "0008"
+        }
+      ],
+      "count": 6
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2012,
+    "franchise_id": "0007",
+    "value": 6,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 90.0,
+          "optimal_score": 131.5,
+          "opponent_score": 119.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 5,
+          "actual_score": 124.0,
+          "optimal_score": 165.0,
+          "opponent_score": 127.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 7,
+          "actual_score": 94.0,
+          "optimal_score": 99.5,
+          "opponent_score": 97.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 8,
+          "actual_score": 95.5,
+          "optimal_score": 114.0,
+          "opponent_score": 102.5,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 10,
+          "actual_score": 104.0,
+          "optimal_score": 129.5,
+          "opponent_score": 123.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 14,
+          "actual_score": 68.5,
+          "optimal_score": 133.0,
+          "opponent_score": 123.0,
+          "opponent_franchise_id": "0001"
+        }
+      ],
+      "count": 6
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2013,
+    "franchise_id": "0001",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 7,
+          "actual_score": 94.5,
+          "optimal_score": 103.5,
+          "opponent_score": 98.5,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 10,
+          "actual_score": 93.5,
+          "optimal_score": 107.5,
+          "opponent_score": 104.0,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 11,
+          "actual_score": 88.0,
+          "optimal_score": 102.5,
+          "opponent_score": 89.0,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 13,
+          "actual_score": 85.5,
+          "optimal_score": 106.5,
+          "opponent_score": 90.0,
+          "opponent_franchise_id": "0006"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2013,
+    "franchise_id": "0002",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 69.0,
+          "optimal_score": 83.5,
+          "opponent_score": 79.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 2,
+          "actual_score": 112.5,
+          "optimal_score": 137.5,
+          "opponent_score": 114.0,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 5,
+          "actual_score": 107.5,
+          "optimal_score": 140.5,
+          "opponent_score": 114.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 13,
+          "actual_score": 76.5,
+          "optimal_score": 106.5,
+          "opponent_score": 93.0,
+          "opponent_franchise_id": "0004"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2013,
+    "franchise_id": "0008",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 119.0,
+          "optimal_score": 143.0,
+          "opponent_score": 133.0,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 2,
+          "actual_score": 89.5,
+          "optimal_score": 116.0,
+          "opponent_score": 95.5,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 5,
+          "actual_score": 87.5,
+          "optimal_score": 108.5,
+          "opponent_score": 89.5,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 13,
+          "actual_score": 94.5,
+          "optimal_score": 109.5,
+          "opponent_score": 103.5,
+          "opponent_franchise_id": "0009"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2014,
+    "franchise_id": "0003",
+    "value": 6,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 98.5,
+          "optimal_score": 115.5,
+          "opponent_score": 103.0,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 3,
+          "actual_score": 76.0,
+          "optimal_score": 112.0,
+          "opponent_score": 104.0,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 5,
+          "actual_score": 100.0,
+          "optimal_score": 125.0,
+          "opponent_score": 117.0,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 8,
+          "actual_score": 86.0,
+          "optimal_score": 132.0,
+          "opponent_score": 96.5,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 10,
+          "actual_score": 90.5,
+          "optimal_score": 107.0,
+          "opponent_score": 106.0,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 15,
+          "actual_score": 84.0,
+          "optimal_score": 113.0,
+          "opponent_score": 90.0,
+          "opponent_franchise_id": "0001"
+        }
+      ],
+      "count": 6
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2015,
+    "franchise_id": "0001",
+    "value": 5,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 6,
+          "actual_score": 113.0,
+          "optimal_score": 152.0,
+          "opponent_score": 125.5,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 8,
+          "actual_score": 84.5,
+          "optimal_score": 97.5,
+          "opponent_score": 89.0,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 10,
+          "actual_score": 91.0,
+          "optimal_score": 128.0,
+          "opponent_score": 113.0,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 12,
+          "actual_score": 92.5,
+          "optimal_score": 114.5,
+          "opponent_score": 105.5,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 13,
+          "actual_score": 77.5,
+          "optimal_score": 99.0,
+          "opponent_score": 90.5,
+          "opponent_franchise_id": "0005"
+        }
+      ],
+      "count": 5
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2015,
+    "franchise_id": "0002",
+    "value": 5,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 81.5,
+          "optimal_score": 126.5,
+          "opponent_score": 97.0,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 4,
+          "actual_score": 80.5,
+          "optimal_score": 99.0,
+          "opponent_score": 93.0,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 5,
+          "actual_score": 87.0,
+          "optimal_score": 120.5,
+          "opponent_score": 103.0,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 11,
+          "actual_score": 69.0,
+          "optimal_score": 85.5,
+          "opponent_score": 81.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 14,
+          "actual_score": 98.0,
+          "optimal_score": 132.0,
+          "opponent_score": 98.5,
+          "opponent_franchise_id": "0008"
+        }
+      ],
+      "count": 5
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2016,
+    "franchise_id": "0008",
+    "value": 5,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 79.5,
+          "optimal_score": 122.5,
+          "opponent_score": 99.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 7,
+          "actual_score": 121.0,
+          "optimal_score": 131.0,
+          "opponent_score": 127.0,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 8,
+          "actual_score": 98.5,
+          "optimal_score": 113.0,
+          "opponent_score": 103.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 11,
+          "actual_score": 53.0,
+          "optimal_score": 68.5,
+          "opponent_score": 61.5,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 14,
+          "actual_score": 76.0,
+          "optimal_score": 102.0,
+          "opponent_score": 83.5,
+          "opponent_franchise_id": "0006"
+        }
+      ],
+      "count": 5
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2017,
+    "franchise_id": "0006",
+    "value": 6,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 96.4,
+          "optimal_score": 139.1,
+          "opponent_score": 101.15,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 3,
+          "actual_score": 81.5,
+          "optimal_score": 117.2,
+          "opponent_score": 95.5,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 6,
+          "actual_score": 59.85,
+          "optimal_score": 120.7,
+          "opponent_score": 75.2,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 7,
+          "actual_score": 134.4,
+          "optimal_score": 149.2,
+          "opponent_score": 146.6,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 11,
+          "actual_score": 63.3,
+          "optimal_score": 87.9,
+          "opponent_score": 86.05,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 13,
+          "actual_score": 109.3,
+          "optimal_score": 138.4,
+          "opponent_score": 132.25,
+          "opponent_franchise_id": "0002"
+        }
+      ],
+      "count": 6
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2017,
+    "franchise_id": "0009",
+    "value": 6,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 91.35,
+          "optimal_score": 110.6,
+          "opponent_score": 100.95,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 5,
+          "actual_score": 85.95,
+          "optimal_score": 104.65,
+          "opponent_score": 95.95,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 8,
+          "actual_score": 87.45,
+          "optimal_score": 110.75,
+          "opponent_score": 88.95,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 9,
+          "actual_score": 81.9,
+          "optimal_score": 92.4,
+          "opponent_score": 87.75,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 13,
+          "actual_score": 83.05,
+          "optimal_score": 130.1,
+          "opponent_score": 84.9,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 14,
+          "actual_score": 105.6,
+          "optimal_score": 138.9,
+          "opponent_score": 128.45,
+          "opponent_franchise_id": "0001"
+        }
+      ],
+      "count": 6
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2018,
+    "franchise_id": "0004",
+    "value": 5,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 108.3,
+          "optimal_score": 121.7,
+          "opponent_score": 117.6,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 3,
+          "actual_score": 92.1,
+          "optimal_score": 132.1,
+          "opponent_score": 101.45,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 6,
+          "actual_score": 122.55,
+          "optimal_score": 131.15,
+          "opponent_score": 123.9,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 8,
+          "actual_score": 105.8,
+          "optimal_score": 130.1,
+          "opponent_score": 129.05,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 10,
+          "actual_score": 86.1,
+          "optimal_score": 141.45,
+          "opponent_score": 131.95,
+          "opponent_franchise_id": "0002"
+        }
+      ],
+      "count": 5
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2018,
+    "franchise_id": "0005",
+    "value": 5,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 3,
+          "actual_score": 101.7,
+          "optimal_score": 118.6,
+          "opponent_score": 105.05,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 4,
+          "actual_score": 106.45,
+          "optimal_score": 139.85,
+          "opponent_score": 138.55,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 10,
+          "actual_score": 93.05,
+          "optimal_score": 127.95,
+          "opponent_score": 122.35,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 12,
+          "actual_score": 117.5,
+          "optimal_score": 141.0,
+          "opponent_score": 118.7,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 15,
+          "actual_score": 114.65,
+          "optimal_score": 121.55,
+          "opponent_score": 115.95,
+          "opponent_franchise_id": "0006"
+        }
+      ],
+      "count": 5
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2018,
+    "franchise_id": "0009",
+    "value": 5,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 135.95,
+          "optimal_score": 159.15,
+          "opponent_score": 155.9,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 4,
+          "actual_score": 97.9,
+          "optimal_score": 132.4,
+          "opponent_score": 126.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 11,
+          "actual_score": 98.4,
+          "optimal_score": 142.8,
+          "opponent_score": 141.7,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 13,
+          "actual_score": 67.55,
+          "optimal_score": 118.65,
+          "opponent_score": 104.45,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 14,
+          "actual_score": 112.6,
+          "optimal_score": 126.7,
+          "opponent_score": 114.9,
+          "opponent_franchise_id": "0001"
+        }
+      ],
+      "count": 5
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2019,
+    "franchise_id": "0004",
+    "value": 8,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 3,
+          "actual_score": 123.95,
+          "optimal_score": 147.0,
+          "opponent_score": 128.75,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 4,
+          "actual_score": 86.25,
+          "optimal_score": 151.45,
+          "opponent_score": 124.65,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 6,
+          "actual_score": 112.3,
+          "optimal_score": 143.4,
+          "opponent_score": 124.55,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 7,
+          "actual_score": 109.0,
+          "optimal_score": 136.5,
+          "opponent_score": 120.6,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 9,
+          "actual_score": 98.15,
+          "optimal_score": 122.05,
+          "opponent_score": 103.65,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 10,
+          "actual_score": 108.3,
+          "optimal_score": 120.4,
+          "opponent_score": 109.55,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 11,
+          "actual_score": 103.85,
+          "optimal_score": 146.8,
+          "opponent_score": 109.1,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 13,
+          "actual_score": 69.4,
+          "optimal_score": 109.25,
+          "opponent_score": 81.3,
+          "opponent_franchise_id": "0002"
+        }
+      ],
+      "count": 8
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2020,
+    "franchise_id": "0003",
+    "value": 6,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 98.5,
+          "optimal_score": 113.6,
+          "opponent_score": 107.55,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 3,
+          "actual_score": 133.6,
+          "optimal_score": 142.8,
+          "opponent_score": 139.95,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 6,
+          "actual_score": 89.15,
+          "optimal_score": 123.05,
+          "opponent_score": 94.2,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 7,
+          "actual_score": 76.45,
+          "optimal_score": 97.95,
+          "opponent_score": 93.9,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 10,
+          "actual_score": 66.9,
+          "optimal_score": 88.7,
+          "opponent_score": 69.75,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 13,
+          "actual_score": 83.65,
+          "optimal_score": 114.05,
+          "opponent_score": 111.95,
+          "opponent_franchise_id": "0007"
+        }
+      ],
+      "count": 6
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2021,
+    "franchise_id": "0006",
+    "value": 6,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 107.35,
+          "optimal_score": 154.65,
+          "opponent_score": 127.9,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 2,
+          "actual_score": 98.5,
+          "optimal_score": 119.8,
+          "opponent_score": 106.45,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 4,
+          "actual_score": 94.55,
+          "optimal_score": 125.45,
+          "opponent_score": 112.1,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 12,
+          "actual_score": 69.1,
+          "optimal_score": 90.75,
+          "opponent_score": 83.0,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 14,
+          "actual_score": 108.75,
+          "optimal_score": 147.55,
+          "opponent_score": 116.25,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 15,
+          "actual_score": 78.4,
+          "optimal_score": 117.15,
+          "opponent_score": 82.7,
+          "opponent_franchise_id": "0008"
+        }
+      ],
+      "count": 6
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2021,
+    "franchise_id": "0007",
+    "value": 6,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 110.6,
+          "optimal_score": 126.4,
+          "opponent_score": 114.85,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 3,
+          "actual_score": 103.3,
+          "optimal_score": 120.6,
+          "opponent_score": 109.85,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 9,
+          "actual_score": 90.8,
+          "optimal_score": 117.1,
+          "opponent_score": 91.6,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 10,
+          "actual_score": 105.05,
+          "optimal_score": 122.05,
+          "opponent_score": 109.2,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 14,
+          "actual_score": 111.75,
+          "optimal_score": 146.35,
+          "opponent_score": 124.9,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 15,
+          "actual_score": 94.85,
+          "optimal_score": 111.7,
+          "opponent_score": 98.3,
+          "opponent_franchise_id": "0003"
+        }
+      ],
+      "count": 6
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2022,
+    "franchise_id": "0008",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 3,
+          "actual_score": 84.35,
+          "optimal_score": 112.35,
+          "opponent_score": 99.5,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 8,
+          "actual_score": 123.4,
+          "optimal_score": 152.35,
+          "opponent_score": 125.0,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 11,
+          "actual_score": 90.15,
+          "optimal_score": 102.55,
+          "opponent_score": 100.95,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 18,
+          "actual_score": 108.35,
+          "optimal_score": 126.35,
+          "opponent_score": 114.6,
+          "opponent_franchise_id": "0006"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2022,
+    "franchise_id": "0009",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 2,
+          "actual_score": 122.05,
+          "optimal_score": 148.45,
+          "opponent_score": 123.35,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 4,
+          "actual_score": 104.1,
+          "optimal_score": 140.95,
+          "opponent_score": 133.1,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 5,
+          "actual_score": 122.35,
+          "optimal_score": 150.85,
+          "opponent_score": 125.7,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 10,
+          "actual_score": 126.65,
+          "optimal_score": 155.65,
+          "opponent_score": 126.85,
+          "opponent_franchise_id": "0008"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2022,
+    "franchise_id": "0010",
+    "value": 4,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 3,
+          "actual_score": 98.5,
+          "optimal_score": 115.7,
+          "opponent_score": 115.65,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 6,
+          "actual_score": 83.0,
+          "optimal_score": 111.55,
+          "opponent_score": 93.05,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 7,
+          "actual_score": 121.0,
+          "optimal_score": 138.0,
+          "opponent_score": 125.8,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 13,
+          "actual_score": 74.45,
+          "optimal_score": 88.4,
+          "opponent_score": 79.95,
+          "opponent_franchise_id": "0005"
+        }
+      ],
+      "count": 4
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2023,
+    "franchise_id": "0007",
+    "value": 7,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 87.35,
+          "optimal_score": 112.85,
+          "opponent_score": 100.15,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 3,
+          "actual_score": 122.35,
+          "optimal_score": 183.6,
+          "opponent_score": 133.3,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 4,
+          "actual_score": 126.9,
+          "optimal_score": 134.8,
+          "opponent_score": 128.1,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 8,
+          "actual_score": 81.8,
+          "optimal_score": 120.5,
+          "opponent_score": 113.15,
+          "opponent_franchise_id": "0001"
+        },
+        {
+          "week": 12,
+          "actual_score": 138.2,
+          "optimal_score": 157.1,
+          "opponent_score": 141.15,
+          "opponent_franchise_id": "0006"
+        },
+        {
+          "week": 13,
+          "actual_score": 122.1,
+          "optimal_score": 143.1,
+          "opponent_score": 143.0,
+          "opponent_franchise_id": "0004"
+        },
+        {
+          "week": 14,
+          "actual_score": 85.65,
+          "optimal_score": 139.75,
+          "opponent_score": 129.75,
+          "opponent_franchise_id": "0008"
+        }
+      ],
+      "count": 7
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2024,
+    "franchise_id": "0006",
+    "value": 8,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 101.15,
+          "optimal_score": 128.45,
+          "opponent_score": 105.7,
+          "opponent_franchise_id": "0008"
+        },
+        {
+          "week": 3,
+          "actual_score": 93.65,
+          "optimal_score": 125.15,
+          "opponent_score": 114.05,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 4,
+          "actual_score": 107.85,
+          "optimal_score": 139.35,
+          "opponent_score": 108.0,
+          "opponent_franchise_id": "0009"
+        },
+        {
+          "week": 6,
+          "actual_score": 87.9,
+          "optimal_score": 131.2,
+          "opponent_score": 107.25,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 7,
+          "actual_score": 87.35,
+          "optimal_score": 119.6,
+          "opponent_score": 92.1,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 9,
+          "actual_score": 106.75,
+          "optimal_score": 125.35,
+          "opponent_score": 110.2,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 11,
+          "actual_score": 94.4,
+          "optimal_score": 110.4,
+          "opponent_score": 106.65,
+          "opponent_franchise_id": "0010"
+        },
+        {
+          "week": 13,
+          "actual_score": 89.2,
+          "optimal_score": 128.7,
+          "opponent_score": 110.85,
+          "opponent_franchise_id": "0008"
+        }
+      ],
+      "count": 8
+    }
+  },
+  {
+    "award_id": "9",
+    "season": 2025,
+    "franchise_id": "0001",
+    "value": 5,
+    "detail": {
+      "oracle_weeks": [
+        {
+          "week": 1,
+          "actual_score": 90.55,
+          "optimal_score": 116.85,
+          "opponent_score": 116.2,
+          "opponent_franchise_id": "0002"
+        },
+        {
+          "week": 4,
+          "actual_score": 115.55,
+          "optimal_score": 154.85,
+          "opponent_score": 120.75,
+          "opponent_franchise_id": "0003"
+        },
+        {
+          "week": 9,
+          "actual_score": 110.3,
+          "optimal_score": 142.9,
+          "opponent_score": 137.35,
+          "opponent_franchise_id": "0007"
+        },
+        {
+          "week": 13,
+          "actual_score": 94.6,
+          "optimal_score": 110.3,
+          "opponent_score": 96.95,
+          "opponent_franchise_id": "0005"
+        },
+        {
+          "week": 15,
+          "actual_score": 114.75,
+          "optimal_score": 142.9,
+          "opponent_score": 119.8,
+          "opponent_franchise_id": "0003"
+        }
+      ],
+      "count": 5
     }
   }
 ]
