@@ -18,7 +18,7 @@ Verification Categories (V1):
    also catches claims for players with NO WAIVER_BID_AWARDED record
    (fabricated acquisitions, not just wrong amounts)
 9. CHAMPIONSHIP_CLAIM — championship appearance counts vs WEEKLY_MATCHUP_RESULT
-   at championship weeks (W16: 2010-2020, W18: 2021+)
+   at championship weeks (W16: 2010-2020, W17: 2021+)
    SEASON_RECORD_CLAIM — "N-M record" claims vs computed wins/losses
 10. PLAYER_AVG_CLAIM — "averaging X points" claims vs computed season-to-date
     average from WEEKLY_PLAYER_SCORE; >10% deviation = HARD
@@ -3589,7 +3589,7 @@ def verify_player_franchise(
 #
 #   CHAMPIONSHIP_CLAIM — "KP has been to six championship games"
 #     Actual: 7 appearances. Source: WEEKLY_MATCHUP_RESULT at championship
-#     weeks (W16 for 2010-2020, W18 for 2021-2025).
+#     weeks (W16 for 2010-2020, W17 for 2021-2025).
 #
 #   SEASON_RECORD_CLAIM — "his 12-2 record"
 #     Actual: 15-2. Source: WEEKLY_MATCHUP_RESULT regular season weeks.
@@ -3599,7 +3599,9 @@ def verify_player_franchise(
 # Championship weeks by era (inclusive)
 _CHAMPIONSHIP_WEEK_BY_ERA: list[tuple[range, int]] = [
     (range(2010, 2021), 16),   # 2010-2020: championship at W16
-    (range(2021, 2030), 18),   # 2021+: championship at W18
+    (range(2021, 2030), 17),   # 2021+: championship at W17 (bracket ends 10->8->4->2 at wk17;
+    #                            wk18 is MFL's trailing copy, collapsed at the canonical layer - see
+    #                            run_canonicalize R1 and OBSERVATIONS_2026_06_23_CHAMPIONSHIP_WEEK17_*)
 ]
 
 # "six times", "seven times", "twice", "once", "three times", ...
@@ -3640,7 +3642,7 @@ def _championship_week_for_season(season: int) -> int:
     for season_range, week in _CHAMPIONSHIP_WEEK_BY_ERA:
         if season in season_range:
             return week
-    return 18  # default for future seasons
+    return 17  # default for future seasons (post-2020 expansion era; wk18 is the trailing copy)
 
 
 def _compute_championship_appearances(
@@ -3798,7 +3800,7 @@ def verify_historical_claims(
                 evidence=(
                     f"Canonical championship appearances for {fid_name!r}: "
                     f"{actual}. "
-                    f"Championship weeks: W16 (2010-2020), W18 (2021+)."
+                    f"Championship weeks: W16 (2010-2020), W17 (2021+)."
                 ),
             ))
 

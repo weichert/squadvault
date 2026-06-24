@@ -68,7 +68,7 @@ class TestFranchiseEraMapping:
                 season=2025,
                 champion_id="0002",
                 runner_up_id="0005",
-                championship_week=18,
+                championship_week=17,
                 champion_score=139.4,
                 runner_up_score=118.65,
                 is_tie=False,

@@ -9,6 +9,7 @@ load_dotenv(".env")
 import hashlib
 import json
 import os
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -322,6 +323,81 @@ def score_event(payload: dict[str, Any], memory_event_id: int) -> int:
     return score
 
 
+# ---------------------------------------------------------------------------
+# CANONICALIZATION SEMANTIC RULE R1 - Championship-week phantom collapse
+#
+# Adjudicated + ratified 2026-06-23
+# (_observations/OBSERVATIONS_2026_06_23_CHAMPIONSHIP_WEEK17_CANONICALIZATION_ADJUDICATION).
+#
+# For the 2021+ expansion era this league's championship is week 17 (the playoff bracket
+# contracts 10 -> 8 -> 4 -> 2 and ENDS at wk17). MFL ALSO reports the decided final again at
+# week 18 - a byte-identical trailing/padding copy, not a distinct game. The structural
+# `action_fingerprint` dedup does NOT catch it (the fingerprint includes W{week}, so W17 and
+# W18 differ), so this is a separate SEMANTIC rule:
+#
+#   A 2021+ WEEKLY_MATCHUP_RESULT at week 18 whose (sorted franchises, winner_score,
+#   loser_score, is_tie) equals a week-17 matchup is a phantom. Its matchup row AND the
+#   week-18 WEEKLY_PLAYER_SCORE rows for those two franchises are SUPPRESSED from
+#   canonical_events (the derived projection consumers read via v_canonical_best_events).
+#
+# Invariants (binding, per the adjudication):
+#   - Append-only preserved: memory_events keeps BOTH rows unchanged; only the derived
+#     canonical projection dedups. Nothing is deleted from the ledger.
+#   - Byte-identical only / conservative: keyed on matchup identity at the GAME level. A
+#     week-18 matchup with any differing score is NOT a phantom and is kept (the
+#     "report league happenings after our championship" case is never dropped).
+#   - Deterministic / reconstructable: a pure function of the season's rows; re-canonicalizing
+#     the same ledger yields identical canonical output.
+#   - 2010-2020 never fires (championship at wk16; no trailing wk18).
+# ---------------------------------------------------------------------------
+_PHANTOM_ERA_START = 2021
+
+
+def _matchup_identity(payload: dict[str, Any]) -> tuple[tuple[str, str], str, str, str]:
+    """Game-level identity for phantom detection: sorted franchises + scores + tie flag."""
+    w = norm(payload.get("winner_franchise_id"))
+    lo = norm(payload.get("loser_franchise_id"))
+    pair = tuple(sorted((w, lo)))
+    return (pair, norm(payload.get("winner_score")), norm(payload.get("loser_score")), norm(payload.get("is_tie")))  # type: ignore[return-value]
+
+
+def _phantom_memory_event_ids(event_rows: list[MemoryEventRow]) -> set[int]:
+    """Memory-event ids of the 2021+ week-18 championship phantom (see R1 above).
+
+    Per season (>= 2021): a week-18 matchup identical to a week-17 matchup is a phantom; its
+    matchup row and the week-18 player rows for those two franchises are returned for skipping.
+    """
+    phantom: set[int] = set()
+    by_season: dict[int, list[MemoryEventRow]] = defaultdict(list)
+    for r in event_rows:
+        by_season[r.season].append(r)
+
+    for season, srows in by_season.items():
+        if season < _PHANTOM_ERA_START:
+            continue
+        wk17_matchups: set[tuple[tuple[str, str], str, str, str]] = set()
+        for r in srows:
+            if r.event_type == "WEEKLY_MATCHUP_RESULT":
+                p = safe_json_loads(r.payload_json)
+                if norm(p.get("week")) == "17":
+                    wk17_matchups.add(_matchup_identity(p))
+        phantom_franchises: set[str] = set()
+        for r in srows:
+            if r.event_type == "WEEKLY_MATCHUP_RESULT":
+                p = safe_json_loads(r.payload_json)
+                if norm(p.get("week")) == "18" and _matchup_identity(p) in wk17_matchups:
+                    phantom.add(r.id)
+                    phantom_franchises.add(norm(p.get("winner_franchise_id")))
+                    phantom_franchises.add(norm(p.get("loser_franchise_id")))
+        if phantom_franchises:
+            for r in srows:
+                if r.event_type == "WEEKLY_PLAYER_SCORE":
+                    p = safe_json_loads(r.payload_json)
+                    if norm(p.get("week")) == "18" and norm(p.get("franchise_id")) in phantom_franchises:
+                        phantom.add(r.id)
+    return phantom
+
+
 def canonicalize(league_id: str, season: int, db_path: str | Path | None = None) -> None:
     """
     Canonicalize memory_events into canonical_events for a (league_id, season) scope.
@@ -381,13 +457,8 @@ def canonicalize(league_id: str, season: int, db_path: str | Path | None = None)
             (league_id, season),
         ).fetchall()
 
-        processed = 0
-        created = 0
-        updated_best = 0
-        skipped_empty_fingerprint = 0
-
-        for (id_, lg, yr, et, occ, ing, payload_json) in rows:
-            row = MemoryEventRow(
+        event_rows = [
+            MemoryEventRow(
                 id=int(id_),
                 league_id=str(lg),
                 season=int(yr),
@@ -396,6 +467,23 @@ def canonicalize(league_id: str, season: int, db_path: str | Path | None = None)
                 ingested_at=str(ing),
                 payload_json=str(payload_json),
             )
+            for (id_, lg, yr, et, occ, ing, payload_json) in rows
+        ]
+
+        # R1: suppress the 2021+ week-18 championship phantom from the canonical projection
+        # (ledger untouched; byte-identical-only; deterministic). See the rule doc above.
+        phantom_ids = _phantom_memory_event_ids(event_rows)
+
+        processed = 0
+        created = 0
+        updated_best = 0
+        skipped_empty_fingerprint = 0
+        skipped_phantom = 0
+
+        for row in event_rows:
+            if row.id in phantom_ids:
+                skipped_phantom += 1
+                continue
 
             payload = safe_json_loads(row.payload_json)
             fp = action_fingerprint(row, payload)
@@ -483,6 +571,7 @@ def canonicalize(league_id: str, season: int, db_path: str | Path | None = None)
         print("db_path =", str(resolved_db))
         print("memory_events_processed =", processed)
         print("skipped_empty_fingerprint =", skipped_empty_fingerprint)
+        print("skipped_phantom =", skipped_phantom)
         print("canonical_events_created =", created)
         print("canonical_best_updated =", updated_best)
 

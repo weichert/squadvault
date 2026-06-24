@@ -5960,7 +5960,7 @@ class TestHistoricalClaimVerification:
     def _insert_champ_matchup(self, db_path, *, season, winner_id, loser_id):
         """Insert a championship-week matchup for the given season."""
         con = sqlite3.connect(db_path)
-        champ_week = 16 if season <= 2020 else 18
+        champ_week = 16 if season <= 2020 else 17
         _insert_matchup(
             con, league_id=LEAGUE, season=season, week=champ_week,
             winner_id=winner_id, loser_id=loser_id,
@@ -6099,10 +6099,15 @@ class TestHistoricalClaimVerification:
         assert rec == [], f"expected no failures, got {rec}"
 
     def test_wrong_season_record_flags(self, tmp_path):
-        """'12-2 record' when actual is 15-2 is a hard failure.
+        """'12-2 record' when actual is 15-1 is a hard failure.
 
-        Regression: 2025 recap claimed a team had a '12-2 record' when the
-        actual record was 15-2.
+        Regression: a recap claimed a team had a '12-2 record' when the actual
+        regular-season record did not match. The fixture inserts 15 wins
+        (weeks 1-15) and 2 losses (weeks 16-17) for the 2024 (post-2020) season;
+        the week-17 game is the championship (champ_week=17 for 2021+) and is
+        excluded from the regular-season record, so the actual regular-season
+        record is 15-1. (Under the pre-correction wk18 convention this fixture
+        read as 15-2 - the test now confirms the wk17 championship is excluded.)
         """
         db_path = self._build_db(tmp_path)
         self._insert_season_record(
@@ -6119,7 +6124,7 @@ class TestHistoricalClaimVerification:
         assert len(rec) == 1, f"expected 1 SEASON_RECORD_CLAIM, got {rec}"
         assert rec[0].severity == "HARD"
         assert "12-2" in rec[0].claim
-        assert "15-2" in rec[0].evidence
+        assert "15-1" in rec[0].evidence
 
     def test_season_record_prior_season_passes(self, tmp_path):
         """A record from the prior season is also verified (recap may look back)."""
@@ -6186,31 +6191,36 @@ class TestHistoricalClaimVerification:
         assert champ[0].severity == "HARD"
         assert "7" in champ[0].evidence
 
-    def test_championship_week_w18_for_2021_plus(self, tmp_path):
-        """Championship week is W18 for seasons 2021+, not W16."""
+    def test_championship_week_w17_for_2021_plus(self, tmp_path):
+        """Championship week is W17 for seasons 2021+, not W16 or W18.
+
+        The 2021+ bracket ends 10->8->4->2 at W17; W18 is MFL's trailing copy,
+        collapsed at the canonical layer. A W17 matchup is the title game and must
+        count; this verifies the verifier recognises it.
+        """
         db_path = self._build_db(tmp_path)
-        # Insert W18 2022 as the championship week
+        # Insert W17 2022 as the championship week (the real title game).
         con = sqlite3.connect(db_path)
         _insert_matchup(
-            con, league_id=LEAGUE, season=2022, week=18,
+            con, league_id=LEAGUE, season=2022, week=17,
             winner_id="KP", loser_id="F2",
             winner_score=140.0, loser_score=120.0,
         )
         con.commit()
         con.close()
 
+        # KP has exactly one championship appearance (the W17 title); "twice" is wrong.
         text = self._wrap(
-            "KP Squad's championship appearance is their first title game."
+            "KP Squad has reached the championship twice."
         )
         failures = verify_historical_claims(
-            text, db_path=db_path, league_id=LEAGUE, season=2022, week=18,
+            text, db_path=db_path, league_id=LEAGUE, season=2022, week=17,
             reverse_name_map=self._rmap(db_path),
         )
         champ = [f for f in failures if f.category == "CHAMPIONSHIP_CLAIM"]
-        # "first" = 1, actual = 1 → should pass (no count word detected → skipped)
-        # This test confirms W18 is used for 2022, not W16
-        # (a W16 match in 2022 would not count as championship)
-        assert champ == []  # no numeric count detected → no check fired
+        # actual = 1 (the W17 title counted), claim "twice" -> HARD failure.
+        assert len(champ) == 1, f"expected 1 CHAMPIONSHIP_CLAIM, got {champ}"
+        assert "1" in champ[0].evidence  # confirms the W17 game counted as the championship
 
     def test_ordinal_championship_count_flags(self, tmp_path):
         """'sixth championship game appearance' (ordinal form) is caught.
