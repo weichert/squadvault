@@ -46,7 +46,10 @@ from squadvault.core.storage.session import DatabaseSession
 
 # Wave B1: 4/12/33 (matchup-derived). Wave B2 sub-wave 1: 3 (margin) + 6/7/9 (optimal-lineup).
 # Wave B2 Group C: 13-18 (per-season positional, started-points season total via player_directory).
-AWARDS = ("4", "12", "33", "3", "6", "7", "9", "13", "14", "15", "16", "17", "18")
+# Wave B2 Group D: 19-22 (auction value - resolved DRAFT_PICK x regular-season started-anywhere
+# production; #19 Steal, #20 Burning Money, #21 Patience Premium, #22 Whale).
+AWARDS = ("4", "12", "33", "3", "6", "7", "9", "13", "14", "15", "16", "17", "18",
+          "19", "20", "21", "22")
 
 # Group C position -> award. MFL-native position strings (no normalization layer; stored verbatim).
 # PROBE-CONFIRMED 2026-06-24 against player_directory started rows: the league starts team-defense
@@ -162,6 +165,168 @@ def _load_season_positions(db_path: str, league_id: str, season: int) -> dict[st
     return out
 
 
+def _is_starter(v: Any) -> bool:
+    """Group D 1.6 - is_starter truthy. The WEEKLY_PLAYER_SCORE payload stores a JSON boolean
+    (Python True via json.loads); a SQL json_extract would instead yield integer 1. Handle both."""
+    if isinstance(v, bool):
+        return v
+    return str(v).strip().lower() in ("1", "true", "t")
+
+
+def _load_resolved_picks(
+    db_path: str, league_id: str
+) -> tuple[dict[int, list[tuple[str, str, float]]], list[tuple[int, str]]]:
+    """Group D 1.2-1.4 - de-contaminated, one-winner-per-(season, player) resolved auction picks.
+
+    1.2 marker-aware de-contam: bid_amount > 0, exclude mfl_type 'AUCTION_BID', KEEP null-marker
+        rows (manual-import safe - NOT a whitelist).
+    1.3 canonical resolution: ONE winner per (season, player_id), the auction invariant. Among the
+        WON-eligible rows, keep the single row by occurred_at DESC, bid DESC, franchise_id ASC.
+        Collapses same-franchise duplicate WONs and cross-franchise contested WONs alike.
+    1.4 contested flag (constitutional): a (season, player_id) with >1 distinct WON-eligible
+        franchise is CONTESTED; returned for the caller to log. The heuristic pick is provisional,
+        NOT an authoritative production fact (resolve via the KP auction sheet).
+
+    Returns (picks_by_season[season] -> list of (player_id, franchise_id, bid), contested).
+    """
+    rows: list[tuple[int, str, str, float, str]] = []  # season, player_id, franchise_id, bid, occurred_at
+    with DatabaseSession(db_path) as con:
+        raw = con.execute(
+            "SELECT season, payload_json, occurred_at FROM v_canonical_best_events "
+            "WHERE league_id = ? AND event_type = 'DRAFT_PICK'",
+            (str(league_id),),
+        ).fetchall()
+    for season, payload, occ in raw:
+        p = json.loads(payload) if isinstance(payload, str) else payload
+        if not isinstance(p, dict):
+            continue
+        try:
+            bid = float(p.get("bid_amount", 0))
+        except (ValueError, TypeError):
+            bid = 0.0
+        if bid <= 0:
+            continue
+        if p.get("mfl_type") == "AUCTION_BID":  # keep null-marker, drop the contaminant
+            continue
+        fr = str(p.get("franchise_id", "")).strip()
+        pid = str(p.get("player_id", "")).strip()
+        if not fr or not pid:
+            continue
+        try:
+            season_i = int(season)
+        except (ValueError, TypeError):
+            continue
+        rows.append((season_i, pid, fr, bid, str(occ or "")))
+
+    groups: dict[tuple[int, str], list[tuple[int, str, str, float, str]]] = defaultdict(list)
+    for rec in rows:
+        groups[(rec[0], rec[1])].append(rec)
+    contested = sorted(k for k, recs in groups.items() if len({r[2] for r in recs}) > 1)
+    picks_by_season: dict[int, list[tuple[str, str, float]]] = defaultdict(list)
+    for (season_i, pid), recs in groups.items():
+        # occurred_at DESC, bid DESC, franchise_id ASC -> rk 1. Two stable passes: franchise ASC
+        # first, then (occurred_at, bid) DESC, so franchise ASC survives as the final tiebreak.
+        by_fr = sorted(recs, key=lambda r: r[2])
+        best = sorted(by_fr, key=lambda r: (r[4], r[3]), reverse=True)[0]
+        picks_by_season[season_i].append((pid, best[2], best[3]))
+    return picks_by_season, contested
+
+
+def _load_regular_season_weeks(db_path: str, league_id: str) -> dict[int, set[int]]:
+    """Group D 1.7 - regular-season (season, week): exactly 10 distinct franchises recorded a
+    WEEKLY_PLAYER_SCORE that week (the playoff bracket tapers below 10). Derived, not hardcoded."""
+    wk_fr: dict[tuple[int, int], set[str]] = defaultdict(set)
+    with DatabaseSession(db_path) as con:
+        raw = con.execute(
+            "SELECT season, payload_json FROM v_canonical_best_events "
+            "WHERE league_id = ? AND event_type = 'WEEKLY_PLAYER_SCORE'",
+            (str(league_id),),
+        ).fetchall()
+    for season, payload in raw:
+        p = json.loads(payload) if isinstance(payload, str) else payload
+        if not isinstance(p, dict):
+            continue
+        try:
+            s = int(season)
+            wk = int(p.get("week") or 0)
+        except (ValueError, TypeError):
+            continue
+        fr = str(p.get("franchise_id", "")).strip()
+        if fr:
+            wk_fr[(s, wk)].add(fr)
+    out: dict[int, set[int]] = defaultdict(set)
+    for (s, wk), frs in wk_fr.items():
+        if len(frs) == 10:
+            out[s].add(wk)
+    return out
+
+
+def _load_started_anywhere(
+    db_path: str, league_id: str, reg_weeks: dict[int, set[int]]
+) -> tuple[dict[tuple[int, str], float], dict[tuple[int, str], int]]:
+    """Group D 1.8 - regular-season started-anywhere production per (season, player_id):
+    (started_points, starter_weeks). Sums started scores across whichever franchise(s) started the
+    player, regular-season weeks only - trade-invariant (player-centric, not per-franchise)."""
+    pts: dict[tuple[int, str], float] = defaultdict(float)
+    wks: dict[tuple[int, str], int] = defaultdict(int)
+    with DatabaseSession(db_path) as con:
+        raw = con.execute(
+            "SELECT season, payload_json FROM v_canonical_best_events "
+            "WHERE league_id = ? AND event_type = 'WEEKLY_PLAYER_SCORE'",
+            (str(league_id),),
+        ).fetchall()
+    for season, payload in raw:
+        p = json.loads(payload) if isinstance(payload, str) else payload
+        if not isinstance(p, dict):
+            continue
+        try:
+            s = int(season)
+            wk = int(p.get("week") or 0)
+        except (ValueError, TypeError):
+            continue
+        if wk not in reg_weeks.get(s, set()):
+            continue
+        if not _is_starter(p.get("is_starter")):
+            continue
+        pid = str(p.get("player_id", "")).strip()
+        if not pid:
+            continue
+        try:
+            sc = float(p.get("score", 0))
+        except (ValueError, TypeError):
+            sc = 0.0
+        pts[(s, pid)] += sc
+        wks[(s, pid)] += 1
+    return pts, wks
+
+
+def _emit_pick_award(
+    out: list[dict[str, Any]],
+    award_id: str,
+    season: int,
+    winners: list[tuple[str, str, float, float, int]],
+    value: float,
+    pos_map: dict[str, str],
+) -> None:
+    """Emit a Group D pick-level award (#19/#20/#22) - one row per franchise so the natural key
+    (award_id, season, franchise_id) always holds; a same-franchise co-holder tie folds the extra
+    players into detail.co_player_ids (the Group C / Hammer idiom). winners: (pid, fr, bid, sp, sw)."""
+    by_fr: dict[str, list[tuple[str, float, float, int]]] = defaultdict(list)
+    for pid, fr, bid, sp, sw in winners:
+        by_fr[fr].append((pid, bid, sp, sw))
+    for fr in sorted(by_fr):
+        recs = sorted(by_fr[fr])
+        pid, bid, sp, sw = recs[0]
+        detail: dict[str, Any] = {
+            "player_id": pid, "bid": round(bid, 2), "started_points": sp,
+            "position": pos_map.get(pid, ""), "starter_weeks": sw,
+        }
+        if len(recs) > 1:
+            detail["co_player_ids"] = [r[0] for r in recs[1:]]
+        out.append({"award_id": award_id, "season": season, "franchise_id": fr,
+                    "value": value, "detail": detail})
+
+
 def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
     matchups = load_all_matchups(db_path, league_id)
     if not matchups:
@@ -170,6 +335,21 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
     champ_by_season = {r.season: (r.champion_id, r.runner_up_id) for r in roll}
     seasons = sorted({m.season for m in matchups})
     out: list[dict[str, Any]] = []
+
+    # ---- Wave B2 Group D substrate (auction awards #19-22), loaded once across all seasons ----
+    # Resolved picks (de-contaminated, one winner per (season, player)); regular-season weeks via the
+    # 10-franchise rule; started-anywhere regular-season production per (season, player). Non-auction
+    # seasons (pre-2018, 2021 off-platform) carry no picks and render nothing - silence, not a gap.
+    resolved_by_season, contested = _load_resolved_picks(db_path, league_id)
+    reg_weeks = _load_regular_season_weeks(db_path, league_id)
+    d_started_pts, d_starter_weeks = _load_started_anywhere(db_path, league_id, reg_weeks)
+    for cs, cpid in contested:  # 1.4 constitutional - emit, never silently authoritative
+        print(
+            f"[group-d] CONTESTED (season={cs}, player_id={cpid}): >1 franchise among WON-eligible "
+            "rows. Provisional heuristic pick used for the seed - NOT an authoritative production "
+            "fact. Resolve via the KP auction sheet (Manual Source Adapter).",
+            file=sys.stderr,
+        )
 
     for s in seasons:
         sm = [m for m in matchups if m.season == s]
@@ -409,6 +589,65 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
                     "value": top_pos, "detail": pos_detail,
                 })
 
+        # ---- Wave B2 Group D: auction awards #19-22 (resolved-pick value) ----
+        # Resolved picks (loaded once above) valued by regular-season started-anywhere production.
+        # Silence for non-auction seasons (no picks) and 2021 (off-platform, zero rows). pos_map
+        # (loaded above for Group C) supplies the position detail field.
+        picks_s = resolved_by_season.get(s, [])
+        if picks_s:
+            # production view per resolved pick: (player_id, franchise_id, bid, started_pts, starter_weeks)
+            pv = [
+                (pid, fr, bid, round(d_started_pts.get((s, pid), 0.0), 2),
+                 d_starter_weeks.get((s, pid), 0))
+                for pid, fr, bid in picks_s
+            ]
+
+            # #19 The Steal - max regular-season started points-per-dollar; starter_weeks >= 6 guard;
+            # NO minimum-bid floor (the ppd sort self-selects sustained cheap starters). Tie on raw ppd.
+            steal = [(sp / bid, pid, fr, bid, sp, sw) for pid, fr, bid, sp, sw in pv if sw >= 6]
+            if steal:
+                top_ppd = max(x[0] for x in steal)
+                win19 = [(pid, fr, bid, sp, sw) for ppd, pid, fr, bid, sp, sw in steal
+                         if abs(ppd - top_ppd) < 1e-9]
+                _emit_pick_award(out, "19", s, win19, round(top_ppd, 2), pos_map)
+
+            # #20 The Burning Money - highest bid that returned ZERO regular-season started value
+            # (starter_weeks == 0) AND bid >= 17. Silence when none qualify. SHAME_RECORD tone-care:
+            # the seed carries the plain fact only; the frontend renders it without mockery.
+            burn = [(pid, fr, bid, sp, sw) for pid, fr, bid, sp, sw in pv if sw == 0 and bid >= 17]
+            if burn:
+                top_bid20 = max(w[2] for w in burn)
+                win20 = [w for w in burn if w[2] == top_bid20]
+                _emit_pick_award(out, "20", s, win20, round(top_bid20, 2), pos_map)
+
+            # #21 The Patience Premium - lowest (total auction dollars / total regular-season
+            # started-anywhere points) per franchise; zero-point franchises excluded (no div-by-zero).
+            # value at round-3: the ratio is ~0.12, so round-2 would collapse distinct ratios into
+            # false ties; tie detection is on the RAW ratio. Franchise-level - detail is the ratio
+            # components, not a single pick.
+            gd_dollars: dict[str, float] = defaultdict(float)
+            gd_points: dict[str, float] = defaultdict(float)
+            for pid, fr, bid, sp, sw in pv:
+                gd_dollars[fr] += bid
+                gd_points[fr] += sp
+            ratios = [(gd_dollars[fr] / gd_points[fr], fr)
+                      for fr in gd_dollars if gd_points[fr] > 0]
+            if ratios:
+                low = min(x[0] for x in ratios)
+                for ratio, fr in sorted(ratios, key=lambda x: x[1]):
+                    if abs(ratio - low) < 1e-9:
+                        out.append({
+                            "award_id": "21", "season": s, "franchise_id": fr,
+                            "value": round(ratio, 3),
+                            "detail": {"total_bid": round(gd_dollars[fr], 2),
+                                       "total_started_points": round(gd_points[fr], 2)},
+                        })
+
+            # #22 The Whale - highest single bid of the season; co-holders on tie.
+            top_bid22 = max(w[2] for w in pv)
+            win22 = [w for w in pv if w[2] == top_bid22]
+            _emit_pick_award(out, "22", s, win22, round(top_bid22, 2), pos_map)
+
     out.sort(key=lambda d: (d["award_id"], d["season"], d["franchise_id"]))
     return out
 
@@ -425,7 +664,9 @@ def emit_seed(rows: list[dict[str, Any]], league: str) -> str:
     lines.append("-- supabase/seed/004_season_award_winners.sql")
     lines.append("-- W.5 Inc 3 season awards. Wave B1: #4 The Cannon, #12 The Black Rose, #33 One-Point")
     lines.append("-- Club (matchup-derived). Wave B2 sub-wave 1: #3 The Hammer (margin), #6 The Benchwarmer,")
-    lines.append("-- #7 The Clairvoyant, #9 The Oracle (optimal-lineup). Generated by")
+    lines.append("-- #7 The Clairvoyant, #9 The Oracle (optimal-lineup). Group C: #13-18 (positional).")
+    lines.append("-- Group D: #19 The Steal, #20 The Burning Money, #21 The Patience Premium, #22 The")
+    lines.append("-- Whale (auction value, regular-season started-anywhere). Generated by")
     lines.append("-- scripts/gen_season_award_winners.py in the engine repo - do not hand-edit.")
     lines.append("-- Idempotent: DELETE these awards then INSERT. Provenance is per-award (CASE below).")
     lines.append("-- Franchise resolves by (league canonical_id, canonical code) - no hardcoded UUIDs.")
@@ -443,6 +684,8 @@ def emit_seed(rows: list[dict[str, Any]], league: str) -> str:
     lines.append("    WHEN v.award_id = '3' THEN 'engine:matchup-lineup-derived'")
     lines.append("    WHEN v.award_id IN ('13', '14', '15', '16', '17', '18') "
                  "THEN 'engine:lineup-position-derived'")
+    lines.append("    WHEN v.award_id IN ('19', '20', '21', '22') "
+                 "THEN 'engine:auction-value-derived'")
     lines.append("    ELSE 'engine:lineup-derived'")
     lines.append("  END")
     lines.append("FROM (VALUES")
