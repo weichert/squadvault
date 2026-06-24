@@ -46,10 +46,10 @@
   {
     "franchise_id": "0001",
     "season": 2014,
-    "wins": 9,
+    "wins": 8,
     "losses": 7,
     "ties": 0,
-    "points_for": 1643.0,
+    "points_for": 1580.5,
     "points_against": 1487.5,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
@@ -90,10 +90,10 @@
   {
     "franchise_id": "0001",
     "season": 2018,
-    "wins": 10,
+    "wins": 9,
     "losses": 6,
     "ties": 0,
-    "points_for": 1887.0,
+    "points_for": 1753.35,
     "points_against": 1627.35,
     "blowout_wins_60": 2,
     "result": "CHAMPION"
@@ -123,10 +123,10 @@
   {
     "franchise_id": "0001",
     "season": 2021,
-    "wins": 11,
+    "wins": 10,
     "losses": 6,
     "ties": 0,
-    "points_for": 1822.85,
+    "points_for": 1690.1,
     "points_against": 1572.1,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
@@ -200,10 +200,10 @@
   {
     "franchise_id": "0002",
     "season": 2012,
-    "wins": 11,
+    "wins": 10,
     "losses": 5,
     "ties": 0,
-    "points_for": 1856.0,
+    "points_for": 1714.0,
     "points_against": 1694.0,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
@@ -223,9 +223,9 @@
     "franchise_id": "0002",
     "season": 2014,
     "wins": 6,
-    "losses": 10,
+    "losses": 9,
     "ties": 0,
-    "points_for": 1532.5,
+    "points_for": 1482.5,
     "points_against": 1501.5,
     "blowout_wins_60": 2,
     "result": "RUNNER_UP"
@@ -277,10 +277,10 @@
   {
     "franchise_id": "0002",
     "season": 2019,
-    "wins": 11,
+    "wins": 10,
     "losses": 5,
     "ties": 0,
-    "points_for": 1603.1,
+    "points_for": 1493.25,
     "points_against": 1460.85,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
@@ -288,10 +288,10 @@
   {
     "franchise_id": "0002",
     "season": 2020,
-    "wins": 10,
+    "wins": 9,
     "losses": 6,
     "ties": 0,
-    "points_for": 1872.8,
+    "points_for": 1732.5,
     "points_against": 1592.55,
     "blowout_wins_60": 2,
     "result": "CHAMPION"
@@ -300,9 +300,9 @@
     "franchise_id": "0002",
     "season": 2021,
     "wins": 8,
-    "losses": 9,
+    "losses": 8,
     "ties": 0,
-    "points_for": 1885.05,
+    "points_for": 1777.25,
     "points_against": 1835.5,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -333,9 +333,9 @@
     "franchise_id": "0002",
     "season": 2024,
     "wins": 10,
-    "losses": 7,
+    "losses": 6,
     "ties": 0,
-    "points_for": 2265.4,
+    "points_for": 2129.6,
     "points_against": 1986.1,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -343,10 +343,10 @@
   {
     "franchise_id": "0002",
     "season": 2025,
-    "wins": 15,
+    "wins": 14,
     "losses": 2,
     "ties": 0,
-    "points_for": 2342.9,
+    "points_for": 2203.5,
     "points_against": 1607.6,
     "blowout_wins_60": 3,
     "result": "CHAMPION"
@@ -366,9 +366,9 @@
     "franchise_id": "0003",
     "season": 2011,
     "wins": 8,
-    "losses": 7,
+    "losses": 6,
     "ties": 1,
-    "points_for": 1667.0,
+    "points_for": 1575.0,
     "points_against": 1600.0,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -431,10 +431,10 @@
   {
     "franchise_id": "0003",
     "season": 2017,
-    "wins": 11,
+    "wins": 10,
     "losses": 5,
     "ties": 0,
-    "points_for": 1526.85,
+    "points_for": 1453.9,
     "points_against": 1534.2,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
@@ -585,10 +585,10 @@
   {
     "franchise_id": "0004",
     "season": 2015,
-    "wins": 13,
+    "wins": 12,
     "losses": 3,
     "ties": 0,
-    "points_for": 1708.5,
+    "points_for": 1590.5,
     "points_against": 1410.5,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
@@ -608,9 +608,9 @@
     "franchise_id": "0004",
     "season": 2017,
     "wins": 9,
-    "losses": 7,
+    "losses": 6,
     "ties": 0,
-    "points_for": 1639.6,
+    "points_for": 1576.25,
     "points_against": 1590.5,
     "blowout_wins_60": 1,
     "result": "RUNNER_UP"
@@ -674,9 +674,9 @@
     "franchise_id": "0004",
     "season": 2023,
     "wins": 8,
-    "losses": 9,
+    "losses": 8,
     "ties": 0,
-    "points_for": 1862.1,
+    "points_for": 1759.8,
     "points_against": 1901.85,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -773,9 +773,9 @@
     "franchise_id": "0005",
     "season": 2016,
     "wins": 9,
-    "losses": 7,
+    "losses": 6,
     "ties": 0,
-    "points_for": 1601.0,
+    "points_for": 1501.0,
     "points_against": 1436.5,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -806,9 +806,9 @@
     "franchise_id": "0005",
     "season": 2019,
     "wins": 10,
-    "losses": 6,
+    "losses": 5,
     "ties": 0,
-    "points_for": 1751.0,
+    "points_for": 1642.6,
     "points_against": 1509.3,
     "blowout_wins_60": 1,
     "result": "RUNNER_UP"
@@ -860,10 +860,10 @@
   {
     "franchise_id": "0005",
     "season": 2024,
-    "wins": 11,
+    "wins": 10,
     "losses": 6,
     "ties": 0,
-    "points_for": 2066.0,
+    "points_for": 1917.1,
     "points_against": 1798.95,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
@@ -872,9 +872,9 @@
     "franchise_id": "0005",
     "season": 2025,
     "wins": 11,
-    "losses": 6,
+    "losses": 5,
     "ties": 0,
-    "points_for": 1988.7,
+    "points_for": 1870.05,
     "points_against": 1817.9,
     "blowout_wins_60": 1,
     "result": "RUNNER_UP"
@@ -883,9 +883,9 @@
     "franchise_id": "0006",
     "season": 2010,
     "wins": 9,
-    "losses": 7,
+    "losses": 6,
     "ties": 0,
-    "points_for": 1755.0,
+    "points_for": 1657.5,
     "points_against": 1539.5,
     "blowout_wins_60": 1,
     "result": "RUNNER_UP"
@@ -971,9 +971,9 @@
     "franchise_id": "0006",
     "season": 2018,
     "wins": 14,
-    "losses": 2,
+    "losses": 1,
     "ties": 0,
-    "points_for": 2055.15,
+    "points_for": 1946.7,
     "points_against": 1496.9,
     "blowout_wins_60": 3,
     "result": "RUNNER_UP"
@@ -1014,10 +1014,10 @@
   {
     "franchise_id": "0006",
     "season": 2022,
-    "wins": 8,
+    "wins": 7,
     "losses": 9,
     "ties": 0,
-    "points_for": 1979.05,
+    "points_for": 1864.45,
     "points_against": 1951.65,
     "blowout_wins_60": 1,
     "result": "CHAMPION"
@@ -1058,10 +1058,10 @@
   {
     "franchise_id": "0007",
     "season": 2010,
-    "wins": 9,
+    "wins": 8,
     "losses": 7,
     "ties": 0,
-    "points_for": 1700.0,
+    "points_for": 1570.5,
     "points_against": 1591.0,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
@@ -1169,9 +1169,9 @@
     "franchise_id": "0007",
     "season": 2020,
     "wins": 13,
-    "losses": 3,
+    "losses": 2,
     "ties": 0,
-    "points_for": 1840.8,
+    "points_for": 1758.15,
     "points_against": 1452.15,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -1257,9 +1257,9 @@
     "franchise_id": "0008",
     "season": 2012,
     "wins": 9,
-    "losses": 7,
+    "losses": 6,
     "ties": 0,
-    "points_for": 1880.5,
+    "points_for": 1775.0,
     "points_against": 1587.5,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -1290,9 +1290,9 @@
     "franchise_id": "0008",
     "season": 2015,
     "wins": 8,
-    "losses": 7,
+    "losses": 6,
     "ties": 1,
-    "points_for": 1585.5,
+    "points_for": 1493.0,
     "points_against": 1572.0,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -1367,9 +1367,9 @@
     "franchise_id": "0008",
     "season": 2022,
     "wins": 9,
-    "losses": 8,
+    "losses": 7,
     "ties": 0,
-    "points_for": 1814.35,
+    "points_for": 1706.0,
     "points_against": 1695.25,
     "blowout_wins_60": 0,
     "result": "RUNNER_UP"
@@ -1421,10 +1421,10 @@
   {
     "franchise_id": "0009",
     "season": 2011,
-    "wins": 13,
+    "wins": 12,
     "losses": 3,
     "ties": 0,
-    "points_for": 2117.5,
+    "points_for": 1980.5,
     "points_against": 1511.5,
     "blowout_wins_60": 2,
     "result": "CHAMPION"
@@ -1443,10 +1443,10 @@
   {
     "franchise_id": "0009",
     "season": 2013,
-    "wins": 10,
+    "wins": 9,
     "losses": 5,
     "ties": 1,
-    "points_for": 1665.0,
+    "points_for": 1570.0,
     "points_against": 1426.5,
     "blowout_wins_60": 2,
     "result": "CHAMPION"
@@ -1553,10 +1553,10 @@
   {
     "franchise_id": "0009",
     "season": 2023,
-    "wins": 10,
+    "wins": 9,
     "losses": 7,
     "ties": 0,
-    "points_for": 1990.85,
+    "points_for": 1864.5,
     "points_against": 1672.15,
     "blowout_wins_60": 1,
     "result": "CHAMPION"
@@ -1620,9 +1620,9 @@
     "franchise_id": "0010",
     "season": 2013,
     "wins": 11,
-    "losses": 5,
+    "losses": 4,
     "ties": 0,
-    "points_for": 1835.0,
+    "points_for": 1741.0,
     "points_against": 1413.5,
     "blowout_wins_60": 3,
     "result": "RUNNER_UP"
@@ -1652,10 +1652,10 @@
   {
     "franchise_id": "0010",
     "season": 2016,
-    "wins": 12,
+    "wins": 11,
     "losses": 4,
     "ties": 0,
-    "points_for": 1596.5,
+    "points_for": 1489.5,
     "points_against": 1350.0,
     "blowout_wins_60": 0,
     "result": "CHAMPION"
