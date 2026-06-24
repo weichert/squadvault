@@ -42,13 +42,82 @@ from squadvault.core.recaps.context.hall_of_fame_aggregations_v1 import (
     compute_championship_roll,
 )
 from squadvault.core.recaps.context.league_history_v1 import load_all_matchups
+from squadvault.core.storage.session import DatabaseSession
 
-AWARDS = ("4", "12", "33")
+# Wave B1: 4/12/33 (matchup-derived). Wave B2 sub-wave 1: 3 (margin) + 6/7/9 (optimal-lineup).
+AWARDS = ("4", "12", "33", "3", "6", "7", "9")
 
 
 def _champ_week(season: int) -> int:
     """The single championship-game week; weeks before it are the regular season."""
     return 16 if season <= 2020 else 18
+
+
+def _load_season_lineups(
+    db_path: str, league_id: str, season: int
+) -> list[dict[str, Any]]:
+    """Generator-local loader for the Group A/B (lineup) awards (engine-core untouched).
+
+    Loads WEEKLY_PLAYER_SCORE for one season and returns a flat list of per-player-week
+    records. Mirrors the canonical query in player_week_context_v1 (which exposes only
+    is_starter, not should_start, so it cannot drive these awards directly).
+
+    Each record: {week, franchise_id, player_id, score, is_starter, opt, raw_ok}.
+    The A1 optimal-indicator gate (raw `shouldStart` parseable in {'0','1'}) is captured
+    as `raw_ok`; the optimal-lineup indicator is `opt` (raw `shouldStart == '1'`). A row
+    failing the gate (raw_ok False) participates in neither numerator nor denominator of
+    the Group A computations. Coverage is 100% across all 16 seasons, so raw_ok excludes
+    ~0 rows, but the gate is honored explicitly.
+    """
+    recs: list[dict[str, Any]] = []
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT payload_json
+               FROM v_canonical_best_events
+               WHERE league_id = ? AND season = ?
+                 AND event_type = 'WEEKLY_PLAYER_SCORE'
+               ORDER BY payload_json ASC""",
+            (str(league_id), int(season)),
+        ).fetchall()
+    for row in rows:
+        try:
+            p = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(p, dict):
+            continue
+        franchise_id = str(p.get("franchise_id", "")).strip()
+        player_id = str(p.get("player_id", "")).strip()
+        if not franchise_id or not player_id:
+            continue
+        try:
+            week = int(p.get("week", -1))
+        except (ValueError, TypeError):
+            continue
+        if week < 0:
+            continue
+        try:
+            score = float(p.get("score", 0))
+        except (ValueError, TypeError):
+            score = 0.0
+        is_starter = bool(p.get("is_starter", False))
+        # A1 gate: parse the raw MFL shouldStart (the real indicator; the should_start
+        # boolean is False both for MFL-no and MFL-omitted, so we read the raw).
+        raw_ss: str | None = None
+        rmj = p.get("raw_mfl_json")
+        if isinstance(rmj, str):
+            try:
+                raw_ss_val = json.loads(rmj).get("shouldStart")
+                raw_ss = str(raw_ss_val) if raw_ss_val is not None else None
+            except (ValueError, TypeError, AttributeError):
+                raw_ss = None
+        raw_ok = raw_ss in ("0", "1")
+        recs.append({
+            "week": week, "franchise_id": franchise_id, "player_id": player_id,
+            "score": score, "is_starter": is_starter,
+            "opt": raw_ss == "1", "raw_ok": raw_ok,
+        })
+    return recs
 
 
 def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
@@ -100,6 +169,173 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
                         "value": round(margin, 2), "detail": {"runner_up": runner, "week": f.week},
                     })
 
+        # ---- Wave B2 sub-wave 1: Group A (optimal-lineup) + Group B (margin) ----
+        # Full-season scope (ratified): every WEEKLY_PLAYER_SCORE / matchup, playoffs included.
+        recs = _load_season_lineups(db_path, league_id, s)
+
+        # De-duplicate the championship final. In the 18-week seasons (2021-2025) the canonical
+        # matchup AND player-score streams record the SAME final twice - at week 17 and week 18
+        # (byte-identical teams + scores). Counting it once is correctness, not a definition change
+        # (one game is not two). B1 above consumes `sm` UNCHANGED (byte-identical); only the new
+        # count/sum/rate awards use `sm_dedup` + the phantom-filtered `recs`. We keep the higher
+        # week (the canonical champ week 18, per _champ_week), so B1's #33 week-18 scope is intact.
+        sm_dedup: list[Any] = []
+        phantom_cells: set[tuple[str, int]] = set()
+        seen_games: dict[tuple[frozenset[str], float, float, bool], int] = {}
+        for m in sorted(sm, key=lambda m: (-m.week, m.winner_id, m.loser_id)):
+            key = (frozenset((m.winner_id, m.loser_id)),
+                   round(m.winner_score, 2), round(m.loser_score, 2), m.is_tie)
+            if key in seen_games:  # an identical game already kept at a higher week -> this is the phantom
+                phantom_cells.add((m.winner_id, m.week))
+                phantom_cells.add((m.loser_id, m.week))
+            else:
+                seen_games[key] = m.week
+                sm_dedup.append(m)
+        sm_dedup.sort(key=lambda m: (m.week, m.winner_id, m.loser_id))
+        if phantom_cells:
+            recs = [r for r in recs if (r["franchise_id"], r["week"]) not in phantom_cells]
+
+        franchises = sorted({r["franchise_id"] for r in recs})
+        weeks_played = {
+            fr: len({r["week"] for r in recs if r["franchise_id"] == fr}) for fr in franchises
+        }
+
+        # #6 The Benchwarmer - season gross points of benched optimal-starts (A1-gated).
+        # Retrospective FACT only; no forward-looking lineup tooling (no-optimization, load-bearing).
+        bench_pts: dict[str, float] = defaultdict(float)
+        bench_rows: dict[str, list[tuple[float, int, str]]] = defaultdict(list)
+        for r in recs:
+            if r["raw_ok"] and r["opt"] and not r["is_starter"]:
+                bench_pts[r["franchise_id"]] += r["score"]
+                bench_rows[r["franchise_id"]].append((r["score"], r["week"], r["player_id"]))
+        bench_val = {fr: round(v, 2) for fr, v in bench_pts.items()}
+        if bench_val:
+            top_bench = max(bench_val.values())
+            if top_bench > 0:  # no degenerate zero-point Benchwarmer
+                for fr in franchises:
+                    if bench_val.get(fr) == top_bench:
+                        left = sorted(bench_rows[fr], key=lambda t: (-t[0], t[1], t[2]))[:3]
+                        out.append({
+                            "award_id": "6", "season": s, "franchise_id": fr,
+                            "value": top_bench,
+                            "detail": {
+                                "bench_points": top_bench,
+                                "weeks": weeks_played[fr],
+                                "top_left_on_bench": [
+                                    {"week": w, "player_id": pid, "score": round(sc, 2)}
+                                    for sc, w, pid in left
+                                ],
+                            },
+                        })
+
+        # #7 The Clairvoyant - season rate of optimal starts among actual starts (A1-gated).
+        # C2: a retrospective rate over completed facts only - never a forecast.
+        opt_starts: dict[str, int] = defaultdict(int)
+        tot_starts: dict[str, int] = defaultdict(int)
+        for r in recs:
+            if r["is_starter"] and r["raw_ok"]:
+                tot_starts[r["franchise_id"]] += 1
+                if r["opt"]:
+                    opt_starts[r["franchise_id"]] += 1
+        rate_val = {
+            fr: round(opt_starts[fr] / tot_starts[fr], 4) for fr in tot_starts if tot_starts[fr] > 0
+        }
+        if rate_val:
+            top_rate = max(rate_val.values())
+            for fr in franchises:
+                if rate_val.get(fr) == top_rate:
+                    out.append({
+                        "award_id": "7", "season": s, "franchise_id": fr,
+                        "value": top_rate,
+                        "detail": {
+                            "optimal_starts": opt_starts[fr],
+                            "total_starts": tot_starts[fr],
+                            "weeks": weeks_played[fr],
+                        },
+                    })
+
+        # #9 The Oracle - weeks the franchise LOST but its optimal lineup would have WON.
+        # C2: a retrospective counterfactual over completed games - never a forecast.
+        opt_score: dict[tuple[str, int], float] = defaultdict(float)
+        for r in recs:
+            if r["raw_ok"] and r["opt"]:
+                opt_score[(r["franchise_id"], r["week"])] += r["score"]
+        oracle: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for m in sm_dedup:
+            if m.is_tie:
+                continue
+            fr = m.loser_id  # strict loss (loser_score < winner_score) by construction
+            opt_sc = opt_score.get((fr, m.week), 0.0)
+            if opt_sc > m.winner_score:  # optimal beats opponent's ACTUAL score (strict; a tie is not a win)
+                oracle[fr].append({
+                    "week": m.week,
+                    "actual_score": round(m.loser_score, 2),
+                    "optimal_score": round(opt_sc, 2),
+                    "opponent_score": round(m.winner_score, 2),
+                    "opponent_franchise_id": m.winner_id,
+                })
+        oracle_cnt = {fr: len(v) for fr, v in oracle.items()}
+        if oracle_cnt:
+            top_or = max(oracle_cnt.values())
+            if top_or > 0:
+                for fr in sorted(oracle_cnt):
+                    if oracle_cnt[fr] == top_or:
+                        out.append({
+                            "award_id": "9", "season": s, "franchise_id": fr,
+                            "value": top_or,
+                            "detail": {
+                                "oracle_weeks": sorted(oracle[fr], key=lambda d: d["week"]),
+                                "count": top_or,
+                            },
+                        })
+
+        # #3 The Hammer - the started player most often decisive (score > the winning margin).
+        # Started players only; wins only (a loss/tie has no winning margin).
+        by_fw: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(list)
+        for r in recs:
+            by_fw[(r["franchise_id"], r["week"])].append(r)
+        ham_cnt: dict[tuple[str, str], int] = defaultdict(int)
+        ham_weeks: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+        for m in sm_dedup:
+            if m.is_tie:
+                continue
+            fr = m.winner_id
+            margin = m.winner_score - m.loser_score
+            for r in by_fw.get((fr, m.week), []):
+                if r["is_starter"] and r["score"] > margin:
+                    ham_key = (fr, r["player_id"])
+                    ham_cnt[ham_key] += 1
+                    ham_weeks[ham_key].append({
+                        "week": m.week,
+                        "player_score": round(r["score"], 2),
+                        "margin": round(margin, 2),
+                        "opponent_franchise_id": m.loser_id,
+                    })
+        if ham_cnt:
+            top_h = max(ham_cnt.values())
+            if top_h > 0:
+                holders = sorted(k for k, c in ham_cnt.items() if c == top_h)  # (fid, pid)
+                by_fr: dict[str, list[str]] = defaultdict(list)
+                for fid, pid in holders:
+                    by_fr[fid].append(pid)
+                # The unique key is (award, season, franchise): emit one row per franchise.
+                # Cross-franchise co-holders -> distinct rows; a (rare) same-franchise tie folds
+                # the extra players into detail.co_player_ids so the unique constraint always holds.
+                for fid in sorted(by_fr):
+                    pids = sorted(by_fr[fid])
+                    primary = pids[0]
+                    detail: dict[str, Any] = {
+                        "player_id": primary,
+                        "decisive_weeks": top_h,
+                        "weeks": sorted(ham_weeks[(fid, primary)], key=lambda d: d["week"]),
+                    }
+                    if len(pids) > 1:
+                        detail["co_player_ids"] = pids[1:]
+                    out.append({
+                        "award_id": "3", "season": s, "franchise_id": fid,
+                        "value": top_h, "detail": detail,
+                    })
+
     out.sort(key=lambda d: (d["award_id"], d["season"], d["franchise_id"]))
     return out
 
@@ -111,21 +347,29 @@ def _sql_lit(s: str) -> str:
 
 def emit_seed(rows: list[dict[str, Any]], league: str) -> str:
     """Idempotent FK-safe seed for season_award_winners. Paste-safe: no semicolons in comments."""
+    award_in = ", ".join(_sql_lit(a) for a in AWARDS)
     lines: list[str] = []
     lines.append("-- supabase/seed/004_season_award_winners.sql")
-    lines.append("-- W.5 Inc 3 Wave B1 - the three weekly-score-derived season awards (#4 The Cannon,")
-    lines.append("-- #12 The Black Rose, #33 One-Point Club). Generated by scripts/gen_season_award_winners.py")
-    lines.append("-- in the engine repo - do not hand-edit. Idempotent: DELETE these awards then INSERT.")
+    lines.append("-- W.5 Inc 3 season awards. Wave B1: #4 The Cannon, #12 The Black Rose, #33 One-Point")
+    lines.append("-- Club (matchup-derived). Wave B2 sub-wave 1: #3 The Hammer (margin), #6 The Benchwarmer,")
+    lines.append("-- #7 The Clairvoyant, #9 The Oracle (optimal-lineup). Generated by")
+    lines.append("-- scripts/gen_season_award_winners.py in the engine repo - do not hand-edit.")
+    lines.append("-- Idempotent: DELETE these awards then INSERT. Provenance is per-award (CASE below).")
     lines.append("-- Franchise resolves by (league canonical_id, canonical code) - no hardcoded UUIDs.")
     lines.append("-- Prerequisite: migration 028 (season_award_winners) applied. Paste-safe (no in-comment semicolons).")
     lines.append("BEGIN;")
     lines.append(
         "DELETE FROM season_award_winners WHERE league_id = "
         f"(SELECT id FROM leagues WHERE canonical_id = {_sql_lit(league)}) "
-        "AND award_id IN ('4', '12', '33');"
+        f"AND award_id IN ({award_in});"
     )
     lines.append("INSERT INTO season_award_winners (league_id, award_id, season, franchise_id, value, detail, provenance)")
-    lines.append("SELECT l.id, v.award_id, v.season, v.franchise_id, v.value, v.detail::jsonb, 'engine:matchup-derived'")
+    lines.append("SELECT l.id, v.award_id, v.season, v.franchise_id, v.value, v.detail::jsonb,")
+    lines.append("  CASE")
+    lines.append("    WHEN v.award_id IN ('4', '12', '33') THEN 'engine:matchup-derived'")
+    lines.append("    WHEN v.award_id = '3' THEN 'engine:matchup-lineup-derived'")
+    lines.append("    ELSE 'engine:lineup-derived'")
+    lines.append("  END")
     lines.append("FROM (VALUES")
     vals = []
     for r in rows:
