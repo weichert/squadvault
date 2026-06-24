@@ -42,16 +42,21 @@ import sys
 from collections import defaultdict
 from typing import Any
 
-from squadvault.core.recaps.context.league_history_v1 import load_all_matchups
 from squadvault.core.recaps.context.hall_of_fame_aggregations_v1 import (
     compute_all_season_records,
     compute_championship_roll,
 )
+from squadvault.core.recaps.context.league_history_v1 import load_all_matchups
 
 
 def _champ_week(season: int) -> int:
-    """The single championship-game week; weeks before it are the regular season."""
-    return 16 if season <= 2020 else 18
+    """The single championship-game week; weeks before it are the regular season.
+
+    16 for 2010-2020; 17 for 2021+ (the bracket ends 10->8->4->2 at wk17; wk18 is MFL's
+    trailing copy, collapsed at the canonical layer - see run_canonicalize R1). Gating
+    regular-season points_against on `< _champ_week` therefore excludes the wk17 title.
+    """
+    return 16 if season <= 2020 else 17
 
 
 def compute_extras(
