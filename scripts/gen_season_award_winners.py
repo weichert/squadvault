@@ -168,9 +168,8 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
         if champ:
             finals = [m for m in sm if m.week >= _champ_week(s) and {m.winner_id, m.loser_id} == {champ, runner}]
             if finals:
-                # 2021+ has the final at wk17 AND a byte-identical wk18 copy; take the real
-                # championship (earliest matching week). <=2020 has a single final, so this is a no-op.
-                f = min(finals, key=lambda m: m.week)
+                # Canonical serves a single final per season (the wk18 phantom is collapsed by R1).
+                f = finals[0]
                 margin = f.winner_score - f.loser_score
                 if margin < 2:
                     out.append({
@@ -180,31 +179,11 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
 
         # ---- Wave B2 sub-wave 1: Group A (optimal-lineup) + Group B (margin) ----
         # Full-season scope (ratified): every WEEKLY_PLAYER_SCORE / matchup, playoffs included.
+        # The 2021+ week-18 championship phantom is collapsed at the CANONICAL layer
+        # (run_canonicalize R1, ratified 2026-06-23), so `sm` and `recs` read here are already
+        # phantom-free. The former per-generator dedup is retired - the canonical truth is the
+        # single source. The title shows its true week (17) because that is what canonical serves.
         recs = _load_season_lineups(db_path, league_id, s)
-
-        # De-duplicate the championship final. In the 18-week seasons (2021-2025) the canonical
-        # matchup AND player-score streams record the SAME final twice - at week 17 (this league's
-        # real championship: bracket ends 10->8->4->2 at wk17) and a byte-identical copy at week 18
-        # (MFL's trailing/padding week for leagues that run longer; ours does not). Counting it once
-        # is correctness, not a definition change (one game is not two). We keep the EARLIER week -
-        # the real championship (17) - and drop the week-18 copy, so the title shows its true week in
-        # the awards' detail. Conservative: only byte-identical matchups collapse, so any genuinely
-        # distinct week-18 happening would be kept, not dropped. B1 above consumes `sm` UNCHANGED.
-        sm_dedup: list[Any] = []
-        phantom_cells: set[tuple[str, int]] = set()
-        seen_games: dict[tuple[frozenset[str], float, float, bool], int] = {}
-        for m in sorted(sm, key=lambda m: (m.week, m.winner_id, m.loser_id)):
-            key = (frozenset((m.winner_id, m.loser_id)),
-                   round(m.winner_score, 2), round(m.loser_score, 2), m.is_tie)
-            if key in seen_games:  # an identical game already kept at an earlier week -> this is the phantom
-                phantom_cells.add((m.winner_id, m.week))
-                phantom_cells.add((m.loser_id, m.week))
-            else:
-                seen_games[key] = m.week
-                sm_dedup.append(m)
-        sm_dedup.sort(key=lambda m: (m.week, m.winner_id, m.loser_id))
-        if phantom_cells:
-            recs = [r for r in recs if (r["franchise_id"], r["week"]) not in phantom_cells]
 
         franchises = sorted({r["franchise_id"] for r in recs})
         weeks_played = {
@@ -272,7 +251,7 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
             if r["raw_ok"] and r["opt"]:
                 opt_score[(r["franchise_id"], r["week"])] += r["score"]
         oracle: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        for m in sm_dedup:
+        for m in sm:
             if m.is_tie:
                 continue
             fr = m.loser_id  # strict loss (loser_score < winner_score) by construction
@@ -307,7 +286,7 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
             by_fw[(r["franchise_id"], r["week"])].append(r)
         ham_cnt: dict[tuple[str, str], int] = defaultdict(int)
         ham_weeks: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
-        for m in sm_dedup:
+        for m in sm:
             if m.is_tie:
                 continue
             fr = m.winner_id
