@@ -49,8 +49,15 @@ AWARDS = ("4", "12", "33", "3", "6", "7", "9")
 
 
 def _champ_week(season: int) -> int:
-    """The single championship-game week; weeks before it are the regular season."""
-    return 16 if season <= 2020 else 18
+    """This league's championship-game week (the final round of the playoff bracket).
+
+    Bracket narrows 10 -> 8 (wk15) -> 4 (wk16) -> 2 (the final). For 16-week NFL seasons
+    the final is week 16; for the 18-week seasons (2021+) it is week 17. MFL also reports
+    the decided final again at week 18 (a trailing/padding week for leagues that run that
+    long - ours does not); that week-18 copy is de-duplicated in build_awards. So the
+    championship is 16 (<=2020) or 17 (2021+), NEVER 18 for this league.
+    """
+    return 16 if season <= 2020 else 17
 
 
 def _load_season_lineups(
@@ -161,7 +168,9 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
         if champ:
             finals = [m for m in sm if m.week >= _champ_week(s) and {m.winner_id, m.loser_id} == {champ, runner}]
             if finals:
-                f = finals[0]
+                # 2021+ has the final at wk17 AND a byte-identical wk18 copy; take the real
+                # championship (earliest matching week). <=2020 has a single final, so this is a no-op.
+                f = min(finals, key=lambda m: m.week)
                 margin = f.winner_score - f.loser_score
                 if margin < 2:
                     out.append({
@@ -174,18 +183,20 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
         recs = _load_season_lineups(db_path, league_id, s)
 
         # De-duplicate the championship final. In the 18-week seasons (2021-2025) the canonical
-        # matchup AND player-score streams record the SAME final twice - at week 17 and week 18
-        # (byte-identical teams + scores). Counting it once is correctness, not a definition change
-        # (one game is not two). B1 above consumes `sm` UNCHANGED (byte-identical); only the new
-        # count/sum/rate awards use `sm_dedup` + the phantom-filtered `recs`. We keep the higher
-        # week (the canonical champ week 18, per _champ_week), so B1's #33 week-18 scope is intact.
+        # matchup AND player-score streams record the SAME final twice - at week 17 (this league's
+        # real championship: bracket ends 10->8->4->2 at wk17) and a byte-identical copy at week 18
+        # (MFL's trailing/padding week for leagues that run longer; ours does not). Counting it once
+        # is correctness, not a definition change (one game is not two). We keep the EARLIER week -
+        # the real championship (17) - and drop the week-18 copy, so the title shows its true week in
+        # the awards' detail. Conservative: only byte-identical matchups collapse, so any genuinely
+        # distinct week-18 happening would be kept, not dropped. B1 above consumes `sm` UNCHANGED.
         sm_dedup: list[Any] = []
         phantom_cells: set[tuple[str, int]] = set()
         seen_games: dict[tuple[frozenset[str], float, float, bool], int] = {}
-        for m in sorted(sm, key=lambda m: (-m.week, m.winner_id, m.loser_id)):
+        for m in sorted(sm, key=lambda m: (m.week, m.winner_id, m.loser_id)):
             key = (frozenset((m.winner_id, m.loser_id)),
                    round(m.winner_score, 2), round(m.loser_score, 2), m.is_tie)
-            if key in seen_games:  # an identical game already kept at a higher week -> this is the phantom
+            if key in seen_games:  # an identical game already kept at an earlier week -> this is the phantom
                 phantom_cells.add((m.winner_id, m.week))
                 phantom_cells.add((m.loser_id, m.week))
             else:
