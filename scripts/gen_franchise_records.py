@@ -11,8 +11,10 @@ form '0001'..'0010'; the only committed Supabase seed (demo) uses 'F01'..'F10'.
 The production scheme must be verified before a seed can join correctly.
 
 Facts are exact and derived only from ingested matchup results:
-  - W-L-T, points-for   (compute_all_season_records)
-  - champion, runner-up (compute_championship_roll)
+  - W-L-T, points-for   (compute_all_season_records over the REGULAR-SEASON matchup set:
+                         weeks before the championship final, _champ_week - excludes the title
+                         game for both finalists, consistent with points_against and the verifier)
+  - champion, runner-up (compute_championship_roll over the FULL matchup set)
   - points_against (REGULAR SEASON ONLY) + blowout_wins_60 (ALL DECIDED GAMES)
     (compute_extras; W.5 Inc 2 Wave 2 - Iron Curtain + Executioner)
 No final rank / granular playoff finish: never ingested, not exactly derivable,
@@ -83,7 +85,16 @@ def build_records(db_path: str, league_id: str) -> list[dict[str, Any]]:
     matchups = load_all_matchups(db_path, league_id)
     if not matchups:
         return []
-    records = compute_all_season_records(matchups)
+    # W-L / ties / points_for are REGULAR-SEASON (exclude the championship final), consistent
+    # with points_against (compute_extras) and the recap verifier. Without this the final leaked
+    # into the two finalists' W-L/PF each season (champion +1 win, runner-up +1 loss, both PF
+    # inflated) - the defect this fix closes. compute_all_season_records is SHARED with the
+    # hall-of-fame archive and is NOT modified; we filter its INPUT. The championship week is
+    # _champ_week (16 for <=2020, 17 for 2021+; the wk18 phantom is already collapsed at the
+    # canonical layer). compute_championship_roll stays on the FULL matchups - the title is
+    # decided by the playoff games we filter out of the record.
+    reg_matchups = [m for m in matchups if m.week < _champ_week(m.season)]
+    records = compute_all_season_records(reg_matchups)
     roll = compute_championship_roll(matchups)
     champ_by_season = {r.season: r.champion_id for r in roll}
     runner_by_season = {r.season: r.runner_up_id for r in roll}
