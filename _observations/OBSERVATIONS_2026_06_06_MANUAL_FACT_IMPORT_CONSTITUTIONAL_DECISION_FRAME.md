@@ -6,7 +6,10 @@ recommended resolution for founder ratification. It decides nothing by itself.
 
 **Engine HEAD at framing:** 3e9bfe8 (read-only; this memo is doc-only and SKIPS prove_ci).
 
-**Status:** OPEN - awaiting founder decision on D1-D6 below.
+**Status:** RATIFIED 2026-06-23 (founder) - see Manual Source Adapter Contract Addendum v1.0
+section 0 (`docs/contracts/manual_source_adapter_contract_v1.md`). D1-D6 = all (a), with D3 resolved
+to content-addressed retention. The D1-D6 content below is preserved as framed (append-only); this
+line records the resolution, supersedes nothing.
 
 ---
 

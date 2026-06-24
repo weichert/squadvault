@@ -1,5 +1,5 @@
 {
-  "file_count": 6,
+  "file_count": 7,
   "files": [
     {
       "bytes": 1285,
@@ -7,9 +7,9 @@
       "sha256": "374e2d886a2767d67393131b32d2fc9d031fbd8c565eb85bce705678649836cf"
     },
     {
-      "bytes": 758,
+      "bytes": 814,
       "path": "docs/contracts/README.md",
-      "sha256": "edf9d7b33262dbf491a61c088bf3e74d65ff4106ec40179b3eaf2fc81695af89"
+      "sha256": "1ec88a61e5eb80b97bdc89d038d755b8dad4b5abceebd63ecaf72a0b2918c396"
     },
     {
       "bytes": 2044,
@@ -25,6 +25,11 @@
       "bytes": 2803,
       "path": "docs/contracts/golden_path_output_contract_v1.md",
       "sha256": "96efcf997b94600eb9c5ca184729c34a8ad178dfeef7ba973cf0afe0215f1186"
+    },
+    {
+      "bytes": 11523,
+      "path": "docs/contracts/manual_source_adapter_contract_v1.md",
+      "sha256": "08ee719b1fcb4a5ec6c09d4cd0009dc674da3f0aa79933b932ad5358fc5e21f8"
     },
     {
       "bytes": 3563,
