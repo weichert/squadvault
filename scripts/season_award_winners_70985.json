@@ -229,7 +229,8 @@
           "week": 16,
           "score": 30.0
         }
-      ]
+      ],
+      "player_name": "Brees, Drew"
     }
   },
   {
@@ -302,7 +303,8 @@
           "week": 16,
           "score": 48.0
         }
-      ]
+      ],
+      "player_name": "Brees, Drew"
     }
   },
   {
@@ -375,7 +377,8 @@
           "week": 16,
           "score": 32.0
         }
-      ]
+      ],
+      "player_name": "Brady, Tom"
     }
   },
   {
@@ -444,7 +447,8 @@
           "week": 15,
           "score": 23.0
         }
-      ]
+      ],
+      "player_name": "Manning, Peyton"
     }
   },
   {
@@ -517,7 +521,8 @@
           "week": 16,
           "score": -1.0
         }
-      ]
+      ],
+      "player_name": "Luck, Andrew"
     }
   },
   {
@@ -578,7 +583,8 @@
           "week": 15,
           "score": 25.0
         }
-      ]
+      ],
+      "player_name": "Brady, Tom"
     }
   },
   {
@@ -643,7 +649,8 @@
           "week": 16,
           "score": 20.0
         }
-      ]
+      ],
+      "player_name": "Brees, Drew"
     }
   },
   {
@@ -708,7 +715,8 @@
           "week": 14,
           "score": 13.65
         }
-      ]
+      ],
+      "player_name": "Brady, Tom"
     }
   },
   {
@@ -781,7 +789,8 @@
           "week": 16,
           "score": 36.95
         }
-      ]
+      ],
+      "player_name": "Mahomes, Patrick"
     }
   },
   {
@@ -846,7 +855,8 @@
           "week": 15,
           "score": 23.35
         }
-      ]
+      ],
+      "player_name": "Watson, Deshaun"
     }
   },
   {
@@ -915,7 +925,8 @@
           "week": 15,
           "score": 34.4
         }
-      ]
+      ],
+      "player_name": "Mahomes, Patrick"
     }
   },
   {
@@ -988,7 +999,8 @@
           "week": 16,
           "score": 18.3
         }
-      ]
+      ],
+      "player_name": "Herbert, Justin"
     }
   },
   {
@@ -1065,7 +1077,8 @@
           "week": 17,
           "score": 34.3
         }
-      ]
+      ],
+      "player_name": "Mahomes, Patrick"
     }
   },
   {
@@ -1134,7 +1147,8 @@
           "week": 16,
           "score": 29.35
         }
-      ]
+      ],
+      "player_name": "Allen, Josh"
     }
   },
   {
@@ -1207,7 +1221,8 @@
           "week": 17,
           "score": 35.1
         }
-      ]
+      ],
+      "player_name": "Jackson, Lamar"
     }
   },
   {
@@ -1276,7 +1291,8 @@
           "week": 15,
           "score": 32.45
         }
-      ]
+      ],
+      "player_name": "Allen, Josh"
     }
   },
   {
@@ -1337,7 +1353,8 @@
           "week": 14,
           "score": 14.0
         }
-      ]
+      ],
+      "player_name": "Foster, Arian"
     }
   },
   {
@@ -1402,7 +1419,8 @@
           "week": 14,
           "score": 19.5
         }
-      ]
+      ],
+      "player_name": "McCoy, LeSean"
     }
   },
   {
@@ -1463,7 +1481,8 @@
           "week": 15,
           "score": 27.0
         }
-      ]
+      ],
+      "player_name": "Peterson, Adrian"
     }
   },
   {
@@ -1536,7 +1555,8 @@
           "week": 16,
           "score": 21.5
         }
-      ]
+      ],
+      "player_name": "Charles, Jamaal"
     }
   },
   {
@@ -1605,7 +1625,8 @@
           "week": 16,
           "score": 11.0
         }
-      ]
+      ],
+      "player_name": "Murray, DeMarco"
     }
   },
   {
@@ -1674,7 +1695,8 @@
           "week": 15,
           "score": 6.0
         }
-      ]
+      ],
+      "player_name": "Peterson, Adrian"
     }
   },
   {
@@ -1743,7 +1765,8 @@
           "week": 15,
           "score": 24.0
         }
-      ]
+      ],
+      "player_name": "Johnson, David"
     }
   },
   {
@@ -1812,7 +1835,8 @@
           "week": 15,
           "score": 43.5
         }
-      ]
+      ],
+      "player_name": "Gurley, Todd"
     }
   },
   {
@@ -1881,7 +1905,8 @@
           "week": 15,
           "score": 29.4
         }
-      ]
+      ],
+      "player_name": "Gurley, Todd"
     }
   },
   {
@@ -1950,7 +1975,8 @@
           "week": 15,
           "score": 33.5
         }
-      ]
+      ],
+      "player_name": "McCaffrey, Christian"
     }
   },
   {
@@ -2019,7 +2045,8 @@
           "week": 15,
           "score": 16.9
         }
-      ]
+      ],
+      "player_name": "Kamara, Alvin"
     }
   },
   {
@@ -2096,7 +2123,8 @@
           "week": 17,
           "score": 17.9
         }
-      ]
+      ],
+      "player_name": "Taylor, Jonathan"
     }
   },
   {
@@ -2169,7 +2197,8 @@
           "week": 16,
           "score": 5.5
         }
-      ]
+      ],
+      "player_name": "Jacobs, Josh"
     }
   },
   {
@@ -2238,7 +2267,8 @@
           "week": 15,
           "score": 39.2
         }
-      ]
+      ],
+      "player_name": "McCaffrey, Christian"
     }
   },
   {
@@ -2315,7 +2345,8 @@
           "week": 17,
           "score": 17.9
         }
-      ]
+      ],
+      "player_name": "Barkley, Saquon"
     }
   },
   {
@@ -2388,7 +2419,8 @@
           "week": 17,
           "score": 26.1
         }
-      ]
+      ],
+      "player_name": "McCaffrey, Christian"
     }
   },
   {
@@ -2453,7 +2485,8 @@
           "week": 14,
           "score": 11.0
         }
-      ]
+      ],
+      "player_name": "White, Roddy"
     }
   },
   {
@@ -2526,7 +2559,8 @@
           "week": 16,
           "score": 18.0
         }
-      ]
+      ],
+      "player_name": "Johnson, Calvin"
     }
   },
   {
@@ -2599,7 +2633,8 @@
           "week": 16,
           "score": 15.0
         }
-      ]
+      ],
+      "player_name": "Marshall, Brandon"
     }
   },
   {
@@ -2664,7 +2699,8 @@
           "week": 16,
           "score": 5.5
         }
-      ]
+      ],
+      "player_name": "Johnson, Calvin"
     }
   },
   {
@@ -2733,7 +2769,8 @@
           "week": 15,
           "score": 17.0
         }
-      ]
+      ],
+      "player_name": "Brown, Antonio"
     }
   },
   {
@@ -2802,7 +2839,8 @@
           "week": 15,
           "score": 16.0
         }
-      ]
+      ],
+      "player_name": "Beckham, Odell"
     }
   },
   {
@@ -2875,7 +2913,8 @@
           "week": 16,
           "score": 31.5
         }
-      ]
+      ],
+      "player_name": "Nelson, Jordy"
     }
   },
   {
@@ -2944,7 +2983,8 @@
           "week": 15,
           "score": 3.4
         }
-      ]
+      ],
+      "player_name": "Brown, Antonio"
     }
   },
   {
@@ -3017,7 +3057,8 @@
           "week": 16,
           "score": 22.4
         }
-      ]
+      ],
+      "player_name": "Thomas, Michael"
     }
   },
   {
@@ -3086,7 +3127,8 @@
           "week": 15,
           "score": 24.8
         }
-      ]
+      ],
+      "player_name": "Thomas, Michael"
     }
   },
   {
@@ -3155,7 +3197,8 @@
           "week": 15,
           "score": 14.4
         }
-      ]
+      ],
+      "player_name": "Hill, Tyreek"
     }
   },
   {
@@ -3224,7 +3267,8 @@
           "week": 15,
           "score": 30.2
         }
-      ]
+      ],
+      "player_name": "Kupp, Cooper"
     }
   },
   {
@@ -3293,7 +3337,8 @@
           "week": 15,
           "score": 24.3
         }
-      ]
+      ],
+      "player_name": "Jefferson, Justin"
     }
   },
   {
@@ -3358,7 +3403,8 @@
           "week": 14,
           "score": 8.1
         }
-      ]
+      ],
+      "player_name": "Hill, Tyreek"
     }
   },
   {
@@ -3431,7 +3477,8 @@
           "week": 16,
           "score": 19.4
         }
-      ]
+      ],
+      "player_name": "Chase, Ja'Marr"
     }
   },
   {
@@ -3504,7 +3551,8 @@
           "week": 17,
           "score": 13.2
         }
-      ]
+      ],
+      "player_name": "Nacua, Puka"
     }
   },
   {
@@ -3549,7 +3597,8 @@
           "week": 8,
           "score": 20.5
         }
-      ]
+      ],
+      "player_name": "Gates, Antonio"
     }
   },
   {
@@ -3610,7 +3659,8 @@
           "week": 14,
           "score": 31.0
         }
-      ]
+      ],
+      "player_name": "Gronkowski, Rob"
     }
   },
   {
@@ -3663,7 +3713,8 @@
           "week": 11,
           "score": 28.5
         }
-      ]
+      ],
+      "player_name": "Gronkowski, Rob"
     }
   },
   {
@@ -3728,7 +3779,8 @@
           "week": 14,
           "score": 20.0
         }
-      ]
+      ],
+      "player_name": "Graham, Jimmy"
     }
   },
   {
@@ -3797,7 +3849,8 @@
           "week": 15,
           "score": 16.5
         }
-      ]
+      ],
+      "player_name": "Gronkowski, Rob"
     }
   },
   {
@@ -3862,7 +3915,8 @@
           "week": 15,
           "score": 13.5
         }
-      ]
+      ],
+      "player_name": "Gronkowski, Rob"
     }
   },
   {
@@ -3935,7 +3989,8 @@
           "week": 16,
           "score": 8.0
         }
-      ]
+      ],
+      "player_name": "Olsen, Greg"
     }
   },
   {
@@ -3996,7 +4051,8 @@
           "week": 16,
           "score": 15.2
         }
-      ]
+      ],
+      "player_name": "Gronkowski, Rob"
     }
   },
   {
@@ -4069,7 +4125,8 @@
           "week": 16,
           "score": 7.9
         }
-      ]
+      ],
+      "player_name": "Kelce, Travis"
     }
   },
   {
@@ -4138,7 +4195,8 @@
           "week": 15,
           "score": 19.7
         }
-      ]
+      ],
+      "player_name": "Kelce, Travis"
     }
   },
   {
@@ -4211,7 +4269,8 @@
           "week": 16,
           "score": 19.3
         }
-      ]
+      ],
+      "player_name": "Kelce, Travis"
     }
   },
   {
@@ -4280,7 +4339,8 @@
           "week": 17,
           "score": 11.9
         }
-      ]
+      ],
+      "player_name": "Andrews, Mark"
     }
   },
   {
@@ -4345,7 +4405,8 @@
           "week": 14,
           "score": 9.1
         }
-      ]
+      ],
+      "player_name": "Kelce, Travis"
     }
   },
   {
@@ -4410,7 +4471,8 @@
           "week": 15,
           "score": 5.3
         }
-      ]
+      ],
+      "player_name": "Kelce, Travis"
     }
   },
   {
@@ -4487,7 +4549,8 @@
           "week": 17,
           "score": 11.1
         }
-      ]
+      ],
+      "player_name": "Bowers, Brock"
     }
   },
   {
@@ -4552,7 +4615,8 @@
           "week": 14,
           "score": 8.3
         }
-      ]
+      ],
+      "player_name": "McBride, Trey"
     }
   },
   {
@@ -4609,7 +4673,8 @@
           "week": 15,
           "score": 8.0
         }
-      ]
+      ],
+      "player_name": "Akers, David"
     }
   },
   {
@@ -4674,7 +4739,8 @@
           "week": 14,
           "score": 10.0
         }
-      ]
+      ],
+      "player_name": "Kasay, John"
     }
   },
   {
@@ -4739,7 +4805,8 @@
           "week": 14,
           "score": 17.0
         }
-      ]
+      ],
+      "player_name": "Crosby, Mason"
     }
   },
   {
@@ -4800,7 +4867,8 @@
           "week": 13,
           "score": 12.0
         }
-      ]
+      ],
+      "player_name": "Gostkowski, Stephen"
     }
   },
   {
@@ -4873,7 +4941,8 @@
           "week": 16,
           "score": 13.0
         }
-      ]
+      ],
+      "player_name": "Gostkowski, Stephen"
     }
   },
   {
@@ -4938,7 +5007,8 @@
           "week": 14,
           "score": 11.0
         }
-      ]
+      ],
+      "player_name": "Gostkowski, Stephen"
     }
   },
   {
@@ -5003,7 +5073,8 @@
           "week": 14,
           "score": 11.0
         }
-      ]
+      ],
+      "player_name": "Gostkowski, Stephen"
     }
   },
   {
@@ -5072,7 +5143,8 @@
           "week": 15,
           "score": 13.0
         }
-      ]
+      ],
+      "player_name": "Vinatieri, Adam"
     }
   },
   {
@@ -5145,7 +5217,8 @@
           "week": 16,
           "score": 10.0
         }
-      ]
+      ],
+      "player_name": "Boswell, Chris"
     }
   },
   {
@@ -5218,7 +5291,8 @@
           "week": 16,
           "score": 13.0
         }
-      ]
+      ],
+      "player_name": "Crosby, Mason"
     }
   },
   {
@@ -5287,7 +5361,8 @@
           "week": 15,
           "score": 10.0
         }
-      ]
+      ],
+      "player_name": "Butker, Harrison"
     }
   },
   {
@@ -5356,7 +5431,8 @@
           "week": 15,
           "score": 9.6
         }
-      ]
+      ],
+      "player_name": "Tucker, Justin"
     }
   },
   {
@@ -5429,7 +5505,8 @@
           "week": 16,
           "score": 12.3
         }
-      ]
+      ],
+      "player_name": "Gay, Matt"
     }
   },
   {
@@ -5498,7 +5575,8 @@
           "week": 15,
           "score": 7.9
         }
-      ]
+      ],
+      "player_name": "Carlson, Daniel"
     }
   },
   {
@@ -5567,7 +5645,8 @@
           "week": 17,
           "score": 11.4
         }
-      ]
+      ],
+      "player_name": "Aubrey, Brandon"
     }
   },
   {
@@ -5644,7 +5723,8 @@
           "week": 17,
           "score": 1.0
         }
-      ]
+      ],
+      "player_name": "Aubrey, Brandon"
     }
   },
   {
@@ -5721,7 +5801,8 @@
           "week": 17,
           "score": 17.5
         }
-      ]
+      ],
+      "player_name": "Aubrey, Brandon"
     }
   },
   {
@@ -5794,7 +5875,8 @@
           "week": 16,
           "score": 13.0
         }
-      ]
+      ],
+      "player_name": "Steelers, Pittsburgh"
     }
   },
   {
@@ -5859,7 +5941,8 @@
           "week": 14,
           "score": 8.0
         }
-      ]
+      ],
+      "player_name": "Ravens, Baltimore"
     }
   },
   {
@@ -5924,7 +6007,8 @@
           "week": 14,
           "score": 1.0
         }
-      ]
+      ],
+      "player_name": "Bears, Chicago"
     }
   },
   {
@@ -5989,7 +6073,8 @@
           "week": 14,
           "score": 3.0
         }
-      ]
+      ],
+      "player_name": "Seahawks, Seattle"
     }
   },
   {
@@ -6050,7 +6135,8 @@
           "week": 13,
           "score": 5.0
         }
-      ]
+      ],
+      "player_name": "Cardinals, Arizona"
     }
   },
   {
@@ -6123,7 +6209,8 @@
           "week": 16,
           "score": -1.0
         }
-      ]
+      ],
+      "player_name": "Seahawks, Seattle"
     }
   },
   {
@@ -6184,7 +6271,8 @@
           "week": 13,
           "score": 5.0
         }
-      ]
+      ],
+      "player_name": "Vikings, Minnesota"
     }
   },
   {
@@ -6253,7 +6341,8 @@
           "week": 16,
           "score": 0.0
         }
-      ]
+      ],
+      "player_name": "Jaguars, Jacksonville"
     }
   },
   {
@@ -6322,7 +6411,8 @@
           "week": 15,
           "score": 5.0
         }
-      ]
+      ],
+      "player_name": "Texans, Houston"
     }
   },
   {
@@ -6379,7 +6469,8 @@
           "week": 13,
           "score": 4.0
         }
-      ]
+      ],
+      "player_name": "Patriots, New England"
     }
   },
   {
@@ -6444,7 +6535,8 @@
           "week": 14,
           "score": 4.0
         }
-      ]
+      ],
+      "player_name": "Steelers, Pittsburgh"
     }
   },
   {
@@ -6501,7 +6593,8 @@
           "week": 15,
           "score": 10.0
         }
-      ]
+      ],
+      "player_name": "Cowboys, Dallas"
     }
   },
   {
@@ -6570,7 +6663,8 @@
           "week": 15,
           "score": 10.0
         }
-      ]
+      ],
+      "player_name": "Patriots, New England"
     }
   },
   {
@@ -6643,7 +6737,8 @@
           "week": 17,
           "score": 4.0
         }
-      ]
+      ],
+      "player_name": "Cowboys, Dallas"
     }
   },
   {
@@ -6700,7 +6795,8 @@
           "week": 15,
           "score": 4.0
         }
-      ]
+      ],
+      "player_name": "Steelers, Pittsburgh"
     }
   },
   {
@@ -6773,7 +6869,8 @@
           "week": 16,
           "score": 11.0
         }
-      ]
+      ],
+      "player_name": "Texans, Houston"
     }
   },
   {
@@ -6786,7 +6883,8 @@
       "bid": 1.0,
       "started_points": 241.6,
       "position": "RB",
-      "starter_weeks": 12
+      "starter_weeks": 12,
+      "player_name": "Conner, James"
     }
   },
   {
@@ -6799,7 +6897,8 @@
       "bid": 1.0,
       "started_points": 300.15,
       "position": "QB",
-      "starter_weeks": 11
+      "starter_weeks": 11,
+      "player_name": "Prescott, Dak"
     }
   },
   {
@@ -6812,7 +6911,8 @@
       "bid": 2.0,
       "started_points": 338.75,
       "position": "QB",
-      "starter_weeks": 11
+      "starter_weeks": 11,
+      "player_name": "Allen, Josh"
     }
   },
   {
@@ -6825,7 +6925,8 @@
       "bid": 1.0,
       "started_points": 141.7,
       "position": "PK",
-      "starter_weeks": 13
+      "starter_weeks": 13,
+      "player_name": "Bass, Tyler"
     }
   },
   {
@@ -6838,7 +6939,8 @@
       "bid": 1.0,
       "started_points": 271.85,
       "position": "QB",
-      "starter_weeks": 11
+      "starter_weeks": 11,
+      "player_name": "Purdy, Brock"
     }
   },
   {
@@ -6851,7 +6953,8 @@
       "bid": 1.0,
       "started_points": 105.3,
       "position": "WR",
-      "starter_weeks": 8
+      "starter_weeks": 8,
+      "player_name": "Addison, Jordan"
     }
   },
   {
@@ -6864,7 +6967,8 @@
       "bid": 1.0,
       "started_points": 174.1,
       "position": "RB",
-      "starter_weeks": 12
+      "starter_weeks": 12,
+      "player_name": "Williams, Javonte"
     }
   },
   {
@@ -6877,7 +6981,8 @@
       "bid": 65.0,
       "started_points": 0.0,
       "position": "RB",
-      "starter_weeks": 0
+      "starter_weeks": 0,
+      "player_name": "Bell, Le'Veon"
     }
   },
   {
@@ -6890,7 +6995,8 @@
       "bid": 17.0,
       "started_points": 0.0,
       "position": "QB",
-      "starter_weeks": 0
+      "starter_weeks": 0,
+      "player_name": "Luck, Andrew"
     }
   },
   {
@@ -6903,7 +7009,8 @@
       "bid": 21.0,
       "started_points": 0.0,
       "position": "RB",
-      "starter_weeks": 0
+      "starter_weeks": 0,
+      "player_name": "Gordon, Ollie"
     }
   },
   {
@@ -6986,7 +7093,8 @@
       "bid": 74.0,
       "started_points": 235.7,
       "position": "RB",
-      "starter_weeks": 12
+      "starter_weeks": 12,
+      "player_name": "Elliott, Ezekiel"
     }
   },
   {
@@ -6999,7 +7107,8 @@
       "bid": 76.0,
       "started_points": 113.5,
       "position": "RB",
-      "starter_weeks": 8
+      "starter_weeks": 8,
+      "player_name": "Barkley, Saquon"
     }
   },
   {
@@ -7012,7 +7121,8 @@
       "bid": 76.0,
       "started_points": 81.9,
       "position": "RB",
-      "starter_weeks": 3
+      "starter_weeks": 3,
+      "player_name": "McCaffrey, Christian"
     }
   },
   {
@@ -7025,7 +7135,8 @@
       "bid": 73.0,
       "started_points": 130.6,
       "position": "RB",
-      "starter_weeks": 10
+      "starter_weeks": 10,
+      "player_name": "Taylor, Jonathan"
     }
   },
   {
@@ -7038,7 +7149,8 @@
       "bid": 69.0,
       "started_points": 94.8,
       "position": "WR",
-      "starter_weeks": 6
+      "starter_weeks": 6,
+      "player_name": "Jefferson, Justin"
     }
   },
   {
@@ -7051,7 +7163,8 @@
       "bid": 70.0,
       "started_points": 40.3,
       "position": "RB",
-      "starter_weeks": 4
+      "starter_weeks": 4,
+      "player_name": "McCaffrey, Christian"
     }
   },
   {
@@ -7064,7 +7177,8 @@
       "bid": 66.0,
       "started_points": 176.4,
       "position": "WR",
-      "starter_weeks": 12
+      "starter_weeks": 12,
+      "player_name": "Chase, Ja'Marr"
     }
   },
   {
@@ -7076,7 +7190,8 @@
       "player_id": "4891",
       "started_points": 352.0,
       "position": "QB",
-      "starter_weeks": 8
+      "starter_weeks": 8,
+      "player_name": "Vick, Michael"
     }
   },
   {
@@ -7088,7 +7203,8 @@
       "player_id": "10273",
       "started_points": 340.5,
       "position": "QB",
-      "starter_weeks": 9
+      "starter_weeks": 9,
+      "player_name": "Newton, Cam"
     }
   },
   {
@@ -7100,7 +7216,8 @@
       "player_id": "9460",
       "started_points": 136.0,
       "position": "QB",
-      "starter_weeks": 4
+      "starter_weeks": 4,
+      "player_name": "Freeman, Josh"
     }
   },
   {
@@ -7112,7 +7229,8 @@
       "player_id": "10722",
       "started_points": 133.0,
       "position": "WR",
-      "starter_weeks": 7
+      "starter_weeks": 7,
+      "player_name": "Jeffery, Alshon"
     }
   },
   {
@@ -7124,7 +7242,8 @@
       "player_id": "2842",
       "started_points": 129.0,
       "position": "PK",
-      "starter_weeks": 12
+      "starter_weeks": 12,
+      "player_name": "Vinatieri, Adam"
     }
   },
   {
@@ -7136,7 +7255,8 @@
       "player_id": "6929",
       "started_points": 274.0,
       "position": "QB",
-      "starter_weeks": 10
+      "starter_weeks": 10,
+      "player_name": "Palmer, Carson"
     }
   },
   {
@@ -7148,7 +7268,8 @@
       "player_id": "9099",
       "started_points": 190.0,
       "position": "QB",
-      "starter_weeks": 8
+      "starter_weeks": 8,
+      "player_name": "Ryan, Matt"
     }
   },
   {
@@ -7160,7 +7281,8 @@
       "player_id": "5848",
       "started_points": 320.0,
       "position": "QB",
-      "starter_weeks": 12
+      "starter_weeks": 12,
+      "player_name": "Brady, Tom"
     }
   },
   {
@@ -7172,7 +7294,8 @@
       "player_id": "8742",
       "started_points": 105.0,
       "position": "PK",
-      "starter_weeks": 12
+      "starter_weeks": 12,
+      "player_name": "Crosby, Mason"
     }
   },
   {
@@ -7184,7 +7307,8 @@
       "player_id": "0504",
       "started_points": 171.0,
       "position": "Def",
-      "starter_weeks": 11
+      "starter_weeks": 11,
+      "player_name": "Patriots, New England"
     }
   },
   {
@@ -7196,7 +7320,8 @@
       "player_id": "14836",
       "started_points": 142.1,
       "position": "WR",
-      "starter_weeks": 9
+      "starter_weeks": 9,
+      "player_name": "Jefferson, Justin"
     }
   },
   {
@@ -7208,7 +7333,8 @@
       "player_id": "10700",
       "started_points": 223.25,
       "position": "QB",
-      "starter_weeks": 9
+      "starter_weeks": 9,
+      "player_name": "Cousins, Kirk"
     }
   },
   {
@@ -7220,7 +7346,8 @@
       "player_id": "14983",
       "started_points": 86.9,
       "position": "PK",
-      "starter_weeks": 7
+      "starter_weeks": 7,
+      "player_name": "Bass, Tyler"
     }
   },
   {
@@ -7232,7 +7359,8 @@
       "player_id": "16150",
       "started_points": 228.9,
       "position": "QB",
-      "starter_weeks": 9
+      "starter_weeks": 9,
+      "player_name": "Stroud, C.J."
     }
   },
   {
@@ -7244,7 +7372,8 @@
       "player_id": "13592",
       "started_points": 181.45,
       "position": "QB",
-      "starter_weeks": 7
+      "starter_weeks": 7,
+      "player_name": "Darnold, Sam"
     }
   },
   {
@@ -7256,7 +7385,8 @@
       "player_id": "9431",
       "started_points": 171.6,
       "position": "QB",
-      "starter_weeks": 6
+      "starter_weeks": 6,
+      "player_name": "Stafford, Matthew"
     }
   },
   {
@@ -7316,7 +7446,8 @@
           "margin": 20.0,
           "opponent_franchise_id": "0004"
         }
-      ]
+      ],
+      "player_name": "Manning, Peyton"
     }
   },
   {
@@ -7388,7 +7519,8 @@
           "margin": 45.0,
           "opponent_franchise_id": "0003"
         }
-      ]
+      ],
+      "player_name": "Brees, Drew"
     }
   },
   {
@@ -7454,7 +7586,8 @@
           "margin": 36.5,
           "opponent_franchise_id": "0008"
         }
-      ]
+      ],
+      "player_name": "Ryan, Matt"
     }
   },
   {
@@ -7496,7 +7629,8 @@
           "margin": 16.5,
           "opponent_franchise_id": "0002"
         }
-      ]
+      ],
+      "player_name": "Stafford, Matthew"
     }
   },
   {
@@ -7538,7 +7672,8 @@
           "margin": 10.5,
           "opponent_franchise_id": "0001"
         }
-      ]
+      ],
+      "player_name": "Griffin III, Robert"
     }
   },
   {
@@ -7580,7 +7715,8 @@
           "margin": 4.5,
           "opponent_franchise_id": "0001"
         }
-      ]
+      ],
+      "player_name": "Marshall, Brandon"
     }
   },
   {
@@ -7622,7 +7758,8 @@
           "margin": 1.0,
           "opponent_franchise_id": "0010"
         }
-      ]
+      ],
+      "player_name": "Johnson, Calvin"
     }
   },
   {
@@ -7676,7 +7813,8 @@
           "margin": 6.5,
           "opponent_franchise_id": "0007"
         }
-      ]
+      ],
+      "player_name": "Rodgers, Aaron"
     }
   },
   {
@@ -7724,7 +7862,8 @@
           "margin": 15.0,
           "opponent_franchise_id": "0009"
         }
-      ]
+      ],
+      "player_name": "Palmer, Carson"
     }
   },
   {
@@ -7778,7 +7917,8 @@
           "margin": 7.0,
           "opponent_franchise_id": "0005"
         }
-      ]
+      ],
+      "player_name": "Brees, Drew"
     }
   },
   {
@@ -7838,7 +7978,8 @@
           "margin": 9.6,
           "opponent_franchise_id": "0004"
         }
-      ]
+      ],
+      "player_name": "Brees, Drew"
     }
   },
   {
@@ -7892,7 +8033,8 @@
           "margin": 5.6,
           "opponent_franchise_id": "0007"
         }
-      ]
+      ],
+      "player_name": "Newton, Cam"
     }
   },
   {
@@ -7946,7 +8088,8 @@
           "margin": 1.3,
           "opponent_franchise_id": "0005"
         }
-      ]
+      ],
+      "player_name": "McCaffrey, Christian"
     }
   },
   {
@@ -8006,7 +8149,8 @@
           "margin": 1.45,
           "opponent_franchise_id": "0005"
         }
-      ]
+      ],
+      "player_name": "Barkley, Saquon"
     }
   },
   {
@@ -8060,7 +8204,8 @@
           "margin": 1.4,
           "opponent_franchise_id": "0010"
         }
-      ]
+      ],
+      "player_name": "Kamara, Alvin"
     }
   },
   {
@@ -8120,7 +8265,8 @@
           "margin": 2.25,
           "opponent_franchise_id": "0002"
         }
-      ]
+      ],
+      "player_name": "Elliott, Ezekiel"
     }
   },
   {
@@ -8168,7 +8314,8 @@
           "margin": 14.5,
           "opponent_franchise_id": "0007"
         }
-      ]
+      ],
+      "player_name": "Allen, Josh"
     }
   },
   {
@@ -8210,7 +8357,8 @@
           "margin": 1.7,
           "opponent_franchise_id": "0010"
         }
-      ]
+      ],
+      "player_name": "Hurts, Jalen"
     }
   },
   {
@@ -8252,7 +8400,8 @@
           "margin": 11.1,
           "opponent_franchise_id": "0006"
         }
-      ]
+      ],
+      "player_name": "Purdy, Brock"
     }
   },
   {
@@ -8312,7 +8461,8 @@
           "margin": 13.1,
           "opponent_franchise_id": "0002"
         }
-      ]
+      ],
+      "player_name": "Jackson, Lamar"
     }
   },
   {
@@ -8372,7 +8522,8 @@
           "margin": 27.4,
           "opponent_franchise_id": "0006"
         }
-      ]
+      ],
+      "player_name": "Burrow, Joe"
     }
   },
   {
@@ -8420,7 +8571,8 @@
           "margin": 5.05,
           "opponent_franchise_id": "0001"
         }
-      ]
+      ],
+      "player_name": "Jackson, Lamar"
     }
   },
   {
@@ -8469,6 +8621,7 @@
           "opponent_franchise_id": "0003"
         }
       ],
+      "player_name": "Henry, Derrick",
       "co_player_ids": [
         "14779",
         "15284"
@@ -8520,7 +8673,8 @@
           "margin": 11.2,
           "opponent_franchise_id": "0008"
         }
-      ]
+      ],
+      "player_name": "Allen, Josh"
     }
   },
   {
