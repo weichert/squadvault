@@ -7236,14 +7236,14 @@
   {
     "award_id": "23",
     "season": 2014,
-    "franchise_id": "0009",
-    "value": 129.0,
+    "franchise_id": "0010",
+    "value": 108.0,
     "detail": {
-      "player_id": "2842",
-      "started_points": 129.0,
-      "position": "PK",
-      "starter_weeks": 12,
-      "player_name": "Vinatieri, Adam"
+      "player_id": "11232",
+      "started_points": 108.0,
+      "position": "WR",
+      "starter_weeks": 7,
+      "player_name": "Hopkins, DeAndre"
     }
   },
   {
@@ -7288,27 +7288,27 @@
   {
     "award_id": "23",
     "season": 2018,
-    "franchise_id": "0006",
-    "value": 105.0,
+    "franchise_id": "0001",
+    "value": 99.2,
     "detail": {
-      "player_id": "8742",
-      "started_points": 105.0,
-      "position": "PK",
-      "starter_weeks": 12,
-      "player_name": "Crosby, Mason"
+      "player_id": "13614",
+      "started_points": 99.2,
+      "position": "RB",
+      "starter_weeks": 6,
+      "player_name": "Lindsay, Phillip"
     }
   },
   {
     "award_id": "23",
     "season": 2019,
-    "franchise_id": "0004",
-    "value": 171.0,
+    "franchise_id": "0001",
+    "value": 115.0,
     "detail": {
-      "player_id": "0504",
-      "started_points": 171.0,
-      "position": "Def",
+      "player_id": "13671",
+      "started_points": 115.0,
+      "position": "TE",
       "starter_weeks": 11,
-      "player_name": "Patriots, New England"
+      "player_name": "Andrews, Mark"
     }
   },
   {
@@ -7340,14 +7340,14 @@
   {
     "award_id": "23",
     "season": 2022,
-    "franchise_id": "0002",
-    "value": 86.9,
+    "franchise_id": "0009",
+    "value": 81.6,
     "detail": {
-      "player_id": "14983",
-      "started_points": 86.9,
-      "position": "PK",
-      "starter_weeks": 7,
-      "player_name": "Bass, Tyler"
+      "player_id": "13139",
+      "started_points": 81.6,
+      "position": "RB",
+      "starter_weeks": 8,
+      "player_name": "Williams, Jamaal"
     }
   },
   {
