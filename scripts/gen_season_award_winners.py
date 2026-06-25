@@ -167,6 +167,28 @@ def _load_season_positions(db_path: str, league_id: str, season: int) -> dict[st
     return out
 
 
+def _load_season_player_names(db_path: str, league_id: str, season: int) -> dict[str, str]:
+    """player_id -> player name for a season (the W.5 display unit's Option A name source).
+
+    Sibling of _load_season_positions over the same player_directory.name the engine already holds
+    (used across recap/verifier consumers). The generator denormalizes this name into detail
+    (detail.player_name) so the Trophy Room can render the player, not just the franchise. A missing
+    name maps to nothing - the caller omits the key (silence, never a guessed name)."""
+    out: dict[str, str] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            "SELECT player_id, name FROM player_directory WHERE league_id=? AND season=?",
+            (str(league_id), int(season)),
+        ).fetchall()
+    for pid, name in rows:
+        if pid is None or name is None:
+            continue
+        nm = str(name).strip()
+        if nm:
+            out[str(pid).strip()] = nm
+    return out
+
+
 def _is_starter(v: Any) -> bool:
     """Group D 1.6 - is_starter truthy. The WEEKLY_PLAYER_SCORE payload stores a JSON boolean
     (Python True via json.loads); a SQL json_extract would instead yield integer 1. Handle both."""
@@ -410,10 +432,12 @@ def _emit_pick_award(
     winners: list[tuple[str, str, float, float, int]],
     value: float,
     pos_map: dict[str, str],
+    name_map: dict[str, str],
 ) -> None:
     """Emit a Group D pick-level award (#19/#20/#22) - one row per franchise so the natural key
     (award_id, season, franchise_id) always holds; a same-franchise co-holder tie folds the extra
-    players into detail.co_player_ids (the Group C / Hammer idiom). winners: (pid, fr, bid, sp, sw)."""
+    players into detail.co_player_ids (the Group C / Hammer idiom). winners: (pid, fr, bid, sp, sw).
+    detail.player_name (Option A) is the denormalized player_directory name; omitted when unknown."""
     by_fr: dict[str, list[tuple[str, float, float, int]]] = defaultdict(list)
     for pid, fr, bid, sp, sw in winners:
         by_fr[fr].append((pid, bid, sp, sw))
@@ -424,6 +448,9 @@ def _emit_pick_award(
             "player_id": pid, "bid": round(bid, 2), "started_points": sp,
             "position": pos_map.get(pid, ""), "starter_weeks": sw,
         }
+        nm = name_map.get(pid)
+        if nm:
+            detail["player_name"] = nm
         if len(recs) > 1:
             detail["co_player_ids"] = [r[0] for r in recs[1:]]
         out.append({"award_id": award_id, "season": season, "franchise_id": fr,
@@ -459,6 +486,10 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
 
     for s in seasons:
         sm = [m for m in matchups if m.season == s]
+        # Option A (W.5 display): per-season player_id -> name, denormalized into detail.player_name
+        # wherever a row names a single player (#3, #13-18, #19/#20/#22, #23). Loaded once per season,
+        # before the first emit that uses it (the #3 Hammer block precedes the Group C/D/E blocks).
+        name_map = _load_season_player_names(db_path, league_id, s)
 
         # #4 The Cannon - highest single-week score by any franchise this season (co-holders on tie).
         sides = []  # (score, fid, week, opponent)
@@ -640,6 +671,9 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
                         "decisive_weeks": top_h,
                         "weeks": sorted(ham_weeks[(fid, primary)], key=lambda d: d["week"]),
                     }
+                    ham_nm = name_map.get(primary)
+                    if ham_nm:
+                        detail["player_name"] = ham_nm
                     if len(pids) > 1:
                         detail["co_player_ids"] = pids[1:]
                     out.append({
@@ -688,6 +722,9 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
                     "weeks": [{"week": w, "score": round(sc, 2)}
                               for w, sc in sorted(fp_weeks[(fid, primary)])],
                 }
+                pos_nm = name_map.get(primary)
+                if pos_nm:
+                    pos_detail["player_name"] = pos_nm
                 if len(pids) > 1:  # same-franchise co-holders fold into detail
                     pos_detail["co_player_ids"] = pids[1:]
                 out.append({
@@ -715,7 +752,7 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
                 top_ppd = max(x[0] for x in steal)
                 win19 = [(pid, fr, bid, sp, sw) for ppd, pid, fr, bid, sp, sw in steal
                          if abs(ppd - top_ppd) < 1e-9]
-                _emit_pick_award(out, "19", s, win19, round(top_ppd, 2), pos_map)
+                _emit_pick_award(out, "19", s, win19, round(top_ppd, 2), pos_map, name_map)
 
             # #20 The Burning Money - highest bid that returned ZERO regular-season started value
             # (starter_weeks == 0) AND bid >= 17. Silence when none qualify. SHAME_RECORD tone-care:
@@ -724,7 +761,7 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
             if burn:
                 top_bid20 = max(w[2] for w in burn)
                 win20 = [w for w in burn if w[2] == top_bid20]
-                _emit_pick_award(out, "20", s, win20, round(top_bid20, 2), pos_map)
+                _emit_pick_award(out, "20", s, win20, round(top_bid20, 2), pos_map, name_map)
 
             # #21 The Patience Premium - lowest (total auction dollars / total regular-season
             # started-anywhere points) per franchise; zero-point franchises excluded (no div-by-zero).
@@ -752,7 +789,7 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
             # #22 The Whale - highest single bid of the season; co-holders on tie.
             top_bid22 = max(w[2] for w in pv)
             win22 = [w for w in pv if w[2] == top_bid22]
-            _emit_pick_award(out, "22", s, win22, round(top_bid22, 2), pos_map)
+            _emit_pick_award(out, "22", s, win22, round(top_bid22, 2), pos_map, name_map)
 
         # ---- Wave B2 Group E: #23 The Lifeline (in-season acquisition) ----
         # Best regular-season STARTED production from a player the franchise acquired in-season
@@ -782,6 +819,9 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
                     "player_id": pid, "started_points": sp,
                     "position": pos_map.get(pid, ""), "starter_weeks": sw,
                 }
+                life_nm = name_map.get(pid)
+                if life_nm:
+                    life_detail["player_name"] = life_nm
                 if len(life_recs) > 1:  # same-franchise co-holders fold into detail
                     life_detail["co_player_ids"] = [r[0] for r in life_recs[1:]]
                 out.append({"award_id": "23", "season": s, "franchise_id": fr,
