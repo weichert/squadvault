@@ -7068,6 +7068,198 @@
     }
   },
   {
+    "award_id": "23",
+    "season": 2010,
+    "franchise_id": "0006",
+    "value": 352.0,
+    "detail": {
+      "player_id": "4891",
+      "started_points": 352.0,
+      "position": "QB",
+      "starter_weeks": 8
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2011,
+    "franchise_id": "0005",
+    "value": 340.5,
+    "detail": {
+      "player_id": "10273",
+      "started_points": 340.5,
+      "position": "QB",
+      "starter_weeks": 9
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2012,
+    "franchise_id": "0003",
+    "value": 136.0,
+    "detail": {
+      "player_id": "9460",
+      "started_points": 136.0,
+      "position": "QB",
+      "starter_weeks": 4
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2013,
+    "franchise_id": "0007",
+    "value": 133.0,
+    "detail": {
+      "player_id": "10722",
+      "started_points": 133.0,
+      "position": "WR",
+      "starter_weeks": 7
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2014,
+    "franchise_id": "0009",
+    "value": 129.0,
+    "detail": {
+      "player_id": "2842",
+      "started_points": 129.0,
+      "position": "PK",
+      "starter_weeks": 12
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2015,
+    "franchise_id": "0004",
+    "value": 274.0,
+    "detail": {
+      "player_id": "6929",
+      "started_points": 274.0,
+      "position": "QB",
+      "starter_weeks": 10
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2016,
+    "franchise_id": "0001",
+    "value": 190.0,
+    "detail": {
+      "player_id": "9099",
+      "started_points": 190.0,
+      "position": "QB",
+      "starter_weeks": 8
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2017,
+    "franchise_id": "0005",
+    "value": 320.0,
+    "detail": {
+      "player_id": "5848",
+      "started_points": 320.0,
+      "position": "QB",
+      "starter_weeks": 12
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2018,
+    "franchise_id": "0006",
+    "value": 105.0,
+    "detail": {
+      "player_id": "8742",
+      "started_points": 105.0,
+      "position": "PK",
+      "starter_weeks": 12
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2019,
+    "franchise_id": "0004",
+    "value": 171.0,
+    "detail": {
+      "player_id": "0504",
+      "started_points": 171.0,
+      "position": "Def",
+      "starter_weeks": 11
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2020,
+    "franchise_id": "0002",
+    "value": 142.1,
+    "detail": {
+      "player_id": "14836",
+      "started_points": 142.1,
+      "position": "WR",
+      "starter_weeks": 9
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2021,
+    "franchise_id": "0005",
+    "value": 223.25,
+    "detail": {
+      "player_id": "10700",
+      "started_points": 223.25,
+      "position": "QB",
+      "starter_weeks": 9
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2022,
+    "franchise_id": "0002",
+    "value": 86.9,
+    "detail": {
+      "player_id": "14983",
+      "started_points": 86.9,
+      "position": "PK",
+      "starter_weeks": 7
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2023,
+    "franchise_id": "0007",
+    "value": 228.9,
+    "detail": {
+      "player_id": "16150",
+      "started_points": 228.9,
+      "position": "QB",
+      "starter_weeks": 9
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2024,
+    "franchise_id": "0004",
+    "value": 181.45,
+    "detail": {
+      "player_id": "13592",
+      "started_points": 181.45,
+      "position": "QB",
+      "starter_weeks": 7
+    }
+  },
+  {
+    "award_id": "23",
+    "season": 2025,
+    "franchise_id": "0008",
+    "value": 171.6,
+    "detail": {
+      "player_id": "9431",
+      "started_points": 171.6,
+      "position": "QB",
+      "starter_weeks": 6
+    }
+  },
+  {
     "award_id": "3",
     "season": 2010,
     "franchise_id": "0002",

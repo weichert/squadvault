@@ -48,8 +48,10 @@ from squadvault.core.storage.session import DatabaseSession
 # Wave B2 Group C: 13-18 (per-season positional, started-points season total via player_directory).
 # Wave B2 Group D: 19-22 (auction value - resolved DRAFT_PICK x regular-season started-anywhere
 # production; #19 Steal, #20 Burning Money, #21 Patience Premium, #22 Whale).
+# Wave B2 Group E: 23 (in-season acquisition - #23 The Lifeline: best regular-season started
+# production from a waiver/free-agent pickup, per franchise).
 AWARDS = ("4", "12", "33", "3", "6", "7", "9", "13", "14", "15", "16", "17", "18",
-          "19", "20", "21", "22")
+          "19", "20", "21", "22", "23")
 
 # Group C position -> award. MFL-native position strings (no normalization layer; stored verbatim).
 # PROBE-CONFIRMED 2026-06-24 against player_directory started rows: the league starts team-defense
@@ -300,6 +302,107 @@ def _load_started_anywhere(
     return pts, wks
 
 
+# Group E (#23 The Lifeline) - in-season acquisition channels. The blind-bid award of record is
+# WAIVER_BID_AWARDED; its raw twin TRANSACTION_BBID_WAIVER is excluded (Pin B/C). Trades, IR,
+# load-rosters, auctions, draft picks, and *AUTO_PROCESS*/LOCK markers are all out.
+_ACQ_CHANNELS = ("WAIVER_BID_AWARDED", "TRANSACTION_FREE_AGENT", "TRANSACTION_WAIVER")
+
+
+def _nested(payload_json: Any) -> dict[str, Any] | None:
+    """Double-decode a transaction payload: payload_json -> outer dict -> its raw_mfl_json string
+    (itself JSON) -> the nested MFL transaction dict."""
+    try:
+        outer = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
+    except (ValueError, TypeError):
+        return None
+    raw = (outer or {}).get("raw_mfl_json")
+    if raw is None:
+        return None
+    try:
+        n = json.loads(raw) if isinstance(raw, str) else raw
+    except (ValueError, TypeError):
+        return None
+    return n if isinstance(n, dict) else None
+
+
+def _first_added(n: dict[str, Any] | None) -> str | None:
+    """The first ADDED player of a transaction: explicit 'added' (TRANSACTION_WAIVER) or the compact
+    'transaction' string (FREE_AGENT 'added,|dropped,'; WAIVER_BID_AWARDED 'added,|bid|dropped,')."""
+    if not n:
+        return None
+    if n.get("added"):
+        a = [p for p in str(n["added"]).split(",") if p]
+        return a[0] if a else None
+    tx = n.get("transaction")
+    if not tx:
+        return None
+    a = [p for p in str(tx).split("|")[0].split(",") if p]
+    return a[0] if a else None
+
+
+def _load_inseason_acquired(db_path: str, league_id: str) -> set[tuple[int, str, str]]:
+    """Group E 2.1 - the set of (season, franchise_id, player_id) acquired in-season via the three
+    non-bid/awarded channels. Reads memory_events (the transaction ledger - transactions are not
+    canonicalized facts; this generator-local read is outside the src/ canonical boundary). Dedup is
+    implicit (a set); one franchise cannot double-count a player (Pin C)."""
+    acquired: set[tuple[int, str, str]] = set()
+    placeholders = ",".join("?" * len(_ACQ_CHANNELS))
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            "SELECT season, payload_json FROM memory_events "
+            f"WHERE league_id = ? AND event_type IN ({placeholders})",
+            (str(league_id), *_ACQ_CHANNELS),
+        ).fetchall()
+    for season, payload in rows:
+        n = _nested(payload)
+        fr = (n or {}).get("franchise")
+        pid = _first_added(n)
+        if fr and pid:
+            try:
+                acquired.add((int(season), str(fr), str(pid)))
+            except (ValueError, TypeError):
+                continue
+    return acquired
+
+
+def _load_started_by_franchise(
+    db_path: str, league_id: str, reg_weeks: dict[int, set[int]]
+) -> dict[tuple[int, str, str], tuple[float, int]]:
+    """Group E 2.2 - regular-season started production keyed PER FRANCHISE (not player-centric):
+    (season, franchise_id, player_id) -> (started_points, starter_weeks). The acquiring franchise is
+    credited only for the weeks it started the player (Pin G; Group C/D parity)."""
+    pts: dict[tuple[int, str, str], float] = defaultdict(float)
+    wks: dict[tuple[int, str, str], int] = defaultdict(int)
+    with DatabaseSession(db_path) as con:
+        raw = con.execute(
+            "SELECT season, payload_json FROM v_canonical_best_events "
+            "WHERE league_id = ? AND event_type = 'WEEKLY_PLAYER_SCORE'",
+            (str(league_id),),
+        ).fetchall()
+    for season, payload in raw:
+        p = json.loads(payload) if isinstance(payload, str) else payload
+        if not isinstance(p, dict):
+            continue
+        try:
+            s = int(season)
+            wk = int(p.get("week") or 0)
+        except (ValueError, TypeError):
+            continue
+        if wk not in reg_weeks.get(s, set()) or not _is_starter(p.get("is_starter")):
+            continue
+        fr = str(p.get("franchise_id", "")).strip()
+        pid = str(p.get("player_id", "")).strip()
+        if not (fr and pid):
+            continue
+        try:
+            sc = float(p.get("score", 0))
+        except (ValueError, TypeError):
+            sc = 0.0
+        pts[(s, fr, pid)] += sc
+        wks[(s, fr, pid)] += 1
+    return {k: (round(pts[k], 2), wks[k]) for k in pts}
+
+
 def _emit_pick_award(
     out: list[dict[str, Any]],
     award_id: str,
@@ -343,6 +446,9 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
     resolved_by_season, contested = _load_resolved_picks(db_path, league_id)
     reg_weeks = _load_regular_season_weeks(db_path, league_id)
     d_started_pts, d_starter_weeks = _load_started_anywhere(db_path, league_id, reg_weeks)
+    # ---- Wave B2 Group E substrate (#23 The Lifeline), loaded once ----
+    acquired = _load_inseason_acquired(db_path, league_id)
+    started_fr = _load_started_by_franchise(db_path, league_id, reg_weeks)
     for cs, cpid in contested:  # 1.4 constitutional - emit, never silently authoritative
         print(
             f"[group-d] CONTESTED (season={cs}, player_id={cpid}): >1 franchise among WON-eligible "
@@ -648,6 +754,39 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
             win22 = [w for w in pv if w[2] == top_bid22]
             _emit_pick_award(out, "22", s, win22, round(top_bid22, 2), pos_map)
 
+        # ---- Wave B2 Group E: #23 The Lifeline (in-season acquisition) ----
+        # Best regular-season STARTED production from a player the franchise acquired in-season
+        # (waiver / free agent / awarded blind bid). Candidates clear the starter_weeks >= 4 floor
+        # (Pin E). Per franchise, max started_points; co-holders on tie; silence where none qualify.
+        # The week-floor is dropped (Pin D) - per-franchise keying prevents cross-franchise leakage.
+        lifeline: list[tuple[float, str, str, int]] = []  # (started_pts, franchise_id, player_id, starter_weeks)
+        for (a_s, a_fr, a_pid) in acquired:
+            if a_s != s:
+                continue
+            prod = started_fr.get((s, a_fr, a_pid))
+            if prod is None:
+                continue
+            sp, sw = prod
+            if sw >= 4:
+                lifeline.append((sp, a_fr, a_pid, sw))
+        if lifeline:
+            top_life = max(round(x[0], 2) for x in lifeline)
+            life_by_fr: dict[str, list[tuple[str, float, int]]] = defaultdict(list)
+            for sp, fr, pid, sw in lifeline:
+                if round(sp, 2) == top_life:
+                    life_by_fr[fr].append((pid, sp, sw))
+            for fr in sorted(life_by_fr):
+                life_recs = sorted(life_by_fr[fr])  # by player_id
+                pid, sp, sw = life_recs[0]
+                life_detail: dict[str, Any] = {
+                    "player_id": pid, "started_points": sp,
+                    "position": pos_map.get(pid, ""), "starter_weeks": sw,
+                }
+                if len(life_recs) > 1:  # same-franchise co-holders fold into detail
+                    life_detail["co_player_ids"] = [r[0] for r in life_recs[1:]]
+                out.append({"award_id": "23", "season": s, "franchise_id": fr,
+                            "value": round(top_life, 2), "detail": life_detail})
+
     out.sort(key=lambda d: (d["award_id"], d["season"], d["franchise_id"]))
     return out
 
@@ -666,8 +805,9 @@ def emit_seed(rows: list[dict[str, Any]], league: str) -> str:
     lines.append("-- Club (matchup-derived). Wave B2 sub-wave 1: #3 The Hammer (margin), #6 The Benchwarmer,")
     lines.append("-- #7 The Clairvoyant, #9 The Oracle (optimal-lineup). Group C: #13-18 (positional).")
     lines.append("-- Group D: #19 The Steal, #20 The Burning Money, #21 The Patience Premium, #22 The")
-    lines.append("-- Whale (auction value, regular-season started-anywhere). Generated by")
-    lines.append("-- scripts/gen_season_award_winners.py in the engine repo - do not hand-edit.")
+    lines.append("-- Whale (auction value, regular-season started-anywhere). Group E: #23 The Lifeline")
+    lines.append("-- (best in-season acquisition - waiver/free-agent pickup, regular-season started).")
+    lines.append("-- Generated by scripts/gen_season_award_winners.py in the engine repo - do not hand-edit.")
     lines.append("-- Idempotent: DELETE these awards then INSERT. Provenance is per-award (CASE below).")
     lines.append("-- Franchise resolves by (league canonical_id, canonical code) - no hardcoded UUIDs.")
     lines.append("-- Prerequisite: migration 028 (season_award_winners) applied. Paste-safe (no in-comment semicolons).")
@@ -686,6 +826,7 @@ def emit_seed(rows: list[dict[str, Any]], league: str) -> str:
                  "THEN 'engine:lineup-position-derived'")
     lines.append("    WHEN v.award_id IN ('19', '20', '21', '22') "
                  "THEN 'engine:auction-value-derived'")
+    lines.append("    WHEN v.award_id = '23' THEN 'engine:transaction-acquisition-derived'")
     lines.append("    ELSE 'engine:lineup-derived'")
     lines.append("  END")
     lines.append("FROM (VALUES")
