@@ -66,6 +66,10 @@ POSITION_AWARDS = {
     "Def": "18",  # The Wall
 }
 
+# #23 The Lifeline is restricted to skill positions (founder ruling 2026-06-24): a triumphant skill
+# pickup, never a kicker/defense. (#17/#18 remain the intentional PK/Def awards.)
+LIFELINE_SKILL_POSITIONS = ("QB", "RB", "WR", "TE")
+
 
 def _champ_week(season: int) -> int:
     """This league's championship-game week (the final round of the playoff bracket).
@@ -794,11 +798,16 @@ def build_awards(db_path: str, league_id: str) -> list[dict[str, Any]]:
         # ---- Wave B2 Group E: #23 The Lifeline (in-season acquisition) ----
         # Best regular-season STARTED production from a player the franchise acquired in-season
         # (waiver / free agent / awarded blind bid). Candidates clear the starter_weeks >= 4 floor
-        # (Pin E). Per franchise, max started_points; co-holders on tie; silence where none qualify.
-        # The week-floor is dropped (Pin D) - per-franchise keying prevents cross-franchise leakage.
+        # (Pin E) and are SKILL positions only - QB/RB/WR/TE; kickers (PK) and defenses (Def) are
+        # excluded so the Lifeline reads as a triumphant skill pickup (founder ruling 2026-06-24; #17
+        # The Boot and #18 The Wall remain the intentional PK/Def awards). Per franchise, max
+        # started_points; co-holders on tie; silence where no skill acquisition clears the floor. The
+        # week-floor is dropped (Pin D) - per-franchise keying prevents cross-franchise leakage.
         lifeline: list[tuple[float, str, str, int]] = []  # (started_pts, franchise_id, player_id, starter_weeks)
         for (a_s, a_fr, a_pid) in acquired:
             if a_s != s:
+                continue
+            if pos_map.get(a_pid) not in LIFELINE_SKILL_POSITIONS:  # skill-only (exclude PK/Def)
                 continue
             prod = started_fr.get((s, a_fr, a_pid))
             if prod is None:
