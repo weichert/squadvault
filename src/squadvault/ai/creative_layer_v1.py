@@ -22,7 +22,17 @@ from squadvault.core.eal.editorial_attunement_v1 import EAL_AMBIGUITY_PREFER_SIL
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-sonnet-4-20250514"
+# Production generation model pin. The prior pin claude-sonnet-4-20250514 reached
+# end-of-life 2026-06-15 and now returns HTTP 404 not_found_error from the API, which
+# this layer catches and degrades to deterministic facts-only output (silent fallback).
+# Repinned 2026-07-01 to the current dated Sonnet 4.5 snapshot: a behavior-preserving
+# drop-in that still accepts the `temperature` parameter this layer sends, so the
+# tier-aware retry temperature-decay ([None, 0.5, 0.3]) is unchanged. The Claude 5 /
+# 4.8 generation (claude-sonnet-5, claude-opus-4-8) reject `temperature` (HTTP 400) and
+# would require removing temperature control and redesigning the retry strategy — a
+# separate migration, not a pin swap. Dated snapshot chosen for strict reproducibility
+# (charter section 8).
+_MODEL = "claude-sonnet-4-5-20250929"
 _TEMPERATURE = 0.8
 _MAX_TOKENS = 1500
 
