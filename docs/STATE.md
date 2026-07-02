@@ -7,6 +7,7 @@ index carries date + key hash + memo pointer.
 
 ## Current state (2026-07-02)
 
+- FAAB_CLAIM Attribution Stage B COMPLETE 2026-07-02: 9 events across 5 reproducing cells — H1p 1 / H2p 3 / H3p 5; 4 cells NO_FAILURE_REPRODUCED. Finding: verifier per-player binder is the dominant fault (8/9 false positives on correct non-player-scoped FAAB claims); Tier-2 short-circuit amplifies each into facts-only. Fix scoping is the open next step. Memo OBSERVATIONS_2026_07_02_FAAB_CLAIM_ATTRIBUTION_STAGE_B.md.
 - FAAB_CLAIM Attribution Stage A COMPLETE 2026-07-02: H1=2 (2019/2020 zero season WBA — invent-when-starved proven), H2-by-value=0 (all prompt FAAB $ come from WAIVER_BID_AWARDED, the verifier's own source), H3=9. Stage B required for the 9; capture list in memo OBSERVATIONS_2026_07_02_FAAB_CLAIM_ATTRIBUTION_STAGE_A.md.
 - **Unit A7 (1.4) Fresh-Generation Failure-Rate Baseline MEASURED 2026-07-02** (pre-registered,
   founder-ratified Gate 1; measured against HEAD `89d9321` on the corrected config after the
