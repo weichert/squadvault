@@ -5,7 +5,21 @@ a derived index, kept under ~80 lines. No session treats a prior chat message or
 over `git log` + this file. Verbose per-unit detail lives in the `_observations/` close-out memos; this
 index carries date + key hash + memo pointer.
 
-## Current state (2026-06-24)
+## Current state (2026-07-02)
+
+- **Unit A7 (1.4) Fresh-Generation Failure-Rate Baseline MEASURED 2026-07-02** (pre-registered,
+  founder-ratified Gate 1; measured against HEAD `89d9321` on the corrected config after the
+  model pin was retired [prior pin `claude-sonnet-4-20250514` EOL/404 -> repinned to
+  `claude-sonnet-4-5-20250929`, `ff1c760`; DoR DRIFT scoped `89d9321`]). n=36 pinned cells
+  (league 70985, full-slate weeks 2010-2024) generated fresh against scratch DB (prod
+  untouched, hash `effb00e5...`). **Headline: first-attempt verification failure 25/36 =
+  69.4%; final after tier-aware retry = 20/36 clean (11 att1 / 8 att2 / 1 att3), 16/36
+  facts-only (11 Tier-2 short-circuit all FAAB_CLAIM, 5 exhausted).** Top first-attempt
+  categories STREAK 15 / SCORE_VERBATIM 12 / FAAB_CLAIM 11. Recorded: verifier emits 19
+  categories, not the brief's 14. Counts-only pre-season control; attribution out of scope.
+  Memo `_observations/OBSERVATIONS_2026_07_02_UNIT_1_4_FRESH_GENERATION_BASELINE.md`.
+  DoR pin fact (`DoR:58`) still names the old model - founder/DECIDE update owed (carry-forward).
+
 
 - **Pre-Tahoe docket COMPLETE** - E2.3-min -> L.3 (capture) -> L.1 (capture) -> W.1 Inc 2 all DISCHARGED (see Discharged). Draft weekend PINNED 2026-08-15; D-SEQ-3 runbook trigger PINS 2026-07-18 (PARKED until trigger). L.3 reveal + L.1 display successors DEFER to season-end (~Jan 2027; L.3 reveal pairs with L.5).
 - **W.5 (Trophy Room) - Championship Package (increment 1) BUILT + DISCHARGED 2026-06-22** (frontend PR #27 `008ce16`; prod live, custody_integrity_probe all-true, gov 154/0 G25 green; see Discharged). Four-memo chain landed; taxonomy v1.2 registered (`e36aa1d`); naming ruled (DoR v2.1.2) + C7 closed (PFL = Phony Football League, attested). W.5 increments: increment 2 (Live Records) Wave 1 + Wave 2 BUILT + DISCHARGED (see below); increment 3 (grants/accumulations/fixed) SPECIFIED, build-ready (see below); commissioner ratify UI SHIPPED (PR #28 `b764a3e`).
@@ -43,7 +57,8 @@ index carries date + key hash + memo pointer.
 - W.1 Inc 1 + video 2026-06-10..12: A/V Room foundation (PR #2 `65da2e6`, tables+RLS, 5 routes, click-through); large-file ingest remedy-B 1 GB (PR #10 `5c1550b`, mig 012, G17); voice-attestation + gated playback (mig 015, G20; PR #21 `cb3ba97`); A6 rendition (PR #22 `8cd2474`) - the CSP media-src directive was the ENTIRE playback blocker (re-attributed; content-type theory dead); expungement (mig 014, G19). Memos in frontend `_observations/`.
 - W.1 (A/V Room) four-memo chain RATIFIED+FILED 2026-06-10 (SAT #1; D-W1-1..6; governed-testimony fact class per W.6 1.1, frame D1-D6 OPEN). E1.7 DISCHARGED-NATIVE.
 - W.6 consent 2026-06-10: `member_consent_events` (mig 010 append-only/member-only RLS, derived view, G11), panel `/league/[id]/consent`. Memos `..._W6_RATIFICATION`/`_AFFIRMATION`. W.7 framing drift-flag filed (doc-only).
-- Engine baseline: Charter v1.1 (`11bdd8e`, per-repo ledger realization); DoR in-repo + E1.1-E1.5 (`58b498a`/`87c400f`/`bf0833e`/`b075b8a`/`84284fe` formatting gate closes R5); weekly-windowing fix `abd5c3c` (unblocked E1.4); A2 anchor rename `a5d27dd` (Cavallini revocation `e5fbb94`/`97498fa`); fabrication remediation -51% (SERIES fixed, FAAB deferred); E1.4 fresh-gen baseline YELLOW.
+- Engine baseline: Charter v1.1 (`11bdd8e`, per-repo ledger realization); DoR in-repo + E1.1-E1.5 (`58b498a`/`87c400f`/`bf0833e`/`b075b8a`/`84284fe` formatting gate closes R5); weekly-windowing fix `abd5c3c` (unblocked E1.4); A2 anchor rename `a5d27dd` (Cavallini revocation `e5fbb94`/`97498fa`); fabrication remediation -51% (SERIES fixed, FAAB deferred); E1.4 fresh-gen baseline
+YELLOW -> MEASURED 2026-07-02 (Unit A7; see Current state; memo `..._UNIT_1_4_FRESH_GENERATION_BASELINE`).
 
 ## Known hazards
 
