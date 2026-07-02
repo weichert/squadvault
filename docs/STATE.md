@@ -18,7 +18,6 @@ index carries date + key hash + memo pointer.
   categories STREAK 15 / SCORE_VERBATIM 12 / FAAB_CLAIM 11. Recorded: verifier emits 19
   categories, not the brief's 14. Counts-only pre-season control; attribution out of scope.
   Memo `_observations/OBSERVATIONS_2026_07_02_UNIT_1_4_FRESH_GENERATION_BASELINE.md`.
-  DoR pin fact (`DoR:58`) still names the old model - founder/DECIDE update owed (carry-forward).
 
 
 - **Pre-Tahoe docket COMPLETE** - E2.3-min -> L.3 (capture) -> L.1 (capture) -> W.1 Inc 2 all DISCHARGED (see Discharged). Draft weekend PINNED 2026-08-15; D-SEQ-3 runbook trigger PINS 2026-07-18 (PARKED until trigger). L.3 reveal + L.1 display successors DEFER to season-end (~Jan 2027; L.3 reveal pairs with L.5).
