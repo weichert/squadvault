@@ -55,7 +55,7 @@ Trust + Voice + Permanence is also the exact specification for every other commu
 - Voice bridge shipped (`7ee2c2d`); unexercised live.
 - Fabrication research **converged**: ceiling on context-block manipulation established by two pre-registered falsifications; matchup anchors disabled (`47df707`, ratified `353bb64`); FAAB suppression falsified (`3a9cfd3`); D50 unwired; D39 over-count removed; SERIES tie-aware (`697ffd5`); chronicle docket grammar fixed at source (`2bb33d0`).
 - Failure-rate attribution: 0.94 is the **stale-corpus** rate (124/163 rows pre-date the score pre-render fix; post-fix SCORE_VERBATIM 3/39 vs 124/124 pre-fix). **Current-pipeline rate unmeasured** — Part 3 fresh generations are the one open instrument.
-- Model pinned `claude-sonnet-4-20250514`; DRIFT ruled out.
+- Model pinned `claude-sonnet-4-5-20250929` (repinned 2026-07-01; supersedes `claude-sonnet-4-20250514`, under which DRIFT was ruled out — see `_observations/OBSERVATIONS_2026_07_01_UNIT_1_4_MODEL_PIN_RETIREMENT.md`).
 
 ## 1.2 Frontend (`weichert/squadvault-frontend`, HEAD `4e44bb3`, 53 commits)
 
