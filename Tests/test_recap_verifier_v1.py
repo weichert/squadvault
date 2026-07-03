@@ -6846,3 +6846,381 @@ class TestDraftAuctionDollarVerification:
             reverse_name_map=rmap,
         )
         assert failures == []
+
+
+# ── Unit F1: FAAB_CLAIM verifier vocabulary + binder-crossover fix ────
+#
+# Gate 1 regression + adversarial suite. Source of truth:
+#   _observations/OBSERVATIONS_2026_07_02_FAAB_CLAIM_ATTRIBUTION_STAGE_B.md
+#   (9 founder-ratified failure events) and the canonical amounts probed
+#   read-only from the local canonical corpus this session.
+#
+# Post-fix required outcomes (founder-ratified 2026-07-02):
+#   7 of the 8 Stage B false positives PASS (crossover rebind + defense
+#   resolution). The 9th genuine invention (Pitts $39) still FAILS. The
+#   $98 "Michele...through four weeks" event is RECLASSIFIED as a temporal
+#   fabrication (real through-wk4 spend ~= $31; assembly windows FAAB to
+#   the recap week) and must STILL FAIL -- the franchise-total shape is
+#   DROPPED per the founder ruling, not built.
+#
+# Canonical amounts encoded below are the real probed values:
+#   Cleveland DEF (0507) 2023 WBA $5.01; Chargers DEF (0514) 2024 $2.55;
+#   Bears/Chicago DEF (0521) 2024 $0.01; Jennings 2024 $35.01; Darnold
+#   2024 $9.11; Bigsby 2024 $4.42; Wicks 2024 $52.78; Hunt 2024 $40.99;
+#   Pitts 2022 none (nearest ~$39 owner is Fant $38.07, NOT in-window).
+#
+# FIDELITY NOTE (flagged at Gate 1): the crossover fixtures (Jennings /
+# Darnold / Bigsby) quote the memo's verbatim FAAB sentence, but the
+# memo captured only that sentence -- not the full +/-100-char draft
+# window that contained the nearer WBA-less misbinder (Breece Hall /
+# Jaylen Waddle / Jayden Daniels, named in the memo's field F3). Those
+# decoy clauses are RECONSTRUCTED to reproduce the documented F3 nearest-
+# name binding; the FAAB sentence itself is byte-exact. The defense and
+# invention fixtures are fully byte-exact (the misbinder is in the quote).
+
+
+def _f1_player(con, *, season, player_id, name, position="WR"):
+    con.execute(
+        "INSERT OR REPLACE INTO player_directory "
+        "(league_id, season, player_id, name, position) VALUES (?, ?, ?, ?, ?)",
+        (LEAGUE, season, player_id, name, position),
+    )
+
+
+def _f1_defense(con, *, season, player_id, name):
+    # Defenses are rosterable player_directory rows, position 'Def',
+    # named "<Nickname>, <City>" (e.g. "Browns, Cleveland").
+    _f1_player(con, season=season, player_id=player_id, name=name, position="Def")
+
+
+class TestFaabClaimUnitF1FixtureRescues:
+    """The 7 Stage B false positives that MUST PASS post-fix.
+
+    All 7 are RED against current code (the per-player proximity binder
+    force-binds each dollar to a nearer WBA-less player). Each rescue
+    requires a real canonical WBA for an entity actually referenced in
+    the window -- crossover (player named in-window) or defense-entity
+    resolution (defense nickname/city token in-window).
+    """
+
+    def test_cleveland_defense_5_passes(self, tmp_path):
+        """2023 wk12: '$5 FAAB pickup' -> Cleveland DEF (0507) $5.01.
+
+        Current: binds $5 to Dak Prescott (no 2023 WBA) -> HARD fail.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2023, player_id="P_DAK", name="Prescott, Dak", position="QB")
+        _f1_defense(con, season=2023, player_id="0507", name="Browns, Cleveland")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2023, franchise_id="0001",
+                         player_id="0507", bid_amount=5.01,
+                         timestamp="2023-09-28T01:00:00Z")
+        con.commit()
+        con.close()
+        text = ("Dak Prescott led Stu with 43.55 while the Cleveland defense "
+                "- a $5 FAAB pickup - managed just 3.00.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2023)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert faab == [], (
+            f"expected no FAAB failure ($5 = Cleveland DEF canonical $5.01), "
+            f"got {[(f.claim, f.evidence) for f in faab]}"
+        )
+
+    def test_chicago_defense_zero_passes(self, tmp_path):
+        """2024 wk4: '$0 claim' -> Bears/Chicago DEF (0521) $0.01.
+
+        Compound sentence; the '$40 on Kareem Hunt' figure is not FAAB-
+        gated (no keyword within 30 chars of it). Current: binds $0 to
+        Kareem Hunt (real WBA $40.99) -> HARD fail.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_HUNT", name="Hunt, Kareem", position="RB")
+        _f1_defense(con, season=2024, player_id="0521", name="Bears, Chicago")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0002",
+                         player_id="P_HUNT", bid_amount=40.99)
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0002",
+                         player_id="0521", bid_amount=0.01,
+                         timestamp="2024-09-26T01:00:00Z")
+        con.commit()
+        con.close()
+        text = ("KP dropped $40 on Kareem Hunt this week and started the "
+                "Chicago defense (8.00 points on a $0 claim), but left "
+                "46.65 points on the bench.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert faab == [], (
+            f"expected no FAAB failure ($0 = Bears DEF canonical $0.01), "
+            f"got {[(f.claim, f.evidence) for f in faab]}"
+        )
+
+    def test_chargers_defense_2_or_3_passes(self, tmp_path):
+        """2024 wk12: 'either $2 or $3' -> Chargers DEF (0514) $2.55.
+
+        |2 - 2.55| = 0.55 and |3 - 2.55| = 0.45, both within +/-$1.
+        Current: binds both to Sam Darnold (real WBA $9.11) -> 2 HARD fails.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_DARN", name="Darnold, Sam", position="QB")
+        _f1_defense(con, season=2024, player_id="0514", name="Chargers, Los Angeles")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0003",
+                         player_id="P_DARN", bid_amount=9.11)
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0003",
+                         player_id="0514", bid_amount=2.55,
+                         timestamp="2024-09-12T01:00:00Z")
+        con.commit()
+        con.close()
+        text = ("the Chargers have scored 72.00 points across 9 starts after "
+                "costing either $2 or $3 in FAAB. Sam Darnold sat on Eddie's "
+                "bench with 28.40.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert faab == [], (
+            f"expected no FAAB failure ($2/$3 = Chargers DEF canonical $2.55), "
+            f"got {[(f.claim, f.evidence) for f in faab]}"
+        )
+
+    def test_jennings_35_crossover_passes(self, tmp_path):
+        """2024 wk11: $35 -> Jennings real WBA $35.01 (named in-window).
+
+        RECONSTRUCTED DECOY (memo F3): Breece Hall (no WBA) placed nearer
+        $35 than Jennings to reproduce the documented misbinding. Current:
+        binds $35 to Breece Hall -> HARD fail. Crossover rebinds to
+        Jennings ($35.01, named in-window) -> pass.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_JJ", name="Jennings, Jauan", position="WR")
+        _f1_player(con, season=2024, player_id="P_BH", name="Hall, Breece", position="RB")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0004",
+                         player_id="P_JJ", bid_amount=35.01)
+        con.commit()
+        con.close()
+        # Byte-exact memo sentence + reconstructed nearer decoy per F3.
+        text = ("Jauan Jennings started and scored 20.10 in his second week "
+                "since the $35 FAAB pickup, a bargain next to what Breece Hall cost.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert faab == [], (
+            f"expected no FAAB failure ($35 = Jennings canonical $35.01, "
+            f"named in-window), got {[(f.claim, f.evidence) for f in faab]}"
+        )
+
+    def test_darnold_9_crossover_passes(self, tmp_path):
+        """2024 wk12: $9 -> Darnold real WBA $9.11 (named in-window).
+
+        RECONSTRUCTED DECOY (memo F3): Jaylen Waddle (no WBA) placed nearer
+        $9 than Darnold. Current: binds $9 to Waddle -> HARD fail.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_DARN", name="Darnold, Sam", position="QB")
+        _f1_player(con, season=2024, player_id="P_JW", name="Waddle, Jaylen", position="WR")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0005",
+                         player_id="P_DARN", bid_amount=9.11)
+        con.commit()
+        con.close()
+        # Memo F2 owner: Sam Darnold ($9.11). The memo's byte-exact sentence
+        # placed "Sam Darnold" 101 chars from $9 -- 1 char beyond the +/-100
+        # window -- so this reconstructed context keeps Darnold in-window
+        # (the memo's H2p classification is that Darnold IS the rescuable
+        # in-window owner) with Jaylen Waddle (no WBA) nearer per F3.
+        text = ("Sam Darnold rewarded Eddie after the $9 pickup, cheaper than "
+                "Jaylen Waddle, with 172.00 points across 8 starts.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert faab == [], (
+            f"expected no FAAB failure ($9 = Darnold canonical $9.11, "
+            f"named in-window), got {[(f.claim, f.evidence) for f in faab]}"
+        )
+
+    def test_bigsby_4_crossover_passes(self, tmp_path):
+        """2024 wk12: $4 -> Bigsby real WBA $4.42 (named in-window).
+
+        RECONSTRUCTED DECOY (memo F3): Jayden Daniels (no WBA) placed nearer
+        $4 than Bigsby. Current: binds $4 to Daniels -> HARD fail.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_TB", name="Bigsby, Tank", position="RB")
+        _f1_player(con, season=2024, player_id="P_JD", name="Daniels, Jayden", position="QB")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0006",
+                         player_id="P_TB", bid_amount=4.42)
+        con.commit()
+        con.close()
+        text = ("Tank Bigsby, who's put up 73.70 points across 8 starts after "
+                "a $4 FAAB bid, a steal beside Jayden Daniels.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert faab == [], (
+            f"expected no FAAB failure ($4 = Bigsby canonical $4.42, "
+            f"named in-window), got {[(f.claim, f.evidence) for f in faab]}"
+        )
+
+
+class TestFaabClaimUnitF1MustStillFail:
+    """The genuine defect + the reclassified temporal fabrication.
+
+    Both GREEN against current code and MUST STAY failing post-fix
+    (D-Z: no change may cause a genuine-invention case to pass).
+    """
+
+    def test_pitts_39_invention_still_fails(self, tmp_path):
+        """2022 wk5: $39 Kyle Pitts (no WBA) is genuine invention.
+
+        D-Z GUARDRAIL: Noah Fant ($38.07) is the only ~$39 2022 WBA owner
+        but is NOT named in-window, so crossover must NOT rescue Pitts.
+        '$35 on Javonte Williams' is not FAAB-gated (no keyword within 30
+        chars) -- only the '$39' claim ('spent' within 30 chars) is checked.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2022, player_id="P_PITTS", name="Pitts, Kyle", position="TE")
+        _f1_player(con, season=2022, player_id="P_JAV", name="Williams, Javonte", position="RB")
+        # Fant carries the season's only ~$39 WBA but is absent from the prose.
+        _f1_player(con, season=2022, player_id="P_FANT", name="Fant, Noah", position="TE")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2022, franchise_id="0004",
+                         player_id="P_FANT", bid_amount=38.07,
+                         timestamp="2022-10-01T01:00:00Z")
+        con.commit()
+        con.close()
+        text = ("The Cruisers spent $39 on Kyle Pitts, who is averaging just "
+                "5.0 points through four starts, and $35 on Javonte Williams.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2022)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 1, (
+            f"expected exactly 1 FAAB failure ($39 Pitts invention), "
+            f"got {[(f.claim, f.evidence) for f in faab]}"
+        )
+        assert "$39" in faab[0].claim
+
+    def test_michele_98_temporal_fabrication_still_fails(self, tmp_path):
+        """2024 wk4: '$98 through four weeks - most in the league'.
+
+        Founder ruling 2026-07-02: franchise-total shape DROPPED. The $98
+        is a temporal fabrication (real through-wk4 ~= $31; league max ~=
+        $41). It must stay flagged. The co-claim '$52 he dropped on
+        Dontayvion Wicks' matches Wicks's real $52.78 and must NOT fail;
+        '$77 total' is not FAAB-gated.
+        """
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_WICKS", name="Wicks, Dontayvion", position="WR")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0009",
+                         player_id="P_WICKS", bid_amount=52.78)
+        con.commit()
+        con.close()
+        text = ("Michele has spent $98 on FAAB through four weeks - most in "
+                "the league. The $52 he dropped on Dontayvion Wicks this week "
+                "pushed him past KP ($77 total).")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert any("$98" in f.claim for f in faab), (
+            f"expected the $98 temporal fabrication to fail, "
+            f"got {[(f.claim, f.evidence) for f in faab]}"
+        )
+        assert not any("$52" in f.claim for f in faab), (
+            f"$52 matches Wicks canonical $52.78 and must NOT fail, "
+            f"got {[(f.claim, f.evidence) for f in faab]}"
+        )
+
+
+class TestFaabClaimUnitF1Adversarial:
+    """D-Z adversarial suite (brief section 3): prove the fix does not
+    over-trust. Each case MUST FAIL post-fix."""
+
+    def test_near_miss_invention_fails(self, tmp_path):
+        """Adversarial 1: invented amount within $2-5 of a real in-window
+        WBA but OUTSIDE +/-$1 -> must fail. Jennings real $35.01; claim
+        $38 (|38 - 35.01| = 2.99)."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_JJ", name="Jennings, Jauan", position="WR")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0004",
+                         player_id="P_JJ", bid_amount=35.01)
+        con.commit()
+        con.close()
+        text = "Jauan Jennings was a $38 FAAB pickup that never paid off."
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) >= 1, "near-miss $38 vs canonical $35.01 must fail"
+
+    def test_explicit_false_attribution_fails(self, tmp_path):
+        """Adversarial 2 (CENTRAL D-Z): explicit false attribution. The
+        $35.01 bid belongs to an UNNAMED player (Nico Collins); Jennings
+        (named, no WBA) is credited with it. Crossover must NOT rescue --
+        the amount-owner is not named in-window."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_JJ", name="Jennings, Jauan", position="WR")
+        _f1_player(con, season=2024, player_id="P_NC", name="Collins, Nico", position="WR")
+        # The real $35.01 pickup is Collins, who is absent from the prose.
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0004",
+                         player_id="P_NC", bid_amount=35.01)
+        con.commit()
+        con.close()
+        text = "KP grabbed Jauan Jennings for $35 this week, a shrewd waiver move."
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) >= 1, (
+            "explicit false attribution ($35 to WBA-less Jennings; real "
+            "owner Collins not named) must fail -- crossover requires the "
+            "amount-owner to be named in-window"
+        )
+
+    def test_invented_defense_fails(self, tmp_path):
+        """Adversarial 4: team-defense claim where that defense has NO WBA
+        -> must fail. Raiders DEF (0513) present in directory, no bid."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_defense(con, season=2024, player_id="0513", name="Raiders, Las Vegas")
+        con.commit()
+        con.close()
+        text = "The Raiders defense was a $50 FAAB steal that carried the week."
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) >= 1, (
+            "invented defense pickup ($50, Raiders DEF has no WBA) must fail"
+        )
+
+    def test_a7_smoke_pair_fails(self, tmp_path):
+        """Adversarial 5: the A7 smoke pair -- '$11 Joe Burrow' / '$5 Kirk
+        Cousins', neither with a WBA record -> both must fail."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_player(con, season=2024, player_id="P_BURR", name="Burrow, Joe", position="QB")
+        _f1_player(con, season=2024, player_id="P_COUS", name="Cousins, Kirk", position="QB")
+        con.commit()
+        con.close()
+        text = ("Joe Burrow rewarded his manager for $11 on FAAB and delivering "
+                "207 yards, while Kirk Cousins, a $5 waiver claim, flopped.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 2, (
+            f"both A7 smoke inventions must fail, "
+            f"got {[(f.claim, f.evidence) for f in faab]}"
+        )
+
+    def test_compound_defense_ok_invention_fails(self, tmp_path):
+        """Adversarial 6: compound sentence -- a CORRECT defense claim
+        ($0 Bears, real $0.01) plus an INVENTED player amount ($39 Pitts,
+        no WBA). The defense passes; the invention still fails."""
+        db_path = _fresh_db(tmp_path)
+        con = sqlite3.connect(db_path)
+        _f1_defense(con, season=2024, player_id="0521", name="Bears, Chicago")
+        _f1_player(con, season=2024, player_id="P_PITTS", name="Pitts, Kyle", position="TE")
+        _insert_faab_bid(con, league_id=LEAGUE, season=2024, franchise_id="0002",
+                         player_id="0521", bid_amount=0.01,
+                         timestamp="2024-09-26T01:00:00Z")
+        con.commit()
+        con.close()
+        text = ("The Bears defense was a $0 FAAB steal, but KP overpaid, "
+                "grabbing Kyle Pitts with a $39 bid.")
+        failures = verify_faab_claims(text, db_path=db_path, league_id=LEAGUE, season=2024)
+        faab = [f for f in failures if f.category == "FAAB_CLAIM"]
+        assert len(faab) == 1, (
+            f"expected exactly 1 failure (the $39 Pitts invention; $0 Bears "
+            f"DEF passes), got {[(f.claim, f.evidence) for f in faab]}"
+        )
+        assert "$39" in faab[0].claim
