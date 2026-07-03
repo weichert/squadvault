@@ -4478,6 +4478,68 @@ def _load_faab_bids(
     return bids
 
 
+# A team defense referenced in prose by city (e.g. "the Cleveland defense")
+# is only treated as a defense claim when a defense-signal word sits in the
+# FAAB window. Nicknames ("the Chargers") are distinctive enough to resolve
+# on their own; ambiguous cities (Los Angeles, New York) are dropped by the
+# uniqueness guard in _load_faab_defense_tokens. Unit F1 (F1a).
+_FAAB_DEFENSE_SIGNAL_PATTERN = re.compile(r"\b(?:defense|defenses|def|d/st|dst)\b", re.IGNORECASE)
+
+
+def _load_faab_defense_tokens(
+    db_path: str, league_id: str, season: int,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Load unique nickname->pid and city->pid maps for team defenses.
+
+    Team defenses are rosterable player_directory rows (position 'Def')
+    named "<Nickname>, <City>" (e.g. "Browns, Cleveland"). Both tokens are
+    resolvable references the per-player binder cannot see. Only tokens that
+    map to exactly one defense in the season are kept — shared cities such as
+    "Los Angeles" (Chargers + Rams) and "New York" (Jets + Giants) are
+    dropped so an ambiguous reference never resolves. Unit F1 (F1a).
+    """
+    nick_pids: dict[str, set[str]] = {}
+    city_pids: dict[str, set[str]] = {}
+    with DatabaseSession(db_path) as con:
+        rows = con.execute(
+            """SELECT player_id, name FROM player_directory
+               WHERE league_id = ? AND season = ? AND position = 'Def'""",
+            (str(league_id), int(season)),
+        ).fetchall()
+    for row in rows:
+        pid = str(row[0]).strip()
+        name = str(row[1]).strip() if row[1] else ""
+        if not pid or ", " not in name:
+            continue
+        nickname, city = name.split(", ", 1)
+        nickname = nickname.strip().lower()
+        city = city.strip().lower()
+        if len(nickname) >= 4:
+            nick_pids.setdefault(nickname, set()).add(pid)
+        if len(city) >= 4:
+            city_pids.setdefault(city, set()).add(pid)
+    nickname_map = {t: next(iter(pids)) for t, pids in nick_pids.items() if len(pids) == 1}
+    city_map = {t: next(iter(pids)) for t, pids in city_pids.items() if len(pids) == 1}
+    return nickname_map, city_map
+
+
+def _faab_defense_token_index(
+    recap_text: str, search_context: str, search_start: int, token: str,
+) -> int | None:
+    """Return the in-context index of a word-boundary, proper-noun match of
+    ``token`` in ``search_context``, or None.
+
+    The proper-noun guard (uppercase initial in the original text) keeps team
+    nicknames that are also common words ("Rams", "Bills", "Jets") from
+    matching lowercase prose. Unit F1 (F1a).
+    """
+    for m in re.finditer(r"\b" + re.escape(token) + r"\b", search_context):
+        orig = search_start + m.start()
+        if orig < len(recap_text) and recap_text[orig].isupper():
+            return m.start()
+    return None
+
+
 def verify_faab_claims(
     recap_text: str,
     *,
@@ -4527,8 +4589,13 @@ def verify_faab_claims(
             if key not in display_to_pid:
                 display_to_pid[key] = pid
 
+    # Team-defense reference maps (unique nickname/city -> defense pid).
+    # Unit F1 (F1a): defenses are rosterable and carry WAIVER_BID_AWARDED
+    # records the per-player binder cannot reach.
+    def_nickname_map, def_city_map = _load_faab_defense_tokens(db_path, league_id, season)
+
     text_lower = recap_text.lower()
-    checked: set[tuple[str, float]] = set()  # (display_name, claimed)
+    checked: set[tuple[str, float]] = set()  # (entity_label, claimed)
 
     for dollar_match in _FAAB_DOLLAR_PATTERN.finditer(recap_text):
         try:
@@ -4546,41 +4613,71 @@ def verify_faab_claims(
         if _DRAFT_CONTEXT_PATTERN.search(kw_context):
             continue
 
-        # Find nearest player name within 100 chars.
-        # Two-pass: first find the closest player name (any known player),
-        # then check whether that player has a WAIVER_BID_AWARDED record.
-        # The old single-pass filtered to players WITH bids, which silently
-        # passed fabricated claims for players who were never FAAB pickups.
+        # Gather every entity referenced within 100 chars: players by name,
+        # and team defenses by a unique nickname or (defense-signalled) city
+        # token. A claim is validated when ANY in-window entity carries a
+        # canonical WAIVER_BID_AWARDED record matching the amount within
+        # +/-$1 -- proximity alone never validates. This is Unit F1:
+        #   - crossover rebind (F1b): a per-player amount that matches a
+        #     player named in-window binds to that player, not the merely
+        #     nearest name (the amount-owner must be named -- explicit false
+        #     attribution to a WBA-less player still fails);
+        #   - defense-entity resolution (F1a): franchise-total claims are out
+        #     of scope (dropped), but team defenses resolve to their own WBA.
+        # The old logic force-bound each dollar to the nearest player name and
+        # failed when that player lacked a matching record, producing false
+        # positives on correct non-player-scoped or adjacent FAAB statements.
         search_start = max(0, dollar_match.start() - 100)
         search_end = min(len(text_lower), dollar_match.end() + 100)
         search_context = text_lower[search_start:search_end]
+        dollar_offset = dollar_match.start() - search_start
 
-        best_name: str | None = None
-        best_dist = 101
+        candidates: list[tuple[int, str, str]] = []  # (distance, pid, label)
         for display_name in display_to_pid:
             if len(display_name) <= 5:
                 continue
             idx = search_context.find(display_name)
             if idx >= 0:
-                dollar_offset = dollar_match.start() - search_start
-                dist = abs(idx - dollar_offset)
-                if dist < best_dist:
-                    best_dist = dist
-                    best_name = display_name
+                candidates.append(
+                    (abs(idx - dollar_offset), display_to_pid[display_name], display_name)
+                )
+        for token, dpid in def_nickname_map.items():
+            token_idx = _faab_defense_token_index(recap_text, search_context, search_start, token)
+            if token_idx is not None:
+                candidates.append((abs(token_idx - dollar_offset), dpid, token))
+        if _FAAB_DEFENSE_SIGNAL_PATTERN.search(search_context):
+            for token, dpid in def_city_map.items():
+                token_idx = _faab_defense_token_index(recap_text, search_context, search_start, token)
+                if token_idx is not None:
+                    candidates.append((abs(token_idx - dollar_offset), dpid, token))
 
-        if best_name is None:
+        if not candidates:
             continue
+
+        # Crossover / validation: pass if any in-window entity's canonical
+        # WBA matches the claimed amount (D-Z: a real referenced entity at
+        # the amount is not invention; a coincidental far entity cannot
+        # rescue -- only entities named in this window are considered).
+        if any(
+            any(abs(claimed - ca) <= 1.0 for ca in faab_bids.get(pid, []))
+            for _, pid, _ in candidates
+        ):
+            continue
+
+        # No referenced entity matches the amount -> fail, attributed to the
+        # nearest entity (nearest name binding, as before, now including
+        # defenses).
+        _, best_pid, best_name = min(candidates, key=lambda c: c[0])
 
         check_key = (best_name, claimed)
         if check_key in checked:
             continue
         checked.add(check_key)
 
-        pid = display_to_pid[best_name]
-        canonical_amounts = faab_bids.get(pid, [])
+        canonical_amounts = faab_bids.get(best_pid, [])
 
         if not canonical_amounts:
-            # Player has NO WAIVER_BID_AWARDED record this season.
+            # Entity has NO WAIVER_BID_AWARDED record this season.
             # Any FAAB dollar amount attributed to them is fabricated.
             failures.append(VerificationFailure(
                 category="FAAB_CLAIM",
@@ -4596,7 +4693,7 @@ def verify_faab_claims(
                 ),
             ))
         elif not any(abs(claimed - ca) <= 1.0 for ca in canonical_amounts):
-            # Player was a FAAB acquisition but the stated amount is wrong.
+            # Entity was a FAAB acquisition but the stated amount is wrong.
             canonical_str = ", ".join(f"${a:.2f}" for a in canonical_amounts)
             failures.append(VerificationFailure(
                 category="FAAB_CLAIM",
