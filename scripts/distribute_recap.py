@@ -41,8 +41,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Final
 
-from squadvault.core.exports.season_html_export_v1 import extract_shareable_parts
-from squadvault.core.recaps.render.plain_text_recap_v1 import render_plain_text_recap_v1
+from squadvault.core.recaps.render.artifact_structure_v1 import (
+    UnparseableArtifact,
+    parse_artifact,
+)
+from squadvault.core.recaps.render.plain_text_recap_v1 import render_structure_plain_text
 from squadvault.core.recaps.render.presentation_lint_v1 import lint_presentation
 from squadvault.core.storage.session import DatabaseSession
 from squadvault.recaps.weekly_recap_lifecycle import derive_canonical_facts_block_v1
@@ -161,24 +164,9 @@ def _load_latest_artifact(
 # ---------------------------------------------------------------------------
 
 
-def _format_for_paste_assist(
-    *,
-    narrative: str,
-    bullets: list[str],
-    season: int,
-    week_index: int,
-) -> str:
-    """Compose the message body the commissioner pastes into the thread.
-
-    Delegates to the shared clean-form assembler (render/plain_text_recap_v1);
-    kept as a thin wrapper so this module's call sites read unchanged.
-    """
-    return render_plain_text_recap_v1(
-        narrative=narrative,
-        bullets=bullets,
-        season=season,
-        week_index=week_index,
-    )
+# The message body is now composed by parsing the artifact into the canonical structure
+# (render/artifact_structure_v1) and rendering it (render/plain_text_recap_v1), so the
+# distribution path and the Office review share one structure -> one renderer (Unit 1.7b, R5).
 
 
 # ---------------------------------------------------------------------------
@@ -405,12 +393,17 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 3
 
-    narrative, bullets = extract_shareable_parts(artifact.rendered_text)
-    if not narrative:
+    structure = parse_artifact(
+        artifact.rendered_text,
+        league_name="PFL Buddies",
+        season=artifact.season,
+        week_index=artifact.week_index,
+    )
+    if isinstance(structure, UnparseableArtifact):
+        # Malformed artifact is SURFACED, not repaired (spec section 6). Human-readable reason.
         sys.stderr.write(
             f"Refusing to distribute: APPROVED artifact "
-            f"(id={artifact.recap_artifact_id}) has no extractable narrative "
-            f"in rendered_text.\n"
+            f"(id={artifact.recap_artifact_id}) is unparseable — {structure.reason}.\n"
         )
         return 4
 
@@ -431,12 +424,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 5
 
-    message = _format_for_paste_assist(
-        narrative=narrative,
-        bullets=bullets,
-        season=artifact.season,
-        week_index=artifact.week_index,
-    )
+    message = render_structure_plain_text(structure)
 
     # E1.5b presentation gate (publication path; closes R5). SOFT formatting flags
     # warn but never block; the one HARD rule — L2 facts-block byte-identity against

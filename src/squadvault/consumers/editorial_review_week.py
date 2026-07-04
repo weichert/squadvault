@@ -312,11 +312,12 @@ def render_presentation_report(
         lines.append("  No artifact text available to lint.")
         return "\n".join(lines)
     try:
-        from squadvault.core.exports.season_html_export_v1 import (
-            extract_shareable_parts,
+        from squadvault.core.recaps.render.artifact_structure_v1 import (
+            UnparseableArtifact,
+            parse_artifact,
         )
         from squadvault.core.recaps.render.plain_text_recap_v1 import (
-            render_plain_text_recap_v1,
+            render_structure_plain_text,
         )
         from squadvault.core.recaps.render.presentation_lint_v1 import (
             lint_presentation,
@@ -325,10 +326,18 @@ def render_presentation_report(
             derive_canonical_facts_block_v1,
         )
 
-        narrative, bullets = extract_shareable_parts(rendered_text)
-        clean = render_plain_text_recap_v1(
-            narrative=narrative, bullets=bullets, season=season, week_index=week_index,
+        # Parse into the canonical structure (shared with the distribution path, Fork A) so the
+        # reviewer sees exactly what ships. A malformed artifact is SURFACED, human-readably, not
+        # repaired (spec section 6 / P8b) - never a stack trace, never a silent skip.
+        structure = parse_artifact(
+            rendered_text, league_name="PFL Buddies", season=season, week_index=week_index,
         )
+        if isinstance(structure, UnparseableArtifact):
+            lines.append(
+                f"  Status: STRUCTURE PARSE FAILED (surfaced, not repaired) — {structure.reason}"
+            )
+            return "\n".join(lines)
+        clean = render_structure_plain_text(structure)
         canonical = derive_canonical_facts_block_v1(db, league_id, season, week_index)
         report = lint_presentation(
             clean,
