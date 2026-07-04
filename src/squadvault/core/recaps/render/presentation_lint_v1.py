@@ -1,7 +1,7 @@
 """Narrative presentation lint (v1) — standalone deterministic structural lint.
 
-Implements Narrative Presentation Spec v1.0 (docs/addenda/Narrative_Presentation_Spec_v1_0.md),
-Unit E1.5b. Closes the gate half of finding R5.
+Implements Narrative Presentation Spec v1.0 (docs/Narrative_Presentation_Spec_v1_0.md),
+Units E1.5b (gate half of finding R5) + 1.7b (reconciled to the spec masthead; R5 closed).
 
 Layer law (spec section 1): presentation lives at the derived/render layer only.
 This module creates, modifies, or reinterprets NO fact. It reads recap artifact
@@ -128,11 +128,12 @@ def _segment(artifact_text: str) -> _Body:
 
 
 def _title_pattern(season: int, week_index: int) -> re.Pattern[str]:
-    # S1: "PFL Buddies — Season {season}, Week {week}" (em dash in production).
-    # Accept em dash or the spec's ascii "--" fallback.
+    # Spec section 3 masthead: "PFL BUDDIES — WEEK {week} — {season}" (all caps, em-dash
+    # separators). Accept em dash or the ascii "--" fallback. (Unit 1.7b replaced the pre-R5
+    # "PFL Buddies — Season N, Week W" title with its setext "=" underline.)
     dash = r"(?:—|--)"
     return re.compile(
-        rf"^PFL Buddies {dash} Season {season}, Week {week_index}\s*$"
+        rf"^PFL BUDDIES {dash} WEEK {week_index} {dash} {season}\s*$"
     )
 
 
@@ -164,6 +165,10 @@ _MARKUP_PATTERNS = (
     ("__", re.compile(r"__")),
     ("`", re.compile(r"`")),
     ("[](url)", re.compile(r"\[[^\]]+\]\([^)]+\)")),
+    # R5 REGRESSION GUARD (Unit 1.7b): the setext "=" underline (markdown H1) is the W7 v27
+    # "markdown chrome in the group text" defect that started this whole arc. This pattern
+    # exists so that class of artifact can never silently return to the distributed form.
+    ("===== (setext underline)", re.compile(r"(?m)^[ \t]*={3,}[ \t]*$")),
 )
 
 
@@ -194,8 +199,8 @@ def lint_presentation(
     l1_ok = bool(_title_pattern(season, week_index).match(first_nonempty.strip()))
     findings.append(Finding(
         "L1", Severity.SOFT, l1_ok,
-        "Title present" if l1_ok
-        else f"S1 title line does not match 'PFL Buddies — Season {season}, Week {week_index}'",
+        "Masthead present" if l1_ok
+        else f"Masthead line does not match 'PFL BUDDIES — WEEK {week_index} — {season}'",
     ))
 
     # L2 HARD — facts block byte-identity against the canonical reference.
