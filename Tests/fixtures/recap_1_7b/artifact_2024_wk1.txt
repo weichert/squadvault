@@ -1,0 +1,53 @@
+SquadVault Weekly Recap — League 70985 — Season 2024 — Week 1 (v0)
+
+Window: 2024-09-08T17:00:00Z → 2024-09-15T17:00:00Z
+Selection fingerprint: bb19d152c31c4a7eff1e9efac736b0622c98fcd4998986da56537d1a264cdd31
+
+Events selected: 31
+
+Breakdown:
+  - TRANSACTION_BBID_WAIVER: 5
+  - TRANSACTION_FREE_AGENT: 11
+  - TRANSACTION_TRADE: 3
+  - WAIVER_BID_AWARDED: 7
+  - WEEKLY_MATCHUP_RESULT: 5
+
+Trace (selection ids):
+  WEEKLY_MATCHUP_RESULT:70985:2024:W1:0001:0004, WEEKLY_MATCHUP_RESULT:70985:2024:W1:0002:0005, WEEKLY_MATCHUP_RESULT:70985:2024:W1:0003:0007, WEEKLY_MATCHUP_RESULT:70985:2024:W1:0006:0008, WEEKLY_MATCHUP_RESULT:70985:2024:W1:0009:0010, TRANSACTION_BBID_WAIVER:70985:2024:MEMORY_EVENT_ID:351, TRANSACTION_BBID_WAIVER:70985:2024:MEMORY_EVENT_ID:352, TRANSACTION_BBID_WAIVER:70985:2024:MEMORY_EVENT_ID:353, TRANSACTION_BBID_WAIVER:70985:2024:MEMORY_EVENT_ID:354, TRANSACTION_BBID_WAIVER:70985:2024:MEMORY_EVENT_ID:355, WAIVER_BID_AWARDED:70985:2024:2024-09-12T01:00:00Z:0001:14108:16.0, WAIVER_BID_AWARDED:70985:2024:2024-09-12T01:00:00Z:0002:16610:30.01, WAIVER_BID_AWARDED:70985:2024:2024-09-12T01:00:00Z:0004:0514:2.55, WAIVER_BID_AWARDED:70985:2024:2024-09-12T01:00:00Z:0004:14138:0.5, WAIVER_BID_AWARDED:70985:2024:2024-09-12T01:00:00Z:0009:14871:2.21, WAIVER_BID_AWARDED:70985:2024:2024-09-12T01:00:00Z:0009:16164:4.42, WAIVER_BID_AWARDED:70985:2024:2024-09-12T01:00:00Z:0010:13590:11.0, TRANSACTION_FREE_AGENT:70985:2024:2024-09-12T01:06:12Z:0009:ADD:14717:DROP:10868, TRANSACTION_FREE_AGENT:70985:2024:2024-09-12T01:07:41Z:0009:ADD:9431:DROP:13404, TRANSACTION_FREE_AGENT:70985:2024:2024-09-12T01:24:06Z:0003:ADD:14798:DROP:15255, TRANSACTION_FREE_AGENT:70985:2024:2024-09-12T01:57:03Z:0005:ADD:11674:DROP:13850, TRANSACTION_FREE_AGENT:70985:2024:2024-09-12T02:02:14Z:0010:ADD:0510:DROP:0506, TRANSACTION_FREE_AGENT:70985:2024:2024-09-12T03:06:56Z:0002:ADD:0502:DROP:15257, TRANSACTION_TRADE:70985:2024:MEMORY_EVENT_ID:344, TRANSACTION_TRADE:70985:2024:MEMORY_EVENT_ID:623
+  TRANSACTION_TRADE:70985:2024:MEMORY_EVENT_ID:809, TRANSACTION_FREE_AGENT:70985:2024:2024-09-12T04:11:13Z:0007:ADD:16604:DROP:16432, TRANSACTION_FREE_AGENT:70985:2024:2024-09-15T01:50:30Z:0002:ADD:16207:DROP:14105, TRANSACTION_FREE_AGENT:70985:2024:2024-09-15T16:08:22Z:0002:ADD:16169:DROP:16207, TRANSACTION_FREE_AGENT:70985:2024:2024-09-15T16:37:59Z:0007:ADD:13680:DROP:16594, TRANSACTION_FREE_AGENT:70985:2024:2024-09-15T16:46:31Z:0006:ADD:16593:DROP:13675
+
+Note: This recap is summary-only and intentionally avoids fabricating details not present in event payloads.
+What happened this week:
+  - Paradis' Playmakers beat Weichert's Warmongers 129.60-118.05.
+  - Purple Haze beat Robb's Raiders 119.60-89.90.
+  - Brandon Knows Ball beat Italian Cavallini 111.15-98.90.
+  - Stu's Crew beat Eddie & the Cruisers 119.40-92.30.
+  - Ben's Gods beat Miller's Genuine Draft 105.70-101.15.
+  - Eddie & the Cruisers won Hockenson, T.J. (TE, MIN) for $0 on waivers.
+  - Italian Cavallini won Parkinson, Colby (TE, LAR) for $2 on waivers.
+  - Eddie & the Cruisers won Chargers, Los Angeles (Def, LAC) for $2 on waivers.
+  - Italian Cavallini won Bigsby, Tank (RB, JAC) for $4 on waivers.
+  - Brandon Knows Ball won Mayfield, Baker (QB, TBB) for $11 on waivers.
+  - Stu's Crew won Dortch, Greg (WR, ARI) for $16 on waivers.
+  - Paradis' Playmakers won Wright, Jaylen (RB, MIA) for $30 on waivers.
+  - Italian Cavallini added McLaughlin, Chase (PK, TBB) (free agent).
+  - Italian Cavallini added Stafford, Matthew (QB, LAR) (free agent).
+  - Purple Haze added Moss, Zack (RB, CIN) (free agent).
+  - Weichert's Warmongers added Cooks, Brandin (WR, DAL) (free agent).
+  - Brandon Knows Ball added Steelers, Pittsburgh (Def, PIT) (free agent).
+  - Paradis' Playmakers added Colts, Indianapolis (Def, IND) (free agent).
+  - Eddie & the Cruisers traded Olave, Chris (WR, NOS) to Brandon Knows Ball for LaPorta, Sam (TE, DET).
+  - Robb's Raiders added Lloyd, MarShawn (RB, GBP) (free agent).
+
+--- SHAREABLE RECAP ---
+KP's Playmakers opened the season with the week's high score, putting up 129.6 behind Josh Allen's 37.5-point opener to beat Steve's Warmongers 129.6-118.0. The matchup extended a competitive all-time series — across 16 seasons of data, these two have met 29 times with neither side holding much of an edge at 13-16. Steve left nearly 70 points on his bench, headlined by Lamar Jackson's 29.9-point performance — the same Lamar Jackson he picked up for $1 in the 2019 auction, now the most productive investment in league history at 861 points per dollar spent.
+
+Purple Haze crushed Robb's Raiders 119.6-89.9 in the week's biggest blowout. Pat got 25.3 from Joe Mixon while Robb managed just 89.9 points despite a 27.3-point kicker performance from Jake Moody. Robb left 51.2 points on the bench with Jameson Williams (21.9) watching from the sidelines, but even optimal lineups wouldn't have saved him from this margin.
+
+Ben squeaked past Miller 105.7-101.2 in the week's closest game, decided by 4.6 points. Both teams left significant production on their benches — Ben had Jayden Reed's 31.1 points sitting unused, while Miller benched Isaiah Likely's 21.6. Brandon beat Michele 111.2-98.9, with Brandon picking up Baker Mayfield for $11 on waivers after the fact.
+
+Stu handled Eddie 119.4-92.3 behind Jalen Hurts' 23.2 points. Eddie got 32.2 from Anthony Richardson but couldn't overcome Chris Olave's 2.1-point dud. Eddie moved quickly afterward, trading Olave to Brandon for Sam LaPorta and adding T.J. Hockenson on waivers for free.
+
+The week's waiver activity was headlined by KP's $30 bid for Jaylen Wright and Stu's $16 pickup of Greg Dortch, while several teams made free agent additions to shore up their rosters.
+--- END SHAREABLE RECAP ---
+
