@@ -44,6 +44,7 @@ class AuctionPick:
     player_id: str
     bid_amount: float
     position: str  # from player_directory; "" if unknown
+    external_source: str = ""  # provenance; "MANUAL:<tag>" => commissioner-attested (Unit A8)
 
 
 @dataclass(frozen=True)
@@ -88,7 +89,7 @@ def load_all_auction_picks(
     # Load draft picks
     with DatabaseSession(db_path) as con:
         rows = con.execute(
-            """SELECT season, payload_json
+            """SELECT season, payload_json, external_source
                FROM v_canonical_best_events
                WHERE league_id = ?
                  AND event_type = 'DRAFT_PICK'
@@ -129,6 +130,7 @@ def load_all_auction_picks(
             player_id=player_id,
             bid_amount=bid_amount,
             position=position,
+            external_source=str(row[2] or ""),
         ))
 
     picks.sort(key=lambda pk: (pk.season, pk.franchise_id, pk.player_id))

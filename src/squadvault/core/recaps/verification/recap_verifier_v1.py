@@ -4819,6 +4819,10 @@ def verify_draft_auction_dollars(
     max_bid: dict[str, float] = {}
     min_bid: dict[str, float] = {}
     pos_sums: dict[str, dict[str, float]] = {}
+    # Unit A8: franchises whose DRAFT_PICK coverage is commissioner-attested (MANUAL:<tag>).
+    # Existing (MFL) data yields an empty set, so the third-path branch below never fires on
+    # current artifacts - verifier behavior stays byte-identical for everything already shipped.
+    manual_fids: set[str] = set()
     for pk in picks:
         pick_fid = pk.franchise_id
         if pick_fid not in max_bid or pk.bid_amount > max_bid[pick_fid]:
@@ -4830,6 +4834,11 @@ def verify_draft_auction_dollars(
             pos_sums[pick_fid][pk.position] = (
                 pos_sums[pick_fid].get(pk.position, 0.0) + pk.bid_amount
             )
+        # Commissioner-attested provenance rides external_source as "MANUAL:<tag>" (Unit A8 / contract
+        # C1). Checked inline as a wire-format prefix so the verifier (core layer) takes no dependency
+        # on the ingest layer (architecture boundary: core must not import ingest).
+        if str(getattr(pk, "external_source", "") or "").startswith("MANUAL:"):
+            manual_fids.add(pick_fid)
     covered = set(max_bid)  # franchises with >= 1 DRAFT_PICK this season
 
     checked: set[tuple[str, int, str]] = set()
@@ -4886,6 +4895,7 @@ def verify_draft_auction_dollars(
             ))
             continue
 
+        hard_failed = False
         if role == "top":
             if claimed_int != round(max_bid[fid]):
                 failures.append(VerificationFailure(
@@ -4897,6 +4907,7 @@ def verify_draft_auction_dollars(
                         f"{season}: ${max_bid[fid]:.0f}."
                     ),
                 ))
+                hard_failed = True
         elif role == "cheapest":
             if claimed_int != round(min_bid[fid]):
                 failures.append(VerificationFailure(
@@ -4908,6 +4919,7 @@ def verify_draft_auction_dollars(
                         f"in {season}: ${min_bid[fid]:.0f}."
                     ),
                 ))
+                hard_failed = True
         else:
             defensible: set[int] = {round(max_bid[fid]), round(min_bid[fid])}
             for psum in pos_sums.get(fid, {}).values():
@@ -4927,6 +4939,24 @@ def verify_draft_auction_dollars(
                         f"sums): {ladder}."
                     ),
                 ))
+                hard_failed = True
+
+        # Unit A8 verifier third path (D5): a figure over commissioner-attested (MANUAL) coverage
+        # that re-derives correctly is SURFACED as human-attested, not silently passed as
+        # adapter-grade ground truth (contract section 4). A contradiction is still HARD above
+        # (fabrication relative to the imported rows is caught). MFL-covered franchises are never in
+        # manual_fids, so this branch cannot fire on any existing artifact - byte-identical (TB.1).
+        if fid in manual_fids and not hard_failed:
+            failures.append(VerificationFailure(
+                category="DRAFT_AUCTION_DOLLAR",
+                severity="SOFT",
+                claim=f"${claimed:.0f} draft/auction figure attributed to {name}",
+                evidence=(
+                    f"Human-attested (commissioner-attested manual source) for {name} in "
+                    f"{season}; consistent with the imported rows but not verifiable against a "
+                    f"live platform source."
+                ),
+            ))
 
     return failures
 

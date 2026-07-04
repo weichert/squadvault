@@ -426,3 +426,26 @@ CREATE TABLE IF NOT EXISTS franchise_display_overrides (
     set_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (league_id, franchise_id, season_from, season_to)
 );
+
+-- =========================
+-- Manual import approvals (Unit A8, contract C3)
+-- =========================
+-- Attributed approval as the ingest act for the Manual Source Adapter: the import
+-- CREATES fact, so it needs its own approval gate (founding-ceremony shape). Records
+-- WHO attested, WHEN, and against WHICH retained artifact (by content hash). An import
+-- with no matching approval row is refused (no silent ingestion). Append-only like the
+-- ledger it authorizes; this table stores approvals, never facts.
+CREATE TABLE IF NOT EXISTS manual_import_approvals (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    league_id              TEXT    NOT NULL,
+    season                 INTEGER NOT NULL,
+    external_source        TEXT    NOT NULL,  -- the MANUAL:<tag> provenance this approval authorizes
+    source_artifact_sha256 TEXT    NOT NULL,  -- content-address of the retained workbook (C2/D3)
+    actor                  TEXT    NOT NULL,   -- who attested (the founder/commissioner act)
+    approved_at            TEXT    NOT NULL,   -- ISO-8601 "Z"
+    notes                  TEXT,
+    UNIQUE (league_id, season, external_source, source_artifact_sha256)
+);
+
+CREATE INDEX IF NOT EXISTS idx_manual_import_approvals_lookup
+ON manual_import_approvals (league_id, season, external_source);
