@@ -5,8 +5,9 @@ a derived index, kept under ~80 lines. No session treats a prior chat message or
 over `git log` + this file. Verbose per-unit detail lives in the `_observations/` close-out memos; this
 index carries date + key hash + memo pointer.
 
-## Current state (2026-07-04)
+## Current state (2026-07-05)
 
+- Unit 1.7b (Presentation Implementation) SHIPPED 2026-07-05 (squash fcc5279; R5 CLOSED at implementation layer - spec-conformant group-text form, review-shows-what-ships per Fork A; 34/34 scoped byte-identity; 6 unparseable registered). Memo OBSERVATIONS_2026_07_05_UNIT_1_7B_PRESENTATION.md.
 - Runbook kickoff PRE-AUTHORIZED 2026-07-04 for the 07-18 trigger (inventory-first; founder gates; continuity memo governs adjudication). Doc _observations/RUNBOOK_KICKOFF_2026_07_18_PREAUTHORIZED.md.
 - DECIDE-lane Continuity Memo v1.0 LANDED 2026-07-04 (succession document for post-07-07 adjudication; open register + calendar inside). Memo _observations/DECIDE_LANE_CONTINUITY_MEMO_v1_0.md.
 - Unit A8 (Manual Source Adapter) SHIPPED 2026-07-04 (squash 07f9e36; contract v1.0 envelope model; 2021 calibration fixture ATTESTED in scratch; prod entry = founder act, pending). Unit A9 (2018 auction de-contamination) REGISTERED - duplicate win 3877/3891 + contaminant 3892; KP-sheet adjudicates true winner. Memo OBSERVATIONS_2026_07_04_UNIT_A8_MANUAL_SOURCE_ADAPTER.md.
