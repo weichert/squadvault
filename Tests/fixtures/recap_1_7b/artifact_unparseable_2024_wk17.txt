@@ -1,0 +1,37 @@
+# Rivalry Chronicle v1
+## Stu's Crew vs Paradis' Playmakers
+
+League: 70985
+Season: 2024
+Scope: Weeks 1-17
+Generated: 2026-03-24T13:59:11Z
+Version: 1
+
+## Head-to-Head Results
+
+- Season 2024, Week 5: Stu's Crew def. Paradis' Playmakers 121.10-120.25
+- Season 2024, Week 10: Stu's Crew def. Paradis' Playmakers 143.70-96.80
+- Season 2024, Week 15: Paradis' Playmakers def. Stu's Crew 134.90-131.60
+
+## Chronicle
+
+Stu's Crew holds a 2-1 advantage over Paradis' Playmakers in their 2024 matchups. Their first two meetings were decided by narrow and wide margins respectively, with Stu's Crew prevailing in Week 5 by just 0.85 points and then by a larger gap in Week 10. Paradis' Playmakers secured their sole victory in Week 15 with a close contest, though Stu's Crew ultimately finished the season series ahead.
+
+## Trace
+
+team_a_id: 0001
+team_b_id: 0002
+weeks_requested: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+weeks_with_matchups: [5, 10, 15]
+canonical_event_fingerprints:
+  - WEEKLY_MATCHUP_RESULT:70985:2024:W5:0001:0002
+  - WEEKLY_MATCHUP_RESULT:70985:2024:W10:0001:0002
+  - WEEKLY_MATCHUP_RESULT:70985:2024:W15:0001:0002
+facts_block_hash: 7cb78a3da22c50398875e9c2114f5dfe24b208a28afc451fa092c8afad3c566e
+
+## Disclosures
+
+This chronicle covers head-to-head matchups between Stu's Crew and Paradis' Playmakers for Season 2024, Weeks 1-17.
+Weeks in scope where these teams did not face each other: [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17]
+
+

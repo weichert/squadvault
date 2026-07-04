@@ -123,12 +123,13 @@ class TestFormatters:
         assert clean.splitlines()[0] == "What happened this week:"
 
     def test_plain_text_assembler_structure(self) -> None:
+        # Unit 1.7b (R5): spec section 4.1 masthead in caps, NO setext underline.
         out = _clean_recap()
         lines = out.splitlines()
-        assert lines[0] == f"PFL Buddies — Season {SEASON}, Week {WEEK}"
-        assert set(lines[1]) == {"="}                       # setext underline
-        assert "---" in lines                               # S4 separator
-        assert "What happened this week:" in lines          # S5 header
+        assert lines[0] == f"PFL BUDDIES — WEEK {WEEK} — {SEASON}"
+        assert not any(ln.strip() and set(ln.strip()) == {"="} for ln in lines)  # underline is gone
+        assert any(set(ln) == {"-"} and len(ln) >= 3 for ln in lines)            # the ---- divider
+        assert "What happened this week:" in lines          # facts block header
 
     def test_quiet_week_omits_separator_and_facts(self) -> None:
         out = render_plain_text_recap_v1(
