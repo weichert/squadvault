@@ -40,3 +40,6 @@ Every existing approved artifact regenerates byte-identically through the refact
 ## 6. Out of scope
 
 Web rendering against W.2 tokens (frontend unit, later) · print renderer (deferred with the almanac) · any verifier change · any approval-flow change · voice/prompt iteration · Unit A9 · no frontend changes.
+
+---
+**Amendment Log:** 2026-07-04 — Execution window pulled forward from August to 2026-07-04/05 by founder ratification; gates held by the brief's author. §2 successor notes remain valid for any future re-adjudication. No other change.
