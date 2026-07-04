@@ -76,4 +76,8 @@ scripts/ci_watch_and_diagnose_run_v*.sh
 # Operational logs (scheduler output)
 logs/*.log
 squadvault-demo/
-squadvault/
+# Anchored to the repo root so this only ignores a top-level scratch `squadvault/` dir and
+# never the package tree `src/squadvault/` (the unanchored form silently swallowed every NEW
+# file under src/squadvault/, forcing `git add -f`; Unit A8 caught it). core_engine/eal hold
+# only __pycache__ (line 5) and .DS_Store is ignored (line 28), so nothing else is exposed.
+/squadvault/
