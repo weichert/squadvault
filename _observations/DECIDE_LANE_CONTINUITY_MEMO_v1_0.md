@@ -61,3 +61,24 @@ The founder ratifies fast ("Approved. Let's go!!"), works in marathons when move
 ## 8. Lessons with receipts
 
 The week that produced this memo shipped a measurement baseline, a two-stage attribution that inverted its own hypothesis, a verifier fix that did exactly what the evidence predicted, a re-measurement that validated it, a testimony door built against a ratified contract that overrode its own brief, and a presentation contract for the season's voice — through gates that caught the author's errors at least four times (two dropped Objective sections, one falsified premise, one stale schema model). The lesson is not that the author errs; it is that the process converts error into record instead of product damage. Guard the gates, verify at HEAD, correct append-only, and remember that for a vault whose promise is trustworthy memory, the system is the product.
+
+---
+## Addendum v1.1 — 2026-07-05 (bonus days before the 07-07 transition)
+
+**What shipped after v1.0, not in the original register:**
+- W.2 Clubhouse Cluster 1 (b63e8da) — the keystone room, live. Master-only v1; Active Objects (silhouette glow via registered cutouts) opened as follow-on.
+- Unit 1.7b (fcc5279) — R5 closed; group-text receives clean prose.
+- QA.1 vitest harness (6b31abf); A8 Manual Source Adapter (07f9e36); A9 registered; Coach Office spec ratified (4d789b7, CO-R1..R4).
+
+**Correction to the v1.0 register — the omission that mattered:** §6 omitted the entire Warmth/Media track. This is not academic: the founder had to ASK whether shipped media work survived, because the register didn't name it. It did survive. The A/V Room (W.1) is SHIPPED and deep — ~90 commits, migrations 011–024, consent-gated (media_appearance fail-closed), video playback, expungement. The Coach Office personal photo frame/gallery is SPEC-ONLY (built by no unit yet).
+
+**New hazards:**
+- #11 register-from-memory: any open register / prompt / succession doc enumerating remaining work MUST be derived by reconciliation against the Completion Plan's remaining-work sections at HEAD, never from session memory. The v1.0 register inherited session recency bias and dropped the Warmth track.
+- #12 planning-outside-the-record: the Coach Office spec package was authored outside the two-lane record and lived in-repo (fab143b) unratified for weeks; CO.1–CO.3 built against it blind. Any design work adopted from outside must be formally ratified into _observations/ on discovery.
+
+**Registered findings (A4-adjacent, non-blocking):**
+- A/V Room doc staleness: page.tsx header + ROADMAP line 41 say video playback "deferred"; it shipped (478a034) and plays. Comments lag code.
+- likeness_derived consent toggle is PARTIAL: toggle + event route exist, no render surface consumes it (no Gazette/press-card artifact surface built). Ready for a surface that doesn't exist yet.
+- Project prompt final line says both clones prompt "squadvault %"; frontend canonical clone now prompts "squadvault-frontend %". One-phrase founder edit owed.
+
+**The standing rule, restated:** the Completion Plan is the source of truth for WHAT'S LEFT; STATE.md for WHAT'S IN FLIGHT; memory for NEITHER. Reconcile registers against the Plan.
