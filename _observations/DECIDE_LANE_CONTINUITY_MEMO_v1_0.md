@@ -82,3 +82,20 @@ The week that produced this memo shipped a measurement baseline, a two-stage att
 - Project prompt final line says both clones prompt "squadvault %"; frontend canonical clone now prompts "squadvault-frontend %". One-phrase founder edit owed.
 
 **The standing rule, restated:** the Completion Plan is the source of truth for WHAT'S LEFT; STATE.md for WHAT'S IN FLIGHT; memory for NEITHER. Reconcile registers against the Plan.
+
+---
+## Addendum v1.2 — 2026-07-05 (Coach Office room + living-office roadmap)
+
+**Shipped this session (verify at HEAD):**
+- Coach Office Room v1 (frontend 936a8ee) — the office room: shell + trophy/ring/board/nameplate resolvers, reusing the W.2 room-agnostic RoomScene via a new `detail` wiring variant (OfficeShell/HotspotModal retired). Consent fail-closed per CO-R1 on the board note (attributed_quotes grant); nameplate = public owner_display_name (D-4a, no media gate). Shipped on a clean CO-R4 text-free hero (co_master_web.webp; the interim 08_45_06 render was superseded pre-merge for a text-free re-render — the interim had no baked text but the final is higher-fidelity; the earlier M1 hero remains quarantined for baked "EST 2013"). Trophy-case-as-ambient-art ruling: real trophies render in the modal, not composited onto shelves.
+
+**Living-office roadmap authored (three v2 briefs, successor-executable against v1):**
+- CO v2 Personal Media (4bf19f1) — framed-photo gallery, fail-closed consent per depicted member; empty-frame asset rendered (CO-R4 clean).
+- CO v2 Team Identity (ac4ad98) — team logo: onboarding capture + shared default asset + office render surface; logo storage may need founder-applied infra (surfaced at that unit's G1, never session-invented).
+- CO v2 Ambient State (30fb38f) — room-agnostic static window light by REAL date/season, for BOTH the office and the Clubhouse/Community windows.
+
+**Constitutional ruling recorded (append-only, do not re-litigate):** the "living office" is achieved by reflecting REAL state statically (who views it via CO.3, what's earned via resolvers, their photos/logo, when they visit via ambient light) — never by motion. The founder proposed animated fireplace fire/smoke "to suggest time passing"; RULED off-constitution as an engagement loop ("no engagement loops, ever"). Static window light passes because it reflects a real fact (the actual date); animated fire fails because it manufactures ambiance. The Ambient State brief §2 carries this ruling and a negative test asserting no animation primitive in the window layer. The ruled-acceptable hearth ember is a STILL state, not motion.
+
+**Render queue (founder task, non-blocking):** DONE — empty photo frame. PENDING — hero-with-blank-logo-surface, default team logo, 4 office window states, 4 clubhouse window states (all CO-R4-clean prompts authored; a shared ChatGPT context brief exists for the render session).
+
+**Register status:** the buildable-and-briefable list is COMPLETE. Every remaining unit has a landed brief or a clear registration (CO v2 x3, Active Objects/W.2.1, A9, prose-capture, A4 hygiene). No next big build remains to author; what's left executes against existing briefs. Founder-only non-code items persist: the league note (unposted), KP prod entry, nine Draft-Weekend invites, the squadvault-frontend prompt-line edit, stale-clone deletion.
