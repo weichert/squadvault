@@ -7,6 +7,7 @@ index carries date + key hash + memo pointer.
 
 ## Current state (2026-07-05)
 
+- PLAN OF RECORD: Completion Plan v1.4 (docs/SquadVault_Completion_Plan_v1_4_2026_07_05.md; squash 2f16ea0; DECIDE-authored, founder-ratified; supersedes v1.3, append-only). Reconciles the 2026-07-05 session against HEAD; centerpiece = the four-axis Dual-Layer Room Map sequencing the finish against the calendar. Registered via docs/map_patch_2026_07_05_completion_plan_v1_4.md; docs-map allowlist updated same commit.
 - Unit 1.7b (Presentation Implementation) SHIPPED 2026-07-05 (squash fcc5279; R5 CLOSED at implementation layer - spec-conformant group-text form, review-shows-what-ships per Fork A; 34/34 scoped byte-identity; 6 unparseable registered). Memo OBSERVATIONS_2026_07_05_UNIT_1_7B_PRESENTATION.md.
 - Runbook kickoff PRE-AUTHORIZED 2026-07-04 for the 07-18 trigger (inventory-first; founder gates; continuity memo governs adjudication). Doc _observations/RUNBOOK_KICKOFF_2026_07_18_PREAUTHORIZED.md.
 - DECIDE-lane Continuity Memo v1.0 LANDED 2026-07-04 (succession document for post-07-07 adjudication; open register + calendar inside). Memo _observations/DECIDE_LANE_CONTINUITY_MEMO_v1_0.md.
