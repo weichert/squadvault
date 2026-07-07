@@ -40,11 +40,14 @@ _GRANDFATHERED_TOP_LEVEL_DOCS = {
     "map_patch_2026_06_22_w5_trophy_taxonomy.md",
     "map_patch_2026_07_04_narrative_presentation_spec.md",
     "map_patch_2026_07_05_completion_plan_v1_4.md",
+    "map_patch_2026_07_07_ems_vision_draft.md",
     # Binding docs registered via the patch addenda above
     "SquadVault_W6_Consent_Governance_Memo_v1_2.md",
     "SquadVault_W5_Trophy_Taxonomy_DJ_Input_v1_2_2026_06_21.md",
     "Narrative_Presentation_Spec_v1_0.md",
     "SquadVault_Completion_Plan_v1_4_2026_07_05.md",
+    # Non-binding Tier 5 vision artifact (EMS Phase 0; registered via the patch above)
+    "Environmental_Memory_Founder_Draft_v0_9.md",
     # Operational read-model (Charter v1.0 section 4; registered via the patch above)
     "STATE.md",
     # Product plan of record (Charter-named; registered via the patch above) - E1.3
